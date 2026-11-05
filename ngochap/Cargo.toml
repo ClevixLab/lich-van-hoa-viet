@@ -1,0 +1,10 @@
+[package]
+name = "lvhv-ngochap"
+version = "0.1.0"
+edition = "2021"
+description = "Quy tắc xem ngày theo Ngọc Hạp Thông Thư cho Lịch và Văn hóa Việt (Clevix Lab)"
+# Chưa chọn giấy phép mã nguồn mở — xem LICENSE ở gốc kho và docs/05 (câu hỏi mở).
+license-file = "../LICENSE"
+publish = false
+
+[dependencies]

@@ -1,0 +1,19 @@
+{
+  "name": "lich-van-hoa-viet-pwa",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Lịch và Văn hóa Việt — PWA (Clevix Lab), bản 0.1 thử nghiệm nội bộ",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test:smoke": "node test/smoke.mjs",
+    "icons": "node scripts/make-icons.mjs",
+    "font": "python3 scripts/subset-font.py"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2",
+    "playwright-core": "1.63.0",
+    "typescript": "7.0.2"
+  }
+}

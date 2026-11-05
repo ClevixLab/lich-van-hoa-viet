@@ -1,0 +1,292 @@
+# Dựng ứng dụng native — Android, iOS/macOS, Windows
+
+Trạng thái: bản 0.1 (A6/A7/A8/A11), 2026-11-06. Áp dụng cho `ffi/`, `apps/android/`, `apps/apple/`,
+`apps/windows/`, `.github/workflows/`.
+
+> **Đọc mục 8 trước.** Môi trường soạn mã (Linux, không có Android SDK, Xcode hay công cụ Windows) chưa
+> từng biên dịch ứng dụng Android, Apple hoặc gói Windows. Lần chạy CI đầu tiên là lần dựng đầu tiên.
+
+## 1. Kiến trúc
+
+```
+core/ (lvhv-core) + ngochap/ (lvhv-ngochap)       lõi Rust, không unsafe
+      │
+ffi/ (lvhv-ffi, UniFFI 0.29.4)                     JSON + vài kiểu đơn giản, lỗi tiếng Việt
+      ├── cdylib liblvhv_ffi.so ──► Android: JNA 5.17.0 + mã Kotlin UniFFI + Jetpack Compose
+      ├── staticlib liblvhv_ffi.a ─► iOS/macOS: LvhvCore.xcframework + mã Swift UniFFI + SwiftUI
+      └── crate Rust ──────────────► Windows: Slint 1.8.0 (Rust thuần, không qua FFI C)
+```
+
+Năm sinh ở mục Chọn ngày tốt là **năm âm lịch** (năm tuổi); màn hình ghi rõ "sinh trước Tết thì lấy năm
+trước". FFI có `lunar_year_of_birth` nếu sau này muốn nhập ngày sinh đầy đủ.
+
+Mọi nền tảng gọi cùng một lõi, nên số liệu (ngày âm, Can Chi, sao, điểm, ca dao) giống hệt nhau. Màn
+hình và chữ chép theo PWA: Tờ lịch (vuốt/phím ← → để lật ngày), bảng tháng "Chọn ngày", Chọn ngày tốt,
+Đổi ngày, Giới thiệu (kèm Nguồn quy tắc và ghi công ca dao CC BY-SA 4.0, phông OFL).
+
+Không ứng dụng nào dùng mạng: Android không xin quyền nào (kể cả `INTERNET`); macOS chạy trong App
+Sandbox không có quyền mạng; iOS không gọi mạng; Windows không có mã mạng.
+
+## 2. Phiên bản được ghim
+
+| Thành phần | Phiên bản | Ghi chú |
+|---|---|---|
+| Rust | stable (CI: `dtolnay/rust-toolchain@stable`) | máy soạn mã: rustc 1.97.0 |
+| UniFFI | `=0.29.4` | kiểm tra tồn tại bằng `cargo info` |
+| serde / serde_json | 1.0.228 / 1.0.145 trở lên | |
+| Android Gradle Plugin | 8.7.3 | cần Gradle ≥ 8.9 |
+| Gradle | 8.11.1 | qua `gradle/actions/setup-gradle@v4` |
+| Kotlin + Compose compiler plugin | 2.0.21 | |
+| Compose BOM | 2024.12.01 | Material3 1.3.x |
+| activity-compose / core-ktx / lifecycle | 1.9.3 / 1.15.0 / 2.8.7 | |
+| JNA | 5.17.0 (`@aar`) | từ 5.16.0, `libjnidispatch.so` căn trang 16 KB (đã kiểm: 5.15.0 = 64 KB, 5.16/5.17 = 16 KB) |
+| Android NDK | r27c | qua `nttld/setup-ndk@v1` |
+| cargo-ndk | 3.5.4 | |
+| JDK | Temurin 17 | |
+| compileSdk / targetSdk / minSdk | 35 / 35 / 26 | |
+| Xcode | 16.x trên `macos-15` | iOS 16+, macOS 13+ |
+| XcodeGen | 2.42.0 | tải bản phát hành; dự phòng `brew install xcodegen` |
+| Slint | `=1.8.0` (style fluent, backend winit, renderer femtovg + software) | |
+| winresource | `=0.1.19` | nhúng biểu tượng/thông tin vào .exe |
+| cargo-wix / WiX | 0.3.9 / 3.14 | WiX 3.14 có sẵn trên `windows-2022` |
+| GitHub Actions | checkout@v4, setup-java@v4, setup-node@v4, upload-artifact@v4, setup-gradle@v4, setup-android@v3, setup-ndk@v1, rust-cache@v2, install-action@v2, cargo-deny-action@v2, configure-pages@v5, upload-pages-artifact@v3, deploy-pages@v4 | đã kiểm tra mỗi thẻ có `action.yml` |
+
+Sinh mã UniFFI: trong `ffi/README.md`.
+
+## 3. Dựng trên máy
+
+### 3.1 Lõi + FFI (mọi hệ điều hành)
+
+```bash
+cargo test --workspace            # core, ngochap, ffi
+cargo build -p lvhv-ffi --release
+```
+
+### 3.2 Android
+
+Cần: Android Studio Ladybug (2024.2) trở lên hoặc SDK dòng lệnh; NDK r27c; JDK 17; Rust.
+
+```bash
+rustup target add aarch64-linux-android armv7-linux-androideabi x86_64-linux-android
+cargo install cargo-ndk --version 3.5.4 --locked
+export ANDROID_NDK_HOME=$ANDROID_HOME/ndk/27.2.12479018
+apps/android/build-rust.sh                  # .so cho 3 ABI + mã Kotlin vào app/build/generated/uniffi
+cd apps/android
+gradle wrapper --gradle-version 8.11.1      # chỉ lần đầu: sinh gradlew + gradle-wrapper.jar
+./gradlew :app:assembleDebug                # hoặc mở apps/android trong Android Studio
+```
+
+Kho mã **không có** `gradle-wrapper.jar` (không tải được trong môi trường soạn mã); chỉ có
+`gradle/wrapper/gradle-wrapper.properties`. CI cài Gradle 8.11.1 bằng `setup-gradle`. Chạy
+`gradle wrapper` như trên một lần rồi commit `gradlew`, `gradlew.bat`, `gradle/wrapper/gradle-wrapper.jar`
+nếu muốn dùng `./gradlew`.
+
+Ký bản phát hành trên máy: tạo `apps/android/keystore.properties` (đã nằm trong `.gitignore`):
+
+```
+storeFile=C:/Users/<tên>/ClevixKeys/lichviet-upload.jks
+storePassword=...
+keyAlias=lichviet-upload
+keyPassword=...
+```
+
+hoặc đặt biến môi trường `LVHV_KEYSTORE_FILE`, `LVHV_KEYSTORE_PASSWORD`, `LVHV_KEY_ALIAS`,
+`LVHV_KEY_PASSWORD`. Thiếu một giá trị thì bản release **không ký** (vẫn dựng được, không cài lên máy
+thật được).
+
+### 3.3 iOS / macOS (cần máy Mac)
+
+Cần: macOS 14+, Xcode 16, Rust, XcodeGen (`brew install xcodegen`).
+
+```bash
+apps/apple/build-xcframework.sh     # build/LvhvCore.xcframework + Generated/LvhvCore.swift
+cd apps/apple
+export LVHV_TEAM_ID=ABCDE12345      # Team ID Apple Developer (để ký tự động)
+xcodegen generate                   # sinh LichVanHoaViet.xcodeproj (không commit)
+open LichVanHoaViet.xcodeproj
+```
+
+`DEVELOPMENT_TEAM` lấy từ `$(LVHV_TEAM_ID)`; Xcode đọc biến môi trường lúc dựng. Muốn cố định thì đặt
+Team trong Signing & Capabilities của Xcode sau khi `xcodegen generate` (sẽ mất khi sinh lại).
+
+### 3.4 Windows
+
+Cần: Windows 10/11 x64, Rust (toolchain MSVC), Visual Studio Build Tools 2022 (mục "Desktop development
+with C++"). Bộ cài MSI cần thêm WiX 3.14 (`winget install WiXToolset.WiXToolset`).
+
+```powershell
+powershell -ExecutionPolicy Bypass -File apps\windows\scripts\Build-Windows.ps1
+```
+
+Kết quả: `apps\windows\dist\LichViet-0.1.0-x64.zip` (chạy thẳng `LichViet.exe`) và `.msi` nếu có WiX.
+MSI cài theo người dùng (không cần quyền quản trị) vào `%LOCALAPPDATA%\Programs\LichVanHoaViet`, tạo lối
+tắt trong Start Menu.
+
+`lvhv-windows` có bảng `[workspace]` riêng (không nằm trong workspace gốc) để `cargo test` của lõi không
+phải dựng Slint (~300 crate, vài phút). Crate này **dựng được cả trên Linux** (đã kiểm, mục 8); trên
+Linux cần `libfontconfig1-dev libxkbcommon-dev libwayland-dev libx11-dev libgl1-mesa-dev`.
+
+Vì sao Slint mà không dùng WebView2: một tệp `.exe` duy nhất (~12 MB, đo trên Linux), không phụ thuộc
+WebView2 runtime, khởi động nhanh, đọc màn hình (UI Automation) qua AccessKit. RAM đo trên Linux/Xvfb
+(mục 8): ~52 MB với renderer phần mềm, ~170 MB với femtovg/OpenGL qua llvmpipe (Mesa phần mềm — trên máy
+có GPU thật thường thấp hơn). Một vỏ WebView2 (wry/Tauri) thường tốn 80–150 MB vì có thêm tiến trình
+Edge. Chưa đo trên Windows thật: `windows.yml` in số đo Working Set vào `mem.txt`.
+
+**Giấy phép Slint:** Slint phát hành theo GPL-3.0 **hoặc** "Slint Royalty-free License 2.0" **hoặc**
+giấy phép thương mại. Bản Royalty-free miễn phí cho ứng dụng desktop, với điều kiện hiển thị ghi công
+"Made with Slint" (màn hình Giới thiệu đã có). Chủ dự án nên đọc
+https://slint.dev/terms-and-conditions trước khi phát hành để xác nhận điều kiện áp dụng.
+
+### 3.5 Tạo khóa ký Android (Windows)
+
+```powershell
+powershell -ExecutionPolicy Bypass -File apps\windows\scripts\New-AndroidUploadKeystore.ps1
+```
+
+Không cần sửa script. Script tìm `keytool` (JDK hoặc Android Studio), hỏi mật khẩu (ẩn), tạo
+`%USERPROFILE%\ClevixKeys\lichviet-upload.jks` (RSA 4096, 10 000 ngày, PKCS12), ghi tệp Base64, chép
+vào clipboard, in 4 secret cần đặt và dấu vân tay SHA-256. Script không ghi đè khóa cũ. **Sao lưu tệp
+.jks và mật khẩu.**
+
+## 4. CI (GitHub Actions)
+
+| Workflow | Khi chạy | Làm gì | Sản phẩm (Artifacts) |
+|---|---|---|---|
+| `ci.yml` | mọi push / PR | `cargo fmt --check`, `clippy -D warnings`, `cargo test --workspace --release`, kiểm S1 (không `unsafe` trong core), sinh lại mã UniFFI và so với `ffi/generated`, `cargo-deny check advisories`, sinh lại `core/out/*` bằng `lvhv-dump` rồi chạy `tsport` L7 (`npm test`), typecheck + build PWA, kiểm thử khói Playwright (Chromium) | `ffi-bindings`, `pwa-dist`, `pwa-smoke` |
+| `android.yml` | push `main`, thẻ `v*`, PR | NDK r27c + cargo-ndk → `.so` 3 ABI; Gradle 8.11.1: unit test, lint, `assembleRelease` + `bundleRelease` (R8); kiểm APK không có `uses-permission` và có đủ `.so` | `android-release` (APK, AAB, mapping.txt), `android-lint-report` |
+| `apple.yml` | push `main`, thẻ `v*`, PR | XCFramework 5 target, XcodeGen, `xcodebuild` iOS Simulator + iOS thiết bị + macOS (không ký), kiểm PrivacyInfo/phông/quyền mạng, chạy thử trên Simulator và chụp màn hình | `apple-unsigned` (zip .app iOS Simulator, zip .app macOS, ảnh) |
+| `windows.yml` | push `main`, thẻ `v*`, PR | `cargo test`, `cargo build --release`, đo RAM, ký Authenticode nếu có chứng chỉ, gói zip + MSI | `windows-x64` |
+| `pwa-pages.yml` | thẻ `v*`, chạy tay | build PWA, đăng `pwa/dist` lên GitHub Pages | trang Pages |
+
+Kho riêng tư (private): GitHub cấp phút chạy miễn phí có hạn; runner macOS tính **gấp 10 lần** phút
+Linux. Mỗi lần `apple.yml` chạy khoảng 15–25 phút. Có thể đổi `on:` của `apple.yml` chỉ còn
+`workflow_dispatch` và thẻ `v*` để tiết kiệm.
+
+Bật Pages một lần: Settings → Pages → Source = **GitHub Actions**.
+
+## 5. Chủ dự án cần cung cấp
+
+| Nền tảng | Cần có | Ở đâu |
+|---|---|---|
+| Android | Tài khoản Google Play Console (phí một lần 25 USD); khóa tải lên (script mục 3.5); bật **Play App Signing** (Google giữ khóa ký ứng dụng) | play.google.com/console |
+| iOS/macOS | Apple Developer Program (99 USD/năm) cho Clevix LLC (cần số D-U-N-S của Clevix LLC); Team ID; chứng chỉ "Apple Distribution"; App ID `vn.clevix.lichviet`; bản ghi ứng dụng trên App Store Connect | developer.apple.com, appstoreconnect.apple.com |
+| Windows | Tùy chọn A (khuyên dùng): Microsoft Store (tài khoản nhà phát triển cho công ty; Store tự ký gói MSIX). Tùy chọn B: chứng chỉ ký mã Authenticode (OV/EV, .pfx) để ký `.exe`/`.msi` phát hành ngoài Store, tránh cảnh báo SmartScreen | partner.microsoft.com; nhà cấp chứng chỉ |
+
+### 5.1 GitHub Secrets (Settings → Secrets and variables → Actions)
+
+| Secret | Dùng bởi | Nội dung |
+|---|---|---|
+| `LVHV_ANDROID_KEYSTORE_BASE64` | android.yml | Base64 của `lichviet-upload.jks` (script mục 3.5 in sẵn) |
+| `LVHV_ANDROID_KEYSTORE_PASSWORD` | android.yml | mật khẩu kho khóa |
+| `LVHV_ANDROID_KEY_ALIAS` | android.yml | `lichviet-upload` |
+| `LVHV_ANDROID_KEY_PASSWORD` | android.yml | mật khẩu khóa (script dùng cùng mật khẩu kho khóa) |
+| `LVHV_WIN_CERT_PFX_BASE64` | windows.yml | Base64 của chứng chỉ ký mã `.pfx` (tùy chọn) |
+| `LVHV_WIN_CERT_PASSWORD` | windows.yml | mật khẩu `.pfx` |
+
+Không có secret nào → mọi workflow vẫn chạy và tạo bản **không ký** để kiểm tra.
+
+Chưa có trong CI (cố ý, cần chứng chỉ của chủ dự án): ký + xuất `.ipa`/`.pkg` và tải lên App Store
+Connect. Khi có chứng chỉ, nên làm trên máy Mac bằng Xcode (Product → Archive → Distribute App), hoặc bổ
+sung bước `xcodebuild archive` + `-exportArchive` với các secret `APPLE_CERT_P12_BASE64`,
+`APPLE_CERT_PASSWORD`, `APPLE_TEAM_ID`, `APP_STORE_CONNECT_API_KEY_*` (chưa viết).
+
+## 6. Danh sách nộp kho ứng dụng
+
+### 6.1 Google Play Console
+
+- [ ] Tạo ứng dụng "Lịch và Văn hóa Việt", ngôn ngữ mặc định tiếng Việt (vi-VN), loại Ứng dụng, Miễn phí.
+- [ ] Bật Play App Signing; tải lên AAB đã ký bằng khóa tải lên (artifact `android-release` khi có secret).
+- [ ] `versionCode` = số lần chạy CI (`github.run_number`), tăng dần; `versionName` = 0.1.0 (biến `LVHV_VERSION_NAME`).
+- [ ] Data safety: "Không thu thập dữ liệu", "Không chia sẻ dữ liệu". Đúng với mã: không có quyền nào, không có thư viện phân tích.
+- [ ] Chính sách quyền riêng tư: Play **bắt buộc** có URL công khai, kể cả khi không thu thập dữ liệu. Có thể đăng trang trên GitHub Pages của PWA.
+- [ ] Phân loại nội dung (IARC): Tham khảo / không bạo lực → Mọi lứa tuổi. Đối tượng: không nhắm trẻ em (tránh yêu cầu chính sách Gia đình).
+- [ ] Quảng cáo: Không. Truy cập ứng dụng: không cần đăng nhập.
+- [ ] Ảnh: biểu tượng 512×512 (`pwa/public/icons/icon-512.png`), ảnh nổi bật 1024×500, ít nhất 2 ảnh chụp điện thoại.
+- [ ] Mô tả: nêu rõ phần xem ngày là văn hóa dân gian, chỉ để tham khảo (như màn hình Giới thiệu).
+- [ ] Kiểm thử nội bộ (Internal testing) trước; tài khoản cá nhân mới phải qua kiểm thử kín 12 người trong 14 ngày trước khi phát hành chính thức — tài khoản tổ chức (Clevix LLC) không bị yêu cầu này.
+
+### 6.2 App Store Connect (iOS + macOS)
+
+- [ ] Đăng ký App ID `vn.clevix.lichviet` (một Bundle ID dùng cho cả iOS và macOS — App Store hỗ trợ "Universal Purchase").
+- [ ] Tạo ứng dụng: tên "Lịch và Văn hóa Việt", ngôn ngữ chính Vietnamese, SKU `LICHVIET01`.
+- [ ] App Privacy: "Data Not Collected". `PrivacyInfo.xcprivacy` đã khai báo: không theo dõi, không thu thập; API UserDefaults lý do CA92.1 (lưu cỡ chữ, sáng/tối).
+- [ ] Mã hóa xuất khẩu: `ITSAppUsesNonExemptEncryption = NO` đã đặt trong Info.plist.
+- [ ] Phân loại tuổi: 4+. Danh mục: Reference (Tham khảo) hoặc Lifestyle.
+- [ ] URL chính sách quyền riêng tư và URL hỗ trợ (bắt buộc).
+- [ ] Ảnh chụp: iPhone 6.9" (1320×2868), iPad 13" nếu hỗ trợ iPad (project.yml bật iPad: `TARGETED_DEVICE_FAMILY 1,2`), Mac 1280×800 trở lên.
+- [ ] Archive trong Xcode với Team của Clevix LLC → Distribute → App Store Connect; kiểm thử qua TestFlight.
+- [ ] Ghi chú cho người duyệt: ứng dụng chạy hoàn toàn ngoại tuyến, không cần tài khoản.
+- [ ] Guideline 4.2 (Minimum Functionality): ứng dụng có nội dung riêng (lịch âm, chọn ngày, ca dao có nguồn) — nêu trong ghi chú.
+
+### 6.3 Microsoft Store (MSIX) — chưa có gói MSIX trong CI
+
+- [ ] Đăng ký tài khoản nhà phát triển Microsoft (công ty: Clevix LLC); đặt tên ứng dụng "Lịch và Văn hóa Việt".
+- [ ] Lấy Package/Identity/Name, Publisher (CN=…) và PublisherDisplayName từ Partner Center.
+- [ ] Đóng gói MSIX từ `LichViet.exe`: dùng MSIX Packaging Tool, hoặc `makeappx pack` với `AppxManifest.xml` (Capabilities: chỉ `runFullTrust`, **không** `internetClient`). Biểu tượng: 44×44, 150×150, 310×150 từ `apps/windows/assets/icon-256.png`.
+- [ ] Store tự ký gói khi phát hành; không cần chứng chỉ Authenticode riêng cho Store.
+- [ ] Phương án thay thế không cần MSIX: Partner Center cho nộp ứng dụng Win32 dạng **MSI/EXE** qua URL tải xuống — nhưng tệp phải được ký Authenticode (secret `LVHV_WIN_CERT_*`).
+- [ ] Khai báo quyền riêng tư: không thu thập dữ liệu; URL chính sách quyền riêng tư.
+- [ ] Phân loại tuổi (IARC): 3+.
+
+## 7. Gỡ lỗi thường gặp
+
+| Triệu chứng | Nguyên nhân / cách xử lý |
+|---|---|
+| Gradle: "Thiếu thư viện Rust hoặc mã UniFFI" | Chưa chạy `apps/android/build-rust.sh` |
+| `UnsatisfiedLinkError: liblvhv_ffi.so` khi chạy | `.so` không có trong APK (kiểm `jniLibs.srcDirs("rustJniLibs")`) hoặc R8 xóa lớp JNA (đã giữ trong `proguard-rules.pro`) |
+| Kotlin: "Checksum mismatch" từ UniFFI | Mã Kotlin sinh từ bản `.so` khác bản đóng gói; chạy lại `build-rust.sh` (sinh cả hai cùng lúc) |
+| Xcode: "No such module 'lvhv_ffiFFI'" | Chưa chạy `build-xcframework.sh` trước `xcodegen generate`, hoặc thư mục headers thiếu `module.modulemap` |
+| Xcode: lỗi ký | Dựng thử thì thêm `CODE_SIGNING_ALLOWED=NO`; dựng thật thì đặt `LVHV_TEAM_ID` |
+| Windows: `link.exe not found` | Chưa cài Visual Studio Build Tools (C++) |
+| MSI: `candle.exe` không có | Cài WiX 3.14 (không phải WiX 4/5) |
+
+## 8. Trạng thái kiểm chứng (2026-11-06)
+
+Kết luận theo quy ước: **ĐÃ CHẠY** = đã biên dịch/chạy trong môi trường soạn mã (Linux x86_64);
+**CHƯA KIỂM** = chưa từng được biên dịch, không có bằng chứng là chạy được.
+
+| Hạng mục | Trạng thái | Bằng chứng / ghi chú |
+|---|---|---|
+| `lvhv-ffi` dựng (debug + release, Linux) | ĐÃ CHẠY | `cargo build -p lvhv-ffi [--release]` |
+| `lvhv-ffi` test (API lõi mới, `Result<_, DateError>`) | ĐÃ CHẠY | 20 test ĐẠT: L8 2026-11-05; `day_info_json` và `find_good_days_json` giống lõi từng byte; ánh xạ đủ 6 loại `DateError`; lỗi không panic (kể cả tháng âm, năm `i32::MAX`); năm âm của ngày sinh trước/sau Tết; khứ hồi âm↔dương; ca dao select.md + không lặp trong N ngày; ghi công khớp SOURCES.md; ngưỡng nhãn giống PWA |
+| `cargo test --workspace --release` (core + ngochap + ffi) | ĐÃ CHẠY | mọi test ĐẠT |
+| `cargo fmt --all --check` | **KHÔNG ĐẠT** lúc viết | `core/src/bin/lvhv-dump.rs` (của A2) chưa được `cargo fmt`; bước fmt của `ci.yml` sẽ đỏ đến khi sửa |
+| `clippy -D warnings`, `rustfmt` cho ffi | ĐÃ CHẠY | sạch |
+| Sinh mã Kotlin + Swift bằng uniffi-bindgen 0.29.4 | ĐÃ CHẠY | `ffi/generated/` |
+| Mã Kotlin sinh ra **biên dịch và gọi thật** vào `liblvhv_ffi.so` trên JVM | ĐÃ CHẠY | kotlinc 2.0.21 (bản nhúng trong Gradle 8.14.3 của máy soạn mã) + JNA 5.15.0 (jar desktop), Java 21: mọi hàm, cả ném `LvhvException.InvalidDate/UnknownActivity` |
+| Lớp dữ liệu Android (`data/Json.kt`, `data/Lich.kt`) + `JsonReaderTest` | ĐÃ CHẠY trên JVM | biên dịch cùng mã UniFFI, gọi thư viện thật; test chạy bằng bộ giả JUnit tối giản (không phải JUnit thật) |
+| Giao diện Android (Compose: 7 tệp `ui/*.kt`, `MainActivity.kt`) | **CHƯA KIỂM** | không tải được AndroidX/Compose (maven.google.com bị chặn). Chỉ kiểm cân bằng ngoặc. Có thể có lỗi API khi biên dịch lần đầu |
+| Gradle Android (AGP 8.7.3, R8, lint, ký) | **CHƯA KIỂM** | |
+| cargo-ndk, `.so` Android 3 ABI, căn trang 16 KB | **CHƯA KIỂM** | |
+| Mã Swift sinh ra | **CHƯA KIỂM** biên dịch | không có Swift trong máy soạn mã |
+| Giao diện SwiftUI (9 tệp `Shared/*.swift`) | **CHƯA KIỂM** | chỉ kiểm cân bằng ngoặc. Tên trường/enum UniFFI đã đối chiếu tay với `LvhvCore.swift` sinh ra |
+| `build-xcframework.sh`, `project.yml` (XcodeGen), xcodebuild | **CHƯA KIỂM** | shellcheck 0.10.0 sạch; YAML hợp lệ |
+| `PrivacyInfo.xcprivacy`, entitlements, plist | Cú pháp ĐÃ CHẠY | `plistlib`/XML parse; nội dung chưa được Apple duyệt |
+| Biểu tượng iOS/macOS/Windows | ĐÃ TẠO | rsvg-convert từ `pwa/public/icons/*.svg` |
+| `lvhv-windows` (Slint 1.8.0) dựng **trên Linux** (debug + release) | ĐÃ CHẠY | `cargo build`, `cargo test` (3 test ĐẠT), `clippy -D warnings` sạch |
+| Giao diện Slint hiển thị đúng | ĐÃ CHẠY trên Linux/Xvfb | chụp màn hình tờ lịch + bảng tháng ở 1280×900 |
+| RAM ứng dụng Slint | ĐO trên Linux/Xvfb | ~52 MB (renderer phần mềm), ~170 MB (femtovg qua llvmpipe). Chưa đo trên Windows |
+| `lvhv-windows` dựng trên **Windows/MSVC**, nhúng tài nguyên, MSI (WiX), ký Authenticode | **CHƯA KIỂM** | |
+| Script PowerShell `New-AndroidUploadKeystore.ps1` | ĐÃ CHẠY trên pwsh 7.4.6 (Linux) | tạo khóa thật bằng keytool, Base64 khứ hồi đúng, in SHA-256, từ chối ghi đè. `Read-Host`/`Set-Clipboard` được giả lập khi chạy thử. Chưa chạy trên Windows PowerShell 5.1 |
+| Script `Build-Windows.ps1` | Cú pháp ĐÃ CHẠY | trình phân tích của pwsh 7.4.6; chưa chạy thật |
+| Workflow YAML | ĐÃ CHẠY | `yaml.safe_load` + **actionlint 1.7.7** + shellcheck 0.10.0: sạch |
+| Các workflow chạy thật trên GitHub | **CHƯA KIỂM** | |
+
+Rủi ro lớn nhất khi chạy lần đầu (theo thứ tự): (1) lỗi biên dịch Compose/SwiftUI nhỏ (tên API, thiếu
+import) — sửa theo log CI; (2) `apple.yml`: đường dẫn sản phẩm `.app` có dấu tiếng Việt trong tên
+(`PRODUCT_NAME` của macOS) — nếu công cụ nào lỗi vì tên có dấu, đổi `PRODUCT_NAME` sang `LichViet` và
+giữ `CFBundleDisplayName` có dấu; (3) WiX: mã trang 1252 với chuỗi tiếng Việt (đã viết không dấu trong
+MSI để tránh).
+
+## 9. Đối chiếu tiêu chí
+
+- **S1** áp dụng cho `lvhv-core` (CI kiểm `#![forbid(unsafe_code)]` và không có từ `unsafe` trong
+  `core/src`). `lvhv-ffi` không có `unsafe` viết tay; macro UniFFI sinh `extern "C"` có `unsafe` bên trong.
+  `lvhv-windows` dùng `#![deny(unsafe_code)]`; chỉ mô-đun `ui` (mã Slint sinh ra) được miễn.
+- **S2** (lõi không phụ thuộc thư viện ngoài): không bị ảnh hưởng — UniFFI, serde, Slint chỉ là phụ
+  thuộc của `ffi/` và `apps/windows/`, không phải của `core/`.
+- **S3/S4 cho native**: không có quyền/mã mạng; chỉ lưu cỡ chữ + sáng/tối (Android SharedPreferences,
+  Apple UserDefaults; Windows không lưu gì). Năm sinh không bao giờ được lưu (Android: `remember`, không
+  `rememberSaveable`).
+- **P1/P2** đo cho lõi native ở docs/03 §13; lớp FFI thêm chi phí tuần tự hóa JSON (chưa đo riêng trên
+  thiết bị).

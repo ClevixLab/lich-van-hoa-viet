@@ -1,0 +1,20 @@
+Copyright (c) 2026 Clevix LLC (Clevix Lab). All rights reserved.
+
+"Lịch và Văn hóa Việt" — source code in this repository (core/, ngochap/, tsport/, pwa/, ffi/,
+apps/, scripts/ and build files) is proprietary. No licence to copy, modify, distribute or
+sublicense the code is granted except by prior written permission of Clevix LLC.
+Contact: khanh@clevix.vn
+
+The owner has NOT yet chosen an open-source licence for the code (open question, see
+docs/05-NHAT-KY-SUA-LOI.md). Until a decision is recorded, this notice prevails over any
+"license" field in Cargo.toml or package.json manifests.
+
+Third-party and separately licensed material distributed with this repository keeps its own
+licence:
+
+- content/cadao/cadao.json (proverb / folk-verse dataset): CC BY-SA 4.0 — see
+  content/cadao/LICENSE and content/cadao/SOURCES.md §C.
+- pwa/public/fonts/*.woff2 ("LichViet Serif", a Modified Version of Lora): SIL Open Font
+  License 1.1 — see pwa/public/fonts/OFL.txt.
+- Native builds that use ffi/ also link third-party Rust crates (MIT / Apache-2.0, uniffi under
+  MPL-2.0, one Unicode-3.0 crate). Their notices must ship with those apps.

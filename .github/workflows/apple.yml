@@ -1,0 +1,128 @@
+# iOS + macOS: dựng XCFramework từ Rust, sinh dự án bằng XcodeGen, dựng KHÔNG ký
+# (CODE_SIGNING_ALLOWED=NO) app iOS Simulator và app macOS để kiểm tra; tải lên dạng .zip.
+# Ký và nộp App Store cần chứng chỉ của chủ dự án — xem docs/04-BUILD-NATIVE.md.
+name: apple
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: apple-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  XCODEGEN_VERSION: "2.42.0"
+
+jobs:
+  build:
+    # macos-15 có Xcode 16.x (Swift 5.10/6), hỗ trợ iOS 16 / macOS 13 làm mục tiêu triển khai.
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Chọn Xcode 16
+        run: |
+          X=$(find /Applications -maxdepth 1 -name 'Xcode_16*.app' | sort -V | tail -1)
+          echo "Dùng $X"
+          sudo xcode-select -s "$X/Contents/Developer"
+          xcodebuild -version
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-ios,aarch64-apple-ios-sim,x86_64-apple-ios,aarch64-apple-darwin,x86_64-apple-darwin
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: apple
+
+      - name: Cài XcodeGen ${{ env.XCODEGEN_VERSION }}
+        run: |
+          curl -fsSL -o "$RUNNER_TEMP/xcodegen.zip" \
+            "https://github.com/yonaskolb/XcodeGen/releases/download/${XCODEGEN_VERSION}/xcodegen.zip"
+          unzip -q "$RUNNER_TEMP/xcodegen.zip" -d "$RUNNER_TEMP/xcodegen"
+          echo "$RUNNER_TEMP/xcodegen/xcodegen/bin" >> "$GITHUB_PATH"
+      - name: Dự phòng — brew install xcodegen nếu tải bản ghim thất bại
+        run: command -v xcodegen || brew install xcodegen
+
+      - name: Dựng XCFramework + mã Swift UniFFI
+        run: apps/apple/build-xcframework.sh
+
+      - name: XcodeGen
+        working-directory: apps/apple
+        run: |
+          xcodegen --version
+          xcodegen generate
+
+      - name: xcodebuild — iOS Simulator (không ký)
+        working-directory: apps/apple
+        run: |
+          set -o pipefail
+          xcodebuild -project LichVanHoaViet.xcodeproj -scheme LichViet-iOS -configuration Release \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build/dd CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build | tee build/ios.log
+
+      - name: xcodebuild — iOS thiết bị (không ký, chỉ kiểm tra biên dịch arm64)
+        working-directory: apps/apple
+        run: |
+          set -o pipefail
+          xcodebuild -project LichVanHoaViet.xcodeproj -scheme LichViet-iOS -configuration Release \
+            -sdk iphoneos -destination 'generic/platform=iOS' \
+            -derivedDataPath build/dd CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build | tee build/ios-device.log
+
+      - name: xcodebuild — macOS (không ký)
+        working-directory: apps/apple
+        run: |
+          set -o pipefail
+          xcodebuild -project LichVanHoaViet.xcodeproj -scheme LichViet-macOS -configuration Release \
+            -destination 'generic/platform=macOS' \
+            -derivedDataPath build/dd CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build | tee build/macos.log
+
+      - name: Kiểm tra — không có quyền mạng, có PrivacyInfo, có phông
+        working-directory: apps/apple/build/dd/Build/Products
+        run: |
+          MAC="Release/Lịch và Văn hóa Việt.app"
+          IOS="Release-iphonesimulator/LichViet.app"
+          test -d "$MAC" && test -d "$IOS"
+          test -f "$IOS/PrivacyInfo.xcprivacy"
+          test -f "$MAC/Contents/Resources/PrivacyInfo.xcprivacy"
+          test -f "$IOS/LVHVSerif-Regular.ttf"
+          if grep -R "com.apple.security.network" ../../../../macOS/LichViet.entitlements; then
+            echo "::error::Có quyền mạng trong entitlements"; exit 1
+          fi
+          ditto -c -k --sequesterRsrc --keepParent "$IOS" "$RUNNER_TEMP/LichViet-iOS-simulator.zip"
+          ditto -c -k --sequesterRsrc --keepParent "$MAC" "$RUNNER_TEMP/LichViet-macOS-unsigned.zip"
+          ls -la "$RUNNER_TEMP"/*.zip
+
+      - name: Chạy thử trên iOS Simulator (khởi động và chụp màn hình)
+        continue-on-error: true
+        run: |
+          UDID=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin)["devices"]; print(next(x["udid"] for k,v in d.items() if "iOS" in k for x in v if "iPhone" in x["name"]))')
+          xcrun simctl boot "$UDID"
+          xcrun simctl install "$UDID" "apps/apple/build/dd/Build/Products/Release-iphonesimulator/LichViet.app"
+          xcrun simctl launch "$UDID" vn.clevix.lichviet
+          sleep 8
+          xcrun simctl io "$UDID" screenshot "$RUNNER_TEMP/ios-sim.png"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: apple-unsigned
+          path: |
+            ${{ runner.temp }}/LichViet-iOS-simulator.zip
+            ${{ runner.temp }}/LichViet-macOS-unsigned.zip
+            ${{ runner.temp }}/ios-sim.png
+          retention-days: 30
+          if-no-files-found: warn
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: apple-logs
+          path: apps/apple/build/*.log
+          retention-days: 14
