@@ -40,9 +40,13 @@ jobs:
         if: steps.cache.outputs.cache-hit != 'true'
         run: |
           mkdir -p ~/de441
+          echo "Danh mục nguồn (de441*):"
+          curl -fsSL https://ssd.jpl.nasa.gov/ftp/eph/planets/bsp/ | grep -o 'de441[^"<>]*' | sort -u || true
+          curl -fsSL https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/planets/ | grep -o 'de441[^"<>]*' | sort -u || true
           for p in 1 2; do
-            curl -fSL --retry 5 --retry-delay 10 -o ~/de441/de441_part-$p.bsp \
-              "https://ssd.jpl.nasa.gov/ftp/eph/planets/bsp/de441_part-$p.bsp"
+            f=de441_part-$p.bsp
+            curl -fSL --retry 5 --retry-delay 10 -o ~/de441/$f "https://ssd.jpl.nasa.gov/ftp/eph/planets/bsp/$f" \
+              || curl -fSL --retry 5 --retry-delay 10 -o ~/de441/$f "https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/planets/$f"
           done
       - name: Tổng kiểm DE441
         run: ls -la ~/de441 && sha256sum ~/de441/*.bsp
