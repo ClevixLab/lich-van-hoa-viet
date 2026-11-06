@@ -5,7 +5,7 @@
 import { apparentSunLongitudeUt, hndNewMoon, hndSunSector, localDayOf, localMidnightUt, preciseNewMoonUt } from "./astro.ts";
 import {
   BIRTH_MIN_YEAR, INTERNAL_MAX_YY, INTERNAL_MIN_YY, MAX_LUNAR_YEAR, MAX_YEAR, MIN_LUNAR_YEAR, MIN_YEAR,
-  checkJdn, computation, invalidArgument, invalidDate, jdnInRange, outOfRange,
+  LvhvError, checkJdn, computation, invalidArgument, invalidDate, jdnInRange, outOfRange,
 } from "./error.ts";
 import { dateFromJdn, isValidSolar, jdnFromDate } from "./jd.ts";
 import { jplNewMoonDay, jplTermAtMidnight } from "./jpl.ts";
@@ -234,7 +234,15 @@ export function lunarToJdnWith(method: Method, ly: number, lm: number, ld: numbe
   if (typeof leap !== "boolean") return null;
   if (ly < MIN_LUNAR_YEAR || ly > MAX_LUNAR_YEAR || lm < 1 || lm > 12 || ld < 1 || ld > 30) return null;
   const yy = lm >= 11 ? ly + 1 : ly;
-  const t = new YearTable(method, yy);
+  // Rust: `YearTable::new(method, yy).ok()?` — mọi lỗi lập bảng (kể cả "jpl" ngoài bảng DE441, ví dụ tuế 1899)
+  // → None (null), không ném.
+  let t: YearTable;
+  try {
+    t = new YearTable(method, yy);
+  } catch (e) {
+    if (e instanceof LvhvError) return null;
+    throw e;
+  }
   for (let i = 0; i < t.n; i++) {
     if (t.month[i] === lm && t.leap[i] === leap && t.lunarYear(i) === ly) {
       const len = t.starts[i + 1] - t.starts[i];
