@@ -232,3 +232,27 @@ Mục 4 là yêu cầu mới, đăng ký **trước khi viết mã**.
 | Dữ liệu | Bộ hồ sơ của R3; mọi tuần, tháng, quý và năm có ngày neo trong 2026-01-01 → 2036-12-31; cả ba bộ lọc; phương pháp mặc định (`Jpl`) |
 | Ngưỡng | (a) 0 sai lệch so với bộ tham chiếu do bên kiểm định độc lập tự cài từ mệnh đề này; (b) Rust ≡ TypeScript từng byte; (c) nhất quán: hợp các tuần (cắt theo ranh giới) = tháng, hợp 3 tháng = quý, hợp 4 quý = năm, "đã mất" ∪ "đang sống" = "tất cả", không trùng mục; (d) ngày đầu và ngày cuối của mỗi kỳ đều được tính |
 | Kết luận | ĐẠT / KHÔNG ĐẠT / CHƯA ĐỦ BẰNG CHỨNG |
+
+## Bổ sung B3 — sau báo cáo kiểm định B2 (2026-11-07, SAU KHI ĐÃ THẤY KẾT QUẢ)
+
+Chủ dự án đã giao cho điều phối viên chọn phương án tối ưu (xem B2). Báo cáo `docs/reports/BAO-CAO-KIEM-DINH-V02-B2.md`
+của bên kiểm định độc lập nêu bốn điểm dưới đây. Mọi quyết định ở đây được đưa ra sau khi đã thấy kết quả.
+
+1. **Lời nhắc ở xa bị bỏ lặng lẽ (R12, ô 10 hồ sơ / kịch bản không mở lại).** Cửa sổ lập lịch 400 ngày khiến lời nhắc ở
+   xa hơn không bao giờ được đặt khi người dùng không mở lại ứng dụng, mà cũng không có thông báo nhắc mở ứng dụng.
+   Lỗi này trái với mệnh đề R12 ("không bỏ lời nhắc tương lai một cách lặng lẽ"), dù không vi phạm bất biến đã đăng ký.
+   Sửa 02 §7.4: thông báo nhắc mở ứng dụng được thêm **khi còn bất kỳ lời nhắc tương lai nào không được đặt**, vì
+   vượt 63 cái hoặc vì nằm ngoài cửa sổ 400 ngày. Trường hợp đủ chỗ thì thông báo này đặt cùng phút với lời nhắc cuối
+   cùng đã đặt, xếp sau nó. Thêm bất biến I4 vào R12: "nếu có lời nhắc tương lai không được đặt thì có thông báo nhắc mở
+   ứng dụng không muộn hơn lời nhắc sớm nhất trong số đó". Ngưỡng 0 vi phạm cho cả ba kịch bản × ba cỡ. Chạy lại R12.
+2. **R3 chưa kiểm được hai trường hợp.** Đó là công tắc nhắc chung tắt (phải ra 0 lời nhắc) và quy tắc nhắc
+   `enabled = false` (phải ra 0). Đây là thiếu sót của công cụ kiểm thử, không phải của mệnh đề: lệnh dump được mở rộng
+   để chạy hai trường hợp này, ngưỡng giữ nguyên.
+3. **R13 chưa thử nhánh "sự kiện của người đã mất".** Bộ R3 không có sự kiện gắn với hồ sơ. Thêm một bộ dữ liệu bổ
+   sung có sự kiện gắn với người đã mất và với người đang sống; R13 chạy trên cả bộ R3 và bộ bổ sung, ngưỡng giữ nguyên.
+4. **Nhãn của dòng tiên thường trong R11.** Phụ lục A.3 không định nghĩa trường này; §7.6 định nghĩa nó là nhãn của lần
+   giỗ ngày hôm sau. Chấp nhận cách hiểu của §7.6 và ghi vào A.3. Bên kiểm định đã sửa mã của mình **sau khi so sánh**;
+   R11 vẫn ghi rõ điều đó.
+
+Ngoài các tiêu chí: hai chỗ đếm khác nhau trong cột tổng hợp của R12 (lần rút số ngẫu nhiên ngày đầu; có tính thông
+báo nhắc mở ứng dụng vào `delivered` hay không) được thống nhất trong Phụ lục A.5. Hai chỗ này không ảnh hưởng bất biến.
