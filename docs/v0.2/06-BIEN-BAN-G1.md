@@ -29,4 +29,4 @@ từng trường hợp. Quyết định được đưa ra **trước** khi chạ
 
 Các tài liệu 01–05 được khóa; tiêu chí R1–R12 khóa như 04 (R10–R12 được giữ). Cho phép bắt đầu đợt 1.
 
-Chủ dự án duyệt: Trương Xuân Khánh — 2026-11-06 (qua trao đổi trực tuyến)
+Chủ dự án (Clevix Lab) duyệt — 2026-11-06 (qua trao đổi trực tuyến)
