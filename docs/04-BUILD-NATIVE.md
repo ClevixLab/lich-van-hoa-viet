@@ -46,7 +46,7 @@ Sandbox không có quyền mạng; iOS không gọi mạng; Windows không có m
 | compileSdk / targetSdk / minSdk | 35 / 35 / 26 | |
 | Xcode | 16.x trên `macos-15` | iOS 16+, macOS 13+ |
 | XcodeGen | 2.42.0 | tải bản phát hành; dự phòng `brew install xcodegen` |
-| Slint | `=1.8.0` (style fluent, backend winit, renderer femtovg + software) | |
+| Slint | `=1.8.0` (style fluent, backend winit, renderer **Skia** + software) | Skia: Direct3D 12 trên Windows, tự lùi về Skia phần mềm; thư viện dựng sẵn tải từ rust-skia/skia-binaries lúc biên dịch |
 | winresource | `=0.1.19` | nhúng biểu tượng/thông tin vào .exe |
 | cargo-wix / WiX | 0.3.9 / 3.14 | WiX 3.14 có sẵn trên `windows-2022` |
 | GitHub Actions | checkout@v4, setup-java@v4, setup-node@v4, upload-artifact@v4, setup-gradle@v4, setup-android@v3, setup-ndk@v1, rust-cache@v2, install-action@v2, cargo-deny-action@v2, configure-pages@v5, upload-pages-artifact@v3, deploy-pages@v4 | đã kiểm tra mỗi thẻ có `action.yml` |
@@ -126,6 +126,21 @@ tắt trong Start Menu.
 phải dựng Slint (~300 crate, vài phút). Crate này **dựng được cả trên Linux** (đã kiểm, mục 8); trên
 Linux cần `libfontconfig1-dev libxkbcommon-dev libwayland-dev libx11-dev libgl1-mesa-dev`.
 
+**Phông chữ và renderer (từ 0.1.3).** Mọi phông được nhúng vào `.exe` (`ui/fonts/`, khai báo bằng
+`import "fonts/…ttf"` trong `app.slint`, Slint đăng ký lúc chạy): "LVHV Serif" (Lora rút gọn, Regular/
+SemiBold/Bold/Italic) cho tiêu đề và số, "LVHV Sans" (Be Vietnam Pro rút gọn, Regular/SemiBold/Bold) cho
+chữ thường — đặt bằng `default-font-family` của cửa sổ nên mọi chữ, kể cả ô nhập và hộp chọn, dùng cùng một
+phông có đủ dấu tiếng Việt. Biểu tượng là SVG (`ui/icons/`), không dùng ký tự ‹ › ✕ ▦ ▲ ▼ (không có trong
+phông nên máy phải mượn phông khác). Renderer là Skia (dựng chữ bằng HarfBuzz, làm mịn như trình duyệt):
+bản 0.1.2 dùng FemtoVG (OpenGL) — chữ mảnh, nhòe ở tỉ lệ màn hình 125/150%, và chữ thường rơi về phông hệ
+thống mặc định (không khai báo phông sans).
+
+**Kiểm thử giao diện và chụp màn hình.** `cargo test` chạy cả `src/ui_tests.rs` (backend kiểm thử của
+Slint, bấm chuột giả lập vào từng nút). `LichViet.exe --chup-man-hinh <thư mục>` mở lần lượt 11 màn hình,
+chụp bằng renderer của ứng dụng rồi thoát; `windows.yml` chạy bước này và đính kèm ảnh (artifact
+`windows-screens`). Trên Linux: `xvfb-run target/release/LichViet --chup-man-hinh /tmp/anh`, thêm
+`SLINT_SCALE_FACTOR=2` để chụp ở 2×.
+
 Vì sao Slint mà không dùng WebView2: một tệp `.exe` duy nhất (~12 MB, đo trên Linux), không phụ thuộc
 WebView2 runtime, khởi động nhanh, đọc màn hình (UI Automation) qua AccessKit. RAM đo trên Linux/Xvfb
 (mục 8): ~52 MB với renderer phần mềm, ~170 MB với femtovg/OpenGL qua llvmpipe (Mesa phần mềm — trên máy
@@ -155,7 +170,7 @@ vào clipboard, in 4 secret cần đặt và dấu vân tay SHA-256. Script khô
 | `ci.yml` | mọi push / PR | `cargo fmt --check`, `clippy -D warnings`, `cargo test --workspace --release`, kiểm S1 (không `unsafe` trong core), sinh lại mã UniFFI và so với `ffi/generated`, `cargo-deny check advisories`, sinh lại `core/out/*` bằng `lvhv-dump` rồi chạy `tsport` L7 (`npm test`), typecheck + build PWA, kiểm thử khói Playwright (Chromium) | `ffi-bindings`, `pwa-dist`, `pwa-smoke` |
 | `android.yml` | push `main`, thẻ `v*`, PR | NDK r27c + cargo-ndk → `.so` 3 ABI; Gradle 8.11.1: unit test, lint, `assembleRelease` + `bundleRelease` (R8); kiểm APK không có `uses-permission` và có đủ `.so` | `android-release` (APK, AAB, mapping.txt), `android-lint-report` |
 | `apple.yml` | push `main`, thẻ `v*`, PR | XCFramework 5 target, XcodeGen, `xcodebuild` iOS Simulator + iOS thiết bị + macOS (không ký), kiểm PrivacyInfo/phông/quyền mạng, chạy thử trên Simulator và chụp màn hình | `apple-unsigned` (zip .app iOS Simulator, zip .app macOS, ảnh) |
-| `windows.yml` | push `main`, thẻ `v*`, PR | `cargo test`, `cargo build --release`, đo RAM, ký Authenticode nếu có chứng chỉ, gói zip + MSI | `windows-x64` |
+| `windows.yml` | push `main`, thẻ `v*`, PR | `cargo test` (gồm kiểm thử giao diện), `cargo build --release`, đo RAM, chụp 11 màn hình (`--chup-man-hinh`), ký Authenticode nếu có chứng chỉ, gói zip + MSI | `windows-x64`, `windows-screens` |
 | `pwa-pages.yml` | thẻ `v*`, chạy tay | build PWA, đăng `pwa/dist` lên GitHub Pages | trang Pages |
 
 Kho riêng tư (private): GitHub cấp phút chạy miễn phí có hạn; runner macOS tính **gấp 10 lần** phút
@@ -176,8 +191,9 @@ dựng nếu hai nơi khác nhau).
 | iOS/macOS | `gen-version.sh` (do `build-xcframework.sh` gọi) sinh `Generated/Version.xcconfig`; `project.yml` dùng làm `configFiles` → `MARKETING_VERSION`, `CURRENT_PROJECT_VERSION`, `LVHV_BUILD_DATE`, `APP_STORE_ID`; Info.plist: `CFBundleShortVersionString`, `CFBundleVersion`, `LVHVBuildDate`, `LVHVAppStoreID` | `CURRENT_PROJECT_VERSION` = `LVHV_BUILD_NUMBER` (CI: `github.run_number`, mặc định 1) | `apple.yml`: PlistBuddy đọc Info.plist của cả app iOS và macOS đã dựng |
 | Windows | `build.rs` đọc `../../VERSION`, so với `CARGO_PKG_VERSION`; `winresource` ghi FileVersion/ProductVersion của `.exe`; cargo-wix lấy `Version` của MSI từ Cargo.toml (X.Y.Z số, đúng yêu cầu WiX) | `LVHV_BUILD_NUMBER` (CI: `github.run_number`) | `windows.yml`: so Cargo.toml với VERSION trước khi dựng; sau khi gói, đọc `ProductVersion` của `.exe` và bảng Property của MSI |
 
-**Hiển thị:** màn hình Giới thiệu có mục "Phiên bản và cập nhật" với dòng "Phiên bản đang dùng: X.Y.Z
-(bản dựng N)", nút **Kiểm tra cập nhật / Cập nhật** và câu giải thích "Ứng dụng không tự kết nối mạng để
+**Hiển thị:** màn hình Giới thiệu có mục "Phiên bản và cập nhật" với dòng "Phiên bản đang dùng: X.Y.Z"
+(chỉ số phiên bản; số bản dựng và ngày dựng vẫn nằm trong tệp cài/Info.plist/versionCode và `version.json`
+của PWA để dùng nội bộ, không hiển thị cho người dùng), nút **Kiểm tra cập nhật / Cập nhật** và câu giải thích "Ứng dụng không tự kết nối mạng để
 bảo vệ quyền riêng tư…"; cuối trang có hai dòng "© 2026 Clevix Lab" (serif, © nhỏ và nhẹ hơn) và "Phiên bản X.Y.Z" (nhỏ, nhạt) (cùng
 cách viết với chân trang PWA; ứng dụng native không có chân trang cố định nên dòng này nằm cuối Giới thiệu).
 

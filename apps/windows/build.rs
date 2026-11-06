@@ -4,6 +4,11 @@
 use std::fs;
 
 fn main() {
+    // Kiểm thử giao diện (src/ui_tests.rs) tìm phần tử theo nhãn trợ năng qua ElementHandle, cần thông tin
+    // gỡ lỗi trong mã Slint sinh ra. Chỉ bật cho bản dựng không tối ưu (debug/test); bản release giữ gọn.
+    if std::env::var("PROFILE").as_deref() == Ok("debug") {
+        std::env::set_var("SLINT_EMIT_DEBUG_INFO", "1");
+    }
     slint_build::compile_with_config(
         "ui/app.slint",
         slint_build::CompilerConfiguration::new().with_style("fluent".into()),

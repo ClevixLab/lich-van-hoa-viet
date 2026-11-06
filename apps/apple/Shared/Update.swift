@@ -35,7 +35,8 @@ enum AppUpdate {
     static var copyright: String { copyrightSign + copyrightHolder }
     /// Dòng 2 chân trang Giới thiệu: số phiên bản, chữ nhỏ và nhạt.
     static var versionLine: String { "Phiên bản \(version)" }
-    static var runningVersion: String { "Phiên bản đang dùng: \(version) (bản dựng \(build))" }
+    /// Chỉ số phiên bản; CFBundleVersion (số bản dựng) vẫn có trong Info.plist nhưng không hiển thị.
+    static var runningVersion: String { "Phiên bản đang dùng: \(version)" }
 
     /// itms-apps://apps.apple.com/app/id<ID> khi có APP_STORE_ID (chỉ chữ số), nếu không: trang tải về.
     static func updateURL(storeID: String) -> URL {

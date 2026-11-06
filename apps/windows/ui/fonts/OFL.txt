@@ -1,6 +1,12 @@
-Fonts in this folder: Lora (subset: Latin + Vietnamese), converted to WOFF2.
-Copyright 2011 The Lora Project Authors (https://github.com/cyrealtype/Lora-Cyrillic), with Reserved Font Name "Lora".
-Subsetting is a modification permitted by the license; the Reserved Font Name is not used for the modified files (files are named lora-vi*.woff2 and declared as font-family "LVHV Serif").
+Fonts embedded in LichViet.exe (all under the SIL Open Font License 1.1, full text below):
+
+1. "LVHV Serif" (LVHVSerif-*.ttf): subset (Latin + Vietnamese) of Lora, renamed.
+   Copyright 2011 The Lora Project Authors (https://github.com/cyrealtype/Lora-Cyrillic), with Reserved Font Name "Lora".
+   Subsetting is a modification permitted by the license; the Reserved Font Name is not used for the modified files.
+
+2. "LVHV Sans" (LVHVSans-*.ttf): subset (Latin + Vietnamese) of Be Vietnam Pro, renamed.
+   Copyright 2021 The Be Vietnam Pro Project Authors (https://github.com/bettergui/BeVietnamPro).
+   Be Vietnam Pro declares no Reserved Font Name; the subset is renamed anyway to distinguish it from the original.
 
 
 SIL OPEN FONT LICENSE

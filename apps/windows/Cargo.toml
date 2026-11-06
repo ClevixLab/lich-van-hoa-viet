@@ -20,7 +20,19 @@ serde_json = "1.0.145"
 # Slint 1.8.0 (đã kiểm tra dựng được trên Linux trong môi trường soạn mã).
 # Giấy phép Slint: GPL-3.0 HOẶC "Royalty-free 2.0" (miễn phí cho ứng dụng desktop, cần hiển thị
 # ghi công "Made with Slint" — xem màn hình Giới thiệu) HOẶC thương mại. Xem docs/04-BUILD-NATIVE.md.
-slint = { version = "=1.8.0", default-features = false, features = ["std", "compat-1-2", "accessibility", "backend-winit", "renderer-femtovg", "renderer-software"] }
+#
+# Renderer: Skia (trên Windows vẽ bằng Direct3D 12, tự lùi về Skia phần mềm nếu máy không có D3D12).
+# Skia dựng chữ bằng HarfBuzz + làm mịn chữ như trình duyệt, nên chữ Việt có dấu (ệ, ữ, ỡ, Ậ) đặt dấu
+# đúng và sắc nét ở mọi tỉ lệ màn hình 100–300%. Bản 0.1.2 dùng FemtoVG (OpenGL) — chữ mảnh, nhòe ở
+# tỉ lệ 125/150%. "renderer-software" giữ làm phương án cuối khi Skia không khởi tạo được.
+# Skia tải thư viện dựng sẵn (skia-binaries, GitHub Releases) lúc biên dịch.
+slint = { version = "=1.8.0", default-features = false, features = ["std", "compat-1-2", "accessibility", "backend-winit", "renderer-skia", "renderer-software"] }
+# Ghi ảnh PNG cho chế độ chụp màn hình (--chup-man-hinh); đã có sẵn trong cây phụ thuộc của Slint.
+png = "0.17.16"
+
+[dev-dependencies]
+# Backend kiểm thử của Slint: dựng cửa sổ ảo, bấm chuột giả lập để kiểm tra các nút (src/ui_tests.rs).
+i-slint-backend-testing = "=1.8.0"
 
 [build-dependencies]
 slint-build = "=1.8.0"
@@ -37,7 +49,7 @@ eula = false
 [package.metadata.lvhv]
 ms-store-id = ""
 
-# Workspace riêng: crate này kéo nhiều thư viện (Slint, winit, femtovg). Giữ ngoài workspace gốc để
+# Workspace riêng: crate này kéo nhiều thư viện (Slint, winit, Skia). Giữ ngoài workspace gốc để
 # `cargo test` của lõi không phải dựng giao diện. Xem docs/04-BUILD-NATIVE.md.
 [workspace]
 

@@ -14,6 +14,13 @@ và các dòng dưới đây được viết lại thành ghi chú cho người 
 - Màn hình tưởng niệm ngày giỗ: bia, ảnh, mâm lễ, ba nén hương.
 - Dữ liệu chỉ lưu trên máy; sao lưu ra tệp có mật khẩu.
 
+## [Chưa phát hành — bản sửa Windows]
+
+- Windows: chữ đẹp và rõ hơn — phông chữ có đủ dấu tiếng Việt được nhúng sẵn, vẽ chữ sắc nét ở mọi tỉ lệ màn hình.
+- Windows: bấm "Chi tiết", "Xem thêm" và dải tháng trên tờ lịch đã hoạt động trở lại.
+- Windows: thêm logo Clevix ở cuối trang Giới thiệu, giống bản web.
+- Mục Phiên bản chỉ ghi số phiên bản (bỏ số bản dựng và ngày dựng) trên mọi nền tảng.
+
 ## [0.1.2] — 2026-11-06
 
 - Dòng bản quyền gọn và chuyên nghiệp hơn: © 2026 Clevix Lab · Phiên bản 0.1.2; áp dụng cho bản web và ứng dụng.

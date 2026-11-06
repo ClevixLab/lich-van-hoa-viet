@@ -11,6 +11,9 @@ use std::rc::Rc;
 use serde::Deserialize;
 use slint::{ComponentHandle, ModelRc, SharedString, VecModel};
 
+mod shots;
+#[cfg(test)]
+mod ui_tests;
 mod update;
 
 #[allow(unsafe_code, dead_code, clippy::all)]
@@ -19,8 +22,8 @@ mod ui {
 }
 use ui::*;
 
-const MIN_YEAR: i32 = 2000;
-const MAX_YEAR: i32 = 3000;
+const MIN_YEAR: i32 = lvhv_ffi::MIN_YEAR;
+const MAX_YEAR: i32 = lvhv_ffi::MAX_YEAR;
 const PAGE: usize = 15;
 
 const WEEKDAY: [&str; 7] = [
@@ -247,6 +250,43 @@ fn strs(v: &[String]) -> ModelRc<SharedString> {
     ))
 }
 
+/// Điểm có dấu (+8, 0, −3) như bản web.
+fn signed(n: i32) -> String {
+    match n {
+        n if n > 0 => format!("+{n}"),
+        n if n < 0 => format!("−{}", -n),
+        _ => "0".to_string(),
+    }
+}
+
+/// Chia các sao thành từng hàng chip (Slint 1.8 chưa có FlowLayout). Mỗi hàng tối đa ~44 ký tự
+/// (vừa cột tờ lịch 516 px ở cỡ chữ lớn nhất) và tối đa 4 chip.
+fn chip_rows(items: &[String]) -> ModelRc<ChipRow> {
+    const MAX_CHARS: usize = 34;
+    let mut rows: Vec<Vec<SharedString>> = Vec::new();
+    let mut used = 0usize;
+    for it in items {
+        let n = it.chars().count() + 4;
+        match rows.last_mut() {
+            Some(r) if used + n <= MAX_CHARS && r.len() < 4 => {
+                r.push(sv(it.as_str()));
+                used += n;
+            }
+            _ => {
+                rows.push(vec![sv(it.as_str())]);
+                used = n;
+            }
+        }
+    }
+    ModelRc::new(VecModel::from(
+        rows.into_iter()
+            .map(|r| ChipRow {
+                items: ModelRc::new(VecModel::from(r)),
+            })
+            .collect::<Vec<_>>(),
+    ))
+}
+
 fn upper_first(s: &str) -> String {
     let mut c = s.chars();
     match c.next() {
@@ -317,8 +357,9 @@ fn render_sheet(ui: &AppWindow, st: &State) {
         rating_level: r.level as i32,
         nen: strs(&info.ngoc_hap.nen),
         ky: strs(&info.ngoc_hap.ky),
-        sao_tot: strs(&info.ngoc_hap.sao_tot),
-        sao_xau: strs(&info.ngoc_hap.sao_xau),
+        sao_tot: chip_rows(&info.ngoc_hap.sao_tot),
+        sao_xau: chip_rows(&info.ngoc_hap.sao_xau),
+        score: sv(signed(info.ngoc_hap.score)),
         tu: sv(format!("Sao {}", info.tu)),
         nap_am: sv(info.nap_am),
         hour_ty: sv(info.can_chi.hour_ty),
@@ -637,6 +678,20 @@ fn blocks(json: &str) -> ModelRc<Block> {
 
 fn main() -> Result<(), slint::PlatformError> {
     let ui = AppWindow::new()?;
+    let st = setup(&ui);
+    // Chế độ chụp màn hình cho CI và kiểm tra giao diện: `LichViet.exe --chup-man-hinh <thư mục>` mở
+    // các màn hình chính lần lượt, lưu ảnh PNG vào thư mục rồi tự thoát. Không dùng khi chạy thường.
+    let mut args = std::env::args().skip(1);
+    if let (Some(flag), Some(dir)) = (args.next(), args.next()) {
+        if flag == "--chup-man-hinh" {
+            shots::start(&ui, st, std::path::PathBuf::from(dir));
+        }
+    }
+    ui.run()
+}
+
+/// Nạp dữ liệu ban đầu và nối mọi callback giữa giao diện và lõi. Dùng chung cho `main` và kiểm thử.
+fn setup(ui: &AppWindow) -> Rc<RefCell<State>> {
     let t = today();
     let acts: Vec<JAct> = serde_json::from_str(&lvhv_ffi::activities_json()).unwrap_or_default();
     let st = Rc::new(RefCell::new(State {
@@ -669,6 +724,9 @@ fn main() -> Result<(), slint::PlatformError> {
             g.set_l_leap(l.leap);
         }
         g.set_today_text(sv(format!("Hôm nay (giờ Việt Nam): {}.", t.dmy())));
+        g.set_range_text(sv(format!(
+            "Đổi qua lại giữa dương lịch và âm lịch, từ ngày 01/01/{MIN_YEAR} đến ngày 31/12/{MAX_YEAR}."
+        )));
         g.set_version(sv(update::VERSION));
         g.set_running_version(sv(update::running_version()));
         g.set_copyright_sign(sv(update::COPYRIGHT_SIGN));
@@ -695,10 +753,10 @@ fn main() -> Result<(), slint::PlatformError> {
         g.set_rule_sources(blocks(&lvhv_ffi::ngochap_sources_blocks_json()));
         g.set_cadao_sources(blocks(&lvhv_ffi::cadao_sources_blocks_json()));
     }
-    render_sheet(&ui, &st.borrow());
-    render_month(&ui, &st.borrow());
-    convert_solar(&ui, &mut st.borrow_mut());
-    convert_lunar(&ui, &mut st.borrow_mut());
+    render_sheet(ui, &st.borrow());
+    render_month(ui, &st.borrow());
+    convert_solar(ui, &mut st.borrow_mut());
+    convert_lunar(ui, &mut st.borrow_mut());
 
     let g = ui.global::<Data>();
     let w = ui.as_weak();
@@ -828,8 +886,16 @@ fn main() -> Result<(), slint::PlatformError> {
             }
         });
     }
-
-    ui.run()
+    {
+        let w = w.clone();
+        g.on_open_rules(move || {
+            if let Some(ui) = w.upgrade() {
+                ui.global::<Data>().set_about_rules(true);
+                ui.set_tab(3);
+            }
+        });
+    }
+    st
 }
 
 #[cfg(test)]
