@@ -203,6 +203,19 @@ Android cài từ Google Play: mục Giới thiệu thêm câu "Bản cài từ 
 nhật…" khi `PackageManager.getInstallSourceInfo` (API 30+; API 26–29 dùng `getInstallerPackageName`) trả
 `com.android.vending`; mọi lỗi → coi như không phải bản Play (không hiện câu này).
 
+**Đã kiểm chứng (2026-11-06):** CI xanh ở commit `e8af91c` — android
+[42179919068](https://github.com/ClevixLab/lich-van-hoa-viet/actions/runs/42179919068) (APK `versionName='0.1.1'`,
+`versionCode='101'`; vẫn chỉ có quyền signature của androidx.core, không `INTERNET`; `UpdatePolicyTest` chạy
+trong `testReleaseUnitTest`), apple [42179919050](https://github.com/ClevixLab/lich-van-hoa-viet/actions/runs/42179919050)
+(Info.plist iOS + macOS: `0.1.1 (run_number)`, `LVHVBuildDate` đúng dạng; entitlements không có quyền mạng;
+`APP_STORE_ID` trống), windows [42179919107](https://github.com/ClevixLab/lich-van-hoa-viet/actions/runs/42179919107)
+(`.exe` ProductVersion/FileVersion `0.1.1`, MSI ProductVersion `0.1.1`). Trên Linux: `cargo test` của
+`lvhv-windows` 6/6 ĐẠT (gồm 3 test `update.rs`), `clippy -D warnings` sạch; `UpdatePolicy.kt` biên dịch bằng
+kotlinc 2.0.21 và chạy kiểm tra trên JVM. **CHƯA KIỂM:** bấm nút thật trên thiết bị (Intent `market://`
+trên Android có/không có Play, `itms-apps`/Safari trên iOS, `NSWorkspace` trong App Sandbox macOS,
+`rundll32 url.dll` trên Windows), giao diện thẻ nhắc trên màn hình thật (chưa có bản dựng > 60 ngày; muốn
+xem thì dựng với `LVHV_BUILD_DATE` lùi hơn 60 ngày), đường `getInstallSourceInfo` với bản cài từ Play.
+
 ## 5. Chủ dự án cần cung cấp
 
 | Nền tảng | Cần có | Ở đâu |
