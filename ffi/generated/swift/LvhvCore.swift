@@ -2633,8 +2633,8 @@ public func remindersJson(datasetJson: String, nowUnixS: Int64, zone: DeviceZone
  * điều hành trả về, `[{"id","at_unix_s","content"}]` (`content` = `title + "\n" + body` đã đặt lần trước;
  * thiếu → ""). Kết quả `{"keep":[P],"remove":[id],"add":[P],"replace":[P]}`, `P` =
  * `{"id","at_unix_s","fire_local","title","body","content"}`; ứng dụng gỡ `remove`, thêm `add`, thay
- * `replace` (trigger theo `fire_local`, không gắn múi giờ). Có > 64 lời nhắc → 63 sớm nhất + thông báo
- * nhắc mở ứng dụng (`id = "lvhv:sentinel"`) cùng phút với cái thứ 63.
+ * `replace` (trigger theo `fire_local`, không gắn múi giờ). Còn lời nhắc không đặt được (> 64 trong cửa sổ 400 ngày, hoặc ở ngoài cửa sổ) → tối đa 63 sớm nhất + thông báo
+ * nhắc mở ứng dụng (`id = "lvhv:sentinel"`) cùng phút với cái cuối cùng đã đặt (không có cái nào: tại now + 400 ngày) — 02 §7.4, Bổ sung B3.
  */
 public func rescheduleJson(datasetJson: String, nowUnixS: Int64, zone: DeviceZone, pendingJson: String, showNames: Bool)throws  -> String  {
     return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeLvhvDataError_lift) {
@@ -2819,7 +2819,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_lvhv_ffi_checksum_func_reminders_json() != 49335) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_lvhv_ffi_checksum_func_reschedule_json() != 38597) {
+    if (uniffi_lvhv_ffi_checksum_func_reschedule_json() != 17258) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_lvhv_ffi_checksum_func_save_death_json() != 16966) {

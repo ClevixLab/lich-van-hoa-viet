@@ -1333,7 +1333,7 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_lvhv_ffi_checksum_func_reminders_json() != 49335.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_lvhv_ffi_checksum_func_reschedule_json() != 38597.toShort()) {
+    if (lib.uniffi_lvhv_ffi_checksum_func_reschedule_json() != 17258.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_lvhv_ffi_checksum_func_save_death_json() != 16966.toShort()) {
@@ -3758,8 +3758,8 @@ public object FfiConverterSequenceTypeZoneTransition: FfiConverterRustBuffer<Lis
          * điều hành trả về, `[{"id","at_unix_s","content"}]` (`content` = `title + "\n" + body` đã đặt lần trước;
          * thiếu → ""). Kết quả `{"keep":[P],"remove":[id],"add":[P],"replace":[P]}`, `P` =
          * `{"id","at_unix_s","fire_local","title","body","content"}`; ứng dụng gỡ `remove`, thêm `add`, thay
-         * `replace` (trigger theo `fire_local`, không gắn múi giờ). Có > 64 lời nhắc → 63 sớm nhất + thông báo
-         * nhắc mở ứng dụng (`id = "lvhv:sentinel"`) cùng phút với cái thứ 63.
+         * `replace` (trigger theo `fire_local`, không gắn múi giờ). Còn lời nhắc không đặt được (> 64 trong cửa sổ 400 ngày, hoặc ở ngoài cửa sổ) → tối đa 63 sớm nhất + thông báo
+         * nhắc mở ứng dụng (`id = "lvhv:sentinel"`) cùng phút với cái cuối cùng đã đặt (không có cái nào: tại now + 400 ngày) — 02 §7.4, Bổ sung B3.
          */
     @Throws(LvhvDataException::class) fun `rescheduleJson`(`datasetJson`: kotlin.String, `nowUnixS`: kotlin.Long, `zone`: DeviceZone, `pendingJson`: kotlin.String, `showNames`: kotlin.Boolean): kotlin.String {
             return FfiConverterString.lift(

@@ -128,6 +128,70 @@ fn reschedule_same_minute_63_64() {
     assert_eq!(q.last().unwrap().id, SENTINEL_ID);
 }
 
+/// 02 §7.4 (Bổ sung B3): lời nhắc ngoài cửa sổ 400 ngày → có thông báo nhắc mở ứng dụng (I4).
+#[test]
+fn reschedule_beyond_window() {
+    let hi = WINDOW_DAYS * 1440;
+    let p = |i: i64, at: i64| Pending {
+        id: format!("lvhv:{i:08x}-0000-4000-8000-000000000000:2026:0"),
+        at,
+        content: String::new(),
+    };
+    // 10 trong cửa sổ + 1 ngoài: giữ 10 + thông báo cùng phút với cái cuối, xếp sau.
+    let mut all: Vec<Pending> = (0..10).map(|i| p(i, 1000 + i)).collect();
+    all.push(p(99, hi + 5));
+    let plan = reschedule(0, &all, &[]);
+    assert_eq!(plan.keep.len(), 11);
+    let s = plan.keep.iter().find(|k| k.id == SENTINEL_ID).unwrap();
+    assert_eq!(s.at, 1009);
+    assert_eq!(apply_plan(&[], &plan).last().unwrap().id, SENTINEL_ID);
+    // Chỉ có lời nhắc ngoài cửa sổ: thông báo tại now + 400 ngày (≤ lời nhắc sớm nhất chưa đặt).
+    let plan = reschedule(0, &[p(1, hi + 1), p(2, hi + 900)], &[]);
+    assert_eq!(plan.keep.len(), 1);
+    assert_eq!(
+        (plan.keep[0].id.as_str(), plan.keep[0].at),
+        (SENTINEL_ID, hi)
+    );
+    // Đúng 64 trong cửa sổ + 1 ngoài: 63 + thông báo tại cái thứ 63.
+    let mut all: Vec<Pending> = (0..64).map(|i| p(i, 1000 + i)).collect();
+    all.push(p(99, hi + 5));
+    let plan = reschedule(0, &all, &[]);
+    assert_eq!(plan.keep.len(), 64);
+    assert_eq!(plan.keep[63].id, SENTINEL_ID);
+    assert_eq!(plan.keep[63].at, 1062);
+    // Không có gì ngoài cửa sổ, ≤ 64: không có thông báo.
+    let plan = reschedule(0, &all[..64], &[]);
+    assert!(plan.keep.iter().all(|k| k.id != SENTINEL_ID));
+}
+
+/// R12 qua mô phỏng: 0 vi phạm I1–I4 ở 3 kịch bản × 3 cỡ (04 R12, Bổ sung B3).
+#[test]
+fn r12_all_invariants() {
+    let base = parse_dataset(
+        &std::fs::read_to_string(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/testdata/r3-dataset.json"
+        ))
+        .unwrap(),
+    )
+    .unwrap();
+    let mut out = String::new();
+    r12_lines(
+        Cal::get(lvhv_core::DEFAULT_METHOD),
+        &base,
+        &[10, 50, 200],
+        &mut out,
+        None,
+    );
+    let lines: Vec<&str> = out.lines().collect();
+    assert_eq!(lines.len(), 9);
+    for l in lines {
+        let f: Vec<&str> = l.split(',').collect();
+        assert_eq!(f[6], "0", "{l}");
+        assert_eq!(&f[9..13], &["0", "0", "0", "0"], "{l}");
+    }
+}
+
 #[test]
 fn reschedule_basics() {
     let p = |i: i64| Pending {
@@ -156,15 +220,42 @@ fn reschedule_basics() {
         at: 401 * 1440,
         content: String::new(),
     };
-    assert!(reschedule(0, std::slice::from_ref(&far), &[])
-        .keep
-        .is_empty());
+    // Bổ sung B3: lời nhắc ngoài cửa sổ không được đặt nhưng có thông báo nhắc mở ứng dụng tại
+    // now + 400 ngày (trước đây: hàng đợi rỗng — lời nhắc bị bỏ lặng lẽ).
+    let k = reschedule(0, std::slice::from_ref(&far), &[]).keep;
+    assert_eq!(k.len(), 1);
+    assert_eq!(
+        (k[0].id.as_str(), k[0].at),
+        (SENTINEL_ID, WINDOW_DAYS * 1440)
+    );
     assert!(reschedule(1000, &[p(0)], &[]).keep.is_empty());
 }
 
-/// R12: bất biến I1 và I2 (02 §7.4 đúng như viết) ở 3 cỡ × 3 kịch bản. I3 (thông báo nhắc mở ứng
-/// dụng đứng trước mọi lời nhắc bị bỏ) **không** được bảo đảm bởi 02 §7.4 khi lời nhắc thứ 63 và
-/// 64 cùng phút — xem mục mở trong mô tả PR; không kiểm ở đây để không che kết quả của dump R12.
+/// R12: bất biến I1 và I2 ở 3 cỡ × 3 kịch bản (I3, I4: `r12_all_invariants`).
+/// R3 (Bổ sung B3 mục 2): công tắc chung tắt → 0; `rule.enabled = false` → 0; ở mọi cấu hình.
+#[test]
+fn r3_switch_off_and_rule_off_give_zero() {
+    let base = ds();
+    let cal = lvhv_memorial::gio::default_cal();
+    let tz = Zone::vietnam();
+    let now = r3_now(&tz);
+    let occs: Vec<_> = OccClass::R3
+        .iter()
+        .map(|&c| class_occurrences(cal, &base, c, Ymd::new(2026, 1, 1), Ymd::new(2036, 12, 31)))
+        .collect();
+    let mut normal = 0usize;
+    for c in r3_configs() {
+        let o = &occs[OccClass::R3.iter().position(|&k| k == c.class).unwrap()];
+        for m in [R3Mode::GlobalOff, R3Mode::RuleOff] {
+            assert!(r3_reminders_mode(&base, o, &c, now, &tz, m).is_empty());
+        }
+        if c.index % 997 == 0 {
+            normal += r3_reminders(&base, o, &c, now, &tz).len();
+        }
+    }
+    assert!(normal > 0);
+}
+
 #[test]
 fn r12_i1_i2() {
     let base = ds();

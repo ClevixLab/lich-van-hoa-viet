@@ -16,6 +16,12 @@ fn r3() -> Dataset {
     parse_dataset(&std::fs::read_to_string(p).unwrap()).unwrap()
 }
 
+/// Bộ bổ sung R13 (04 Bổ sung B3 mục 3): sự kiện gắn với người đã mất và người đang sống.
+fn linked() -> Dataset {
+    let p = concat!(env!("CARGO_MANIFEST_DIR"), "/testdata/r13-linked.json");
+    parse_dataset(&std::fs::read_to_string(p).unwrap()).unwrap()
+}
+
 fn keys(p: &Period) -> Vec<(String, String, String)> {
     p.items
         .iter()
@@ -100,20 +106,40 @@ fn bounds_and_navigation() {
     assert_eq!(n, vec![575, 132, 44, 11]);
 }
 
-/// R13(c) trên bộ R3, mọi tháng/quý/năm 2026–2036, cả ba bộ lọc.
+/// R13(c) trên bộ R3 và bộ bổ sung, mọi tháng/quý/năm 2026–2036, cả ba bộ lọc.
 #[test]
 fn r13c_consistency() {
+    r13c_on(&r3());
+    let l = linked();
+    r13c_on(&l);
+    // Bộ bổ sung có sự kiện ở cả hai bộ lọc.
+    let y = |f| {
+        events_in_period(
+            Cal::get(DEFAULT_METHOD),
+            &l,
+            PeriodKind::Nam,
+            Ymd::new(2027, 1, 1),
+            f,
+        )
+        .items
+        .iter()
+        .filter(|i| i.occ.class.is_event())
+        .count()
+    };
+    assert!(y(PersonFilter::DaMat) > 0 && y(PersonFilter::DangSong) > 0);
+}
+
+fn r13c_on(ds: &Dataset) {
     let cal = Cal::get(DEFAULT_METHOD);
-    let ds = r3();
     let (lo, hi) = (Ymd::new(2026, 1, 1), Ymd::new(2036, 12, 31));
     let mut total_items = 0usize;
     for f in PersonFilter::ALL {
         for (anchor, mf, mt) in periods_covering(PeriodKind::Thang, lo, hi) {
-            let month = events_in_period(cal, &ds, PeriodKind::Thang, anchor, f);
+            let month = events_in_period(cal, ds, PeriodKind::Thang, anchor, f);
             // Tuần cắt theo tháng.
             let mut from_weeks = Vec::new();
             for (wa, _, _) in periods_covering(PeriodKind::Tuan, mf, mt) {
-                let w = events_in_period(cal, &ds, PeriodKind::Tuan, wa, f);
+                let w = events_in_period(cal, ds, PeriodKind::Tuan, wa, f);
                 from_weeks.extend(clip(&w, mf, mt));
             }
             assert_eq!(from_weeks, keys(&month), "{f:?} tháng {}", mf.iso());
@@ -122,18 +148,18 @@ fn r13c_consistency() {
             total_items += month.items.len();
         }
         for (qa, qf, qt) in periods_covering(PeriodKind::Quy, lo, hi) {
-            let q = events_in_period(cal, &ds, PeriodKind::Quy, qa, f);
+            let q = events_in_period(cal, ds, PeriodKind::Quy, qa, f);
             let months: Vec<_> = periods_covering(PeriodKind::Thang, qf, qt)
                 .into_iter()
-                .flat_map(|(a, _, _)| keys(&events_in_period(cal, &ds, PeriodKind::Thang, a, f)))
+                .flat_map(|(a, _, _)| keys(&events_in_period(cal, ds, PeriodKind::Thang, a, f)))
                 .collect();
             assert_eq!(months, keys(&q), "{f:?} quý {}", qf.iso());
         }
         for (ya, yf, yt) in periods_covering(PeriodKind::Nam, lo, hi) {
-            let y = events_in_period(cal, &ds, PeriodKind::Nam, ya, f);
+            let y = events_in_period(cal, ds, PeriodKind::Nam, ya, f);
             let qs: Vec<_> = periods_covering(PeriodKind::Quy, yf, yt)
                 .into_iter()
-                .flat_map(|(a, _, _)| keys(&events_in_period(cal, &ds, PeriodKind::Quy, a, f)))
+                .flat_map(|(a, _, _)| keys(&events_in_period(cal, ds, PeriodKind::Quy, a, f)))
                 .collect();
             assert_eq!(qs, keys(&y), "{f:?} năm {}", yf.iso());
             let set: HashSet<_> = keys(&y).into_iter().collect();
@@ -144,9 +170,9 @@ fn r13c_consistency() {
     // Đã mất ⊎ đang sống = tất cả, giữ thứ tự, cho mọi kỳ.
     for k in PeriodKind::ALL {
         for (a, _, _) in periods_covering(k, lo, hi) {
-            let all = events_in_period(cal, &ds, k, a, PersonFilter::TatCa);
-            let dm = events_in_period(cal, &ds, k, a, PersonFilter::DaMat);
-            let ds_ = events_in_period(cal, &ds, k, a, PersonFilter::DangSong);
+            let all = events_in_period(cal, ds, k, a, PersonFilter::TatCa);
+            let dm = events_in_period(cal, ds, k, a, PersonFilter::DaMat);
+            let ds_ = events_in_period(cal, ds, k, a, PersonFilter::DangSong);
             assert_eq!(dm.items.len() + ds_.items.len(), all.items.len());
             let dm_k: HashSet<_> = keys(&dm).into_iter().collect();
             let merged_dm: Vec<_> = keys(&all)
@@ -167,14 +193,19 @@ fn r13c_consistency() {
 /// hơn, và với bộ dữ liệu có sự kiện đúng tại các biên.
 #[test]
 fn r13d_first_and_last_day() {
+    r13d_on(&r3());
+    r13d_on(&linked());
+    r13d_synthetic();
+}
+
+fn r13d_on(ds: &Dataset) {
     let cal = Cal::get(DEFAULT_METHOD);
-    let ds = r3();
     let (lo, hi) = (Ymd::new(2026, 1, 1), Ymd::new(2036, 12, 31));
-    let wide = occurrences_with_tt(cal, &ds, Ymd::new(2025, 12, 1), Ymd::new(2037, 1, 31));
+    let wide = occurrences_with_tt(cal, ds, Ymd::new(2025, 12, 1), Ymd::new(2037, 1, 31));
     let mut boundary_hits = 0usize;
     for k in PeriodKind::ALL {
         for (a, f, t) in periods_covering(k, lo, hi) {
-            let p = events_in_period(cal, &ds, k, a, PersonFilter::TatCa);
+            let p = events_in_period(cal, ds, k, a, PersonFilter::TatCa);
             let want: Vec<_> = wide
                 .iter()
                 .filter(|o| f <= o.date && o.date <= t)
@@ -195,7 +226,10 @@ fn r13d_first_and_last_day() {
         }
     }
     assert!(boundary_hits > 0);
+}
 
+fn r13d_synthetic() {
+    let cal = Cal::get(DEFAULT_METHOD);
     // Sự kiện một lần đúng tại biên năm/quý/tháng/tuần.
     let ev = |id: &str, y: i32, m: u32, d: u32| Event {
         id: id.to_string(),

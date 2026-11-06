@@ -16,8 +16,8 @@ use lvhv_memorial::model::{Dataset, Feb29Rule, Ymd};
 use lvhv_memorial::occ::{date_line, days_text, notification_text, upcoming, OccClass, Occurrence};
 use lvhv_memorial::period::{self, PeriodKind, PersonFilter};
 use lvhv_memorial::remind::{
-    all_reminders, fmt_local, reschedule, to_pending, Pending, Reminder, Zone, SENTINEL_ID,
-    SENTINEL_TEXT, WINDOW_DAYS,
+    all_reminders, fmt_local, reschedule, reschedule_input, to_pending, Pending, Reminder, Zone,
+    SENTINEL_ID, SENTINEL_TEXT, WINDOW_DAYS,
 };
 use lvhv_memorial::Cal;
 use lvhv_store::{AppInfo, Store, StoreError};
@@ -733,8 +733,8 @@ fn pending_value(p: &Pending, tz: &Zone) -> Value {
 /// điều hành trả về, `[{"id","at_unix_s","content"}]` (`content` = `title + "\n" + body` đã đặt lần trước;
 /// thiếu → ""). Kết quả `{"keep":[P],"remove":[id],"add":[P],"replace":[P]}`, `P` =
 /// `{"id","at_unix_s","fire_local","title","body","content"}`; ứng dụng gỡ `remove`, thêm `add`, thay
-/// `replace` (trigger theo `fire_local`, không gắn múi giờ). Có > 64 lời nhắc → 63 sớm nhất + thông báo
-/// nhắc mở ứng dụng (`id = "lvhv:sentinel"`) cùng phút với cái thứ 63.
+/// `replace` (trigger theo `fire_local`, không gắn múi giờ). Còn lời nhắc không đặt được (> 64 trong cửa sổ 400 ngày, hoặc ở ngoài cửa sổ) → tối đa 63 sớm nhất + thông báo
+/// nhắc mở ứng dụng (`id = "lvhv:sentinel"`) cùng phút với cái cuối cùng đã đặt (không có cái nào: tại now + 400 ngày) — 02 §7.4, Bổ sung B3.
 #[uniffi::export]
 pub fn reschedule_json(
     dataset_json: String,
@@ -765,7 +765,7 @@ pub fn reschedule_json(
             })
         })
         .collect::<R<_>>()?;
-    let desired: Vec<Pending> = future_reminders(&ds, now_unix_s, &tz, WINDOW_DAYS)
+    let desired: Vec<Pending> = reschedule_input(cal(), &ds, min_of_unix(now_unix_s), &tz)
         .iter()
         .map(|r| to_pending(cal(), r, show_names))
         .collect();

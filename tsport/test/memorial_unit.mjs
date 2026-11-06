@@ -79,10 +79,37 @@ eq(M.cmpCodepoints("\u{1F600}", "￿") > 0, true, "code-point order (not UTF-16)
   eq([q[62].at, q[63].id], [5000, M.SENTINEL_ID], "R12 sentinel ordered after 63rd");
 }
 
+// 02 §7.4 (Bổ sung B3): lời nhắc ngoài cửa sổ 400 ngày → thông báo nhắc mở ứng dụng (I4).
+{
+  const hi = M.WINDOW_DAYS * 1440;
+  const p = (i, at) => ({ id: `lvhv:${i.toString(16).padStart(8, "0")}-0000-4000-8000-000000000000:2026:0`, at, content: "" });
+  const w = [...Array(10).keys()].map((i) => p(i, 1000 + i));
+  const k1 = M.reschedule(0, [...w, p(99, hi + 5)], []).keep;
+  eq([k1.length, k1.at(-1).id, k1.at(-1).at], [11, M.SENTINEL_ID, 1009], "B3 sentinel after last scheduled");
+  const k2 = M.reschedule(0, [p(1, hi + 1)], []).keep;
+  eq(k2.map((x) => [x.id, x.at]), [[M.SENTINEL_ID, hi]], "B3 sentinel at now + 400 days when nothing in window");
+  const w64 = [...Array(64).keys()].map((i) => p(i, 1000 + i));
+  const k3 = M.reschedule(0, [...w64, p(99, hi + 5)], []).keep;
+  eq([k3.length, k3[63].id, k3[63].at], [64, M.SENTINEL_ID, 1062], "B3 64 in window + beyond");
+  eq(M.reschedule(0, w64, []).keep.some((x) => x.id === M.SENTINEL_ID), false, "no sentinel when all fit");
+  // R3 modes.
+  const r3d = M.parseDataset(readFileSync(join(REPO, "memorial/testdata/r3-dataset.json"), "utf8"));
+  const tzv = M.Zone.vietnam(), now0 = M.dump.r3Now(tzv);
+  let nOff = 0;
+  for (const cls of M.R3_CLASSES) {
+    const occs = M.dump.classOccurrences(cal, r3d, cls, M.ymd(2026, 1, 1), M.ymd(2036, 12, 31));
+    for (const c of M.dump.r3Configs().filter((c) => c.class === cls && c.index % 101 === 0)) {
+      nOff += M.dump.r3Reminders(r3d, occs, c, now0, tzv, "global_off").length + M.dump.r3Reminders(r3d, occs, c, now0, tzv, "rule_off").length;
+    }
+  }
+  eq(nOff, 0, "R3 global switch off / rule disabled → 0");
+}
+
 // R13 (02 §7.6): biên kỳ, (c) nhất quán, (d) ngày đầu/cuối, quy tắc lọc sự kiện.
 {
   const calJ = M.Cal.get("jpl");
-  const r3 = M.parseDataset(readFileSync(join(REPO, "memorial/testdata/r3-dataset.json"), "utf8"));
+  const r3Base = M.parseDataset(readFileSync(join(REPO, "memorial/testdata/r3-dataset.json"), "utf8"));
+  const r3 = r3Base;
   const lo = M.ymd(2026, 1, 1), hi = M.ymd(2036, 12, 31);
   const k = (it) => `${it.class}|${it.entity_id}|${it.key}`;
   const keys = (p) => p.items.map(k);
@@ -96,6 +123,8 @@ eq(M.cmpCodepoints("\u{1F600}", "￿") > 0, true, "code-point order (not UTF-16)
   const pr = M.prevPeriod("quy", M.ymd(2026, 2, 1)), nx = M.nextPeriod("thang", M.ymd(2026, 12, 5));
   eq([M.iso(pr.from), M.iso(pr.to), M.iso(nx.from), M.iso(nx.to)], ["2025-10-01", "2025-12-31", "2027-01-01", "2027-01-31"], "prev/next");
   eq(M.PERIOD_KINDS.map((kd) => M.periodsCovering(kd, lo, hi).length), [575, 132, 44, 11], "period counts");
+  const linked = M.parseDataset(readFileSync(join(REPO, "memorial/testdata/r13-linked.json"), "utf8"));
+  for (const [dsName, r3] of [["R3", r3Base], ["r13-linked", linked]]) {
   let okC = true, okDup = true, okF = true, okD = true, n = 0;
   for (const f of M.PERSON_FILTERS) {
     for (const m of M.periodsCovering("thang", lo, hi)) {
@@ -129,7 +158,8 @@ eq(M.cmpCodepoints("\u{1F600}", "￿") > 0, true, "code-point order (not UTF-16)
       hits += all.items.filter((i) => M.cmpYmd(i.date, p.from) === 0 || M.cmpYmd(i.date, p.to) === 0).length;
     }
   }
-  eq([okC, okDup, okF, okD, n > 0, hits > 0], [true, true, true, true, true, true], "R13(c)(d) on R3 dataset 2026–2036");
+  eq([okC, okDup, okF, okD, n > 0, hits > 0], [true, true, true, true, true, true], `R13(c)(d) on ${dsName} dataset 2026–2036`);
+  }
   // Sự kiện đúng tại biên.
   const ev = (id, y, m, d) => ({ id, type_id: "6f1c2a1e-0b6e-4c55-9a51-0d1f2b7c0001", tieu_de: `Biên ${id}`, date: M.dvSolar(y, m, d), recurring: false, person_ids: [], reminder: null, rev: 1 });
   const syn = { reminders_enabled: true, persons: [], events: [ev("e1", 2027, 1, 1), ev("e2", 2027, 3, 31), ev("e3", 2027, 12, 31), ev("e4", 2027, 6, 7), ev("e5", 2027, 6, 13)], event_types: [] };

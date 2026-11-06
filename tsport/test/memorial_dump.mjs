@@ -40,6 +40,10 @@ function pInt(s) { const n = Number(s); if (!Number.isInteger(n)) die(`số khô
 const load = (f) => parseDataset(readFileSync(f, "utf8"));
 
 const [c0, c1, c2, c3, c4] = args;
+function r3ArgsOk(rest) {
+  const n = rest.at(-1) === "--global-off" || rest.at(-1) === "--rule-off" ? rest.length - 1 : rest.length;
+  return n === 0 || n === 2;
+}
 if (c0 === "gio-dates" && c1 === "solar" && args.length >= 4) {
   const n = c4 === undefined ? 10 : pInt(c4);
   for (let j = ymdJdn(pYmd(c2)); j <= ymdJdn(pYmd(c3)); j++) {
@@ -69,16 +73,19 @@ if (c0 === "gio-dates" && c1 === "solar" && args.length >= 4) {
 } else if (c0 === "reminders" && c1 === "configs" && args.length === 2) {
   out.push(D.R3_CONFIGS_HEADER);
   for (const c of D.r3Configs()) D.r3ConfigLine(out, c);
-} else if (c0 === "reminders" && (args.length === 2 || args.length === 4)) {
+} else if (c0 === "reminders" && r3ArgsOk(args.slice(2))) {
   const ds = load(c1);
-  const f = c2 === undefined ? ymd(2026, 1, 1) : pYmd(c2);
-  const t = c3 === undefined ? ymd(2036, 12, 31) : pYmd(c3);
+  let rest = args.slice(2), mode = "normal";
+  if (rest.at(-1) === "--global-off") { mode = "global_off"; rest = rest.slice(0, -1); }
+  else if (rest.at(-1) === "--rule-off") { mode = "rule_off"; rest = rest.slice(0, -1); }
+  const f = rest[0] === undefined ? ymd(2026, 1, 1) : pYmd(rest[0]);
+  const t = rest[1] === undefined ? ymd(2036, 12, 31) : pYmd(rest[1]);
   const tz = Zone.vietnam();
   const now = D.r3Now(tz);
   const byClass = new Map(R3_CLASSES.map((c) => [c, D.classOccurrences(cal, ds, c, f, t)]));
   out.push(D.R3_REMINDERS_HEADER);
   for (const c of D.r3Configs()) {
-    for (const r of D.r3Reminders(ds, byClass.get(c.class), c, now, tz)) D.reminderLine(out, c.index, r);
+    for (const r of D.r3Reminders(ds, byClass.get(c.class), c, now, tz, mode)) D.reminderLine(out, c.index, r);
     flushIf();
   }
 } else if (c0 === "upcoming" && args.length === 4) {
