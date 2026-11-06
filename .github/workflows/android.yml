@@ -101,8 +101,12 @@ jobs:
           APK=$(find app/build/outputs/apk/release -name "*.apk" | sort | head -1)
           AAPT2="$ANDROID_HOME/build-tools/35.0.0/aapt2"
           "$AAPT2" dump permissions "$APK" | tee "$RUNNER_TEMP/perms.txt"
-          if grep -q "uses-permission" "$RUNNER_TEMP/perms.txt"; then
-            echo "::error::APK có khai báo quyền (uses-permission) — ứng dụng phải không có quyền nào."; exit 1
+          # Ngoại lệ duy nhất: <app>.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION do androidx.core (≥ 1.9) tự
+          # thêm — quyền mức "signature" do chính ứng dụng định nghĩa để bảo vệ receiver nội bộ; không
+          # cấp truy cập hệ thống/mạng nào và người dùng không thấy. Mọi quyền khác → lỗi.
+          OWN="uses-permission: name='vn.clevix.lichviet.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION'"
+          if grep "uses-permission" "$RUNNER_TEMP/perms.txt" | grep -vxF "$OWN"; then
+            echo "::error::APK có khai báo quyền (uses-permission) — ứng dụng phải không có quyền hệ thống nào."; exit 1
           fi
           for abi in arm64-v8a armeabi-v7a x86_64; do
             unzip -l "$APK" | grep -q "lib/$abi/liblvhv_ffi.so" || { echo "::error::Thiếu lib/$abi/liblvhv_ffi.so"; exit 1; }
