@@ -1,0 +1,61 @@
+builder_sha=b6d5826133bc840619933b509bc781f526a36493
+===== lvhv-dump --help
+Cách dùng: lvhv-dump [--method hnd|precise] LỆNH ...  (mặc định: precise)
+  lvhv-dump lunar-csv FROM TO          (ngày dạng YYYY-MM-DD)
+  lvhv-dump dayinfo-jsonl FROM TO
+  lvhv-dump tet FROM_YEAR TO_YEAR
+  lvhv-dump terms FROM_YEAR TO_YEAR
+  lvhv-dump newmoons FROM_YEAR TO_YEAR
+  lvhv-dump gooddays ACT|all FROM TO [BIRTH_LUNAR_YEAR|none]
+        (JSONL; "all" = mọi việc; khoảng dài hơn 366 ngày được chia khúc 366 ngày,
+         mỗi khúc sắp riêng; BIRTH_LUNAR_YEAR là năm ÂM lịch của ngày sinh)
+  lvhv-dump bench
+Ngày/năm hợp lệ: 1900-01-01 … 3000-12-31.
+Giờ trong `terms`/`newmoons` là giờ lịch: +07:45:40 (Bắc Kinh) trước 1929, +08:00 1929–1967,
++07:00 từ 1968-01-01 (docs/03 §16);
+khi khoảng năm bắt đầu trước 1968, tên cột là `*_local` thay cho `*_utc7`.
+===== lvhv-dump (không tham số)
+Cách dùng: lvhv-dump [--method hnd|precise] LỆNH ...  (mặc định: precise)
+  lvhv-dump lunar-csv FROM TO          (ngày dạng YYYY-MM-DD)
+  lvhv-dump dayinfo-jsonl FROM TO
+  lvhv-dump tet FROM_YEAR TO_YEAR
+  lvhv-dump terms FROM_YEAR TO_YEAR
+  lvhv-dump newmoons FROM_YEAR TO_YEAR
+  lvhv-dump gooddays ACT|all FROM TO [BIRTH_LUNAR_YEAR|none]
+        (JSONL; "all" = mọi việc; khoảng dài hơn 366 ngày được chia khúc 366 ngày,
+         mỗi khúc sắp riêng; BIRTH_LUNAR_YEAR là năm ÂM lịch của ngày sinh)
+  lvhv-dump bench
+Ngày/năm hợp lệ: 1900-01-01 … 3000-12-31.
+Giờ trong `terms`/`newmoons` là giờ lịch: +07:45:40 (Bắc Kinh) trước 1929, +08:00 1929–1967,
++07:00 từ 1968-01-01 (docs/03 §16);
+khi khoảng năm bắt đầu trước 1968, tên cột là `*_local` thay cho `*_utc7`.
+===== lvhv-memorial-dump --help
+Cách dùng: lvhv-memorial-dump [--method hnd|precise] LỆNH ...  (mặc định: precise)
+  gio-dates solar FROM TO [N]          mọi ngày mất dương FROM…TO (YYYY-MM-DD), N năm giỗ (mặc định 10)
+  gio-dates lunar FROM_Y TO_Y [N]      mọi ngày mất âm có năm (mọi tháng nhuận, mọi ngày 30), N năm giỗ
+  gio-dates unknown FROM_Y TO_Y        mọi (tháng, ngày 1–30, nhuận) không rõ năm × Y = FROM_Y…TO_Y
+  gio-dates list FILE [N]              mỗi dòng của FILE một DateValue JSON (ngày mất), N năm giỗ
+      (JSONL, docs/v0.2/04 R1; tùy chọn --gio-het 2|3 đứng trước gio-dates, mặc định 2)
+  reminders configs                    r3-configs.csv: 140 544 cấu hình R3
+  reminders DATASET.json [FROM TO]     R3: mọi lời nhắc của mọi cấu hình (CSV), cửa sổ mặc định 2026-01-01…2036-12-31
+  upcoming DATASET.json FROM TO        R11: danh sách Sắp tới 30 ngày cho mỗi hôm nay FROM…TO (CSV)
+  r10 a|b|c|d                          R10: (a) sinh 1900-01-01…2026-12-31, (b) Can Chi 1899–3000,
+                                       (c) 10 000 cặp hạt 20261106, (d) 29/02 1900–3000
+  r12 DATASET.json [--steps]           R12: mô phỏng 10/50/200 hồ sơ × 3 kịch bản (CSV)
+  ics DATASET.json TODAY DTSTAMP       tệp .ics (DTSTAMP dạng YYYYMMDDTHHMMSSZ)
+  derive DATASET.json                  tính lại trường dẫn xuất (JSON thụt lề)
+===== lvhv-memorial-dump (không tham số)
+Cách dùng: lvhv-memorial-dump [--method hnd|precise] LỆNH ...  (mặc định: precise)
+  gio-dates solar FROM TO [N]          mọi ngày mất dương FROM…TO (YYYY-MM-DD), N năm giỗ (mặc định 10)
+  gio-dates lunar FROM_Y TO_Y [N]      mọi ngày mất âm có năm (mọi tháng nhuận, mọi ngày 30), N năm giỗ
+  gio-dates unknown FROM_Y TO_Y        mọi (tháng, ngày 1–30, nhuận) không rõ năm × Y = FROM_Y…TO_Y
+  gio-dates list FILE [N]              mỗi dòng của FILE một DateValue JSON (ngày mất), N năm giỗ
+      (JSONL, docs/v0.2/04 R1; tùy chọn --gio-het 2|3 đứng trước gio-dates, mặc định 2)
+  reminders configs                    r3-configs.csv: 140 544 cấu hình R3
+  reminders DATASET.json [FROM TO]     R3: mọi lời nhắc của mọi cấu hình (CSV), cửa sổ mặc định 2026-01-01…2036-12-31
+  upcoming DATASET.json FROM TO        R11: danh sách Sắp tới 30 ngày cho mỗi hôm nay FROM…TO (CSV)
+  r10 a|b|c|d                          R10: (a) sinh 1900-01-01…2026-12-31, (b) Can Chi 1899–3000,
+                                       (c) 10 000 cặp hạt 20261106, (d) 29/02 1900–3000
+  r12 DATASET.json [--steps]           R12: mô phỏng 10/50/200 hồ sơ × 3 kịch bản (CSV)
+  ics DATASET.json TODAY DTSTAMP       tệp .ics (DTSTAMP dạng YYYYMMDDTHHMMSSZ)
+  derive DATASET.json                  tính lại trường dẫn xuất (JSON thụt lề)

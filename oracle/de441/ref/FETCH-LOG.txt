@@ -1,0 +1,37 @@
+fetched 2026-11-06T17:31:09Z
+OK  hmnao_a_2021.txt <- https://hpiers.obspm.fr/eoppc/series/longterm/hmnao_a_2021.txt
+ERR ukho_lvm_index.html <- http://astro.ukho.gov.uk/nao/lvm/
+ERR Table-S15.2020.txt <- http://astro.ukho.gov.uk/nao/lvm/Table-S15.2020.txt
+ERR Table-S15.2020.https.txt <- https://astro.ukho.gov.uk/nao/lvm/Table-S15.2020.txt
+ERR Table-S15.txt <- http://astro.ukho.gov.uk/nao/lvm/Table-S15.txt
+ERR Table-S15.2020.opensuse.txt <- https://src.opensuse.org/pool/python-skyfield/raw/branch/factory/Table-S15.2020.txt
+OK  hpiers_longterm_dir.html <- https://hpiers.obspm.fr/eoppc/series/longterm/
+OK  hmnao_a_2021.eop <- https://hpiers.obspm.fr/eoppc/series/longterm/hmnao_a_2021.eop
+ERR hnd_amlich-hnd.js <- https://www.informatik.uni-leipzig.de/~duc/amlich/JavaScript/amlich-hnd.js
+ERR hnd_amlich_index.html <- https://www.informatik.uni-leipzig.de/~duc/amlich/
+ichuot/jquery-amlich 2579ae15f1b244a98b4861e8c14c49f7cc94a47b
+TK20 in ichuot/jquery-amlich: src/jquery.amlich.js
+vanng822/amlich 3d12e02964f49be73d9bb231748d43e814ffe488
+* Host astro.ukho.gov.uk:80 was resolved.
+* IPv6: (none)
+* IPv4: 62.172.108.13
+*   Trying 62.172.108.13:80...
+* Connected to astro.ukho.gov.uk (62.172.108.13) port 80
+> GET /nao/lvm/Table-S15.2020.txt HTTP/1.1
+> Host: astro.ukho.gov.uk
+> User-Agent: curl/8.5.0
+> Accept: */*
+> 
+* HTTP 1.0, assume close after body
+< HTTP/1.0 503 Service Unavailable
+< Cache-Control: no-cache
+< Connection: close
+< Content-Type: text/html
+< Content-Length: 311
+< 
+{ [311 bytes data]
+* Closing connection
+OK  de441_dir.html <- https://ssd.jpl.nasa.gov/ftp/eph/planets/bsp/
+OK  de441_readme.txt <- https://ssd.jpl.nasa.gov/ftp/eph/planets/bsp/README.txt
+figshare 33197244 The Supplement: Observations & Calculated Data
+   file Supplement-Observations&CalculatedData-JHA2026v57(3)-314.pdf 18588476 https://ndownloader.figshare.com/files/67398033

@@ -1,0 +1,185 @@
+# Bên kiểm định độc lập — tính thời điểm Sóc/tiết khí từ JPL DE441 (jplephem + ERFA), tải tài liệu ΔT công bố,
+# và chạy hộp đen bản dựng của nhánh phương pháp Jpl để so sánh. Kết quả được commit (nén gzip) về nhánh
+# oracle-de441. Không đọc mã nguồn của lõi; bước "builder-*" chỉ dựng và CHẠY tệp thực thi.
+name: oracle-de441
+
+on:
+  workflow_dispatch:
+    inputs:
+      task:
+        description: "fetch-refs | instants | builder-help | builder-dump"
+        required: true
+        default: fetch-refs
+      builder_ref:
+        description: "nhánh/SHA của bên xây dựng (cho builder-*)"
+        required: false
+        default: jpl-method
+      dump_args:
+        description: "tham số cho lệnh dump (builder-dump), mỗi dòng một lệnh: '<tên tệp ra>|<tệp thực thi> <tham số>'"
+        required: false
+        default: ""
+  push:
+    branches: [oracle-de441]
+    paths: [oracle/de441/RUN]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: oracle-de441-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: oracle-de441
+          fetch-depth: 0
+
+      - name: Chọn tác vụ
+        id: task
+        run: |
+          T="${{ github.event.inputs.task }}"
+          if [ -z "$T" ]; then T="$(head -n1 oracle/de441/RUN | tr -d '[:space:]')"; fi
+          echo "task=$T" >> "$GITHUB_OUTPUT"
+          echo "Tác vụ: $T"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Cài jplephem, pyerfa, numpy (ghim phiên bản)
+        run: pip install jplephem==2.24 pyerfa==2.0.1.5 numpy==2.2.6
+
+      # ---------- tải tài liệu ΔT công bố ----------
+      - name: fetch-refs
+        if: steps.task.outputs.task == 'fetch-refs'
+        run: |
+          mkdir -p oracle/de441/ref
+          cd oracle/de441/ref
+          get() { curl -fsSL --retry 3 -m 120 -A "Mozilla/5.0" -o "$1" "$2" && echo "OK  $1 <- $2" >> FETCH-LOG.txt || echo "ERR $1 <- $2" >> FETCH-LOG.txt; }
+          date -u +"fetched %Y-%m-%dT%H:%M:%SZ" > FETCH-LOG.txt
+          get hmnao_a_2021.txt https://hpiers.obspm.fr/eoppc/series/longterm/hmnao_a_2021.txt
+          get ukho_lvm_index.html http://astro.ukho.gov.uk/nao/lvm/
+          get Table-S15.2020.txt http://astro.ukho.gov.uk/nao/lvm/Table-S15.2020.txt
+          get Table-S15.2020.https.txt https://astro.ukho.gov.uk/nao/lvm/Table-S15.2020.txt
+          get Table-S15.txt http://astro.ukho.gov.uk/nao/lvm/Table-S15.txt
+          get Table-S15.2020.opensuse.txt "https://src.opensuse.org/pool/python-skyfield/raw/branch/factory/Table-S15.2020.txt"
+          get hpiers_longterm_dir.html https://hpiers.obspm.fr/eoppc/series/longterm/
+          get hmnao_a_2021.eop https://hpiers.obspm.fr/eoppc/series/longterm/hmnao_a_2021.eop
+          # Bảng TK20 (1900–1999) do Hồ Ngọc Đức công bố trong mã nguồn amlich (để kiểm L17)
+          get hnd_amlich-hnd.js https://www.informatik.uni-leipzig.de/~duc/amlich/JavaScript/amlich-hnd.js
+          get hnd_amlich_index.html https://www.informatik.uni-leipzig.de/~duc/amlich/
+          for r in ichuot/jquery-amlich vanng822/amlich; do
+            d=$(echo $r | tr / _)
+            git clone -q --depth 1 https://github.com/$r /tmp/$d && (cd /tmp/$d && echo "$r $(git rev-parse HEAD)" >> $OLDPWD/FETCH-LOG.txt) || echo "ERR clone $r" >> FETCH-LOG.txt
+            for f in $(grep -rl "TK20" /tmp/$d --include=*.js --include=*.java --include=*.py 2>/dev/null | head -3); do
+              cp "$f" "tk20_${d}_$(basename $f)"; echo "TK20 in $r: ${f#/tmp/$d/}" >> FETCH-LOG.txt
+            done
+          done
+          curl -sv -m 60 -o /dev/null http://astro.ukho.gov.uk/nao/lvm/Table-S15.2020.txt 2>&1 | tail -20 >> FETCH-LOG.txt || true
+          get de441_dir.html https://ssd.jpl.nasa.gov/ftp/eph/planets/bsp/
+          get de441_readme.txt https://ssd.jpl.nasa.gov/ftp/eph/planets/bsp/README.txt
+          curl -fsSL -m 60 -H 'Content-Type: application/json' -d '{"search_for":"Addendum 2020 Measurement of the Earth rotation 720 BC to AD 2015"}' https://api.figshare.com/v2/articles/search -o figshare_search.json || true
+          python3 - <<'EOF' || true
+          import json, subprocess
+          arts = json.load(open("figshare_search.json"))
+          log = open("FETCH-LOG.txt", "a")
+          for a in arts[:10]:
+              log.write("figshare %s %s\n" % (a["id"], a["title"]))
+              meta = json.loads(subprocess.run(["curl", "-fsSL", "-m", "60", "https://api.figshare.com/v2/articles/%d" % a["id"]], capture_output=True, text=True).stdout or "{}")
+              for f in meta.get("files", []):
+                  log.write("   file %s %s %s\n" % (f["name"], f["size"], f["download_url"]))
+                  if f["size"] < 5_000_000:
+                      out = "figshare_%d_%s" % (a["id"], f["name"].replace(" ", "_"))
+                      subprocess.run(["curl", "-fsSL", "-m", "120", "-o", out, f["download_url"]])
+          EOF
+          cat FETCH-LOG.txt; ls -la
+
+      # ---------- tính thời điểm từ DE441 ----------
+      - name: Bộ nhớ đệm DE441
+        if: steps.task.outputs.task == 'instants' || steps.task.outputs.task == 'overlap'
+        uses: actions/cache@v4
+        with:
+          path: ~/de441
+          key: verifier-de441-full-v1
+      - name: Tải DE441
+        if: steps.task.outputs.task == 'instants' || steps.task.outputs.task == 'overlap'
+        run: |
+          mkdir -p ~/de441 && cd ~/de441
+          # Thư mục JPL hiện chỉ còn de441.bsp (hai đoạn mỗi thân, nối quanh 1969); thử tệp part-1/part-2 nếu cần.
+          if [ ! -s de441.bsp ]; then
+            curl -fL --retry 5 --retry-delay 10 -o de441.bsp.part https://ssd.jpl.nasa.gov/ftp/eph/planets/bsp/de441.bsp && mv de441.bsp.part de441.bsp
+          fi
+          ls -la
+      - name: instants
+        if: steps.task.outputs.task == 'instants'
+        run: |
+          set -o pipefail
+          mkdir -p oracle/de441/out
+          python3 -I oracle/de441/instants.py --bsp1 ~/de441/de441.bsp \
+              --out oracle/de441/out/instants_tt.csv.gz 2>&1 | tee oracle/de441/out/instants_log.txt
+          python3 -I oracle/de441/overlap_check.py ~/de441/de441.bsp > oracle/de441/out/overlap_check.txt 2>&1 || true
+          python3 -I oracle/de441/instants.py --bsp1 ~/de441/de441.bsp \
+              --nutation 2000B --no-hash --out oracle/de441/out/instants_tt_nut2000B.csv.gz 2>&1 | tail -1
+          pip freeze > oracle/de441/out/pip_freeze_instants.txt
+          python3 --version >> oracle/de441/out/pip_freeze_instants.txt
+
+      - name: overlap
+        if: steps.task.outputs.task == 'overlap'
+        run: |
+          mkdir -p oracle/de441/out
+          python3 -I oracle/de441/overlap_check.py ~/de441/de441.bsp > oracle/de441/out/overlap_check.txt 2>&1
+          cat oracle/de441/out/overlap_check.txt
+
+      # ---------- hộp đen của bên xây dựng ----------
+      - name: Dựng bản của bên xây dựng (không đọc mã)
+        if: startsWith(steps.task.outputs.task, 'builder-')
+        run: |
+          git fetch origin "${{ github.event.inputs.builder_ref || 'jpl-method' }}"
+          git worktree add ../builder FETCH_HEAD
+          cd ../builder
+          echo "builder_sha=$(git rev-parse HEAD)" > $GITHUB_WORKSPACE/builder_sha.txt
+          cargo build --release --bins 2>&1 | tail -5
+          find target/release -maxdepth 1 -type f -perm -u+x -printf '%f\n' > $GITHUB_WORKSPACE/builder_bins.txt
+          cat $GITHUB_WORKSPACE/builder_bins.txt
+      - name: builder-help
+        if: steps.task.outputs.task == 'builder-help'
+        run: |
+          mkdir -p oracle/de441/builder
+          out=oracle/de441/builder/help.txt
+          cat builder_sha.txt > $out
+          for b in $(cat builder_bins.txt); do
+            echo "===== $b --help" >> $out
+            ( cd ../builder && timeout 60 ./target/release/$b --help ) >> $out 2>&1 || true
+            echo "===== $b (không tham số)" >> $out
+            ( cd ../builder && timeout 60 ./target/release/$b < /dev/null | head -c 4000 ) >> $out 2>&1 || true
+          done
+          cat $out
+      - name: builder-dump
+        if: steps.task.outputs.task == 'builder-dump'
+        env:
+          DUMP_ARGS: ${{ github.event.inputs.dump_args }}
+        run: |
+          mkdir -p oracle/de441/builder
+          cp builder_sha.txt oracle/de441/builder/dump_sha.txt
+          printf '%s\n' "$DUMP_ARGS" | while IFS='|' read -r name cmd; do
+            [ -z "$name" ] && continue
+            echo "== $name: $cmd" | tee -a oracle/de441/builder/dump_sha.txt
+            ( cd ../builder && eval "./target/release/$cmd" ) | gzip -9 > "oracle/de441/builder/$name.gz"
+            ls -la "oracle/de441/builder/$name.gz"
+          done
+
+      - name: Commit kết quả về oracle-de441
+        run: |
+          git config user.name "oracle-de441-bot"
+          git config user.email "oracle-de441-bot@users.noreply.github.com"
+          git add -A oracle/de441
+          if git diff --cached --quiet; then echo "Không có thay đổi"; exit 0; fi
+          git commit -m "oracle-de441: kết quả tác vụ ${{ steps.task.outputs.task }} (run ${{ github.run_id }})" \
+            -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+          Claude-Session: https://claude.ai/code/session_01SKZXHbLz8ZHfr7rpCwfPLv"
+          for i in 1 2 3; do git pull --rebase origin oracle-de441 && git push origin HEAD:oracle-de441 && break; sleep 5; done
