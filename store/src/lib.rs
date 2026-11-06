@@ -392,6 +392,23 @@ impl Store {
         self.meta_get("backup_pending_since")
     }
 
+    /// Tùy chọn "hiện tên trên màn hình khóa" (06 O-9; mặc định **không** hiện = `false`). Là tùy chọn cục bộ
+    /// của thiết bị, lưu ở bảng `meta` (khóa `lock_screen_names`), không nằm trong `AppSettings` (lược đồ v1
+    /// đóng, 01 §5) và không đi vào tệp sao lưu — như tùy chọn giao diện `lvhv.ui` của PWA.
+    pub fn lock_screen_names(&self) -> Result<bool> {
+        Ok(self.meta_get("lock_screen_names")?.as_deref() == Some("1"))
+    }
+
+    /// Ghi tùy chọn "hiện tên trên màn hình khóa" (O-9).
+    pub fn set_lock_screen_names(&mut self, show: bool) -> Result<()> {
+        self.conn.execute(
+            "INSERT INTO meta(key, value) VALUES ('lock_screen_names', ?1)
+             ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            params![if show { "1" } else { "0" }],
+        )?;
+        Ok(())
+    }
+
     /// Hook nhắc sao lưu: `true` khi nên nhắc người dùng xuất tệp sao lưu (01 §3.9).
     pub fn backup_reminder_due(&self, now: &str) -> Result<bool> {
         let s = self.settings()?;
@@ -567,20 +584,20 @@ impl Store {
         Ok(meta)
     }
 
-    /// Xóa một người: gỡ id khỏi mọi sự kiện (01 §3.4), xóa ảnh của người đó nếu không ai dùng.
+    /// Xóa một người: gỡ id khỏi mọi sự kiện (01 §3.4), xóa ảnh chân dung và ảnh giấy báo tử (01 §3.2a) của
+    /// người đó nếu không hồ sơ nào khác còn dùng.
     pub fn delete_person(&mut self, id: &str) -> Result<()> {
         let now = now_rfc3339();
         let tx = self.conn.transaction()?;
-        let photo: Option<Option<String>> = tx
-            .query_row(
-                "SELECT photo_id FROM person WHERE id = ?1",
-                params![id],
-                |r| r.get(0),
-            )
+        let pj: Option<String> = tx
+            .query_row("SELECT json FROM person WHERE id = ?1", params![id], |r| {
+                r.get(0)
+            })
             .optional()?;
-        let Some(photo) = photo else {
+        let Some(pj) = pj else {
             return Err(StoreError::NotFound);
         };
+        let refs = validate::person_photo_refs(&parse_col(&pj)?);
         let ev: Vec<String> = {
             let mut st = tx.prepare("SELECT event_id FROM event_person WHERE person_id = ?1")?;
             let r = st
@@ -602,27 +619,23 @@ impl Store {
             upsert_event(&tx, &e)?;
         }
         tx.execute("DELETE FROM person WHERE id = ?1", params![id])?;
-        if let Some(pid) = &photo {
-            let used: i64 = tx.query_row(
-                "SELECT count(*) FROM person WHERE photo_id = ?1",
-                params![pid],
-                |r| r.get(0),
-            )?;
-            if used == 0 {
-                tx.execute("DELETE FROM photo WHERE id = ?1", params![pid])?;
+        // Ảnh còn được hồ sơ khác dùng thì giữ.
+        let mut used: std::collections::HashSet<String> = Default::default();
+        {
+            let mut st = tx.prepare("SELECT json FROM person")?;
+            let rows = st.query_map([], |r| r.get::<_, String>(0))?;
+            for r in rows {
+                used.extend(validate::person_photo_refs(&parse_col(&r?)?));
             }
+        }
+        let gone: Vec<String> = refs.into_iter().filter(|r| !used.contains(r)).collect();
+        for pid in &gone {
+            tx.execute("DELETE FROM photo WHERE id = ?1", params![pid])?;
         }
         Self::mark_changed(&tx, &now)?;
         tx.commit()?;
-        if let Some(pid) = photo {
-            let still: i64 = self.conn.query_row(
-                "SELECT count(*) FROM photo WHERE id = ?1",
-                params![pid],
-                |r| r.get(0),
-            )?;
-            if still == 0 {
-                let _ = std::fs::remove_file(self.photo_path(&pid));
-            }
+        for pid in gone {
+            let _ = std::fs::remove_file(self.photo_path(&pid));
         }
         Ok(())
     }
@@ -709,7 +722,8 @@ impl Store {
     }
 
     /// Xuất tệp sao lưu mã hóa (03 §2.4). Đặt `settings.last_backup_at` và xóa trạng thái "chờ sao lưu".
-    /// `last_backup_at` trong tệp là giá trị **trước** lần xuất này.
+    /// `last_backup_at` trong tệp là giá trị **trước** lần xuất này (TK-16 chưa áp dụng: đổi thì R6 (a)/(d)
+    /// không còn so được với `manifest.dataset_r6.store_state_sha256` — xem PR #14).
     pub fn export_backup(&mut self, password: &str, app: &AppInfo) -> Result<Vec<u8>> {
         let now = now_rfc3339();
         let (doc, blobs) = self.snapshot_with_photos(app, &now)?;
@@ -859,7 +873,8 @@ fn write_atomic(path: &Path, bytes: &[u8]) -> Result<()> {
 }
 
 fn check_refs_person(tx: &rusqlite::Transaction<'_>, p: &Value) -> Result<()> {
-    if let Some(pid) = p["photo_id"].as_str() {
+    for pid in validate::person_photo_refs(p) {
+        let pid = pid.as_str();
         let n: i64 = tx.query_row(
             "SELECT count(*) FROM photo WHERE id = ?1",
             params![pid],

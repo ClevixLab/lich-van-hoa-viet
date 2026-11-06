@@ -6,8 +6,9 @@ chỉ đọc tài liệu này và `01-MO-HINH-DU-LIEU.md`, không đọc mã lõ
 
 Ký hiệu: `L2S(y, m, d, leap)` = `lunar_to_solar` của lõi (trả `None` nếu ngày không tồn tại); `S2L(y, m, d)` =
 `solar_to_lunar`; `LYOB(y, m, d)` = `lunar_year_of_birth` (năm âm chứa ngày dương đó); `len(y, m, leap)` = số ngày
-của tháng âm (29 hoặc 30). Phương pháp lịch: mặc định của lõi (`Precise`). Mọi phép cộng/trừ ngày là trên ngày
-dương (số ngày Julian), không trên giờ.
+của tháng âm (29 hoặc 30). Phương pháp lịch: mặc định của lõi (`Precise` lúc khóa G1; từ bản 0.1.4 là `Jpl`,
+docs/02 Bổ sung A4 — ghi chú Bổ sung B2, 2026-11-07). Mọi phép cộng/trừ ngày là trên ngày dương (số ngày Julian),
+không trên giờ.
 
 Ví dụ trong tài liệu được tính bằng `tsport` ngày 2026-11-06 (phương pháp `Precise`); chúng cũng là ca kiểm thử cố
 định (§9).
@@ -134,6 +135,8 @@ tuoi_mat(birth, death, nguong):
   "Tính lại").
 - Hiển thị: "Hưởng thọ 86 tuổi" / "Hưởng dương 45 tuổi"; khi `approx = true` thêm "(khoảng)".
 - `value < 1` (dữ liệu mâu thuẫn) → lỗi nhập liệu (01 §3.2), không lưu.
+- (Bổ sung B2, 2026-11-07) `value > 150` → lỗi nhập liệu "Tuổi … vượt quá 150", không lưu (01 §3.2: `tuoi.value`
+  trong 1–150).
 
 Ví dụ: sinh 1940-05-01 (năm âm 1940 Canh Thìn), mất 2025-08-08 (năm âm 2025) → 2025 − 1940 + 1 = **86**, hưởng thọ.
 
@@ -147,7 +150,8 @@ Ví dụ: sinh 1940-05-01 (năm âm 1940 Canh Thìn), mất 2025-08-08 (năm âm
 
 Dùng đúng `anniversary` của §2.2 với `(month, day)` của ngày gốc, cùng hai quy tắc nhuận → thường và 30 → 29. Năm
 lần thứ n: `n = Y − năm âm gốc` (sinh nhật âm: tuổi âm = n + 1). Sự kiện âm không lặp: chỉ một lần, ngày dương
-`L2S(...)` của chính ngày nhập.
+`L2S(...)` của chính ngày nhập. (Bổ sung B4, 2026-11-07) Chỉ áp dụng cho người **không có ngày mất** và cho sự kiện
+không gắn với người đã mất — xem §6.1.
 
 ## 6. Sinh nhật dương, sự kiện dương lặp hằng năm, quy tắc 29/02
 
@@ -162,6 +166,30 @@ solar_occurrence(orig (Y0, M, D), Y, feb29_rule):
 - Năm nhuận Gregory: chia hết cho 4 và (không chia hết cho 100 hoặc chia hết cho 400).
 - Sự kiện dương không lặp: một lần, ngày đã nhập.
 - Sự kiện "Ngày cưới" mặc định lặp hằng năm (01 §3.5), hiển thị "Kỷ niệm n năm ngày cưới".
+- (Bổ sung B2, 2026-11-07) Sự kiện dương lặp hằng năm có ngày gốc 29/02: ở năm không nhuận rơi vào **28/02**
+  (`solar_occurrence` với `feb29_rule = "feb28"`; sự kiện không có trường `feb29_rule` riêng).
+
+### 6.1 Ai có lần xuất hiện nào (Bổ sung B4, 2026-11-07 — quyết định của chủ dự án, 04 Bổ sung B4)
+
+```
+occurrences(ds, from, to):                    # tập lần xuất hiện dùng cho §7.1–§7.6 và §8
+  for p in ds.persons:
+      if p.death != null:                     # hồ sơ có ngày mất
+          giỗ (§2.3) của p                    # + tiên thường (§3) khi rule_gio.tien_thuong (§7.2)
+          # KHÔNG sinh nhật dương, KHÔNG sinh nhật âm (kể cả khi còn dữ liệu birth / sinh_nhat_am)
+      else:
+          sinh nhật dương (§6) nếu biết đủ ngày sinh; sinh nhật âm (§5) nếu sinh_nhat_am
+  for e in ds.events:
+      if có ít nhất một id trong e.person_ids trỏ tới hồ sơ có ngày mất: bỏ qua e   # không lần xuất hiện nào
+      else: lần xuất hiện của e (§5, §6)      # gắn người đang sống, id không trỏ tới hồ sơ nào, hoặc không gắn ai
+```
+
+- Dữ liệu bị loại (sinh nhật, sự kiện của người đã mất) **vẫn được lưu**, hiển thị trên trang hồ sơ và có trong sao
+  lưu; chỉ không sinh lần xuất hiện, nên không có lời nhắc (§7.1), không vào "Sắp tới" (§7.2), danh sách theo kỳ
+  (§7.6) hay tệp .ics (§8).
+- Chuyển trạng thái: khi một người đang sống được cập nhật ngày mất, các lời nhắc sinh nhật và sự kiện của người đó
+  biến mất khỏi tập này, nên bị gỡ ở lần lập lịch kế tiếp (§7.3 bước kế tiếp của chuỗi báo thức, §7.4/§7.5
+  `reschedule`: các id không còn trong `keep` bị `remove`).
 
 ## 7. Sinh lời nhắc
 
@@ -191,11 +219,18 @@ reminders_for(rule, occ, now, tz):          # occ: một lần xuất hiện (ng
 - Nội dung (không có số liệu ngoài hồ sơ): tiêu đề "Còn 3 ngày: Giỗ đầu Ông Nguyễn Văn A" hoặc "Hôm nay: …"; dòng
   phụ "Thứ Ba, 28/07/2026 — 15/6 âm lịch". Tên hiển thị = `danh_xung + " " + ho_ten`. Tùy chọn khóa màn hình ở mục
   mở O-9.
+- (Bổ sung B2, 2026-11-07) Màn hình khóa khi không hiện tên (O-9): tiêu đề "Sắp đến ngày giỗ" (giỗ, tiên thường),
+  "Sắp đến sinh nhật" (sinh nhật dương, sinh nhật âm) và **"Sắp đến sự kiện"** (mọi loại sự kiện); không có dòng phụ.
+- (Ghi chú 2026-11-07, duyệt mã MA3-14-02) Tùy chọn "hiện tên trên màn hình khóa" (O-9) mặc định **tắt**. Trên native
+  nó được lưu trong kho của thiết bị (`lvhv-store`, bảng `meta`, khóa `lock_screen_names`), là tùy chọn cục bộ như
+  `lvhv.ui` của PWA: không thuộc `AppSettings` (lược đồ v1 không đổi) và không đi vào tệp sao lưu. Các hàm nhắc của
+  kho đọc tùy chọn từ đó; khi tắt, dữ liệu lời nhắc trả cho ứng dụng không chứa tên người.
 - Ví dụ: G-A năm 2026, `[0, 3]`, `07:00` → 2026-07-25 07:00 và 2026-07-28 07:00 (giờ thiết bị).
 
 ### 7.2 Danh sách "Sắp tới" (30 ngày)
 
-Mọi lần xuất hiện (giỗ, tiên thường nếu bật, sinh nhật dương, sinh nhật âm, sự kiện) có ngày dương trong
+Mọi lần xuất hiện (giỗ, tiên thường nếu bật, sinh nhật dương, sinh nhật âm, sự kiện — theo tập của §6.1, Bổ sung
+B4) có ngày dương trong
 `[hôm nay, hôm nay + 30 ngày]` (gồm cả hai đầu), sắp theo ngày, cùng ngày thì theo thứ tự giỗ → tiên thường →
 sinh nhật → sự kiện, rồi theo `ho_ten` (so sánh theo quy tắc chữ tiếng Việt của nền tảng; kiểm thử dùng so sánh
 điểm mã sau NFC để xác định). Danh sách **không phụ thuộc** công tắc nhắc: tắt nhắc vẫn thấy trong "Sắp tới".
@@ -210,6 +245,10 @@ Hiển thị: "Hôm nay", "Ngày mai", "Còn n ngày".
 - Cơ chế (kiểm ở R5): **một chuỗi báo thức** — chỉ đặt **một** báo thức cho thời điểm nhắc sớm nhất; khi báo thức chạy, đăng
   mọi thông báo đã đến hạn (kể cả những cái bị trễ do máy tắt, nếu trễ ≤ 24 giờ; trễ hơn thì bỏ, vì "Sắp tới" vẫn
   hiển thị) rồi đặt báo thức kế tiếp. Không có giới hạn số lượng lời nhắc.
+- (Ghi chú 2026-11-07, duyệt mã MA3-14-01) Báo thức kế tiếp là lời nhắc sớm nhất có `at > now` **không giới hạn
+  cửa sổ** (không áp cửa sổ 400 ngày của §7.4): lời nhắc ở xa vẫn được đặt báo thức, nên chuỗi không bao giờ dừng
+  khi còn lời nhắc tương lai. Cài đặt tìm trên cùng tập với `reschedule` của §7.4 (quét các lần xuất hiện tới
+  `hôm nay + 900 ngày` và mọi sự kiện không lặp tới 3000-12-31); không còn lời nhắc nào thì không đặt báo thức.
 - Loại báo thức mặc định (không cần quyền đặc biệt): `setAndAllowWhileIdle(RTC_WAKEUP, t)` — không bao giờ chạy sớm
   hơn `t`; từ Android 12 hệ thống giao trong vòng một giờ nếu không có hạn chế tiết kiệm pin. Lời nhắc giỗ lúc 07:00
   đến muộn tối đa khoảng một giờ là chấp nhận được cho việc "nhắc trước".
@@ -228,11 +267,15 @@ của kỹ sư Apple trên diễn đàn nhà phát triển, 05 §7 R-IOS-1). Thu
 ```
 CAP := 64
 reschedule(now):
-  desired := mọi lời nhắc (§7.1) có at > now, trong cửa sổ [now, now + 400 ngày], sắp theo (at, id)
-  if len(desired) > CAP:
-      keep := desired[0 .. CAP-2]                          # 63 lời nhắc sớm nhất
-      last := keep[CAP-2].at
-      sentinel := {id: "lvhv:sentinel", at: last + 1 phút,
+  hi      := now + 400 ngày
+  desired := mọi lời nhắc (§7.1) có at > now, trong cửa sổ (now, hi], sắp theo (at, id)
+  beyond  := có ít nhất một lời nhắc (§7.1) có at > hi                 # Bổ sung B3
+  if len(desired) > CAP or beyond:                                     # còn lời nhắc không được đặt
+      k    := min(len(desired), CAP-1)                                 # tối đa 63 lời nhắc sớm nhất
+      keep := desired[0 .. k-1]
+      at_s := (k > 0) ? keep[k-1].at                                   # Bổ sung B2/B3: cùng phút với cái cuối đã đặt
+                      : local_instant(hôm nay + 399 ngày, "09:00", tz)   # MA3-14-06 (trước đó: hi)
+      sentinel := {id: "lvhv:sentinel", at: at_s,
                    nội dung: "Mở Lịch Việt để tiếp tục nhận lời nhắc giỗ và sinh nhật"}
       keep.append(sentinel)
   else: keep := desired
@@ -246,10 +289,29 @@ reschedule(now):
   (`NSSystemTimeZoneDidChange`), người dùng bấm vào một thông báo, và trong tác vụ nền `BGAppRefreshTask` (iOS tự
   quyết định có chạy hay không; không dựa vào nó).
 - Bảo đảm (kiểm ở R12 bằng mô phỏng, ở R5 trên iPhone thật): tại mọi thời điểm, nếu có ≥ 64 lời nhắc tương lai thì 63 cái sớm nhất đều đang chờ và thông báo nhắc mở
-  ứng dụng nằm ngay sau cái thứ 63. Người dùng không mở ứng dụng trong thời gian dài (ví dụ 63 lời nhắc ≈ vài tháng
+  ứng dụng nằm ngay sau cái thứ 63.
+- (Bổ sung B2, 2026-11-07) `sentinel.at = keep[CAP-2].at`: thông báo nhắc mở ứng dụng ở **cùng phút** với cái thứ
+  63 và đứng sau nó theo thứ tự (at, id) — `"lvhv:sentinel"` lớn hơn mọi id `"lvhv:<uuid>:…"` khi so theo byte vì
+  `s` lớn hơn mọi chữ số hex. Lý do: cái thứ 64 có thể cùng phút với cái thứ 63; nếu đặt `+ 1 phút` thì cái thứ 64
+  bị bỏ mà không có thông báo nhắc nào đứng trước nó (vi phạm I3 của R12, 04 Bổ sung B2 mục 1). Người dùng không mở ứng dụng trong thời gian dài (ví dụ 63 lời nhắc ≈ vài tháng
   với 10 hồ sơ × 2 mốc) sẽ thấy thông báo nhắc mở ứng dụng thay vì mất lời nhắc lặng lẽ.
+- (Bổ sung B3, 2026-11-07) Thông báo nhắc mở ứng dụng được thêm **khi còn bất kỳ lời nhắc tương lai nào không được
+  đặt** — vì vượt 63 cái, hoặc vì nằm ngoài cửa sổ 400 ngày (`beyond`). Nó luôn ở cùng phút với lời nhắc cuối cùng
+  đã đặt và xếp sau nó (thứ tự (at, id) như trên). Khi không đặt được lời nhắc nào trong cửa sổ mà vẫn có lời nhắc ở
+  xa hơn, thông báo đặt lúc **09:00 giờ thiết bị của ngày `hôm nay + 399`** (ghi chú 2026-11-07 theo duyệt mã
+  MA3-14-06; bản B3 đầu tiên đặt đúng `now + 400 ngày`, có thể kêu nửa đêm) — vẫn sau `now`, không muộn hơn `hi`, nên
+  không muộn hơn lời nhắc sớm nhất chưa đặt (lời nhắc đó có `at > hi`). I4 không đổi.
+  Khi mọi lời nhắc tương lai đều đã đặt (≤ 64 trong cửa sổ, không có gì ngoài cửa sổ) thì không có thông báo này.
+  Bảo đảm thêm (I4 của R12): nếu có lời nhắc tương lai không được đặt thì có thông báo nhắc mở ứng dụng với `at` ≤
+  lời nhắc sớm nhất trong số đó. Để biết `beyond` mà không phải tính mọi năm tới 3000, cài đặt quét các lần xuất hiện
+  tới `hôm nay + 400 + 500 ngày` (đủ để mục lặp hằng năm, năm âm dài nhất 385 ngày, mốc nhắc trước tối đa 60 ngày,
+  lộ ra một lời nhắc ngoài cửa sổ) và mọi sự kiện không lặp tới 3000-12-31.
 - Trigger dùng `DateComponents` (năm, tháng, ngày, giờ, phút) **không** gắn múi giờ → chạy theo giờ đồng hồ của thiết
   bị, khớp §7.1.
+
+- (Bổ sung B4, 2026-11-07) Mọi cách lập lịch ở §7.3–§7.5 dùng tập lần xuất hiện của §6.1: khi một người được cập
+  nhật ngày mất, lời nhắc sinh nhật và sự kiện của người đó bị gỡ ở lần `reschedule` / bước chuỗi báo thức kế tiếp
+  (gọi khi lưu dữ liệu), không cần thao tác riêng.
 
 ### 7.5 Windows và PWA
 
@@ -263,12 +325,67 @@ reschedule(now):
   ứng dụng vào ngày có lời nhắc đến hạn, hiện thẻ nhắc trong trang (không cần quyền); và xuất **.ics** (§8) để lịch
   của hệ điều hành nhắc thay. Giao diện nói rõ giới hạn này.
 
+### 7.6 Danh sách theo kỳ (R13) — Bổ sung B2, 2026-11-07
+
+Đăng ký **trước khi viết mã** (04 Bổ sung B2 mục 4, R13). Mục này nói lại R13 cho chính xác; không đổi mệnh đề R13.
+
+```
+period_bounds(kind, anchor) -> (from, to)              # anchor: ngày dương bất kỳ; from ≤ anchor ≤ to
+  "tuan":  w    := thứ(anchor)                          # 0 = Chủ nhật, 1 = Thứ Hai, …, 6 = Thứ Bảy
+           from := anchor − ((w + 6) mod 7) ngày        # Thứ Hai của tuần chứa anchor
+           to   := from + 6 ngày                        # Chủ nhật
+  "thang": from := (anchor.y, anchor.m, 1);  to := ngày cuối tháng anchor.m (28/29/30/31)
+  "quy":   q    := (anchor.m − 1) div 3                 # 0…3: tháng 1–3, 4–6, 7–9, 10–12
+           from := (anchor.y, 3q + 1, 1);    to := ngày cuối tháng 3q + 3
+  "nam":   from := (anchor.y, 1, 1);         to := (anchor.y, 12, 31)
+
+events_in_period(ds, kind, anchor, filter) -> {kind, anchor, from, to, filter, items}
+  (from, to) := period_bounds(kind, anchor)
+  items := [ o ∈ L(from, to) | thuoc(o, filter) ]       # giữ nguyên thứ tự của L
+
+prev(kind, anchor) := period_bounds(kind, from − 1 ngày)    # kỳ liền trước
+next(kind, anchor) := period_bounds(kind, to + 1 ngày)      # kỳ liền sau
+```
+
+- `L(from, to)`: **đúng tập và đúng thứ tự** của danh sách §7.2, chỉ thay cửa sổ `[hôm nay, hôm nay + 30]` bằng
+  `[from, to]` (**gồm cả hai đầu**): giỗ; tiên thường khi quy tắc nhắc giỗ của hồ sơ có `tien_thuong = true`; sinh
+  nhật dương; sinh nhật âm khi `sinh_nhat_am = true`; sự kiện (dương lặp, âm lặp, một lần). Mỗi lần xuất hiện thuộc
+  kỳ theo **ngày dương của chính nó**: lễ tiên thường (ngày `D − 1`) của một giỗ ngày đầu kỳ sau thuộc kỳ trước.
+  Giống §7.2, danh sách **không phụ thuộc** công tắc nhắc chung, `rule.enabled` hay `offsets_days`.
+- Bộ lọc `filter` (**Bổ sung B4, 2026-11-07**, thay quy tắc B2 bên dưới):
+  - `"tat_ca"`: mọi phần tử của `L` (tập §6.1).
+  - `"da_mat"`: lần xuất hiện có `class` ∈ {`gio`, `tien_thuong`}.
+  - `"dang_song"`: mọi lần xuất hiện còn lại (sinh nhật dương, sinh nhật âm, sự kiện).
+  - Hệ quả (kiểm ở R13(c)): `da_mat` và `dang_song` rời nhau và hợp lại đúng bằng `tat_ca`, giữ thứ tự.
+  - Theo §6.1, sự kiện gắn với người đã mất (dù chỉ một người) không có lần xuất hiện nào, nên không có trong bộ lọc
+    nào.
+  - (Quy tắc cũ của B2, **không còn hiệu lực**: "đã mất" gồm cả sự kiện có `person_ids` không rỗng và mọi người đã
+    mất; sự kiện hỗn hợp vào "đang sống".)
+- Mỗi phần tử `items[i]`:
+
+| Trường | Nội dung |
+|---|---|
+| `date` | Ngày dương của lần xuất hiện |
+| `lunar` | `S2L(date)` theo phương pháp đang dùng: `{y, m, d, leap}` (với giỗ trùng `(Y, m, d', false)` của §2.2) |
+| `class` | `gio`, `tien_thuong`, `sinh_nhat`, `sinh_nhat_am`, `su_kien_duong_lap`, `su_kien_am_lap`, `su_kien_khong_lap` (như A.3) |
+| `entity_id` | Id hồ sơ (giỗ, tiên thường, sinh nhật) hoặc id sự kiện |
+| `person_ids` | Hồ sơ liên quan: `[id hồ sơ]` cho lần xuất hiện của hồ sơ; `person_ids` của sự kiện (thứ tự đã lưu) cho sự kiện |
+| `name` | Hồ sơ: tên hiển thị `danh_xung + " " + ho_ten` (không có dấu cách thừa khi `danh_xung` rỗng). Sự kiện: `tieu_de`, rỗng thì tên loại sự kiện (01 §3.4), không có loại thì `"Sự kiện"` |
+| `key` | `occ.key` (§7.1): năm âm/dương Y hoặc `"once"` |
+| `n` | Như A.3: giỗ lần thứ n = Y − năm âm mất (`null` khi không rõ năm), tiên thường lấy `n` của giỗ; sinh nhật dương: tuổi tròn = Y − năm sinh; sinh nhật âm: n = Y − năm âm sinh (tuổi âm = n + 1); sự kiện lặp: số năm = Y − năm gốc (`null` khi không rõ năm); sự kiện một lần: `null` |
+| `label` | Nhãn giỗ §3 (`gio`, `gio_dau`, `gio_het`) cho giỗ và cho tiên thường (nhãn của giỗ hôm sau); `null` cho loại khác. Loại "tiên thường" đọc ở `class` |
+
+- Giao diện hiển thị theo `class`, `label`, `n` (ví dụ "Giỗ đầu", "Tiên thường", "Sinh nhật (36 tuổi)", "Kỷ niệm 5
+  năm ngày cưới") và có nút kỳ trước / kỳ sau (`prev`, `next`).
+- Phương pháp lịch: mặc định của lõi (`Jpl` từ bản 0.1.4).
+
 ## 8. Tệp .ics (RFC 5545)
 
 ### 8.1 Phạm vi và cấu trúc
 
 - Nội dung: mọi lần xuất hiện có ngày dương trong `[hôm nay, hôm nay + 10 năm)` của các mục người dùng chọn xuất
-  (mặc định: tất cả có nhắc bật). Mỗi lần xuất hiện là **một VEVENT riêng với ngày cụ thể**; **không dùng RRULE**
+  (mặc định: tất cả có nhắc bật). (Bổ sung B4, 2026-11-07) Tập lần xuất hiện theo §6.1: sinh nhật và sự kiện của
+  người đã mất không vào tệp, kể cả khi người dùng chọn đích danh mục đó. Mỗi lần xuất hiện là **một VEVENT riêng với ngày cụ thể**; **không dùng RRULE**
   (lịch âm không biểu diễn được bằng RRULE; sinh nhật 29/02 cũng vậy).
 - Tên tệp: `LichVanHoaViet-ngay-gio-<YYYY-MM-DD>.ics`; kiểu `text/calendar; charset=utf-8`; dòng kết thúc CRLF.
 
@@ -322,8 +439,8 @@ END:VCALENDAR
 | `UID` | `<id thực thể>-<loại>-<khóa năm>@lich.clevix.vn`; loại ∈ `gio`, `tt` (tiên thường), `sn` (sinh nhật dương), `sna` (sinh nhật âm), `ev` (sự kiện); khóa năm = năm âm Y hoặc năm dương Y như `occ.key` (§7.1). **Ổn định**: xuất lại sau khi sửa hồ sơ cho cùng UID, nên ứng dụng lịch cập nhật thay vì nhân đôi. UID chỉ chứa UUID ngẫu nhiên, không chứa tên |
 | `SEQUENCE` | `rev` của bản ghi nguồn (Person hoặc Event) |
 | `DTSTAMP` | Thời điểm xuất, UTC |
-| `VALARM` | Một khối cho mỗi phần tử `offsets_days`; `ACTION:DISPLAY` + `DESCRIPTION` + `TRIGGER` (đủ ba trường bắt buộc). Trigger tương đối với đầu ngày: `dur = time_local − k × 24h`, viết dạng chuẩn `[-]P{d}DT{h}H{m}M` bỏ phần bằng 0 (k=3, 07:00 → `-P2DT17H`; k=0, 07:00 → `PT7H`; k=1, 00:00 → `-P1D`) |
-| Tiên thường | Nếu bật: VEVENT cả ngày riêng (UID loại `tt`) vào ngày `D − 1`, một VALARM `PT{time_local}` |
+| `VALARM` | Một khối cho mỗi phần tử `offsets_days`; `ACTION:DISPLAY` + `DESCRIPTION` + `TRIGGER` (đủ ba trường bắt buộc). Trigger tương đối với đầu ngày: `dur = time_local − k × 24h`, viết dạng chuẩn `[-]P{d}DT{h}H{m}M` bỏ phần bằng 0 (k=3, 07:00 → `-P2DT17H`; k=0, 07:00 → `PT7H`; k=1, 00:00 → `-P1D`). (Bổ sung B2, 2026-11-07) Nhắc đúng lúc bắt đầu ngày (`dur = 0`, tức k = 0 và `time_local = 00:00`) ghi **`TRIGGER;RELATED=START:PT0S`** |
+| Tiên thường | Nếu bật: VEVENT cả ngày riêng (UID loại `tt`) vào ngày `D − 1`, một VALARM `PT{time_local}`. (Bổ sung B2, 2026-11-07) `SUMMARY` của VEVENT này là **`Tiên thường — `** + tiêu đề của giỗ hôm sau (ví dụ `Tiên thường — Giỗ đầu Ông Nguyễn Văn A`) |
 | Văn bản | Thoát `\` → `\\`, `;` → `\;`, `,` → `\,`, xuống dòng → `\n` (RFC 5545 §3.3.11) |
 | Gấp dòng | Mỗi dòng ≤ 75 **octet** (không tính CRLF); dòng tiếp theo bắt đầu bằng một dấu cách; không cắt giữa một ký tự UTF-8 nhiều byte (§3.1) |
 | Riêng tư | Tệp chứa tên và ngày; trước khi xuất hiện hộp xác nhận "Tệp này chứa tên và ngày giỗ của … người. Bất kỳ ai có tệp đều đọc được." |
@@ -359,15 +476,20 @@ ngày mất nhập rồi theo Y tăng dần; năm có ngày dương ngoài miề
 dòng): `cfg` = chỉ số 0…; thứ tự lồng: mask nút có sẵn 0…63 (bit i ↔ {0,1,3,5,10,15}[i]) → mốc tự đặt (trống, 1…60)
 → `tien_thuong` (0, 1) → `time_local` (00:00, 07:00, 23:59) → `class` (`gio`, `sinh_nhat`, `sinh_nhat_am`,
 `su_kien_duong_lap`, `su_kien_am_lap`, `su_kien_khong_lap`). `presets`/`offsets` ngăn bằng dấu cách; `offsets` là tập
-sau khi gộp. `reminders DATASET [FROM TO]` → `cfg,id,at_local,type,occ_date`: với mỗi cấu hình, mọi lần xuất hiện của
+sau khi gộp. `reminders DATASET [FROM TO] [--global-off|--rule-off]` → `cfg,id,at_local,type,occ_date`: với mỗi cấu hình, mọi lần xuất hiện của
 lớp đó trong bộ dữ liệu có ngày trong [FROM, TO] (mặc định 2026-01-01 … 2036-12-31), mỗi lần dùng quy tắc của bản ghi
 với `offsets_days`/`tien_thuong`/`time_local` thay bằng cấu hình (`id` giữ nguyên), `reminders_enabled = true`, `now` =
 2026-01-01T00:00 giờ thiết bị, múi giờ +07:00. `type` = `k=<số>` hoặc `tt`. Dòng sắp theo (cfg, thời điểm, id).
 Bộ dữ liệu cố định 40 hồ sơ/sự kiện: `memorial/testdata/r3-dataset.json` (sinh từ `make_r3_dataset.py` + `derive`).
+(Bổ sung B3, 2026-11-07) Hai chế độ phụ, cùng định dạng và cùng 140 544 cấu hình: `--global-off` chạy với
+`reminders_enabled = false` (công tắc nhắc chung tắt); `--rule-off` chạy với `rule.enabled = false` ở mọi quy tắc
+(`reminders_enabled = true`). Cả hai **phải** ra 0 lời nhắc, tức tệp chỉ có dòng tiêu đề (04 R3 "Thêm").
 
 **A.3 R11 — `upcoming DATASET FROM TO`** → `today,rank,days,date,class,entity_id,key,n,label`: với mỗi hôm nay,
 danh sách §7.2 theo thứ tự hiển thị (`rank` 0…); `class` thêm `tien_thuong`; `key` = năm âm/dương hoặc `once`;
-`n`, `label` trống khi không có. Phân xử thêm (sau tên, để xác định): lớp, id thực thể, khóa năm.
+`n`, `label` trống khi không có. Phân xử thêm (sau tên, để xác định): lớp, id thực thể, khóa năm. (Bổ sung B3,
+2026-11-07) Dòng `tien_thuong` có `key`, `n` và `label` **của lần giỗ ngày hôm sau** (như §7.6), ví dụ
+`…,tien_thuong,<id>,2026,1,gio_dau`.
 
 **A.4 R10 — `r10 a|b|c|d`.** (a) `birth,lunar_year,can_chi` cho mọi ngày sinh dương 1900-01-01 … 2026-12-31;
 (b) `lunar_year,can_chi` 1899 … 3000; (c) `i,birth,death,nguong,birth_lunar_year,approx,death_lunar_year,value,label,error`
@@ -375,13 +497,54 @@ cho 10 000 cặp từ bộ sinh mulberry32 hạt 20261106 (kiểu sinh xoay vòn
 dương-đủ/âm-đủ, ngưỡng xoay 59/60/61; `birth`, `death` là `DateValue` JSON trong ngoặc kép CSV); (d) `year,rule,date`
 cho sinh 29/02 (gốc 29/02/1896), mọi năm 1900 … 3000 × `feb28`/`mar1`.
 
-**A.5 R12 — `r12 DATASET [--steps]`** → `size,scenario,opens,max_pending,delivered,sentinel_delivered,violations,missed,missed_without_sentinel`
+**A.5 R12 — `r12 DATASET [--steps]`** → `size,scenario,opens,max_pending,delivered,sentinel_delivered,violations,missed,missed_without_sentinel,i1,i2,i3,i4`
 cho cỡ 10/50/200 (bản ghi thứ i = bản ghi i mod 40 của bộ R3, id đổi 8 ký tự đầu thành i dạng hex) × kịch bản `p1`,
 `p0.1`, `p0`; mô phỏng 2026-01-01 … 2028-12-31, mở ứng dụng lúc 09:00 (ngày đầu luôn mở; `p0.1` dùng mulberry32 hạt
 20261106, một số mỗi ngày). `--steps` thêm khối `size,scenario,day,future,pending,sentinel,dropped,violations` cho mỗi
-lần mở. Bất biến: I1 ≤ 64 chờ; I2 63 sớm nhất + thông báo nhắc mở ứng dụng tại `at₆₃ + 1 phút`; I3 mọi lời nhắc bị bỏ có
+lần mở. Bất biến: I1 ≤ 64 chờ; I2 63 sớm nhất + thông báo nhắc mở ứng dụng tại `at₆₃` (Bổ sung B2, 2026-11-07; trước đó `at₆₃ + 1 phút`); I3 mọi lời nhắc bị bỏ có
 `at ≥` thông báo nhắc mở ứng dụng.
+- (Bổ sung B3, 2026-11-07) **I4**: sau mỗi lần mở, nếu có lời nhắc tương lai nào (trong hay ngoài cửa sổ) không đang
+  chờ thì có thông báo nhắc mở ứng dụng với `at` ≤ lời nhắc sớm nhất trong số đó. I2 theo §7.4 mới: khi trong cửa sổ có
+  ≥ 64 lời nhắc, 63 cái sớm nhất đang chờ, và thông báo nhắc mở ứng dụng có tại `at₆₃` nếu còn lời nhắc không được đặt
+  (> 64 trong cửa sổ hoặc có lời nhắc ngoài cửa sổ), không có nếu không còn.
+- Cột: `violations` = tổng số vi phạm; `i1`…`i4` = số vi phạm của từng bất biến (cộng lại bằng `violations`). I1 kiểm
+  mọi ngày (sau khi giao), I2–I4 sau mỗi lần mở. `delivered` = số thông báo đã giao **gồm cả** thông báo nhắc mở ứng
+  dụng; `sentinel_delivered` = phần trong đó là thông báo nhắc mở ứng dụng. Một thông báo được giao khi `at ≤` 09:00 của
+  một ngày mô phỏng (giao trước khi mở ứng dụng ngày đó). `missed` = lời nhắc có `at` trong (09:00 ngày đầu, 09:00 ngày
+  cuối] không được giao; `missed_without_sentinel` = phần trong đó không có thông báo nhắc mở ứng dụng nào được giao
+  với `at` ≤ lời nhắc đó (thông tin, không phải bất biến).
+- Số ngẫu nhiên: ngày đầu (2026-01-01) luôn mở và **không** rút số; từ ngày thứ hai, mỗi ngày rút đúng một số
+  `r = next_u32()` (chỉ ở `p0.1`) và mở khi `r × 10 < 2³²`. `p1` mở mọi ngày, `p0` chỉ mở ngày đầu; hai kịch bản này
+  không rút số.
+- Tập lời nhắc của mô phỏng: mọi lời nhắc của các lần xuất hiện có ngày trong [2026-01-01, 2028-12-31 + 900 ngày] và mọi
+  lời nhắc của sự kiện không lặp tới 3000-12-31 (đủ cho I4 theo §7.4).
 
-**A.6 .ics — `ics DATASET TODAY DTSTAMP`**: tệp §8 cho mọi mục có quy tắc nhắc bật, `[TODAY, TODAY + 10 năm)`. Chi
+**A.6 R13 — `r13 DATASET [FROM TO]`** (Bổ sung B2, 2026-11-07, trước khi viết mã; mặc định FROM = 2026-01-01,
+TO = 2036-12-31). JSONL, **một dòng cho mỗi (kỳ, bộ lọc)**:
+`{"kind":K,"anchor":"YYYY-MM-DD","from":"YYYY-MM-DD","to":"YYYY-MM-DD","filter":F,"items":[ITEM,…]}`, với
+`ITEM` = `{"date":"YYYY-MM-DD","lunar":{"y":…,"m":…,"d":…,"leap":true|false},"class":"…","entity_id":"…","person_ids":["…",…],"name":"…","key":"…","n":số|null,"label":"…"|null}`
+(trường và nghĩa ở §7.6; `key` luôn là chuỗi, ví dụ `"2026"` hoặc `"once"`).
+- Các kỳ: mọi tuần, tháng, quý, năm (theo `period_bounds` §7.6) có **ít nhất một ngày** trong [FROM, TO]. `anchor`
+  = ngày đầu tiên của kỳ nằm trong [FROM, TO] (tức `max(from, FROM)`); `from`, `to` là biên **đầy đủ** của kỳ (không
+  cắt theo FROM/TO; tuần đầu của dải mặc định là 2025-12-29 … 2026-01-04) và `items` tính trên toàn kỳ.
+- Thứ tự dòng: `kind` theo `tuan`, `thang`, `quy`, `nam`; trong mỗi `kind` theo `from` tăng dần; trong mỗi kỳ theo
+  bộ lọc `tat_ca`, `da_mat`, `dang_song`. `items` theo thứ tự §7.2. Không có khoảng trắng ngoài chuỗi; thứ tự khóa
+  đúng như mẫu.
+- Chuỗi JSON: ký tự ngoài ASCII ghi nguyên UTF-8 (không thoát `\u`); chỉ thoát `"` → `\"`, `\` → `\\`, xuống
+  dòng `\n`, `\r`, tab `\t`, và ký tự điều khiển khác < U+0020 dạng `\u00xx` (chữ thường).
+- Dải mặc định cho 575 tuần + 132 tháng + 44 quý + 11 năm = 762 kỳ × 3 bộ lọc = **2 286 dòng**. Phương pháp mặc
+  định `Jpl` (`--method` để đổi).
+- (Bổ sung B3, 2026-11-07) R13 chạy trên **hai** bộ dữ liệu, cùng lệnh: bộ R3 (`memorial/testdata/r3-dataset.json`,
+  không có sự kiện gắn với hồ sơ) và bộ bổ sung `memorial/testdata/r13-linked.json` (sinh bằng
+  `python3 memorial/testdata/make_r13_linked.py`): cùng hồ sơ và cài đặt với bộ R3; 13 sự kiện của bộ R3 được gắn
+  `person_ids` và thêm 4 sự kiện, phủ các ca: một người sống; hai người sống; một người đã mất; hai người đã mất;
+  hỗn hợp đã mất + sống; không gắn ai; sự kiện âm lặp không rõ năm gắn người đã mất, cùng ngày với giỗ của người đó;
+  ngày cưới 29/02 của hai người đã mất với quy tắc nhắc tắt; sự kiện không tiêu đề (hiện tên loại) không có quy tắc
+  nhắc; sự kiện một lần đã qua. Mọi `person_ids` trỏ tới hồ sơ có thật (V3).
+- (Bổ sung B4, 2026-11-07) Theo §6.1, mọi sự kiện của bộ bổ sung có ít nhất một người đã mất **không** xuất hiện ở
+  bộ lọc nào (bộ này nay kiểm phần loại trừ); sự kiện chỉ gắn người sống hoặc không gắn ai vẫn ở "đang sống".
+  `"da_mat"` chỉ còn giỗ và tiên thường.
+
+**A.7 .ics — `ics DATASET TODAY DTSTAMP`** (trước Bổ sung B2 đánh số A.6): tệp §8 cho mọi mục có quy tắc nhắc bật, `[TODAY, TODAY + 10 năm)`. Chi
 tiết đã chọn trong phạm vi §8: thứ tự VEVENT theo §7.2; VALARM theo `offsets_days` giảm dần (như ví dụ §8.1);
 `TRIGGER` bằng 0 viết `PT0S`; VEVENT tiên thường có SUMMARY `Tiên thường — …` và một VALARM nội dung tiên thường.

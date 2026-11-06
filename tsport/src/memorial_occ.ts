@@ -89,9 +89,9 @@ export function eventClass(ev: Event): OccClass {
 
 export function personOccurrences(cal: Cal, p: Person, from: Ymd, to: Ymd, out: Occurrence[]): void {
   if (cmpYmd(from, to) > 0) return;
-  if (p.kind === "deceased") {
-    const d = p.death;
-    if (d === null) return;
+  // 02 §6.1 (Bổ sung B4): a person with a death date has only giỗ — no birthdays.
+  const d = p.death;
+  if (d !== null) {
     for (const a of anniversariesIn(cal, d.lunar.year, d.lunar.month, d.lunar.day, p.gio_het_nam, from, to)) {
       out.push(personOcc(p, "gio", a.year, a.solar, a.n, a.label));
     }
@@ -114,8 +114,13 @@ export function personOccurrences(cal: Cal, p: Person, from: Ymd, to: Ymd, out: 
   }
 }
 
+/** 02 §6.1 (Bổ sung B4): event linked to at least one person with a death date. */
+export function eventHasDeceased(ds: Dataset, ev: Event): boolean {
+  return ev.person_ids.some((id) => ds.persons.find((p) => p.id === id)?.death != null);
+}
+
 export function eventOccurrences(cal: Cal, ds: Dataset, ev: Event, from: Ymd, to: Ymd, out: Occurrence[]): void {
-  if (cmpYmd(from, to) > 0) return;
+  if (cmpYmd(from, to) > 0 || eventHasDeceased(ds, ev)) return;
   const cls = eventClass(ev);
   const dv = ev.date;
   if (cls === "su_kien_duong_lap") {

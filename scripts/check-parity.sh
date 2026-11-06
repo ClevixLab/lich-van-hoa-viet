@@ -12,7 +12,7 @@
 # 6. v0.2 (lvhv-memorial): lvhv-memorial-dump (Rust) ↔ tsport/test/memorial_dump.mjs (TypeScript), so
 #    từng byte mọi đầu ra kiểm định (docs/v0.2/02 Phụ lục A): gio-dates solar 1900–3000 / lunar 1900–2999
 #    / unknown 1900–3000 (R1, cả --gio-het 3 cho một mẫu), reminders configs + reminders đầy đủ R3,
-#    upcoming 2026–2036 (R11), r10 a–d, r12 --steps, ics (bộ R3 và tệp ví dụ), derive; + test đơn vị TS.
+#    upcoming 2026–2036 (R11), r10 a–d, r12 --steps, r13 (R13, 02 Phụ lục A.6; bộ R3 và bộ bổ sung r13-linked), reminders --global-off/--rule-off (= 0), ics (bộ R3 và tệp ví dụ), derive; + test đơn vị TS.
 # Thoát khác 0 nếu có bất kỳ sai lệch nào.
 #
 # Cách dùng (từ bất kỳ đâu):  scripts/check-parity.sh            # cả ba phương pháp
@@ -49,7 +49,7 @@ memorial_parity() {
   (cd tsport && npm run -s typecheck && npm run -s build >/dev/null)
   node tsport/test/memorial_unit.mjs || status=1
   local R="$ROOT/target/release/lvhv-memorial-dump" T="node $ROOT/tsport/test/memorial_dump.mjs"
-  local DS="$ROOT/memorial/testdata/r3-dataset.json" EX="$ROOT/docs/v0.2/schema/example-backup-v1.json"
+  local DS="$ROOT/memorial/testdata/r3-dataset.json" LK="$ROOT/memorial/testdata/r13-linked.json" EX="$ROOT/docs/v0.2/schema/example-backup-v1.json"
   local cmds=(
     "gio-dates solar 1900-01-01 3000-12-31 10"
     "gio-dates lunar 1900 2999 10"
@@ -59,9 +59,15 @@ memorial_parity() {
     "--method precise gio-dates solar 2070-01-01 2090-12-31 10"
     "reminders configs"
     "reminders $DS"
+    "reminders $DS --global-off"
+    "reminders $DS --rule-off"
     "upcoming $DS 2026-01-01 2036-12-31"
     "r10 a" "r10 b" "r10 c" "r10 d"
     "r12 $DS --steps"
+    "r13 $DS"
+    "r13 $LK"
+    "--method precise r13 $DS 2026-01-01 2027-12-31"
+    "r13 $EX 2026-01-01 2030-12-31"
     "ics $DS 2026-11-06 20261106T031500Z"
     "ics $EX 2026-07-01 20261106T031500Z"
     "derive $EX"
@@ -80,6 +86,16 @@ memorial_parity() {
   if ! "$R" derive "$TMP/r3-in.json" | cmp -s - "$DS"; then
     echo "[parity] LỖI: memorial/testdata/r3-dataset.json khác bản sinh lại (make_r3_dataset.py | derive)" >&2; status=1
   fi
+  if ! python3 "$ROOT/memorial/testdata/make_r13_linked.py" | cmp -s - "$LK"; then
+    echo "[parity] LỖI: memorial/testdata/r13-linked.json khác bản sinh lại (make_r13_linked.py)" >&2; status=1
+  fi
+  # R3 (04 Bổ sung B3 mục 2): công tắc chung tắt và rule.enabled = false → 0 lời nhắc (chỉ dòng tiêu đề).
+  local m
+  for m in --global-off --rule-off; do
+    if [[ "$($R reminders "$DS" $m | wc -l)" != 1 ]]; then
+      echo "[parity] LỖI: reminders $m phải ra 0 lời nhắc" >&2; status=1
+    else log "R3 reminders $m: 0 lời nhắc"; fi
+  done
 }
 
 status=0

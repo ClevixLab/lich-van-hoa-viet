@@ -2,8 +2,8 @@
 // R12 simulation. Instants are minutes (UTC) since JDN 0 (exact in doubles: < 2^33).
 
 import type { Cal } from "./memorial_cal.ts";
-import { type Dataset, type ReminderRule, type Ymd, fmtHhmm, iso, parseHhmm, parseYmd, ymdFromJdn, ymdJdn } from "./memorial_model.ts";
-import { type Occurrence, type RemType, keyText, notificationText, occurrencesWithTt, ruleOf } from "./memorial_occ.ts";
+import { type Dataset, type ReminderRule, type Ymd, cmpYmd, fmtHhmm, iso, parseHhmm, parseYmd, ymdFromJdn, ymdJdn } from "./memorial_model.ts";
+import { type Occurrence, type RemType, eventClass, keyText, notificationText, occurrencesWithTt, ruleOf } from "./memorial_occ.ts";
 
 export class Zone {
   readonly initial: number;
@@ -110,19 +110,48 @@ export interface Plan { keep: Pending[]; remove: string[]; add: Pending[]; repla
 
 const cmpPending = (a: Pending, b: Pending) => a.at - b.at || cmpId(a.id, b.id);
 
-export function selectKeep(desired: Pending[]): Pending[] {
-  if (desired.length > CAP) {
-    const keep = desired.slice(0, CAP - 1);
-    keep.push({ id: SENTINEL_ID, at: keep[CAP - 2].at + 1, content: SENTINEL_TEXT });
+/** 02 §7.4 (Bổ sung B3): sentinel whenever any future reminder is left unscheduled (cap or beyond window). */
+export function selectKeep(desired: Pending[], beyond: boolean, fallbackAt: number): Pending[] {
+  if (desired.length > CAP || beyond) {
+    const keep = desired.slice(0, Math.min(desired.length, CAP - 1));
+    const at = keep.length > 0 ? keep[keep.length - 1].at : fallbackAt;
+    keep.push({ id: SENTINEL_ID, at, content: SENTINEL_TEXT });
     return keep;
   }
   return desired.slice();
 }
 
-export function reschedule(now: number, desiredAll: Pending[], pending: Pending[]): Plan {
+export const BEYOND_SCAN_DAYS = 500;
+
+function onceRemindersAfter(cal: Cal, ds: Dataset, after: Ymd, now: number, tz: Zone): Reminder[] {
+  const once: Dataset = { ...ds, persons: [], events: ds.events.filter((e) => eventClass(e) === "su_kien_khong_lap") };
+  const from = ymdFromJdn(ymdJdn(after) + 1);
+  const end = { y: 3000, m: 12, d: 31 };
+  if (once.events.length === 0 || cmpYmd(from, end) > 0) return [];
+  return allReminders(cal, once, from, end, now, tz);
+}
+
+/** Input `desiredAll` for `reschedule` at `now` (mirror of Rust `reschedule_input`). */
+export function rescheduleInput(cal: Cal, ds: Dataset, now: number, tz: Zone): Reminder[] {
+  const today = ymdFromJdn(Math.floor(tz.toLocal(now) / 1440));
+  const to = ymdFromJdn(ymdJdn(today) + WINDOW_DAYS + BEYOND_SCAN_DAYS);
+  const v = allReminders(cal, ds, today, to, now, tz);
+  v.push(...onceRemindersAfter(cal, ds, to, now, tz));
+  sortReminders(v);
+  return v;
+}
+
+export const SENTINEL_FALLBACK_HHMM = 9 * 60;
+/** 09:00 device time of day `today + 399` (02 §7.4, MA3-14-06). */
+export function sentinelFallback(now: number, tz: Zone): number {
+  const today = Math.floor(tz.toLocal(now) / 1440);
+  return tz.localToUtc((today + WINDOW_DAYS - 1) * 1440 + SENTINEL_FALLBACK_HHMM);
+}
+
+export function reschedule(now: number, desiredAll: Pending[], pending: Pending[], tz: Zone): Plan {
   const hi = now + WINDOW_DAYS * 1440;
   const desired = desiredAll.filter((p) => p.at > now && p.at <= hi).sort(cmpPending);
-  const keep = selectKeep(desired);
+  const keep = selectKeep(desired, desiredAll.some((p) => p.at > hi), sentinelFallback(now, tz));
   const keepIds = new Set(keep.map((k) => k.id));
   const byId = new Map(pending.map((p) => [p.id, p] as const));
   const plan: Plan = { keep, remove: [], add: [], replace: [] };
@@ -161,18 +190,21 @@ export class Mulberry32 {
 
 export interface SimStep { day: Ymd; future: number; pending: number; sentinel: boolean; dropped: number; violations: string[] }
 export interface SimResult {
-  steps: SimStep[]; opens: number; delivered: number; sentinel_delivered: number; max_pending: number; violations: number;
+  steps: SimStep[]; opens: number; delivered: number; sentinel_delivered: number; max_pending: number; violations: number; by_inv: number[];
   missed: number; missed_without_sentinel: number;
 }
 
 export function simulate(
   cal: Cal, ds: Dataset, tz: Zone, start: Ymd, end: Ymd, openHhmm: number, pNum: number, pDen: number, seed: number, showNames: boolean,
 ): SimResult {
-  const horizonTo = ymdFromJdn(ymdJdn(end) + WINDOW_DAYS + 61);
-  const allP = allReminders(cal, ds, start, horizonTo, -Infinity, tz).map((r) => toPending(cal, r, showNames));
+  const horizonTo = ymdFromJdn(ymdJdn(end) + WINDOW_DAYS + BEYOND_SCAN_DAYS);
+  const all = allReminders(cal, ds, start, horizonTo, -Infinity, tz);
+  all.push(...onceRemindersAfter(cal, ds, horizonTo, -Infinity, tz));
+  sortReminders(all);
+  const allP = all.map((r) => toPending(cal, r, showNames));
   const rng = new Mulberry32(seed);
   let pending: Pending[] = [];
-  const res: SimResult = { steps: [], opens: 0, delivered: 0, sentinel_delivered: 0, max_pending: 0, violations: 0, missed: 0, missed_without_sentinel: 0 };
+  const res: SimResult = { steps: [], opens: 0, delivered: 0, sentinel_delivered: 0, max_pending: 0, violations: 0, by_inv: [0, 0, 0, 0], missed: 0, missed_without_sentinel: 0 };
   const deliveredIds = new Set<string>();
   const sentinelTimes: number[] = [];
   const tStart = tz.localToUtc(localMinutes(start, openHhmm));
@@ -195,7 +227,7 @@ export function simulate(
     else opened = rng.nextU32() * pDen < pNum * 4294967296;
     if (opened) {
       res.opens++;
-      const plan = reschedule(tOpen, allP, pending);
+      const plan = reschedule(tOpen, allP, pending, tz);
       pending = applyPlan(pending, plan);
       const hi = tOpen + WINDOW_DAYS * 1440;
       const fut = allP.filter((p) => p.at > tOpen && p.at <= hi);
@@ -203,18 +235,24 @@ export function simulate(
       const v: string[] = [];
       if (fut.length >= CAP) {
         const ok63 = fut.slice(0, CAP - 1).every((f) => pending.some((p) => p.id === f.id && p.at === f.at));
-        const wantS = fut.length > CAP ? fut[CAP - 2].at + 1 : null;
+        const beyond = allP.some((p) => p.at > hi);
+        const wantS = fut.length > CAP || beyond ? fut[CAP - 2].at : null;
         if (!ok63 || sentinel !== wantS) v.push("I2");
       }
       const kept = new Set(pending.map((p) => p.id));
       const dropped = fut.filter((f) => !kept.has(f.id));
       if (dropped.some((f) => sentinel === null || f.at < sentinel)) v.push("I3");
+      let earliest: number | null = null;
+      for (const p of allP) if (p.at > tOpen && !kept.has(p.id) && (earliest === null || p.at < earliest)) earliest = p.at;
+      if (earliest !== null && (sentinel === null || sentinel > earliest)) v.push("I4");
       if (pending.length > CAP) v.push("I1");
+      for (const c of v) res.by_inv[c === "I1" ? 0 : c === "I2" ? 1 : c === "I3" ? 2 : 3]++;
       res.violations += v.length;
       res.max_pending = Math.max(res.max_pending, pending.length);
       res.steps.push({ day, future: fut.length, pending: pending.length, sentinel: sentinel !== null, dropped: dropped.length, violations: v });
     } else if (pending.length > CAP) {
       res.violations++;
+      res.by_inv[0]++;
     }
   }
   const tEnd = tz.localToUtc(localMinutes(end, openHhmm));

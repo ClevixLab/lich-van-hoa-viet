@@ -31,6 +31,59 @@ Computation → `Unavailable`. Mọi kiểm tra miền do lõi làm; không hàm
 "năm sinh âm lịch" (kèm giải thích: sinh trước Tết thì lấy năm trước). Có ngày sinh đầy đủ thì đổi bằng
 `lunar_year_of_birth`.
 
+## Phần v0.2 — hồ sơ, ngày giỗ, nhắc, sao lưu (`src/v02.rs`)
+
+Cho giao diện native đợt 3 (docs/v0.2/05 §2). Ít hàm, mỗi hàm làm trọn một việc; dữ liệu vào/ra là **JSON** đúng
+lược đồ `docs/v0.2/schema/backup-v1.schema.json` (Person, Event, EventType, AppSettings, tài liệu sao lưu). Lỗi:
+`LvhvDataError` (Kotlin `LvhvDataException.*`, Swift `LvhvDataError.*`) — `Invalid`, `NotFound`, `Storage`,
+`Backup`; thông điệp tiếng Việt. Thời điểm: giây Unix (UTC); giờ đồng hồ thiết bị: `fire_local` dạng
+`YYYY-MM-DDTHH:MM`. Múi giờ thiết bị: `DeviceZone {offset_min, transitions:[{at_unix_s, offset_min}]}`
+(Việt Nam: `{420, []}`). Lịch: phương pháp mặc định của lõi (`jpl`).
+
+| Rust | Việc |
+|---|---|
+| `LvhvStore::open(dir)` | Mở/tạo kho SQLite (`lvhv.sqlite`, `photos/`) trong thư mục riêng của ứng dụng (01 §4.2) |
+| `settings_json()`, `put_settings_json(json)` | `AppSettings` |
+| `mark_deceased_json(person_id, death_date_value_json, notice_json?, today)` | Cập nhật người đang sống thành đã mất trên **cùng** hồ sơ (01 §3.2a, US-M-07): thêm `death` + thông tin báo tử tùy chọn, `kind = deceased`, tăng `rev`, bỏ quy tắc nhắc sinh nhật; theo 02 §6.1 (B4) sinh nhật và sự kiện của người này không còn lần xuất hiện |
+| `persons_json()`, `person_json(id)`, `save_person_json(json)`, `delete_person(id)` | Hồ sơ. `save_person_json` tự tính trường dẫn xuất (02 §1, §4), gắn id/`created_at`/`updated_at`/`rev`, kiểm V1–V8 |
+| `events_json()`, `save_event_json(json)`, `delete_event(id)` | Sự kiện |
+| `event_types_json()`, `save_event_type_json(json)` | Loại sự kiện (tên duy nhất — V7) |
+| `add_photo(id, mime, width, height, bytes)`, `photo_bytes(id)` | Ảnh chân dung (đã mã hóa lại, không EXIF) |
+| `dataset_json()` | Toàn bộ kho dạng tài liệu sao lưu — đầu vào `dataset_json` của các hàm dưới |
+| `backup_reminder_due()`, `export_backup(password, app_version, platform)`, `apply_import(backup, mode)` | Sao lưu (03); `mode` = `Replace` \| `Merge` |
+| `open_backup(file, password)` → `VerifiedBackup` (`preview()`) | Giải mã + kiểm tra toàn bộ, chưa ghi gì; lỗi → "Sai mật khẩu hoặc tệp bị hỏng" |
+| `derive_person_json(json)`, `save_death_json(date_value)`, `derive_birth_json(date_value)` | Tính/kiểm trường dẫn xuất không ghi (xem trước trong màn hình nhập) |
+| `person_summary_json(person, today)` | Tên hiển thị, Can Chi, tuổi dương/tuổi âm (02 §4.3), "Hưởng thọ … tuổi" (02 §4.2), ngày mất âm lịch |
+| `upcoming_json(dataset, today, days)` | Danh sách "Sắp tới" (02 §7.2) |
+| `period_bounds(kind, anchor)`, `period_prev`, `period_next`, `events_in_period_json(dataset, kind, anchor, filter)` | Danh sách theo kỳ (02 §7.6, R13) |
+| `reminders_json(dataset, now, zone, horizon_days, show_names = false)` | Lời nhắc (02 §7.1), văn bản màn hình khóa theo O-9 |
+| `reschedule_json(dataset, now, zone, pending_json, show_names = false)`, `sentinel_info() -> SentinelInfo {id, text}` | Xoay vòng 64 yêu cầu chờ cho iOS/macOS/Windows (02 §7.4) |
+| `android_alarm_step_json(dataset, now, last_run, zone, show_names = false)` | Một bước chuỗi báo thức Android (02 §7.3): lời nhắc cần đăng ngay + báo thức kế tiếp (không giới hạn cửa sổ) |
+| `LvhvStore::lock_screen_names()`, `set_lock_screen_names(bool)` | Tùy chọn O-9 "hiện tên trên màn hình khóa", mặc định `false`, lưu cục bộ trong kho (bảng `meta`), không vào sao lưu |
+| `LvhvStore::reminders_json(now, zone, horizon)`, `reschedule_json(now, zone, pending)`, `android_alarm_step_json(now, last_run, zone)`, `upcoming_json(today, days)`, `events_in_period_json(kind, anchor, filter)` | Như các hàm tự do nhưng đọc dữ liệu **và tùy chọn O-9** từ kho — ứng dụng native **nên dùng các hàm này** |
+| `ics_export(dataset, today, now, only_ids)` → `IcsExport {file_name, content, events, persons}` | Tệp .ics 10 năm (02 §8); `persons` cho hộp xác nhận S10 |
+| `new_uuid()` | UUID v4 (01 §1) |
+
+Lược đồ đầu ra: `docs/v0.2/schema/ffi-v02-output.schema.json` (mọi đối tượng đóng; kiểm thử `output_matches_schema`
+so đầu ra thật của từng hàm với lược đồ). Đổi hay thêm trường phải sửa lược đồ cùng lúc.
+
+Thông tin báo tử (`death.notice`, 01 §3.2a): chỉ có trong dữ liệu hồ sơ (`person_json`, `persons_json`,
+`dataset_json`) và tệp sao lưu mã hóa; **không** có trong lời nhắc, thông báo, .ics, tên tệp, danh sách hay
+`person_summary_json` (kiểm thử `notice_never_leaks` gieo chuỗi canh vào mọi trường và dò mọi đầu ra). Xóa hồ sơ xóa
+luôn ảnh giấy báo tử. Chuỗi được chuẩn hóa NFC, cắt khoảng trắng; rỗng → `null`.
+
+O-9: khi không hiện tên, phần tử lời nhắc chỉ có `occ = {entity_id, class, date, key}` (không có `name`,
+`headline`, `date_line`); **nội dung thông báo chỉ lấy từ `title`/`body`**.
+
+Kiểm dữ liệu vào: năm ngoài 1900–3000, giây Unix ngoài 1900–3000 (ví dụ truyền mili giây), độ lệch múi giờ có
+|giá trị| > 1080 phút (ví dụ truyền giây) hoặc lần chuyển giờ không tăng dần → `LvhvDataError.Invalid`.
+
+Mật khẩu sao lưu: phía Rust xóa bản sao `String` nhận qua FFI (`Zeroizing`) sau khi dùng. `VerifiedBackup` giữ bản
+rõ đã giải mã tới khi đối tượng bị hủy: Kotlin dùng trong `use { }`, Swift giải phóng ngay sau `apply_import`.
+
+Kotlin: `[bindings.kotlin] android = true` trong `uniffi.toml` để mã dọn đối tượng không dùng
+`java.lang.ref.Cleaner` (API 33) với `minSdk 26`.
+
 ## Dữ liệu nhúng
 
 `include_str!` của `content/cadao/cadao.json`, `content/cadao/SOURCES.md`, `content/ngochap/SOURCES.md`.

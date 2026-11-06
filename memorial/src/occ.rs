@@ -196,35 +196,34 @@ pub fn event_class(ev: &Event) -> OccClass {
     }
 }
 
-/// Mọi lần xuất hiện của một người có ngày dương trong `[from, to]` (chưa sắp).
+/// Mọi lần xuất hiện của một người có ngày dương trong `[from, to]` (chưa sắp). 02 §6.1 (Bổ sung B4):
+/// hồ sơ có ngày mất chỉ có giỗ; không có sinh nhật dương/âm dù còn dữ liệu ngày sinh.
 pub fn person_occurrences(cal: &Cal, p: &Person, from: Ymd, to: Ymd, out: &mut Vec<Occurrence>) {
     if from > to {
         return;
     }
-    match p.kind {
-        PersonKind::Deceased => {
-            if let Some(d) = &p.death {
-                for a in anniversaries_in(
-                    cal,
-                    d.lunar.year,
-                    d.lunar.month,
-                    d.lunar.day,
-                    p.gio_het_nam,
-                    from,
-                    to,
-                ) {
-                    out.push(person_occ(
-                        p,
-                        OccClass::Gio,
-                        OccKey::Year(a.year),
-                        a.solar,
-                        a.n,
-                        Some(a.label),
-                    ));
-                }
+    match &p.death {
+        Some(d) => {
+            for a in anniversaries_in(
+                cal,
+                d.lunar.year,
+                d.lunar.month,
+                d.lunar.day,
+                p.gio_het_nam,
+                from,
+                to,
+            ) {
+                out.push(person_occ(
+                    p,
+                    OccClass::Gio,
+                    OccKey::Year(a.year),
+                    a.solar,
+                    a.n,
+                    Some(a.label),
+                ));
             }
         }
-        PersonKind::Living => {
+        None => {
             let Some(b) = &p.birth else { return };
             if let Some(s) = b.solar {
                 for y in from.y.max(s.y + 1)..=to.y {
@@ -262,7 +261,15 @@ pub fn person_occurrences(cal: &Cal, p: &Person, from: Ymd, to: Ymd, out: &mut V
     }
 }
 
-/// Mọi lần xuất hiện của một sự kiện có ngày dương trong `[from, to]` (chưa sắp).
+/// Sự kiện gắn với ít nhất một hồ sơ có ngày mất (02 §6.1, Bổ sung B4) — không sinh lần xuất hiện.
+pub fn event_has_deceased(ds: &Dataset, ev: &Event) -> bool {
+    ev.person_ids
+        .iter()
+        .any(|id| ds.person(id).is_some_and(|p| p.death.is_some()))
+}
+
+/// Mọi lần xuất hiện của một sự kiện có ngày dương trong `[from, to]` (chưa sắp). Sự kiện gắn với người đã
+/// mất không có lần xuất hiện nào (02 §6.1, Bổ sung B4).
 pub fn event_occurrences(
     cal: &Cal,
     ds: &Dataset,
@@ -271,7 +278,7 @@ pub fn event_occurrences(
     to: Ymd,
     out: &mut Vec<Occurrence>,
 ) {
-    if from > to {
+    if from > to || event_has_deceased(ds, ev) {
         return;
     }
     let class = event_class(ev);

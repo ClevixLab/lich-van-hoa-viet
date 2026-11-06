@@ -1,0 +1,16 @@
+{
+  "cert_photo_id": "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e0c",
+  "description": "Vector bổ sung YC-2026-05 (thông tin báo tử, 01 §3.2a). Không thay vector đã khóa của 03 §2.5.",
+  "file": {
+    "file": "notice-v1.lvhv",
+    "sha256": "6e7409eead212792f0156bae005d61a375becb0466f339b5ce3be8d8ec22cc49"
+  },
+  "json": {
+    "file": "notice-v1.json",
+    "sha256": "4c1c82631466778c57453ee423773cbb494013f0b6ed9e53ac8b58e59fc5fd81"
+  },
+  "nonce_hex": "101112131415161718191a1b1c1d1e1f2021222324252627",
+  "password": "mật khẩu thử nghiệm",
+  "salt_hex": "000102030405060708090a0b0c0d0e0f",
+  "state_sha256": "683b6fca16fc3ffbafec6aa44111c8c87619fbc6fe24583b13fa20fbcb3b18fa"
+}

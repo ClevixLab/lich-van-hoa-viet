@@ -218,15 +218,38 @@ pub fn class_occurrences(
         .collect()
 }
 
+/// Chế độ phụ của dump R3 (04 Bổ sung B3 mục 2, 02 Phụ lục A.2).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum R3Mode {
+    /// `reminders_enabled = true`, `rule.enabled = true` (mặc định).
+    Normal,
+    /// Công tắc nhắc chung tắt: `reminders_enabled = false` → phải ra 0 lời nhắc.
+    GlobalOff,
+    /// `rule.enabled = false` ở mọi quy tắc → phải ra 0 lời nhắc.
+    RuleOff,
+}
+
 /// Lời nhắc của một cấu hình R3 trên các lần xuất hiện cho trước (cùng lớp), quy tắc của mỗi lần
-/// là quy tắc của bản ghi với `offsets_days/tien_thuong/time_local` thay bằng cấu hình (id và
-/// `enabled` giữ nguyên), `reminders_enabled = true`. Sắp theo (at, id).
+/// là quy tắc của bản ghi với `offsets_days/tien_thuong/time_local` thay bằng cấu hình (id giữ
+/// nguyên), `enabled = true` và `reminders_enabled = true` (chế độ `Normal`). Sắp theo (at, id).
 pub fn r3_reminders(
     ds: &Dataset,
     occs: &[Occurrence],
     c: &R3Config,
     now: i64,
     tz: &Zone,
+) -> Vec<Reminder> {
+    r3_reminders_mode(ds, occs, c, now, tz, R3Mode::Normal)
+}
+
+/// Như [`r3_reminders`] với chế độ `mode`.
+pub fn r3_reminders_mode(
+    ds: &Dataset,
+    occs: &[Occurrence],
+    c: &R3Config,
+    now: i64,
+    tz: &Zone,
+    mode: R3Mode,
 ) -> Vec<Reminder> {
     let offs = c.state.offsets();
     let mut out = Vec::new();
@@ -236,12 +259,12 @@ pub fn r3_reminders(
         };
         let rule = ReminderRule {
             id: base.id.clone(),
-            enabled: true,
+            enabled: mode != R3Mode::RuleOff,
             offsets_days: offs.clone(),
             time_local: c.time_local,
             tien_thuong: c.tien_thuong,
         };
-        out.extend(reminders_for(true, &rule, o, now, tz));
+        out.extend(reminders_for(mode != R3Mode::GlobalOff, &rule, o, now, tz));
     }
     crate::remind::sort_reminders(&mut out);
     out
@@ -463,7 +486,7 @@ pub fn scaled_dataset(base: &Dataset, n: usize) -> Dataset {
     ds
 }
 
-pub const R12_HEADER: &str = "size,scenario,opens,max_pending,delivered,sentinel_delivered,violations,missed,missed_without_sentinel\n";
+pub const R12_HEADER: &str = "size,scenario,opens,max_pending,delivered,sentinel_delivered,violations,missed,missed_without_sentinel,i1,i2,i3,i4\n";
 
 /// Ba kịch bản R12: xác suất mở ứng dụng mỗi ngày 1, 0,1, 0.
 pub const R12_SCENARIOS: [(&str, u32, u32); 3] = [("p1", 1, 1), ("p0.1", 1, 10), ("p0", 0, 1)];
@@ -494,14 +517,18 @@ pub fn r12_lines(
             );
             let _ = writeln!(
                 out,
-                "{n},{name},{},{},{},{},{},{},{}",
+                "{n},{name},{},{},{},{},{},{},{},{},{},{},{}",
                 r.opens,
                 r.max_pending,
                 r.delivered,
                 r.sentinel_delivered,
                 r.violations,
                 r.missed,
-                r.missed_without_sentinel
+                r.missed_without_sentinel,
+                r.by_inv[0],
+                r.by_inv[1],
+                r.by_inv[2],
+                r.by_inv[3]
             );
             if let Some(s) = steps.as_deref_mut() {
                 for st in &r.steps {

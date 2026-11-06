@@ -12,6 +12,7 @@ TV=docs/v0.2/schema/test-vectors
 [ -z "$(git status --porcelain -- "$TV")" ] || { echo "[store] LỖI: $TV có sửa chưa commit — commit trước khi kiểm" >&2; exit 2; }
 echo "[store] 1/4 sinh lại vector và so với bản đã commit"
 cargo run --release --locked -q -p lvhv-store --example gen_test_vectors
+cargo run --release --locked -q -p lvhv-store --example gen_notice_vector >/dev/null
 if [ -n "$(git status --porcelain -- "$TV")" ]; then
   git status --porcelain -- "$TV"
   echo "[store] LỖI: vector sinh lại khác bản đã commit" >&2; exit 1
