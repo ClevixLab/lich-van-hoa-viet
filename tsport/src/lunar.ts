@@ -2,7 +2,7 @@
 // Rust: "hnd" (Hồ Ngọc Đức, default) and "precise" (Meeus ch.49 full + ΔT Espenak–Meeus; Trung khí
 // from the apparent solar longitude used for the displayed solar terms).
 
-import { apparentSunLongitudeUt, hndNewMoon, hndNewMoonDay, hndSunSector, preciseNewMoonUt, TZ } from "./astro.ts";
+import { apparentSunLongitudeUt, hndNewMoon, hndNewMoonDay, hndSunSector, localDayOf, localMidnightUt, preciseNewMoonUt } from "./astro.ts";
 import {
   BIRTH_MIN_YEAR, INTERNAL_MAX_YY, INTERNAL_MIN_YY, MAX_LUNAR_YEAR, MAX_YEAR, MIN_LUNAR_YEAR, MIN_YEAR,
   checkJdn, computation, invalidArgument, invalidDate, jdnInRange, outOfRange,
@@ -27,7 +27,7 @@ export function checkMethod(m: unknown): Method {
 
 /** Day (JDN, UTC+7) containing new moon k (Rust `new_moon_day`). */
 export function newMoonDay(method: Method, k: number): number {
-  return method === "hnd" ? hndNewMoonDay(k) : Math.floor(preciseNewMoonUt(k) + 0.5 + TZ / 24.0);
+  return method === "hnd" ? hndNewMoonDay(k) : localDayOf(preciseNewMoonUt(k));
 }
 
 /** New moon k as JD UT (Rust `new_moon_ut_with`). */
@@ -38,7 +38,7 @@ export function newMoonUtWith(method: Method, k: number): number {
 /** 30° sector (0..11) of the Sun at 00:00 UTC+7 of `jdn` (Rust `sun_sector`). */
 export function sunSector(method: Method, jdn: number): number {
   if (method === "hnd") return hndSunSector(jdn);
-  const l = apparentSunLongitudeUt(jdn - 0.5 - TZ / 24.0);
+  const l = apparentSunLongitudeUt(localMidnightUt(jdn));
   // Rust: `((l / 30.0).floor() as i32).rem_euclid(12)` (C-6).
   const s = Math.floor(l / 30.0);
   return ((s % 12) + 12) % 12;
@@ -161,7 +161,7 @@ export class YearTable {
   }
 }
 
-/** Throws LvhvError: InvalidArgument (non-integer/NaN JDN), OutOfRange (outside 2000–3000). */
+/** Throws LvhvError: InvalidArgument (non-integer/NaN JDN), OutOfRange (outside 1900–3000). */
 export function jdnToLunar(jdn: number): LunarDate {
   return jdnToLunarWith(DEFAULT_METHOD, jdn);
 }
@@ -217,8 +217,8 @@ export function lunarYearOfBirthWith(method: Method, y: number, m: number, d: nu
   return jdnToLunarInternal(method, checkedJdn(y, m, d, BIRTH_MIN_YEAR)).y;
 }
 
-/** null if the lunar date does not exist, the lunar year is outside 1999–3000, an argument is not
- *  an integer / `leap` is not a boolean, or the result falls outside 2000-01-01 … 3000-12-31. */
+/** null if the lunar date does not exist, the lunar year is outside 1899–3000, an argument is not
+ *  an integer / `leap` is not a boolean, or the result falls outside 1900-01-01 … 3000-12-31. */
 export function lunarToJdn(ly: number, lm: number, ld: number, leap: boolean): number | null {
   return lunarToJdnWith(DEFAULT_METHOD, ly, lm, ld, leap);
 }

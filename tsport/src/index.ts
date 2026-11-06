@@ -7,7 +7,7 @@
 //
 // Errors mirror Rust (see error.ts): a Rust `Err(DateError::X)` is a thrown `LvhvError`
 // (subclass of RangeError) with `code === "X"`; a Rust `None` is `null`. Supported domain:
-// solar dates 2000-01-01 … 3000-12-31 (lunarYearOfBirth: from 1900-01-01).
+// solar dates 1900-01-01 … 3000-12-31 (lunar calendar in UTC+8 before 1968-01-01, UTC+7 after).
 
 import { MAX_YEAR, MIN_YEAR, computation, invalidArgument, outOfRange } from "./error.ts";
 import { DEFAULT_METHOD, type Method, type SolarDate, checkMethod, lunarToSolarWith } from "./lunar.ts";
@@ -37,7 +37,7 @@ export * as astro from "./astro.ts";
 export * as canchi from "./canchi.ts";
 
 /** Tết Nguyên đán (1st day of lunar month 1, non-leap) of lunar year `ly`.
- *  Throws LvhvError OutOfRange outside 2000–3000, InvalidArgument for a non-integer. */
+ *  Throws LvhvError OutOfRange outside 1900–3000, InvalidArgument for a non-integer. */
 export function tet(ly: number): SolarDate {
   return tetWith(DEFAULT_METHOD, ly);
 }

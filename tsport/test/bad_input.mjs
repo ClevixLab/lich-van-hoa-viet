@@ -44,7 +44,7 @@ async function expectVal(expr, want) {
   ok(r !== "TIMEOUT" && r.ok && r.value === JSON.stringify(want), `${expr}: got ${JSON.stringify(r)} want ${JSON.stringify(want)}`);
 }
 
-const BAD_YEARS = ["-2147483648", "-1e6", "-14621", "-1", "0", "1", "1999", "3001", "35650", "100000", "1e6", "1e9", "2147483647", "2**53"];
+const BAD_YEARS = ["-2147483648", "-1e6", "-14621", "-1", "0", "1", "1899", "3001", "35650", "100000", "1e6", "1e9", "2147483647", "2**53"];
 for (const y of BAD_YEARS) {
   for (const m of ['"hnd"', '"precise"']) {
     await expectErr(`L.solarToLunarWith(${m}, ${y}, 1, 1)`, "OutOfRange");
@@ -67,7 +67,7 @@ for (const v of ["NaN", "2026.5", '"2026"']) await expectErr(`L.tet(${v})`, "Inv
 await expectErr(`L.tet(Infinity)`, "OutOfRange");
 // JDN extremes (RS-01)
 await expectErr(`L.jdnToLunar(2**53)`, "InvalidArgument"); // không phải safe integer
-for (const j of ["0", "-1", "1e9", "-1e9", "2**53 - 1", "2451544", "2817153"]) await expectErr(`L.jdnToLunar(${j})`, "OutOfRange");
+for (const j of ["0", "-1", "1e9", "-1e9", "2**53 - 1", "2415020", "2817153"]) await expectErr(`L.jdnToLunar(${j})`, "OutOfRange");
 await expectErr(`L.jdnToLunar(1.5e6 + 0.5)`, "InvalidArgument"); // RS-06: trước đây d = 15.5
 await expectErr(`L.dayCtxJdn(2461350.5)`, "InvalidArgument");
 // Invalid solar dates
@@ -84,16 +84,18 @@ await expectVal(`L.lunarToSolar(2025, 6, 1, true) !== null`, true);
 await expectVal(`(() => { const m = [1,2,3,4,5,6,7,8,9,10,11,12].find((m) => L.lunarToSolar(2026, m, 30, false) === null); return [L.lunarToSolar(2026, m, 29, false) !== null, L.lunarToSolar(2026, m, 30, false)]; })()`, [true, null]);
 await expectVal(`L.lunarToSolar(2025, 6, 1, 1)`, null); // RS-06: leap phải là boolean
 await expectVal(`L.lunarToSolar(2026, 1, 1, "yes")`, null);
-await expectVal(`L.lunarToSolar(1999, 11, 1, false)`, null); // kết quả trước 2000-01-01
+await expectVal(`L.lunarToSolar(1899, 11, 1, false)`, null); // kết quả trước 1900-01-01
 // Edges
 await expectVal(`[L.solarToLunar(2000,1,1).y, L.solarToLunar(2000,1,1).m, L.solarToLunar(2000,1,1).d]`, [1999, 11, 25]);
+await expectVal(`[L.solarToLunar(1900,1,1).y, L.solarToLunar(1900,1,1).m, L.solarToLunar(1900,1,1).d]`, [1899, 12, 1]);
+await expectVal(`[L.tet(1968).y, L.tet(1968).m, L.tet(1968).d]`, [1968, 1, 29]);
 await expectVal(`L.dayInfo(3000, 12, 31).solar.jdn`, 2817152);
 // findGoodDays range rules (RS-13)
 await expectErr(`L.findGoodDays("cuoi_hoi", {y:2026,m:3,d:1}, {y:2026,m:2,d:1})`, "InvertedRange");
-await expectErr(`L.findGoodDays("cuoi_hoi", {y:2000,m:1,d:1}, {y:3000,m:12,d:31})`, "RangeTooLong");
+await expectErr(`L.findGoodDays("cuoi_hoi", {y:1900,m:1,d:1}, {y:3000,m:12,d:31})`, "RangeTooLong");
 await expectVal(`L.findGoodDays("cuoi_hoi", {y:2026,m:1,d:1}, L.jd.dateFromJdn(L.jd.jdnFromDate(2026,1,1)+366).reduce((o,v,i)=>(o["ymd"[i]]=v,o),{})).length > 0`, true);
 await expectErr(`L.findGoodDays("cuoi_hoi", {y:2026,m:1,d:1}, L.jd.dateFromJdn(L.jd.jdnFromDate(2026,1,1)+367).reduce((o,v,i)=>(o["ymd"[i]]=v,o),{}))`, "RangeTooLong");
-await expectErr(`L.findGoodDays("cuoi_hoi", {y:1999,m:12,d:31}, {y:2000,m:1,d:5})`, "OutOfRange");
+await expectErr(`L.findGoodDays("cuoi_hoi", {y:1899,m:12,d:31}, {y:1900,m:1,d:5})`, "OutOfRange");
 await expectErr(`L.findGoodDays("khong_co", {y:2026,m:1,d:1}, {y:2026,m:1,d:31})`, "UnknownActivity");
 await expectErr(`L.findGoodDays("cuoi_hoi", {y:2026,m:1,d:1}, {y:2026,m:1,d:31}, 1976.5)`, "InvalidArgument");
 await expectErr(`L.findGoodDaysWith("xyz", "cuoi_hoi", {y:2026,m:1,d:1}, {y:2026,m:1,d:31})`, "InvalidArgument");
@@ -104,7 +106,7 @@ await expectErr(`L.lunarYearOfBirth(1990, 2, 30)`, "InvalidDate");
 await expectErr(`L.lunarYearOfBirth(NaN, 1, 1)`, "InvalidDate");
 // Messages identical to Rust Display
 await expectVal(`(() => { try { L.solarToLunar(2026,2,30) } catch (e) { return e.message } })()`, "ngày dương không hợp lệ: 2026-2-30");
-await expectVal(`(() => { try { L.dayInfo(1999,1,1) } catch (e) { return e.message } })()`, "ngoài phạm vi hỗ trợ (năm 2000 đến năm 3000)");
+await expectVal(`(() => { try { L.dayInfo(1899,1,1) } catch (e) { return e.message } })()`, "ngoài phạm vi hỗ trợ (năm 1900 đến năm 3000)");
 ok(typeof LvhvError === "function", "LvhvError exported");
 
 console.log(`tsport bad_input: ${pass} passed, ${fail} failed`);

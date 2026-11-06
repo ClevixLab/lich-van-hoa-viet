@@ -4,8 +4,33 @@
 
 const PI = Math.PI;
 const DR = PI / 180.0;
-/** Vietnam calendar time zone (hours). */
+/** Vietnam calendar time zone (hours) from 1968-01-01 onward (Rust astro::TZ). */
 export const TZ = 7.0;
+/** Calendar time zone before the switch (North Vietnam convention before 1968). */
+export const TZ_BEFORE_SWITCH = 8.0;
+/** JDN of 1968-01-01 — first day computed in UTC+7 (docs/03 §16). */
+export const TZ_SWITCH_JDN = 2439857;
+
+/** Time zone (hours) of day `jdn` (used for 00:00 at the start of the day). */
+export function tzOfDay(jdn: number): number {
+  return jdn < TZ_SWITCH_JDN ? TZ_BEFORE_SWITCH : TZ;
+}
+
+/** JD (UT) of calendar 00:00 at the start of day `jdn`. */
+export function localMidnightUt(jdn: number): number {
+  return jdn - 0.5 - tzOfDay(jdn) / 24.0;
+}
+
+/** Calendar day (JDN) containing instant `jdUt` (Rust astro::local_day_of). */
+export function localDayOf(jdUt: number): number {
+  const d8 = Math.floor(jdUt + 0.5 + TZ_BEFORE_SWITCH / 24.0);
+  return d8 < TZ_SWITCH_JDN ? d8 : Math.floor(jdUt + 0.5 + TZ / 24.0);
+}
+
+/** Time zone (hours) used to show instant `jdUt` in calendar time (Rust astro::tz_of_instant). */
+export function tzOfInstant(jdUt: number): number {
+  return Math.floor(jdUt + 0.5 + TZ_BEFORE_SWITCH / 24.0) < TZ_SWITCH_JDN ? TZ_BEFORE_SWITCH : TZ;
+}
 
 const sin = Math.sin;
 const cos = Math.cos;
@@ -39,9 +64,9 @@ export function hndNewMoon(kInt: number): number {
   return jd1 + c1 - deltat;
 }
 
-/** Local (UTC+7) JDN containing new moon k. */
+/** Calendar-time JDN containing new moon k. */
 export function hndNewMoonDay(k: number): number {
-  return Math.floor(hndNewMoon(k) + 0.5 + TZ / 24.0);
+  return localDayOf(hndNewMoon(k));
 }
 
 /** HND geometric sun longitude (radians, [0, 2π)). */
@@ -58,7 +83,7 @@ export function hndSunLongitude(jd: number): number {
 
 /** 30° sector (0..11) of the sun at local 00:00 of day `jdn`. */
 export function hndSunSector(jdn: number): number {
-  const l = hndSunLongitude(jdn - 0.5 - TZ / 24.0);
+  const l = hndSunLongitude(localMidnightUt(jdn));
   const s = Math.floor((l / PI) * 6.0);
   return s < 0 ? 0 : s > 11 ? 11 : s;
 }
@@ -75,9 +100,24 @@ function powi5(x: number): number { const x2 = x * x; const x4 = x2 * x2; return
 
 export function deltaTSeconds(year: number): number {
   const y = year;
-  if (y < 1986.0) {
+  if (y < 1860.0) {
     const u = (y - 1820.0) / 100.0;
     return -20.0 + 32.0 * u * u;
+  } else if (y < 1900.0) {
+    const t = y - 1860.0;
+    return 7.62 + 0.5737 * t - 0.251754 * t * t + 0.01680668 * powi3(t) - 0.0004473624 * powi4(t) + powi5(t) / 233174.0;
+  } else if (y < 1920.0) {
+    const t = y - 1900.0;
+    return -2.79 + 1.494119 * t - 0.0598939 * t * t + 0.0061966 * powi3(t) - 0.000197 * powi4(t);
+  } else if (y < 1941.0) {
+    const t = y - 1920.0;
+    return 21.2 + 0.84493 * t - 0.0761 * t * t + 0.0020936 * powi3(t);
+  } else if (y < 1961.0) {
+    const t = y - 1950.0;
+    return 29.07 + 0.407 * t - (t * t) / 233.0 + powi3(t) / 2547.0;
+  } else if (y < 1986.0) {
+    const t = y - 1975.0;
+    return 45.45 + 1.067 * t - (t * t) / 260.0 - powi3(t) / 718.0;
   } else if (y < 2005.0) {
     const t = y - 2000.0;
     return (

@@ -1,8 +1,8 @@
 // L7 verification: tsport vs Rust core dumps.
-//  1. dayInfoJson, every day 2000-01-01..3000-12-31, for BOTH methods:
-//       hnd     ← core/out/dayinfo_2000_3000.jsonl.gz
-//       precise ← core/out/precise/dayinfo_2000_3000.jsonl.gz
-//  2. tet() 2000..3000 vs core/out/tet.csv and core/out/precise/tet.csv
+//  1. dayInfoJson, every day 1900-01-01..3000-12-31 (L7 + L12), for BOTH methods:
+//       hnd     ← core/out/dayinfo_1900_3000.jsonl.gz
+//       precise ← core/out/precise/dayinfo_1900_3000.jsonl.gz
+//  2. tet() 1900..3000 vs tet_1900_1999.csv + tet.csv (2000..3000), each method dir
 //  3. findGoodDays JSONL vs core/out/gooddays_sample.jsonl (+ precise/ if present):
 //       every activity, 2026-01-01..2026-12-31, birth year none and 1976 (lvhv-dump gooddays all …)
 //  4. dayInfo micro-benchmark.
@@ -40,12 +40,12 @@ console.log(`DEFAULT_METHOD (tsport) = ${DEFAULT_METHOD}; goldens: ${GOLDEN}`);
 for (const method of only) {
   const res = (summary[method] = {});
   // ---- 1. day_info JSONL ----
-  const gz = join(OUT[method], "dayinfo_2000_3000.jsonl.gz");
+  const gz = join(OUT[method], "dayinfo_1900_3000.jsonl.gz");
   if (!skipDayinfo) {
     if (!existsSync(gz)) { console.log(`[${method}] MISSING ${gz}`); failed = true; }
     else {
       const rl = createInterface({ input: createReadStream(gz).pipe(createGunzip()), crlfDelay: Infinity });
-      const firstJdn = jd.jdnFromDate(2000, 1, 1);
+      const firstJdn = jd.jdnFromDate(1900, 1, 1);
       const lastJdn = jd.jdnFromDate(3000, 12, 31);
       let j = firstJdn, n = 0, bad = 0;
       const shown = [];
@@ -71,10 +71,11 @@ for (const method of only) {
   }
 
   // ---- 2. tet ----
-  const tetCsv = join(OUT[method], "tet.csv");
-  if (!existsSync(tetCsv)) { console.log(`[${method}] tet: MISSING ${tetCsv}`); failed = true; }
+  const tetCsvs = [join(OUT[method], "tet_1900_1999.csv"), join(OUT[method], "tet.csv")];
+  const missing = tetCsvs.filter((f) => !existsSync(f));
+  if (missing.length) { console.log(`[${method}] tet: MISSING ${missing.join(", ")}`); failed = true; }
   else {
-    const rows = readFileSync(tetCsv, "utf8").trim().split("\n").slice(1);
+    const rows = tetCsvs.flatMap((f) => readFileSync(f, "utf8").trim().split("\n").slice(1));
     let tbad = 0;
     for (const r of rows) {
       const [ly, date] = r.trim().split(",");

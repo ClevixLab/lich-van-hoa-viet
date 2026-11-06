@@ -8,21 +8,21 @@
 // (NaN, ±Infinity, non-integer JDN/year, unknown method string, non-boolean `leap` is NOT one of
 // these — the lunar functions return null for it, like any other impossible lunar date).
 
-/** Smallest / largest solar year of the public domain (2000-01-01 … 3000-12-31). */
-export const MIN_YEAR = 2000;
+/** Smallest / largest solar year of the public domain (1900-01-01 … 3000-12-31). */
+export const MIN_YEAR = 1900;
 export const MAX_YEAR = 3000;
-/** JDN of 2000-01-01 and 3000-12-31. */
-export const MIN_JDN = 2451545;
+/** JDN of 1900-01-01 and 3000-12-31. */
+export const MIN_JDN = 2415021;
 export const MAX_JDN = 2817152;
-/** Lunar years accepted by lunarToSolar (lunar months 11–12 of 1999 fall in Jan–Feb 2000). */
+/** Lunar years accepted by lunarToSolar (1900-01-01 is in lunar month 12 of 1899). */
 export const MIN_LUNAR_YEAR = MIN_YEAR - 1;
 export const MAX_LUNAR_YEAR = MAX_YEAR;
-/** Smallest solar year of a birth date (lunarYearOfBirth). 1900–1999 not independently verified. */
-export const BIRTH_MIN_YEAR = 1900;
+/** Smallest solar year of a birth date (lunarYearOfBirth) — equals MIN_YEAR. */
+export const BIRTH_MIN_YEAR = MIN_YEAR;
 /** findGoodDays: to − from ≤ MAX_SPAN_DAYS. */
 export const MAX_SPAN_DAYS = 366;
 /** Internal YearTable domain (Rust INTERNAL_MIN_YY / INTERNAL_MAX_YY). */
-export const INTERNAL_MIN_YY = 1900;
+export const INTERNAL_MIN_YY = 1899;
 export const INTERNAL_MAX_YY = 3101;
 
 export type LvhvErrorCode =

@@ -1,19 +1,21 @@
 #!/usr/bin/env bash
-# Chặn trôi dạt Rust ↔ TypeScript (L7, RS-12, DUYET-MA §4).
+# Chặn trôi dạt Rust ↔ TypeScript (L7, L12, RS-12, DUYET-MA §4) và kiểm L13.
 #
 # 1. Build lvhv-dump (release) từ lõi HIỆN TẠI.
 # 2. Sinh MỚI vào thư mục tạm (không đọc tệp vàng core/out/ đã commit), cho cả hai phương pháp:
-#      dayinfo-jsonl 2000-01-01 … 3000-12-31, tet 2000 … 3000,
+#      dayinfo-jsonl 1900-01-01 … 3000-12-31, tet 1900 … 1999 và 2000 … 3000,
 #      gooddays mẫu: mọi việc × 2026-01-01 … 2026-12-31 × (không tuổi, năm âm 1976).
 # 3. Build tsport và so từng byte (tsport/test/compare.mjs với LVHV_GOLDEN_DIR) + test đầu vào xấu.
 # 4. Sinh lại tsport/src/ngochap_tables.ts từ bảng Rust và so byte với tệp đang có.
+# 5. L13: phần 2000-01-01 … 3000-12-31 của dayinfo mới phải giống hệt từng byte tệp chuẩn
+#    core/out/baseline-2000-3000/{hnd,precise}.jsonl.gz (lưu trước khi mở rộng sang 1900).
 # Thoát khác 0 nếu có bất kỳ sai lệch nào.
 #
 # Cách dùng (từ bất kỳ đâu):  scripts/check-parity.sh            # cả hai phương pháp
 #                             scripts/check-parity.sh --method hnd
 #                             KEEP=1 scripts/check-parity.sh     # giữ thư mục tạm để xem
 # Cần: cargo, node ≥ 18, gzip; pwa/node_modules đã cài (tsport dùng tsc/esbuild của pwa/).
-# Thời gian trên máy 2 vCPU: ~3–4 phút.
+# Thời gian trên máy 2 vCPU: ~4–5 phút.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -40,7 +42,8 @@ DUMP="$ROOT/target/release/lvhv-dump"
 gen() {
   local method="$1" out="$2"
   mkdir -p "$out"
-  "$DUMP" --method "$method" dayinfo-jsonl 2000-01-01 3000-12-31 | gzip -1 -n > "$out/dayinfo_2000_3000.jsonl.gz"
+  "$DUMP" --method "$method" dayinfo-jsonl 1900-01-01 3000-12-31 | gzip -1 -n > "$out/dayinfo_1900_3000.jsonl.gz"
+  "$DUMP" --method "$method" tet 1900 1999 > "$out/tet_1900_1999.csv"
   "$DUMP" --method "$method" tet 2000 3000 > "$out/tet.csv"
   {
     "$DUMP" --method "$method" gooddays all 2026-01-01 2026-12-31 none
@@ -80,6 +83,22 @@ if ! cmp -s "$TMP/ngochap_tables.before.ts" tsport/src/ngochap_tables.ts; then
   echo "[parity] LỖI: tsport/src/ngochap_tables.ts khác bản sinh từ Rust (đã ghi bản mới; xem git diff)" >&2
   status=1
 fi
+
+# L13: số dòng của 1900-01-01 … 1999-12-31 = JDN(2000-01-01) − JDN(1900-01-01) = 36524.
+PRE2000_LINES=36524
+for m in "${METHODS[@]}"; do
+  case "$m" in hnd) dir="$TMP" ;; precise) dir="$TMP/precise" ;; esac
+  base="core/out/baseline-2000-3000/$m.jsonl.gz"
+  log "L13: 2000–3000 ($m) so với $base"
+  if [[ ! -f "$base" ]]; then
+    echo "[parity] LỖI: thiếu tệp chuẩn $base" >&2; status=1; continue
+  fi
+  if cmp -s <(gzip -dc "$dir/dayinfo_1900_3000.jsonl.gz" | tail -n +$((PRE2000_LINES + 1))) <(gzip -dc "$base"); then
+    log "[$m] L13: giống hệt từng byte"
+  else
+    echo "[parity] LỖI: [$m] L13 — kết quả 2000–3000 khác tệp chuẩn" >&2; status=1
+  fi
+done
 
 if [[ $status -eq 0 ]]; then log "ĐẠT: 0 sai lệch"; else log "KHÔNG ĐẠT"; fi
 exit $status

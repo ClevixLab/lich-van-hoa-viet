@@ -1,6 +1,7 @@
 // Port of core/src/terms.rs — 24 solar terms (index i ↔ apparent longitude 15·i°, 0 = Xuân Phân).
 
-import { apparentSunLongitudeUt, solveSunLongitude, TZ } from "./astro.ts";
+import { apparentSunLongitudeUt, localDayOf, localMidnightUt, solveSunLongitude } from "./astro.ts";
+export { localMidnightUt };
 import { MAX_YEAR, MIN_YEAR, computation, invalidArgument, outOfRange } from "./error.ts";
 import { jdnFromDate } from "./jd.ts";
 
@@ -10,11 +11,6 @@ export const TERM_NAMES: readonly string[] = [
   "Thu Phân", "Hàn Lộ", "Sương Giáng", "Lập Đông", "Tiểu Tuyết", "Đại Tuyết",
   "Đông Chí", "Tiểu Hàn", "Đại Hàn", "Lập Xuân", "Vũ Thủy", "Kinh Trập",
 ];
-
-/** JD (UT) of local 00:00 (UTC+7) at the start of day `jdn`. */
-export function localMidnightUt(jdn: number): number {
-  return jdn - 0.5 - TZ / 24.0;
-}
 
 /** Solar-term index (0..23) of day `jdn`. Rust: `(l/15).floor() as usize` (saturating at 0), `.min(23)`. */
 export function termIndexOfDay(jdn: number): number {
@@ -41,10 +37,10 @@ export function solarTermName(t: SolarTerm): string {
 }
 
 export function solarTermLocalJdn(t: SolarTerm): number {
-  return Math.floor(t.jdUt + 0.5 + TZ / 24.0);
+  return localDayOf(t.jdUt);
 }
 
-/** Throws LvhvError OutOfRange outside 2000–3000 (Rust → Err), InvalidArgument if not an integer. */
+/** Throws LvhvError OutOfRange outside 1900–3000 (Rust → Err), InvalidArgument if not an integer. */
 export function solarTermsOfYear(year: number): SolarTerm[] {
   if (typeof year !== "number" || Number.isNaN(year) || (Number.isFinite(year) && !Number.isInteger(year))) {
     throw invalidArgument(`năm ${String(year)}`);
