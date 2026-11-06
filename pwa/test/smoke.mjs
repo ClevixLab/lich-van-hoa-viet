@@ -450,6 +450,7 @@ const LAZY = JSON.parse(readFileSync(join(DIST, "lazy-manifest.json"), "utf8"));
   try {
     await runPeople({ browser, BASE, ORIGIN, ROOT, SHOTS, check, metrics });
   } catch (e) {
+    console.log(e.message);
     check(false, `Người thân: luồng kiểm thử dừng giữa chừng (${e.message.split("\n")[0]})`);
   }
 }
