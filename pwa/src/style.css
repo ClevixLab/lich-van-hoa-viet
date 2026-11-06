@@ -287,6 +287,8 @@ img, svg { display: block; }
 .month { background: var(--paper); border-radius: var(--r); }
 .side .month { box-shadow: var(--shadow); padding: 1rem; position: sticky; top: 1rem; }
 .mhead { display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin-bottom: .6rem; }
+.mwarn { margin-bottom: .6rem; font-size: .9rem; }
+.mwarn[hidden] { display: none; }
 .mpick { display: flex; gap: .4rem; flex: 1; justify-content: center; }
 .mpick select, .mpick input {
   height: 44px; border: 1px solid var(--rule); border-radius: 10px; background: var(--paper); padding: 0 .5rem; font-weight: 600;
@@ -346,7 +348,7 @@ button.mcell:hover { background: var(--paper-2); }
 .seg button[aria-checked="true"] { background: var(--paper); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.15); }
 .custom { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; margin-top: .7rem; }
 .custom label, .field { display: grid; gap: .25rem; font-size: .85rem; font-weight: 600; color: var(--ink-2); }
-input[type="date"], input[type="number"], select {
+input[type="date"], input[type="number"], input.num, select {
   min-height: 48px; border: 1px solid var(--rule); border-radius: 10px; background: var(--paper); padding: 0 .65rem; font-size: 1rem; color: var(--ink); width: 100%;
 }
 .birth { display: grid; gap: .5rem; margin: 1.2rem 0 0; padding: 0; border: 0; min-width: 0; font-size: .92rem; }
@@ -392,6 +394,17 @@ input[type="date"], input[type="number"], select {
 .conv-big { font-family: var(--serif); font-size: 1.55rem; font-weight: 700; color: var(--red-ink); line-height: 1.25; }
 .conv-sub { color: var(--ink-2); margin-top: .2rem; }
 .fields3 { display: grid; grid-template-columns: 1fr 1.6fr 1fr; gap: .5rem; }
+.fields-dmy { display: grid; grid-template-columns: 1fr 1fr 1.6fr; gap: .5rem; max-width: 24rem; }
+.fields-dmy .field, .fields-dmy input { min-width: 0; }
+input.num { font-size: 1.35rem; font-weight: 700; text-align: center; font-variant-numeric: tabular-nums; min-height: 56px; padding: 0 .3rem; }
+.conv .primary { margin-top: .9rem; }
+.primary {
+  display: block; width: 100%; max-width: 24rem; min-height: 52px; border-radius: 12px; border: 0;
+  background: var(--red-deep); color: #fff; font-weight: 700; font-size: 1.05rem; padding: .5rem 1rem; cursor: pointer;
+}
+.primary:hover { filter: brightness(1.08); }
+.primary:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+.tz-note { margin-top: 1rem; }
 .check { display: inline-flex; align-items: center; gap: .55rem; margin-top: .8rem; min-height: 44px; font-weight: 600; cursor: pointer; }
 .check input { width: 24px; height: 24px; accent-color: var(--red-deep); }
 

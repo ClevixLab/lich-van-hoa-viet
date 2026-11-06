@@ -34,10 +34,19 @@ export function renderMonth(o: MonthOpts): HTMLElement {
   const monthSel = h("select", { id: `${o.idPrefix}-m`, "aria-label": "Tháng" });
   for (let i = 1; i <= 12; i++) monthSel.append(h("option", { value: String(i), selected: i === m || null }, `Tháng ${i}`));
   const yearIn = h("input", { id: `${o.idPrefix}-y`, type: "number", inputmode: "numeric", min: String(MIN_YEAR), max: String(MAX_YEAR), value: String(y), "aria-label": "Năm" });
+  const yMsg = h("p", { class: "warn mwarn", role: "alert", hidden: true, id: `${o.idPrefix}-ymsg` });
   const goView = () => {
-    const yy = Math.round(Number(yearIn.value));
-    if (!Number.isFinite(yy) || yy < MIN_YEAR || yy > MAX_YEAR) { yearIn.setAttribute("aria-invalid", "true"); return; }
+    const raw = yearIn.value.trim();
+    const yy = Number(raw);
+    if (raw === "" || !Number.isInteger(yy) || yy < MIN_YEAR || yy > MAX_YEAR) {
+      yearIn.setAttribute("aria-invalid", "true");
+      yearIn.setAttribute("aria-describedby", yMsg.id);
+      yMsg.textContent = `Ứng dụng hỗ trợ từ năm ${MIN_YEAR} đến năm ${MAX_YEAR}.`;
+      yMsg.hidden = false;
+      return;
+    }
     yearIn.removeAttribute("aria-invalid");
+    yMsg.hidden = true;
     o.onView({ y: yy, m: Number(monthSel.value) });
   };
   monthSel.addEventListener("change", goView);
@@ -88,6 +97,6 @@ export function renderMonth(o: MonthOpts): HTMLElement {
     if (nx) nx.focus();
   });
 
-  return h("div", { class: `month${o.compact ? " compact" : ""}` }, head, grid,
+  return h("div", { class: `month${o.compact ? " compact" : ""}` }, head, yMsg, grid,
     h("p", { class: "mlegend" }, h("span", { class: "dot key" }), "Mùng 1 và ngày rằm âm lịch"));
 }

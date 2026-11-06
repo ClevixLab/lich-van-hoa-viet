@@ -164,7 +164,7 @@ function renderDay(): void {
     // Ranh giới lỗi (DUYET-MA §6): lõi ném lỗi → báo cho người dùng thay vì để màn hình trống.
     console.error(e);
     el = h("section", { class: "sheet sheet-error", role: "alert" },
-      h("p", { class: "warn" }, `Không tính được ngày ${state.date.d}/${state.date.m}/${state.date.y}. Lịch hỗ trợ từ năm ${MIN_YEAR} đến năm ${MAX_YEAR}.`));
+      h("p", { class: "warn" }, `Không tính được ngày ${state.date.d}/${state.date.m}/${state.date.y}. Ứng dụng hỗ trợ từ 01/01/${MIN_YEAR} đến 31/12/${MAX_YEAR}.`));
   }
   clear(sheetHost);
   sheetHost.append(el);

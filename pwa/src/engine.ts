@@ -10,7 +10,7 @@
 // `DEFAULT_METHOD` của lõi Rust (core/src/lunar.rs) — hiện là "hnd". Đổi phương pháp chỉ cần đổi
 // hằng của lõi (hoặc biến môi trường LVHV_METHOD khi build); không đổi ở đây.
 //
-// Lỗi: hàm lõi ném `LvhvError` (RangeError có `code`) cho ngày ngoài 2000–3000 hoặc không hợp lệ —
+// Lỗi: hàm lõi ném `LvhvError` (RangeError có `code`) cho ngày ngoài 1900–3000 hoặc không hợp lệ —
 // giống Rust `Err(DateError)`; trả `null` khi Rust trả `None`.
 
 import * as core from "#engine-impl";
@@ -34,7 +34,7 @@ export const BIRTH_MIN_YEAR: number = core.BIRTH_MIN_YEAR;
 /** Khoảng tìm ngày tốt tối đa: to − from ≤ MAX_SPAN_DAYS (Rust MAX_SPAN_DAYS). */
 export const MAX_SPAN_DAYS: number = core.MAX_SPAN_DAYS;
 
-/** Lỗi miền của lõi (ngoài 2000–3000, ngày không tồn tại, khoảng quá dài…). */
+/** Lỗi miền của lõi (ngoài 1900–3000, ngày không tồn tại, khoảng quá dài…). */
 export function isCoreError(e: unknown): e is Error & { code: string } {
   return e instanceof core.LvhvError;
 }

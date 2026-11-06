@@ -168,6 +168,19 @@ async function newCtx(vp, opts = {}) {
   await page.dispatchEvent("#dlg-y", "change");
   await page.click('dialog[open] .mcell[data-d="15"]');
   check(await page.locator(".sheet").getAttribute("data-date") === "2027-1-15", "bảng tháng nhảy tới 15/1/2027");
+  // Bảng tháng: năm 1899 → thông báo; 1968 → tháng Giêng có mùng 1 Tết ngày 29.
+  await page.click(".band-btn");
+  await page.waitForSelector("dialog[open] .mgrid");
+  await page.fill("#dlg-y", "1899");
+  await page.dispatchEvent("#dlg-y", "change");
+  const mmsg = await page.locator("#dlg-ymsg").innerText().catch(() => "");
+  check(/hỗ trợ từ năm 1900 đến năm 3000/.test(mmsg), `bảng tháng: năm 1899 → thông báo (${mmsg})`);
+  await page.selectOption("#dlg-m", "1");
+  await page.fill("#dlg-y", "1968");
+  await page.dispatchEvent("#dlg-y", "change");
+  const c29 = await page.locator('dialog[open] .mcell[data-d="29"] .ld').innerText();
+  check(c29 === "1/1", `bảng tháng 1/1968: ngày 29 là mùng 1/1 (${c29})`);
+  await page.keyboard.press("Escape");
 
   // Chọn ngày tốt
   await page.goto(BASE + "#/chon-ngay");
@@ -182,6 +195,18 @@ async function newCtx(vp, opts = {}) {
   check(/Tuổi Ất Mão/.test(ccTxt) && /1975/.test(ccTxt), `ngày sinh 15/01/1976 → tuổi Ất Mão, năm âm 1975 (${ccTxt})`);
   const sumTxt = await page.locator(".rsum").innerText();
   check(/tuổi Ất Mão/.test(sumTxt), `tóm tắt dùng tuổi theo năm âm (${sumTxt})`);
+  // Khoảng tự chọn ngoài phạm vi → thông báo, không để trống.
+  await page.click('.seg button[data-k="custom"]');
+  await page.fill("#gd-from", "1899-12-01");
+  await page.dispatchEvent("#gd-from", "change");
+  const gdMsg = await page.locator(".results .warn").innerText().catch(() => "");
+  check(/hỗ trợ từ 01\/01\/1900 đến 31\/12\/3000/.test(gdMsg), `chọn ngày tốt: khoảng bắt đầu 1899 → thông báo (${gdMsg})`);
+  await page.fill("#gd-from", "1968-01-01");
+  await page.fill("#gd-to", "1968-03-31");
+  await page.dispatchEvent("#gd-to", "change");
+  const n1968 = await page.locator(".gditem").count();
+  check(n1968 > 0, `chọn ngày tốt 01/01–31/03/1968 có kết quả (${n1968})`);
+  await page.click('.seg button[data-k="3m"]');
   // Lựa chọn "Tôi chỉ biết năm âm lịch / Can Chi".
   await page.check("#gd-lunar-only");
   await page.fill("#gd-bly", "1976");
@@ -204,20 +229,75 @@ async function newCtx(vp, opts = {}) {
 
   // Đổi ngày
   await page.goto(BASE + "#/doi-ngay");
-  await page.fill("#cv-solar", "2026-11-05");
-  await page.dispatchEvent("#cv-solar", "change");
-  const cv = await page.locator(".conv-out").first().innerText();
-  check(cv.includes("27 tháng Chín"), `đổi dương → âm 05/11/2026 → 27 tháng Chín (${cv.split("\n")[0]})`);
-  await page.fill("#cv-ly", "2026");
-  await page.selectOption("#cv-lm", "1");
-  await page.selectOption("#cv-ld", "1");
-  await page.dispatchEvent("#cv-ly", "change");
-  const cv2 = await page.locator(".conv-out").nth(1).innerText();
-  check(cv2.includes("17/02/2026"), `đổi âm → dương 1/1/2026 → 17/02/2026 (${cv2.split("\n")[0]})`);
+  await page.waitForSelector("#cv-go-a");
+  const outA = () => page.locator(".conv-out").first().innerText();
+  const outB = () => page.locator(".conv-out").nth(1).innerText();
+  // Gõ ba ô Ngày / Tháng / Năm rồi bấm nút (nút luôn tính lại).
+  const solar = async (d, m, y) => {
+    await page.fill("#cv-sd", String(d)); await page.fill("#cv-sm", String(m)); await page.fill("#cv-sy", String(y));
+    await page.click("#cv-go-a");
+    return outA();
+  };
+  const lunar = async (d, m, y, leap = false) => {
+    await page.selectOption("#cv-ld", String(d)); await page.selectOption("#cv-lm", String(m)); await page.fill("#cv-ly", String(y));
+    if ((await page.isChecked("#cv-leap")) !== leap) await page.click("#cv-leap");
+    await page.click("#cv-go-b");
+    return outB();
+  };
+  const RANGE = "Ứng dụng hỗ trợ từ 01/01/1900 đến 31/12/3000";
+  let cv = await solar(5, 11, 2026);
+  check(cv.includes("Ngày 27 tháng 9 năm Bính Ngọ"), `đổi dương → âm 05/11/2026 → "Ngày 27 tháng 9 năm Bính Ngọ" (${cv.split("\n")[0]})`);
+  cv = await solar(8, 11, 1977);
+  check(cv.includes("Ngày 27 tháng 9 năm Đinh Tỵ") && cv.includes("Ngày Kỷ Tỵ · tháng Canh Tuất"), `gõ 8/11/1977 + "Đổi sang âm lịch" → "Ngày 27 tháng 9 năm Đinh Tỵ", ngày Kỷ Tỵ, tháng Canh Tuất (${cv.split("\n").slice(0, 2).join(" | ")})`);
+  cv = await solar(29, 1, 1968);
+  check(cv.includes("Ngày 1 tháng 1 năm Mậu Thân"), `29/01/1968 → mùng 1 tháng 1 Mậu Thân (Tết miền Bắc) (${cv.split("\n")[0]})`);
+  cv = await solar(28, 1, 1968);
+  check(cv.includes("Ngày 29 tháng 12 năm Đinh Mùi"), `28/01/1968 → 29 tháng Chạp Đinh Mùi (${cv.split("\n")[0]})`);
+  // Tết Giáp Ngọ 1954 = 03/02/1954 (Đài Thiên văn Hồng Kông, lịch 1954; trước 1968 lịch Việt tính theo UTC+8).
+  cv = await solar(3, 2, 1954);
+  check(cv.includes("Ngày 1 tháng 1 năm Giáp Ngọ"), `03/02/1954 → mùng 1 Tết Giáp Ngọ (${cv.split("\n")[0]})`);
+  cv = await solar(1, 1, 1900);
+  check(cv.includes("Ngày 1 tháng 12 năm Kỷ Hợi"), `01/01/1900 (đầu phạm vi) → 1 tháng Chạp Kỷ Hợi (${cv.split("\n")[0]})`);
+  cv = await solar(31, 12, 1899);
+  check(cv.includes(RANGE), `31/12/1899 → thông báo phạm vi (${cv})`);
+  cv = await solar(1, 1, 3001);
+  check(cv.includes(RANGE), `01/01/3001 → thông báo phạm vi (${cv})`);
+  cv = await solar(31, 2, 2026);
+  check(/Ngày không hợp lệ/.test(cv), `31/02/2026 → báo ngày không hợp lệ (${cv})`);
+  cv = await solar("", 2, 2026);
+  check(/Hãy nhập đủ/.test(cv), `ô ngày trống → nhắc nhập đủ (${cv})`);
+  // Gõ (không bấm nút) cũng cập nhật.
+  await page.fill("#cv-sd", "5"); await page.fill("#cv-sm", "11"); await page.fill("#cv-sy", "2026");
+  check((await outA()).includes("Ngày 27 tháng 9 năm Bính Ngọ"), "gõ tay cũng tự cập nhật kết quả");
+  let cv2 = await lunar(1, 1, 2026);
+  check(cv2.includes("ngày 17/02/2026") && /^Thứ /.test(cv2), `đổi âm → dương 1/1/2026 → "Thứ …, ngày 17/02/2026" (${cv2.split("\n")[0]})`);
+  cv2 = await lunar(27, 9, 1977);
+  check(cv2.includes("Thứ Ba, ngày 08/11/1977"), `27/9/1977 âm → "Thứ Ba, ngày 08/11/1977" (${cv2.split("\n")[0]})`);
+  cv2 = await lunar(1, 1, 1968);
+  check(cv2.includes("ngày 29/01/1968"), `1/1 Mậu Thân → 29/01/1968 (${cv2.split("\n")[0]})`);
+  cv2 = await lunar(1, 5, 2026, true);
+  check(/không có tháng 5 nhuận/.test(cv2), `tháng 5 nhuận 2026 không tồn tại → thông báo (${cv2})`);
+  const short = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].find((m) => tsport.lunarToSolar(2026, m, 30, false) === null);
+  cv2 = await lunar(30, short, 2026);
+  check(/không có ngày 30/.test(cv2), `ngày 30 tháng ${short} (tháng thiếu) 2026 → thông báo (${cv2})`);
+  cv2 = await lunar(1, 1, 1899);
+  check(cv2.includes(RANGE), `tháng Giêng 1899 âm (trước 1900) → thông báo phạm vi (${cv2})`);
+  cv2 = await lunar(1, 1, 3001);
+  check(cv2.includes(RANGE), `năm âm 3001 → thông báo phạm vi (${cv2})`);
+  const note = await page.locator(".tz-note").innerText();
+  check(note.includes("Trước năm 1968, âm lịch tính theo múi giờ UTC+8"), "Đổi ngày có ghi chú múi giờ trước 1968");
+  await solar(8, 11, 1977); await lunar(27, 9, 1977);
   await page.screenshot({ path: join(SHOTS, "phone-360-convert.png"), fullPage: true });
+
+  // Bảng tháng: năm ngoài phạm vi → thông báo; 1968 xem được.
+  await page.goto(BASE + "#/ngay/1968-01-29");
+  await page.waitForSelector(".sheet");
+  const sh1968 = await page.locator(".sheet").innerText();
+  check(/Mậu Thân/.test(sh1968), "tờ lịch 29/01/1968 hiện năm Mậu Thân");
 
   await page.goto(BASE + "#/gioi-thieu");
   await page.waitForSelector("#nguon-ca-dao");
+  check((await page.innerText("main")).includes("Trước năm 1968, âm lịch tính theo múi giờ UTC+8"), "Giới thiệu có ghi chú múi giờ trước 1968");
   const about = await page.innerText("#nguon-ca-dao");
   for (const s of ["CC BY-SA 4.0", "Wikiquote tiếng Việt", "Huỳnh Tịnh Của", "phạm vi công cộng", "Clevix Lab"]) check(about.includes(s), `Giới thiệu ghi công ca dao có "${s}"`);
   check(await page.locator('img[src*="wikimedia" i], img[alt*="wikimedia" i]').count() === 0, "không dùng logo Wikimedia");
@@ -296,6 +376,16 @@ async function newCtx(vp, opts = {}) {
     check(ov <= 0, `A++ ${label} (${d}) không tràn ngang (${ov}px)`);
     await page.screenshot({ path: join(SHOTS, `phone-360-xl-${slug}.png`), fullPage: true });
   }
+  // Đổi ngày ở A++ 360 px: ba ô số, nút lớn, kết quả 8/11/1977.
+  await page.goto(BASE + "#/doi-ngay");
+  await page.waitForSelector("#cv-go-a");
+  await page.fill("#cv-sd", "8"); await page.fill("#cv-sm", "11"); await page.fill("#cv-sy", "1977");
+  await page.click("#cv-go-a");
+  const xlCv = await page.locator(".conv-out").first().innerText();
+  check(xlCv.includes("Ngày 27 tháng 9 năm Đinh Tỵ"), `A++ Đổi ngày 8/11/1977 → Ngày 27 tháng 9 năm Đinh Tỵ`);
+  const ovCv = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+  check(ovCv <= 0, `A++ Đổi ngày không tràn ngang ở 360 px (${ovCv}px)`);
+  await page.screenshot({ path: join(SHOTS, "phone-360-xl-convert.png"), fullPage: true });
   await page.click('.sizes button[data-v="1"]');
   check(errors.length === 0, `không lỗi console (tối) ${errors.join(" | ")}`);
   await ctx.close();

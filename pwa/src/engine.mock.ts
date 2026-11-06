@@ -324,7 +324,7 @@ export function findGoodDays(activityId: string, from: SolarDate, to: SolarDate,
 
 // ---------- Bề mặt giống tsport (để engine.ts gọi trực tiếp, A-4) ----------
 // Chỉ dùng với `node build.mjs --mock`. Không kiểm miền đầy đủ như lõi thật.
-export const MIN_YEAR = 2000;
+export const MIN_YEAR = 1900;
 export const MAX_YEAR = 3000;
 export const BIRTH_MIN_YEAR = 1900;
 export const MAX_SPAN_DAYS = 366;

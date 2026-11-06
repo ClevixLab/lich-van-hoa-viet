@@ -62,9 +62,10 @@ function rangeFor(k: RangeKey, s: State): [SolarDate, SolarDate] | string {
   }
   if (k === "month") return [t, { y: t.y, m: t.m, d: daysInMonth(t.y, t.m) }];
   if (k === "3m") return [t, addDays(t, 89)];
+  if (!s.from || !s.to) return "Hãy chọn đủ ngày bắt đầu và ngày kết thúc.";
   const a = parseIso(s.from), b = parseIso(s.to);
-  if (!a || !b) return "Hãy chọn đủ ngày bắt đầu và ngày kết thúc.";
-  if (a.y < MIN_YEAR || b.y > MAX_YEAR) return `Lịch hỗ trợ từ năm ${MIN_YEAR} đến năm ${MAX_YEAR}.`;
+  if (!a || !b) return "Ngày không hợp lệ. Hãy chọn lại ngày bắt đầu và ngày kết thúc.";
+  if (a.y < MIN_YEAR || a.y > MAX_YEAR || b.y < MIN_YEAR || b.y > MAX_YEAR) return `Ứng dụng hỗ trợ từ 01/01/${MIN_YEAR} đến 31/12/${MAX_YEAR}.`;
   const span = jdn(b.y, b.m, b.d) - jdn(a.y, a.m, a.d);
   if (span < 0) return "Ngày kết thúc cần sau ngày bắt đầu.";
   if (span > MAX_SPAN) return "Khoảng tìm tối đa là một năm. Hãy thu hẹp lại.";
@@ -105,8 +106,11 @@ export function renderGoodDays(root: HTMLElement, openDay: (d: SolarDate) => voi
     });
     rangeWrap.append(b);
   });
-  fromIn.addEventListener("change", () => { st.from = fromIn.value; run(); });
-  toIn.addEventListener("change", () => { st.to = toIn.value; run(); });
+  // `input` và `change`: một số trình duyệt chỉ phát một trong hai khi gõ tay vào ô ngày.
+  const onFrom = () => { st.from = fromIn.value; run(); };
+  const onTo = () => { st.to = toIn.value; run(); };
+  fromIn.addEventListener("change", onFrom); fromIn.addEventListener("input", onFrom);
+  toIn.addEventListener("change", onTo); toIn.addEventListener("input", onTo);
 
   // ---- Tuổi: ngày sinh dương lịch, hoặc năm âm lịch ----
   const num = (id: string, label: string, ph: string, val: string, min: number, max: number) =>

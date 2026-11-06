@@ -1,5 +1,6 @@
 // Giới thiệu + trang "Nguồn quy tắc" (Ngọc Hạp), cả hai dựng từ nội dung sinh lúc build.
-import { IS_MOCK, METHOD } from "../engine";
+import { IS_MOCK, MAX_YEAR, METHOD, MIN_YEAR } from "../engine";
+import { TZ_NOTE } from "./convert";
 import {
   APP_VERSION, CADAO, CADAO_ATTRIBUTION, CADAO_IS_MOCK, RULE_SOURCES, RULE_SOURCES_INTRO, RULE_SOURCES_LIMITS,
 } from "../gen/content";
@@ -27,7 +28,8 @@ export function renderAbout(root: HTMLElement): void {
         h("p", { class: "ver" }, `Phiên bản ${APP_VERSION} (thử nghiệm nội bộ)`))),
     h("section", { class: "panel prose" },
       h("h2", null, "Về ứng dụng"),
-      h("p", null, "Lịch âm dương Việt Nam theo múi giờ UTC+7, từ năm 2000 đến năm 3000: ngày âm, Can Chi, tiết khí, giờ hoàng đạo, chọn ngày tốt, và một câu ca dao, tục ngữ cho mỗi ngày."),
+      h("p", null, `Lịch âm dương Việt Nam từ năm ${MIN_YEAR} đến năm ${MAX_YEAR}: ngày âm, Can Chi, tiết khí, giờ hoàng đạo, chọn ngày tốt, và một câu ca dao, tục ngữ cho mỗi ngày. Từ năm 1968, âm lịch tính theo múi giờ UTC+7 (giờ Hà Nội).`),
+      h("p", { class: "tz-note" }, TZ_NOTE),
       h("p", null, `Ngày âm lịch tính theo ${METHOD_LABEL[METHOD] ?? METHOD}.`),
       h("p", null, "Phần xem ngày (sao tốt, sao xấu, việc nên làm và nên tránh, trực, hoàng đạo, hắc đạo) được biên soạn theo quan niệm truyền thống trong sách Ngọc Hạp Thông Thư. Đây là nét văn hóa dân gian, chỉ có giá trị tham khảo; những quyết định quan trọng xin cân nhắc thêm hoàn cảnh thực tế. Điểm số là quy ước của ứng dụng, không có trong sách."),
       h("p", null, h("a", { href: RULES_HREF, class: "textlink" }, "Nguồn quy tắc xem ngày")),

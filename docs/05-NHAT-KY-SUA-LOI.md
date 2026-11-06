@@ -198,3 +198,25 @@ tsport (Node 22, `compare.mjs`): `dayInfo` 27 µs, `dayInfoJson` 44 µs, `findGo
 Bên phụ trách `ffi/` đã cập nhật song song theo API mới (`?` với `From<DateError> for LvhvError`,
 `lvhv_core::find_good_days`, `lunar_year_of_birth`); `cargo clippy --workspace -D warnings` và
 `cargo test -p lvhv-ffi --release` xanh, `gd_check` 0/0. Còn lại: `ffi/Cargo.toml license = "MIT"` (§D.1).
+
+## G. Bổ sung A1 — mở rộng phạm vi 1900-01-01 → 3000-12-31 (2026-11-06)
+
+Tiêu chí khóa trước: docs/02 "Bổ sung A1" (L9–L13). Quy tắc, bằng chứng, giới hạn: docs/03 §16.
+
+| Hạng mục | Thay đổi | Bằng chứng |
+|---|---|---|
+| Quy tắc múi giờ | `core/src/astro.rs`: `local_day_of`, `local_midnight_ut`, `tz_of_day`, `tz_of_instant`; UTC+8 cho thời điểm trước 1968-01-01 00:00 UTC+8, UTC+7 từ đó — dùng chung cho Hnd và Precise (Sóc, Trung khí, tiết khí). ΔT Espenak–Meeus 1860–1986. tsport: `tsport/src/astro.ts` (cùng thứ tự phép tính) | docs/03 §16.2–16.4 |
+| Miền | `MIN_YEAR = 1900`, `MIN_JDN = 2415021`, `MIN_LUNAR_YEAR = 1899`, `BIRTH_MIN_YEAR = MIN_YEAR`, tuế nội bộ 1899–3101; `find_good_days`, `solar_terms_of_year`, `tet` nhận 1900+ | `core/tests/bad_input.rs` (biên 1899/1900) |
+| L11 | ĐẠT cả hai phương pháp | `core/tests/range1900.rs::l11_continuity_1967_1969` |
+| L12 | Khứ hồi 1900–3000: 402 132 ngày × 2, 0 lỗi; TS ↔ Rust 1900–3000: 0 sai lệch (dayinfo 402 132 dòng, Tết 1 101 năm, gooddays 4 470 dòng, mỗi phương pháp) | `range1900.rs::l12_roundtrip_1900_3000`; `scripts/check-parity.sh` (≈ 1 phút 20 giây) |
+| L13 | 2000–3000 giống hệt từng byte tệp chuẩn (hnd, precise) | `check-parity.sh` bước 5 |
+| L9 | Tết 1954, 1968, 1969, 1985 khớp nguồn; Tết 1916 lõi 04/02, bảng TK20 của Hồ Ngọc Đức và lịch Trung Quốc 03/02 (giới hạn quy ước UTC+8 trước 1929, docs/03 §16.5) | `range1900.rs::tet_20th_century_published`, `known_limitation_1916` |
+| Dữ liệu cho kiểm định | `core/out/{,precise/}{lunar_1900_1999.csv, tet_1900_1999.csv, newmoons_1900_1999.csv, dayinfo_1900_3000.jsonl.gz}`; `lvhv-dump newmoons/terms` ghi độ lệch đã dùng ở mỗi dòng (`+08:00`/`+07:00`) | — |
+| `check-parity.sh` | Sinh dayinfo 1900–3000, Tết 1900–1999 + 2000–3000; thêm bước L13 | — |
+| ffi | Chỉ sửa test (`ffi/src/tests.rs`: 1999 → 1899, `min_year` 2000 → 1900) để khớp hằng miền mới; chú thích `2000–3000` trong `ffi/src/lib.rs` chưa đổi | `cargo test -p lvhv-ffi` xanh |
+| PWA — Đổi ngày | Ba ô số Ngày/Tháng/Năm (thay `<input type=date>`), nút "Đổi sang âm lịch"/"Đổi sang dương lịch" (vẫn tự cập nhật khi gõ); kết quả "Ngày 27 tháng 9 năm Đinh Tỵ" + "Ngày Kỷ Tỵ · tháng Canh Tuất"; âm → dương "Thứ Ba, ngày 08/11/1977"; mọi nhánh lỗi hiện thông báo ("Ứng dụng hỗ trợ từ 01/01/1900 đến 31/12/3000.", "Ngày không hợp lệ: …", tháng nhuận không có, ngày 30 tháng thiếu); ghi chú múi giờ trước 1968 | `pwa/test/smoke.mjs` |
+| PWA — khác | Bảng tháng: năm ngoài phạm vi → thông báo; Chọn ngày tốt: khoảng ngoài phạm vi/ngày sai → thông báo; Giới thiệu: phạm vi + ghi chú múi giờ | smoke |
+
+Lỗi người dùng báo (bên điều phối): 1977-11-08 ở bản 2000+ không hiện gì — nguyên nhân: `<input type=date min=2000-01-01>` bỏ giá trị ngoài min/max và nhánh lỗi không chạy khi `change` không phát. Đã sửa bằng ba ô số + nút + thông báo mọi nhánh. 1977-11-08 nay = 27/9 Đinh Tỵ, ngày Kỷ Tỵ, tháng Canh Tuất (khớp giá trị PyEphem UTC+7 của bên điều phối; năm 1977 sau điểm chuyển nên quy tắc múi giờ không ảnh hưởng).
+
+Kiểm tra cuối đợt: `cargo fmt --check`, `cargo clippy --workspace --all-targets -D warnings` sạch; `cargo test --workspace --release` xanh; `cargo test --release -p lvhv-core -- --ignored` (xem kết quả trong commit); `scripts/check-parity.sh` ĐẠT; PWA `npm run typecheck && npm run build && node test/smoke.mjs` ĐẠT (94 kiểm tra). Metrics (`pwa/test/metrics.json`): P3 346,3 KB gzip lần tải đầu (< 500), P4 heap 2,43 MB (< 30), P5 offline ĐẠT, S3/S4 ĐẠT.
