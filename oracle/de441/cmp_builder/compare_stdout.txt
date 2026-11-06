@@ -1,0 +1,6 @@
+L14: so su kien so khop: 40090 (soc 13634, tk 26456); ben XD khong co cap: 0; ben KD khong co cap: 0
+  newmoon: max|d| = 0.0054 s, TB|d| = 0.0025 s, TB co dau = +0.0000 s
+  term: max|d| = 0.0172 s, TB|d| = 0.0042 s, TB co dau = +0.0001 s
+  max |d| = 0.0172 s (term 9 2960-08-06T03:30:13.240); vuot 2 s: 0
+Su kien hai ben dat khac ngay dia phuong: 0
+L15: ngay so: 402132; thieu o ben XD: 0; thua o ben XD: 0; ngay lech: 0 trong 0 doan; khong phan dinh duoc: 0 ngay; sai lech tinh: 0 ngay

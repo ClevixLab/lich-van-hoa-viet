@@ -9,11 +9,11 @@ commit `d238c66`), chỉ đọc riêng mục §17.
 | Mã | Kết luận | Tóm tắt |
 |---|---|---|
 | L14 | **ĐẠT** | 40 090/40 090 sự kiện (13 634 Sóc, 26 456 tiết khí) ghép một-một; max \|Δ\| = **0,0172 s** (ngưỡng 2 s); 0 sự kiện vượt ngưỡng; 0 sự kiện hai bên đặt khác ngày. |
-| L15 | __L15_VERDICT__ | __L15_SUMMARY__ |
+| L15 | **ĐẠT** | 402 132/402 132 ngày (1900-01-01 → 3000-12-31) trùng ở cả 8 trường (năm/tháng/ngày âm, nhuận, Can Chi năm/tháng/ngày, tiết khí): **0 sai lệch**, 0 ngày thiếu/thừa; 0 ngày phải xếp "không phân định được". Hai sự kiện cách nửa đêm < 2 s được liệt kê riêng (mục 4); hai bên đặt cùng ngày. |
 | L17 (phần bên kiểm định tự chấm bằng lịch của mình) | **ĐẠT** | Tết 1900–1999: 100/100 năm đúng cách chấm A3 (0 lệch); bảng TK20 của Hồ Ngọc Đức: **1237/1237** tháng khớp. |
 
 L16 và phần L17 chạy trên lõi do nhóm dự án làm (docs/03 §17.7); bên kiểm định chỉ chấm L17 bằng lịch của chính mình
-(lịch này trùng lõi ở mọi ngày 1900–1999 theo L15 — xem mục 4).
+(lịch này trùng kết xuất `Jpl` của lõi ở mọi ngày 1900–3000 theo L15, nên kết quả áp được cho lõi — xem mục 4).
 
 ## 1. Thứ tự công việc (phòng sạch)
 
@@ -24,10 +24,10 @@ L16 và phần L17 chạy trên lõi do nhóm dự án làm (docs/03 §17.7); b�
 | 17:35 | Máy chủ tích hợp tính xong thời điểm từ DE441 (`out/instants_tt.csv.gz`). |
 | **17:36:30** | **Commit `98688cc` kết quả của bên kiểm định** (thời điểm, lịch 1900–3000, L17, so PyEphem) và đẩy lên nhánh — trước khi xem bất kỳ dữ liệu nào của bên xây dựng. |
 | 17:36:47 | Bên xây dựng commit bảng (`f2fda7a`, `core/data/jpl_events.csv.gz`). Bên kiểm định chỉ đọc tệp CSV kiểm toán này (L14). |
-| __L15_TIME__ | Chạy hộp đen `lvhv-dump --method jpl lunar-csv 1900-01-01 3000-12-31` (dựng từ nhánh `jpl-method`, chỉ chạy, không đọc mã) trên máy chủ tích hợp (L15). |
+| ~17:45 | Chạy hộp đen `lvhv-dump --method jpl lunar-csv 1900-01-01 3000-12-31` (dựng từ nhánh `jpl-method` commit `c71a24d`, chỉ chạy, không đọc mã) trên máy chủ tích hợp (L15). |
 
 Không đọc `core/`, `tsport/`, `ffi/`, `tools/jpl/` hay bảng nhị phân của lõi. Từ bản dựng của bên xây dựng chỉ dùng
-đầu ra `--help` và kết xuất `lunar-csv`.
+đầu ra `--help` và kết xuất `lunar-csv`, `tet`.
 
 ## 2. Phương pháp của bên kiểm định
 
@@ -106,7 +106,38 @@ dùng JD_TT = 2451545 + n_cs/8 640 000). So sánh: `oracle/de441/compare_builder
 
 ## 4. L15 — lịch từng ngày 1900-01-01 → 3000-12-31
 
-__L15_BODY__
+Đầu vào bên xây dựng: `lvhv-dump --method jpl lunar-csv 1900-01-01 3000-12-31` dựng từ `jpl-method` commit
+`c71a24d35789aafefaaba210ce75c488727a27cc` trên máy chủ tích hợp (run 42264388574); tệp
+`oracle/de441/builder/jpl_lunar_1900_3000.csv.gz` (402 133 dòng gồm tiêu đề). Bảng sự kiện nhúng ở commit này trùng
+từng byte tệp kiểm toán dùng cho L14 (SHA-256 `3f563433…540f97` ở cả `f2fda7a` và `c71a24d`).
+Đầu vào bên kiểm định: `oracle/de441/out/days_1900_3000.csv.gz` (commit `98688cc`, trước khi có kết xuất).
+
+| Hạng mục | Kết quả |
+|---|---|
+| Ngày so sánh | 402 132 (thiếu ở bên xây dựng: 0; thừa: 0) |
+| Ngày lệch ở bất kỳ trường nào (ly, lm, ld, leap, cc_year, cc_month, cc_day, tiet_khi) | **0** |
+| Đoạn lệch "không phân định được" | 0 |
+| Đoạn lệch tính vào tiêu chí | 0 |
+
+Ngày bắt đầu tiết khí được so gián tiếp qua cột `tiet_khi` của từng ngày (ngày đầu tiên mang tên tiết khí mới = ngày bắt
+đầu); 0 lệch. Đối chiếu thêm `lvhv-dump --method jpl tet 1900 3000`: 1101/1101 năm trùng `out/tet_1900_3000.csv`.
+
+**Sự kiện cách nửa đêm lịch < 2 s (liệt kê riêng theo L15; ΔT và múi giờ áp như nhau cho thời điểm của hai bên):**
+
+| Sự kiện | Bên kiểm định | Bên xây dựng | Ngày |
+|---|---|---|---|
+| Đông Chí (270°) | 1951-12-23 00:00:01,533 (+08:00) | 1951-12-23 00:00:01,530 | hai bên cùng 1951-12-23 |
+| Tiểu Tuyết (240°) | 2341-11-22 23:59:59,342 (+07:00) | 23:59:59,338 | hai bên cùng 2341-11-22 |
+
+Hai sự kiện này không gây sai lệch nào (hai bên cùng ngày) nhưng ngày của chúng phụ thuộc vào mô hình ở mức giây
+(ví dụ PyEphem cũ đặt Đông Chí 1951 vào 12-22). Các sự kiện kế tiếp gần nửa đêm nhất (< 10 s): Kinh Trập 2109-03-05
+(9,3 s), Sóc 2130-05-08 (8,9 s), Sóc 2415-12-01 (6,2 s), Xuân Phân 2439-03-21 (5,9 s), Xuân Phân 2505-03-21 (6,9 s),
+Cốc Vũ 2702-04-20 (4,2 s), Lập Xuân 2961-02-03 (4,7 s); hai bên cùng ngày ở mọi sự kiện, chênh ≤ 0,012 s.
+
+Chi tiết: `oracle/de441/cmp_builder/compare_stdout.txt`, `l15_mismatch_segments.csv` (rỗng), `l15_mismatch_days.csv.gz` (rỗng),
+`events_day_differ.csv` (rỗng).
+
+**Kết luận L15: ĐẠT.**
 
 ## 5. L17 — Tết 1900–1999 và bảng TK20 (bên kiểm định chấm bằng lịch của mình)
 
@@ -163,7 +194,10 @@ dùng ΔT nội bộ khác `ephem.delta_t` từ 2950; đây là đặc điểm c
 
 ## 7. Sửa sau so sánh
 
-__POSTFIX__
+Không có. Sau khi xem dữ liệu của bên xây dựng, bên kiểm định không sửa mã tính thời điểm, ΔT hay lịch. Các thay đổi sau
+mốc `98688cc` chỉ là: script so sánh (`compare_builder.py`: dùng cột `n_cs` thay `jd_tt` vì chính xác hơn; ghi tệp nén;
+cho phép chạy riêng L14), `compare_old_calendar.py` (thông tin), tác vụ `overlap` (kiểm điểm nối DE441) và báo cáo này.
+`out/instants_tt.csv.gz` và `out/days_1900_3000.csv.gz` không đổi từ `98688cc` (SHA-256: `instants_tt.csv.gz` 130164ed…523a7a, `days_1900_3000.csv.gz` 162b911c…daf).
 
 ## 8. Giới hạn
 
