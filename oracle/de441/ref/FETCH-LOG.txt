@@ -1,4 +1,4 @@
-fetched 2026-11-06T17:26:54Z
+fetched 2026-11-06T17:27:47Z
 OK  hmnao_a_2021.txt <- https://hpiers.obspm.fr/eoppc/series/longterm/hmnao_a_2021.txt
 ERR ukho_lvm_index.html <- http://astro.ukho.gov.uk/nao/lvm/
 ERR Table-S15.2020.txt <- http://astro.ukho.gov.uk/nao/lvm/Table-S15.2020.txt
@@ -6,6 +6,11 @@ ERR Table-S15.2020.https.txt <- https://astro.ukho.gov.uk/nao/lvm/Table-S15.2020
 ERR Table-S15.txt <- http://astro.ukho.gov.uk/nao/lvm/Table-S15.txt
 ERR Table-S15.2020.opensuse.txt <- https://src.opensuse.org/pool/python-skyfield/raw/branch/factory/Table-S15.2020.txt
 OK  hpiers_longterm_dir.html <- https://hpiers.obspm.fr/eoppc/series/longterm/
+ERR hnd_amlich-hnd.js <- https://www.informatik.uni-leipzig.de/~duc/amlich/JavaScript/amlich-hnd.js
+ERR hnd_amlich_index.html <- https://www.informatik.uni-leipzig.de/~duc/amlich/
+ichuot/jquery-amlich 2579ae15f1b244a98b4861e8c14c49f7cc94a47b
+TK20 in ichuot/jquery-amlich: src/jquery.amlich.js
+vanng822/amlich 3d12e02964f49be73d9bb231748d43e814ffe488
 * Host astro.ukho.gov.uk:80 was resolved.
 * IPv6: (none)
 * IPv4: 62.172.108.13
