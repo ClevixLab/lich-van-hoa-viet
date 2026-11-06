@@ -49,7 +49,7 @@ def main(outdir):
     keys = {k: [x[0] for x in v] for k, v in mine.items()}
     old = load_old()
     tz_old_2000 = lambda u: 7 / 24.0  # noqa: E731  oracle 2000-3000: UTC+7 co dinh
-    tz_1900 = C.make_tz(C.SWITCHES_1968["1968-01-01T00+07"])  # quy tac oracle cu Lan 2 (moc 1968 17:00 UT)
+    tz_1900 = C.make_tz(C.SWITCHES_1968["1968-01-01T00+07"], C.SWITCHES_1929["UTC8"])  # quy tac oracle cu Lan 2
     stats = {}
     diffs = []
     for kind, ut, tt, lon, fn in old:

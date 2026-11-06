@@ -52,16 +52,24 @@ def date_to_jdn(d):
 
 
 BJ_LMT = (7 + 45 / 60 + 40 / 3600) / 24.0
-SW_1929_UT = jd_of_date(dt.date(1928, 12, 31)) + 16 / 24.0
+# docs/03 §16.1/§17.6: chuyen luc 1929-01-01 00:00 gio dia phuong Bac Kinh (= 1928-12-31 16:14:20 UT).
+# Bien the "16:00" (= 1929-01-01 00:00 UTC+8, quy tac oracle cu Lan 2) dung de kiem do nhay.
+SWITCHES_1929 = {
+    "LMT": jd_of_date(dt.date(1928, 12, 31)) + (16 + 14 / 60 + 20 / 3600) / 24.0,
+    "UTC8": jd_of_date(dt.date(1928, 12, 31)) + 16 / 24.0,
+}
+SW_1929_UT = SWITCHES_1929["LMT"]
 SWITCHES_1968 = {
     "1968-01-01T00+08": jd_of_date(dt.date(1967, 12, 31)) + 16 / 24.0,
     "1968-01-01T00+07": jd_of_date(dt.date(1967, 12, 31)) + 17 / 24.0,
 }
 
 
-def make_tz(sw1968):
+def make_tz(sw1968, sw1929=None):
+    sw1929 = SW_1929_UT if sw1929 is None else sw1929
+
     def tz(jd_ut):
-        if jd_ut < SW_1929_UT:
+        if jd_ut < sw1929:
             return BJ_LMT
         if jd_ut < sw1968:
             return 8 / 24.0
@@ -161,9 +169,10 @@ def main():
     ap.add_argument("--instants", required=True)
     ap.add_argument("--outdir", required=True)
     ap.add_argument("--switch1968", default="1968-01-01T00+08", choices=sorted(SWITCHES_1968))
+    ap.add_argument("--switch1929", default="LMT", choices=sorted(SWITCHES_1929))
     ap.add_argument("--suffix", default="")
     a = ap.parse_args()
-    tz = make_tz(SWITCHES_1968[a.switch1968])
+    tz = make_tz(SWITCHES_1968[a.switch1968], SWITCHES_1929[a.switch1929])
     nm_tt, terms_tt = load_instants(a.instants)
 
     def ut_of(t):
