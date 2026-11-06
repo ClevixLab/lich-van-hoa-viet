@@ -27,7 +27,8 @@ if (-not (Get-Command cargo -ErrorAction SilentlyContinue)) {
 
 Push-Location $App
 try {
-    $version = (Select-String -Path (Join-Path $App 'Cargo.toml') -Pattern '^version\s*=\s*"([^"]+)"' | Select-Object -First 1).Matches[0].Groups[1].Value
+    # Số phiên bản: tệp VERSION ở gốc kho (build.rs dừng dựng nếu Cargo.toml khác).
+    $version = (Get-Content (Join-Path $App "..\..\VERSION") -Raw).Trim()
     Write-Host "== Dựng LichViet $version (release)"
     cargo build --release --locked
     if ($LASTEXITCODE -ne 0) {

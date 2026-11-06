@@ -9,9 +9,7 @@ private let methodLabel = [
 struct AboutView: View {
     @State private var showRules = false
 
-    private var version: String {
-        (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String) ?? "0.1.0"
-    }
+    private var version: String { AppUpdate.version }
 
     var body: some View {
         if showRules {
@@ -24,8 +22,19 @@ struct AboutView: View {
                         VStack(alignment: .leading, spacing: 2) {
                             Text("Lịch và Văn hóa Việt").serif(26, .semibold).foregroundStyle(C.ink).accessibilityAddTraits(.isHeader)
                             Text("Clevix Lab").sans(16, .semibold).foregroundStyle(C.redInk)
-                            Text("Phiên bản \(version) (thử nghiệm nội bộ)").sans(12).foregroundStyle(C.ink3)
+                            Text("Phiên bản \(version) (thử nghiệm)").sans(12).foregroundStyle(C.ink3)
                         }
+                    }
+                    Panel {
+                        H2("Phiên bản và cập nhật")
+                        P(AppUpdate.runningVersion)
+                        P(AppUpdate.explain)
+                        Button(action: AppUpdate.openStore) {
+                            Text(AppUpdate.button).sans(15, .semibold).foregroundStyle(.white)
+                                .padding(.horizontal, 16).padding(.vertical, 10)
+                                .background(C.redDeep, in: Capsule())
+                        }
+                        .buttonStyle(.plain)
                     }
                     Panel {
                         H2("Về ứng dụng")
@@ -37,7 +46,7 @@ struct AboutView: View {
                     Panel {
                         H2("Quyền riêng tư")
                         P("Ứng dụng không thu thập dữ liệu, không có tài khoản, không quảng cáo và không gửi thông tin đi đâu. Mọi tính toán diễn ra ngay trên máy của bạn.")
-                        P("Ứng dụng không dùng mạng và hoạt động hoàn toàn khi không có mạng. Máy chỉ ghi nhớ cỡ chữ và giao diện sáng tối mà bạn chọn.")
+                        P("Ứng dụng không dùng mạng và hoạt động hoàn toàn khi không có mạng. Máy chỉ ghi nhớ cỡ chữ, giao diện sáng tối mà bạn chọn và ngày bạn bấm \"Để sau\" ở thẻ nhắc cập nhật.")
                         P("Năm sinh nhập ở mục Chọn ngày tốt chỉ dùng trong lúc tính, không được lưu lại.")
                     }
                     Panel {
@@ -49,6 +58,9 @@ struct AboutView: View {
                         H2("Phông chữ")
                         P("Phông chữ tiêu đề là bản rút gọn cho chữ Việt của phông Lora (The Lora Project Authors), cấp phép SIL Open Font License 1.1 (tệp OFL.txt trong gói ứng dụng); bản rút gọn mang tên \"LVHV Serif\" theo điều kiện giấy phép.")
                     }
+                    Text(AppUpdate.copyright).sans(12).foregroundStyle(C.ink3)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .padding(.vertical, 8)
                 }
                 .padding(16)
                 .frame(maxWidth: 720)

@@ -92,8 +92,10 @@ jobs:
           LVHV_KEYSTORE_PASSWORD: ${{ secrets.LVHV_ANDROID_KEYSTORE_PASSWORD }}
           LVHV_KEY_ALIAS: ${{ secrets.LVHV_ANDROID_KEY_ALIAS }}
           LVHV_KEY_PASSWORD: ${{ secrets.LVHV_ANDROID_KEY_PASSWORD }}
-          LVHV_VERSION_CODE: ${{ github.run_number }}
-        run: gradle --no-daemon --stacktrace :app:testReleaseUnitTest :app:lintRelease :app:assembleRelease :app:bundleRelease
+          LVHV_BUILD_NUMBER: ${{ github.run_number }}
+        run: |
+          export LVHV_BUILD_DATE="$(date -u +%Y-%m-%d)"
+          gradle --no-daemon --stacktrace :app:testReleaseUnitTest :app:lintRelease :app:assembleRelease :app:bundleRelease
 
       - name: Kiểm tra — không xin quyền nào (đặc biệt INTERNET), có đủ 3 ABI
         working-directory: apps/android
@@ -113,6 +115,18 @@ jobs:
             unzip -l "$APK" | grep -q "lib/$abi/libjnidispatch.so" || { echo "::error::Thiếu lib/$abi/libjnidispatch.so (JNA)"; exit 1; }
           done
           ls -la app/build/outputs/apk/release app/build/outputs/bundle/release
+
+      - name: Kiểm tra — versionName/versionCode của APK khớp tệp VERSION
+        working-directory: apps/android
+        run: |
+          V="$(tr -d '[:space:]' < ../../VERSION)"
+          IFS=. read -r MA MI PA <<< "$V"
+          CODE=$((MA * 10000 + MI * 100 + PA))
+          APK=$(find app/build/outputs/apk/release -name "*.apk" | sort | head -1)
+          BADGING="$("$ANDROID_HOME/build-tools/35.0.0/aapt2" dump badging "$APK" | head -1)"
+          echo "$BADGING"
+          echo "$BADGING" | grep -qF "versionName='$V'" || { echo "::error::versionName của APK khác VERSION ($V)"; exit 1; }
+          echo "$BADGING" | grep -qF "versionCode='$CODE'" || { echo "::error::versionCode của APK khác $CODE (tính từ VERSION $V)"; exit 1; }
 
       - name: Xóa tệp khóa tạm
         if: always()

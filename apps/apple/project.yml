@@ -8,10 +8,13 @@ options:
     macOS: "13.0"
   createIntermediateGroups: true
   developmentLanguage: vi
+# Phiên bản: KHÔNG ghi số ở đây. MARKETING_VERSION, CURRENT_PROJECT_VERSION, LVHV_BUILD_DATE và
+# APP_STORE_ID đến từ Generated/Version.xcconfig do gen-version.sh sinh từ tệp VERSION ở gốc kho.
+configFiles:
+  Debug: Generated/Version.xcconfig
+  Release: Generated/Version.xcconfig
 settings:
   base:
-    MARKETING_VERSION: "0.1.0"
-    CURRENT_PROJECT_VERSION: "1"
     SWIFT_VERSION: "5.0"
     DEVELOPMENT_TEAM: "$(LVHV_TEAM_ID)"
     CODE_SIGN_STYLE: Automatic
@@ -50,6 +53,10 @@ targets:
         UISupportedInterfaceOrientations~ipad: [UIInterfaceOrientationPortrait, UIInterfaceOrientationPortraitUpsideDown, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
         UIAppFonts: [LVHVSerif-Regular.ttf, LVHVSerif-SemiBold.ttf, LVHVSerif-Bold.ttf]
         ITSAppUsesNonExemptEncryption: false
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        LVHVBuildDate: "$(LVHV_BUILD_DATE)"
+        LVHVAppStoreID: "$(APP_STORE_ID)"
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: vn.clevix.lichviet
@@ -85,6 +92,10 @@ targets:
         ATSApplicationFontsPath: "."  # phông nằm thẳng trong Contents/Resources
         NSHumanReadableCopyright: "© 2026 Clevix LLC (Clevix Lab)"
         ITSAppUsesNonExemptEncryption: false
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        LVHVBuildDate: "$(LVHV_BUILD_DATE)"
+        LVHVAppStoreID: "$(APP_STORE_ID)"
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: vn.clevix.lichviet

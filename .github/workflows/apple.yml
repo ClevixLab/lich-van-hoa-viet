@@ -53,8 +53,14 @@ jobs:
       - name: Dự phòng — brew install xcodegen nếu tải bản ghim thất bại
         run: command -v xcodegen || brew install xcodegen
 
-      - name: Dựng XCFramework + mã Swift UniFFI
-        run: apps/apple/build-xcframework.sh
+      - name: Dựng XCFramework + mã Swift UniFFI + Version.xcconfig (từ VERSION)
+        env:
+          LVHV_BUILD_NUMBER: ${{ github.run_number }}
+          APP_STORE_ID: ${{ vars.LVHV_APP_STORE_ID }}
+        run: |
+          export LVHV_BUILD_DATE="$(date -u +%Y-%m-%d)"
+          apps/apple/build-xcframework.sh
+          cat apps/apple/Generated/Version.xcconfig
 
       - name: XcodeGen
         working-directory: apps/apple
@@ -97,6 +103,21 @@ jobs:
           test -f "$IOS/LVHVSerif-Regular.ttf"
           if grep -E "<key>com\.apple\.security\.network" ../../../../macOS/LichViet.entitlements; then
             echo "::error::Có quyền mạng trong entitlements"; exit 1
+          fi
+          # Phiên bản trong Info.plist của cả hai app phải bằng tệp VERSION; số bản dựng = run_number.
+          V="$(tr -d '[:space:]' < ../../../../../../VERSION)"
+          for P in "$IOS/Info.plist" "$MAC/Contents/Info.plist"; do
+            SV=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$P")
+            BV=$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" "$P")
+            BD=$(/usr/libexec/PlistBuddy -c "Print :LVHVBuildDate" "$P")
+            echo "$P: $SV ($BV), ngày dựng $BD"
+            [ "$SV" = "$V" ] || { echo "::error::$P có CFBundleShortVersionString=$SV, khác VERSION=$V"; exit 1; }
+            [ "$BV" = "${{ github.run_number }}" ] || { echo "::error::$P có CFBundleVersion=$BV, khác run_number"; exit 1; }
+            echo "$BD" | grep -Eq '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' || { echo "::error::LVHVBuildDate sai: $BD"; exit 1; }
+          done
+          # Quyền mạng thật của bản macOS đã dựng (đọc entitlements nhúng nếu có).
+          if codesign -d --entitlements :- "$MAC" 2>/dev/null | grep -q "com.apple.security.network"; then
+            echo "::error::app macOS có quyền mạng"; exit 1
           fi
           ditto -c -k --sequesterRsrc --keepParent "$IOS" "$RUNNER_TEMP/LichViet-iOS-simulator.zip"
           ditto -c -k --sequesterRsrc --keepParent "$MAC" "$RUNNER_TEMP/LichViet-macOS-unsigned.zip"

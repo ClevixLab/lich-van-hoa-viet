@@ -20,6 +20,8 @@ enum ThemeMode: Int { case system = 0, light = 1, dark = 2 }
 struct RootView: View {
     @AppStorage("size") private var size = 1
     @AppStorage("theme") private var themeRaw = 0
+    /// Cờ giao diện duy nhất ngoài cỡ chữ/sáng tối: hết hạn "Để sau" của thẻ nhắc cập nhật (giây, 1970).
+    @AppStorage("updateSnoozedUntil") private var snoozedUntil: Double = 0
     @State private var tab: Tab = .sheet
     @State private var date = Lich.clamp(CivilDate.today())
     @State private var today = CivilDate.today()
@@ -36,6 +38,13 @@ struct RootView: View {
         }
     }
 
+    private var showReminder: Bool {
+        _ = today // tính lại khi quay lại ứng dụng (scenePhase cập nhật today)
+        return AppUpdate.shouldRemind(
+            buildDate: AppUpdate.buildDate, now: Date(),
+            snoozedUntil: snoozedUntil > 0 ? Date(timeIntervalSince1970: snoozedUntil) : nil)
+    }
+
     private func openDay(_ d: CivilDate) {
         date = Lich.clamp(d)
         tab = .sheet
@@ -50,6 +59,12 @@ struct RootView: View {
         VStack(spacing: 0) {
             topBar
             if tab == .sheet { dayNav }
+            if tab == .sheet && showReminder {
+                UpdateReminderCard(
+                    onCheck: { AppUpdate.openStore() },
+                    onLater: { snoozedUntil = AppUpdate.snoozeUntil(from: Date()).timeIntervalSince1970 }
+                )
+            }
             content.frame(maxWidth: .infinity, maxHeight: .infinity)
             #if os(iOS)
             bottomBar

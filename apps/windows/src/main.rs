@@ -1,5 +1,6 @@
 //! Lịch và Văn hóa Việt — ứng dụng Windows (Slint). Gọi trực tiếp crate Rust `lvhv-ffi`
-//! (không qua FFI C). Không dùng mạng, không ghi tệp.
+//! (không qua FFI C). Không dùng mạng. Chỉ ghi một tệp nhỏ: ngày hết hạn "Để sau" của thẻ nhắc
+//! cập nhật (xem `update.rs`).
 #![cfg_attr(all(windows, not(debug_assertions)), windows_subsystem = "windows")]
 // Mã viết tay không dùng `unsafe`; mã Slint sinh ra (mô-đun `ui`) cần `unsafe` nội bộ nên được miễn.
 #![deny(unsafe_code)]
@@ -9,6 +10,8 @@ use std::rc::Rc;
 
 use serde::Deserialize;
 use slint::{ComponentHandle, ModelRc, SharedString, VecModel};
+
+mod update;
 
 #[allow(unsafe_code, dead_code, clippy::all)]
 mod ui {
@@ -666,7 +669,16 @@ fn main() -> Result<(), slint::PlatformError> {
             g.set_l_leap(l.leap);
         }
         g.set_today_text(sv(format!("Hôm nay (giờ Việt Nam): {}.", t.dmy())));
-        g.set_version(sv(env!("CARGO_PKG_VERSION")));
+        g.set_version(sv(update::VERSION));
+        g.set_running_version(sv(update::running_version()));
+        g.set_copyright(sv(update::copyright()));
+        let today_days =
+            update::parse_days(&format!("{:04}-{:02}-{:02}", t.y, t.m, t.d)).unwrap_or(0);
+        g.set_remind(update::should_remind(
+            update::parse_days(update::BUILD_DATE),
+            today_days,
+            update::snoozed_until(),
+        ));
         let method = match lvhv_ffi::lunar_method().as_str() {
             "precise" => "mô hình thiên văn chính xác hơn (Meeus đầy đủ)".to_string(),
             "hnd" => "thuật toán Hồ Ngọc Đức (phổ biến trong các lịch Việt)".to_string(),
@@ -798,6 +810,22 @@ fn main() -> Result<(), slint::PlatformError> {
             ui.set_tab(0);
         }
     }));
+
+    g.on_check_update(|| {
+        update::open_with_os(&update::update_url(update::MS_STORE_ID));
+    });
+    {
+        let w = w.clone();
+        g.on_remind_later(move || {
+            let t = today();
+            if let Some(d) = update::parse_days(&format!("{:04}-{:02}-{:02}", t.y, t.m, t.d)) {
+                update::snooze(d);
+            }
+            if let Some(ui) = w.upgrade() {
+                ui.global::<Data>().set_remind(false);
+            }
+        });
+    }
 
     ui.run()
 }

@@ -49,6 +49,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -68,6 +69,8 @@ import vn.clevix.lichviet.ui.MonthDialog
 import vn.clevix.lichviet.ui.RulesScreen
 import vn.clevix.lichviet.ui.SheetPager
 import vn.clevix.lichviet.ui.ThemeMode
+import vn.clevix.lichviet.ui.UpdateReminder
+import vn.clevix.lichviet.update.Updates
 
 /** Tùy chọn hiển thị: chỉ cỡ chữ và chế độ sáng/tối (giống PWA). Không lưu dữ liệu khác. */
 private object Prefs {
@@ -128,6 +131,9 @@ private fun App(size: Int, onSize: (Int) -> Unit, onToggleTheme: () -> Unit, the
         owner.lifecycle.addObserver(obs)
         onDispose { owner.lifecycle.removeObserver(obs) }
     }
+    val ctx = LocalContext.current
+    // Nhắc cập nhật (không mạng): bản dựng hơn 60 ngày và chưa bấm "Để sau" trong 30 ngày qua.
+    var remind by remember(today) { mutableStateOf(Updates.shouldRemind(ctx, today)) }
     var tab by rememberSaveable { mutableStateOf(Tab.Sheet) }
     var rules by rememberSaveable { mutableStateOf(false) }
     var monthOpen by rememberSaveable { mutableStateOf(false) }
@@ -223,7 +229,15 @@ private fun App(size: Int, onSize: (Int) -> Unit, onToggleTheme: () -> Unit, the
     ) { pad ->
         Box(Modifier.padding(pad).fillMaxSize()) {
             when (tab) {
-                Tab.Sheet -> SheetPager(pager, today, SCALES[size - 1]) { monthOpen = true }
+                Tab.Sheet -> Column(Modifier.fillMaxSize()) {
+                    if (remind) {
+                        UpdateReminder(
+                            onCheck = { Updates.openStore(ctx) },
+                            onLater = { Updates.snooze(ctx, today); remind = false },
+                        )
+                    }
+                    Box(Modifier.weight(1f)) { SheetPager(pager, today, SCALES[size - 1]) { monthOpen = true } }
+                }
                 Tab.Good -> GoodDaysScreen(today, ::openDay)
                 Tab.Convert -> ConvertScreen(current, today, ::openDay)
                 Tab.About -> if (rules) RulesScreen { rules = false } else AboutScreen { rules = true }

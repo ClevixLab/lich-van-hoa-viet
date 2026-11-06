@@ -14,20 +14,28 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import vn.clevix.lichviet.BuildConfig
 import vn.clevix.lichviet.R
 import vn.clevix.lichviet.data.Lich
 import vn.clevix.lichviet.data.TextBlock
+import vn.clevix.lichviet.update.UpdatePolicy
+import vn.clevix.lichviet.update.Updates
 
 private val METHOD_LABEL = mapOf(
     "hnd" to "thuật toán Hồ Ngọc Đức (phổ biến trong các lịch Việt)",
@@ -38,6 +46,8 @@ private val METHOD_LABEL = mapOf(
 @Composable
 fun AboutScreen(openRules: () -> Unit) {
     val c = LocalLich.current
+    val ctx = LocalContext.current
+    val fromPlay = remember { Updates.installedFromPlay(ctx) }
     Page {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Image(painterResource(R.mipmap.ic_launcher), contentDescription = null, modifier = Modifier.size(72.dp))
@@ -45,8 +55,18 @@ fun AboutScreen(openRules: () -> Unit) {
             Column {
                 Text("Lịch và Văn hóa Việt", style = MaterialTheme.typography.headlineMedium, color = c.ink, modifier = Modifier.semantics { heading() })
                 Text("Clevix Lab", style = MaterialTheme.typography.titleMedium, color = c.redInk)
-                Text("Phiên bản ${BuildConfig.VERSION_NAME} (thử nghiệm nội bộ)", style = MaterialTheme.typography.bodySmall, color = c.ink3)
+                Text("Phiên bản ${BuildConfig.VERSION_NAME} (thử nghiệm)", style = MaterialTheme.typography.bodySmall, color = c.ink3)
             }
+        }
+        Panel {
+            H2("Phiên bản và cập nhật")
+            P(UpdatePolicy.runningVersion(Updates.versionName, Updates.buildNumber))
+            P(UpdatePolicy.EXPLAIN)
+            if (fromPlay) P("Bản cài từ Google Play cũng được cửa hàng tự cập nhật nếu bạn bật tự động cập nhật trong Google Play.")
+            Button(
+                onClick = { Updates.openStore(ctx) },
+                colors = ButtonDefaults.buttonColors(containerColor = c.redDeep, contentColor = Color.White),
+            ) { Text(UpdatePolicy.BUTTON) }
         }
         Panel {
             H2("Về ứng dụng")
@@ -58,7 +78,7 @@ fun AboutScreen(openRules: () -> Unit) {
         Panel {
             H2("Quyền riêng tư")
             P("Ứng dụng không thu thập dữ liệu, không có tài khoản, không quảng cáo và không gửi thông tin đi đâu. Mọi tính toán diễn ra ngay trên máy của bạn.")
-            P("Ứng dụng không xin quyền truy cập mạng và hoạt động hoàn toàn khi không có mạng. Máy chỉ ghi nhớ cỡ chữ và giao diện sáng tối mà bạn chọn.")
+            P("Ứng dụng không xin quyền truy cập mạng và hoạt động hoàn toàn khi không có mạng. Máy chỉ ghi nhớ cỡ chữ, giao diện sáng tối mà bạn chọn và ngày bạn bấm "Để sau" ở thẻ nhắc cập nhật.")
             P("Năm sinh nhập ở mục Chọn ngày tốt chỉ dùng trong lúc tính, không được lưu lại.")
         }
         Panel {
@@ -70,6 +90,13 @@ fun AboutScreen(openRules: () -> Unit) {
             H2("Phông chữ")
             P("Phông chữ tiêu đề là bản rút gọn cho chữ Việt của phông Lora (The Lora Project Authors), cấp phép SIL Open Font License 1.1; bản rút gọn mang tên \"LVHV Serif\" theo điều kiện giấy phép.")
         }
+        Text(
+            UpdatePolicy.copyright(Updates.versionName),
+            style = MaterialTheme.typography.bodySmall,
+            color = c.ink3,
+            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+            textAlign = TextAlign.Center,
+        )
     }
 }
 

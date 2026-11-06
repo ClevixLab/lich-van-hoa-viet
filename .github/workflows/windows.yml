@@ -27,11 +27,22 @@ jobs:
     timeout-minutes: 60
     env:
       HAS_CERT: ${{ secrets.LVHV_WIN_CERT_PFX_BASE64 != '' }}
+      LVHV_BUILD_NUMBER: ${{ github.run_number }}
     defaults:
       run:
         shell: pwsh
     steps:
       - uses: actions/checkout@v4
+
+      - name: Ngày dựng + kiểm Cargo.toml khớp VERSION
+        working-directory: apps/windows
+        run: |
+          "LVHV_BUILD_DATE=$((Get-Date).ToUniversalTime().ToString('yyyy-MM-dd'))" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          $v = (Get-Content ..\..\VERSION -Raw).Trim()
+          $c = (Select-String -Path Cargo.toml -Pattern '^version\s*=\s*"([^"]+)"' | Select-Object -First 1).Matches[0].Groups[1].Value
+          if ($c -ne $v) { Write-Host "::error::apps/windows/Cargo.toml version=$c khác VERSION=$v"; exit 1 }
+          if ($v -notmatch '^\d+\.\d+\.\d+$') { Write-Host "::error::VERSION phải có dạng X.Y.Z"; exit 1 }
+          Write-Host "Phiên bản $v"
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: x86_64-pc-windows-msvc
@@ -94,6 +105,23 @@ jobs:
           # windows-2022 có sẵn WiX 3.14 (biến WIX). Nếu thiếu thì cài qua Chocolatey.
           if (-not $env:WIX) { choco install wixtoolset --version 3.14.1 -y --no-progress; $env:WIX = 'C:\Program Files (x86)\WiX Toolset v3.14\' }
           cargo wix --no-build --nocapture --output "dist\LichViet-$env:VERSION-x64.msi"
+
+      - name: Kiểm tra — phiên bản trong .exe và .msi khớp VERSION
+        working-directory: apps/windows
+        run: |
+          $v = (Get-Content ..\..\VERSION -Raw).Trim()
+          $fv = (Get-Item target\release\LichViet.exe).VersionInfo
+          Write-Host "exe: ProductVersion=$($fv.ProductVersion) FileVersion=$($fv.FileVersion)"
+          if (-not ($fv.ProductVersion -like "$v*")) { Write-Host "::error::ProductVersion của .exe ($($fv.ProductVersion)) khác VERSION $v"; exit 1 }
+          $msi = (Resolve-Path "dist\LichViet-$v-x64.msi").Path
+          $inst = New-Object -ComObject WindowsInstaller.Installer
+          $db = $inst.GetType().InvokeMember('OpenDatabase', 'InvokeMethod', $null, $inst, @($msi, 0))
+          $view = $db.GetType().InvokeMember('OpenView', 'InvokeMethod', $null, $db, @("SELECT Value FROM Property WHERE Property='ProductVersion'"))
+          $view.GetType().InvokeMember('Execute', 'InvokeMethod', $null, $view, $null) | Out-Null
+          $rec = $view.GetType().InvokeMember('Fetch', 'InvokeMethod', $null, $view, $null)
+          $pv = $rec.GetType().InvokeMember('StringData', 'GetProperty', $null, $rec, @(1))
+          Write-Host "msi: ProductVersion=$pv"
+          if ($pv -ne $v) { Write-Host "::error::ProductVersion của MSI ($pv) khác VERSION $v"; exit 1 }
 
       - uses: actions/upload-artifact@v4
         with:

@@ -118,7 +118,7 @@ with C++"). Bộ cài MSI cần thêm WiX 3.14 (`winget install WiXToolset.WiXTo
 powershell -ExecutionPolicy Bypass -File apps\windows\scripts\Build-Windows.ps1
 ```
 
-Kết quả: `apps\windows\dist\LichViet-0.1.0-x64.zip` (chạy thẳng `LichViet.exe`) và `.msi` nếu có WiX.
+Kết quả: `apps\windows\dist\LichViet-<VERSION>-x64.zip` (chạy thẳng `LichViet.exe`) và `.msi` nếu có WiX.
 MSI cài theo người dùng (không cần quyền quản trị) vào `%LOCALAPPDATA%\Programs\LichVanHoaViet`, tạo lối
 tắt trong Start Menu.
 
@@ -164,6 +164,45 @@ Linux. Mỗi lần `apple.yml` chạy khoảng 15–25 phút. Có thể đổi `
 
 Bật Pages một lần: Settings → Pages → Source = **GitHub Actions**.
 
+### 4.1 Số phiên bản và cập nhật (không dùng mạng)
+
+**Nguồn duy nhất:** tệp `VERSION` ở gốc kho (dạng `X.Y.Z`, hiện `0.1.1`). Đổi phiên bản = sửa tệp này
+(và dòng `version` trong `apps/windows/Cargo.toml`, vì Cargo không đọc được tệp ngoài — `build.rs` dừng
+dựng nếu hai nơi khác nhau).
+
+| Nền tảng | Đọc VERSION ở đâu | Số bản dựng | CI kiểm khớp |
+|---|---|---|---|
+| Android | `app/build.gradle.kts` đọc `../../VERSION` → `versionName`; `versionCode = X*10000 + Y*100 + Z` (Y, Z < 100). Không còn biến ghi đè `LVHV_VERSION_NAME/CODE` | `BuildConfig.BUILD_NUMBER` = `LVHV_BUILD_NUMBER` (CI: `github.run_number`), `BuildConfig.BUILD_DATE` = `LVHV_BUILD_DATE` | `android.yml`: `aapt2 dump badging` của APK phải có đúng `versionName` và `versionCode` |
+| iOS/macOS | `gen-version.sh` (do `build-xcframework.sh` gọi) sinh `Generated/Version.xcconfig`; `project.yml` dùng làm `configFiles` → `MARKETING_VERSION`, `CURRENT_PROJECT_VERSION`, `LVHV_BUILD_DATE`, `APP_STORE_ID`; Info.plist: `CFBundleShortVersionString`, `CFBundleVersion`, `LVHVBuildDate`, `LVHVAppStoreID` | `CURRENT_PROJECT_VERSION` = `LVHV_BUILD_NUMBER` (CI: `github.run_number`, mặc định 1) | `apple.yml`: PlistBuddy đọc Info.plist của cả app iOS và macOS đã dựng |
+| Windows | `build.rs` đọc `../../VERSION`, so với `CARGO_PKG_VERSION`; `winresource` ghi FileVersion/ProductVersion của `.exe`; cargo-wix lấy `Version` của MSI từ Cargo.toml (X.Y.Z số, đúng yêu cầu WiX) | `LVHV_BUILD_NUMBER` (CI: `github.run_number`) | `windows.yml`: so Cargo.toml với VERSION trước khi dựng; sau khi gói, đọc `ProductVersion` của `.exe` và bảng Property của MSI |
+
+**Hiển thị:** màn hình Giới thiệu có mục "Phiên bản và cập nhật" với dòng "Phiên bản đang dùng: X.Y.Z
+(bản dựng N)", nút **Kiểm tra cập nhật / Cập nhật** và câu giải thích "Ứng dụng không tự kết nối mạng để
+bảo vệ quyền riêng tư…"; cuối trang có dòng "Bản quyền © 2026 của Clevix Lab, version X.Y.Z" (cùng
+cách viết với chân trang PWA; ứng dụng native không có chân trang cố định nên dòng này nằm cuối Giới thiệu).
+
+**Nút cập nhật** chỉ giao một địa chỉ cho hệ điều hành mở; ứng dụng không có quyền/mã mạng:
+
+| Nền tảng | Địa chỉ mở | Cách mở |
+|---|---|---|
+| Android | `market://details?id=vn.clevix.lichviet` → nếu không có ứng dụng nào xử lý: `https://play.google.com/store/apps/details?id=vn.clevix.lichviet` → nếu vẫn không: `https://clevixlab.github.io/lich-van-hoa-viet/` | `Intent.ACTION_VIEW` (`update/Updates.kt`). Không cần khai báo `<queries>` vì gọi thẳng `startActivity` và bắt `ActivityNotFoundException` |
+| iOS/macOS | Khi build setting `APP_STORE_ID` (chỉ chữ số) khác trống: `itms-apps://apps.apple.com/app/id<ID>`; khi trống (mặc định, vì chưa có bản ghi App Store): trang tải về | `UIApplication.open` / `NSWorkspace.open` (`Shared/Update.swift`); nếu mở `itms-apps` thất bại thì mở trang tải về. CI lấy `APP_STORE_ID` từ biến kho (Settings → Variables) `LVHV_APP_STORE_ID`, trống nếu chưa đặt |
+| Windows | Khi `[package.metadata.lvhv] ms-store-id` trong `apps/windows/Cargo.toml` khác trống: `ms-windows-store://pdp/?productid=<ID>`; khi trống (mặc định): trang tải về | `rundll32 url.dll,FileProtocolHandler` (`src/update.rs`), tức trình duyệt/Store mặc định |
+
+**Thẻ nhắc cập nhật** (ngoại tuyến): ứng dụng không biết bản mới nhất là bản nào, chỉ biết **ngày dựng**
+của chính nó (ghi lúc dựng: `LVHV_BUILD_DATE`, mặc định ngày UTC hôm nay). Khi hôm nay cách ngày dựng
+**hơn 60 ngày**, đầu màn hình Tờ lịch hiện thẻ "Phiên bản này đã phát hành hơn 2 tháng. Hãy kiểm tra cập
+nhật để có dữ liệu và tính năng mới nhất." với [Kiểm tra cập nhật] [Để sau]. "Để sau" ẩn thẻ 30 ngày. Chỉ
+lưu đúng một cờ giao diện: ngày hết hạn "Để sau" (Android: SharedPreferences `hien_thi`/`nhac_cap_nhat_den`;
+Apple: UserDefaults `updateSnoozedUntil`, cùng lý do CA92.1; Windows: tệp
+`%LOCALAPPDATA%\Clevix\LichVanHoaViet\nhac-cap-nhat.txt` chứa một ngày — trước đây bản Windows không
+ghi gì). Hệ quả cần biết: người đang dùng bản mới nhất nhưng bản đó đã dựng hơn 60 ngày vẫn thấy thẻ nhắc
+(mỗi 30 ngày nếu bấm "Để sau"); muốn tránh thì phát hành bản dựng mới ít nhất mỗi 2 tháng.
+
+Android cài từ Google Play: mục Giới thiệu thêm câu "Bản cài từ Google Play cũng được cửa hàng tự cập
+nhật…" khi `PackageManager.getInstallSourceInfo` (API 30+; API 26–29 dùng `getInstallerPackageName`) trả
+`com.android.vending`; mọi lỗi → coi như không phải bản Play (không hiện câu này).
+
 ## 5. Chủ dự án cần cung cấp
 
 | Nền tảng | Cần có | Ở đâu |
@@ -196,7 +235,7 @@ sung bước `xcodebuild archive` + `-exportArchive` với các secret `APPLE_CE
 
 - [ ] Tạo ứng dụng "Lịch và Văn hóa Việt", ngôn ngữ mặc định tiếng Việt (vi-VN), loại Ứng dụng, Miễn phí.
 - [ ] Bật Play App Signing; tải lên AAB đã ký bằng khóa tải lên (artifact `android-release` khi có secret).
-- [ ] `versionCode` = số lần chạy CI (`github.run_number`), tăng dần; `versionName` = 0.1.0 (biến `LVHV_VERSION_NAME`).
+- [ ] `versionName` = tệp `VERSION`; `versionCode` = X·10000 + Y·100 + Z (mục 4.1). Mỗi lần tải lên Play phải **tăng `VERSION`** trước (Play từ chối `versionCode` trùng).
 - [ ] Data safety: "Không thu thập dữ liệu", "Không chia sẻ dữ liệu". Đúng với mã: không có quyền nào, không có thư viện phân tích.
 - [ ] Chính sách quyền riêng tư: Play **bắt buộc** có URL công khai, kể cả khi không thu thập dữ liệu. Có thể đăng trang trên GitHub Pages của PWA.
 - [ ] Phân loại nội dung (IARC): Tham khảo / không bạo lực → Mọi lứa tuổi. Đối tượng: không nhắm trẻ em (tránh yêu cầu chính sách Gia đình).
@@ -309,7 +348,7 @@ MSI để tránh).
 - **S2** (lõi không phụ thuộc thư viện ngoài): không bị ảnh hưởng — UniFFI, serde, Slint chỉ là phụ
   thuộc của `ffi/` và `apps/windows/`, không phải của `core/`.
 - **S3/S4 cho native**: không có quyền/mã mạng; chỉ lưu cỡ chữ + sáng/tối (Android SharedPreferences,
-  Apple UserDefaults; Windows không lưu gì). Năm sinh không bao giờ được lưu (Android: `remember`, không
+  Apple UserDefaults; Windows không lưu) và ngày hết hạn "Để sau" của thẻ nhắc cập nhật (mục 4.1). Năm sinh không bao giờ được lưu (Android: `remember`, không
   `rememberSaveable`).
 - **P1/P2** đo cho lõi native ở docs/03 §13; lớp FFI thêm chi phí tuần tự hóa JSON (chưa đo riêng trên
   thiết bị).

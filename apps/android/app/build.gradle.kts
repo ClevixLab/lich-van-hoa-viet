@@ -26,8 +26,21 @@ val releaseKeyPassword = signingValue("LVHV_KEY_PASSWORD", "keyPassword")
 val hasReleaseSigning = listOf(releaseStoreFile, releaseStorePassword, releaseKeyAlias, releaseKeyPassword).all { it != null } &&
     file(releaseStoreFile!!).exists()
 
-val appVersionCode = (System.getenv("LVHV_VERSION_CODE") ?: "1").toInt()
-val appVersionName = System.getenv("LVHV_VERSION_NAME") ?: "0.1.0"
+// Phiên bản: nguồn duy nhất là tệp VERSION ở gốc kho (X.Y.Z). versionCode = X*10000 + Y*100 + Z
+// (Y, Z < 100), tăng dần theo phiên bản như Google Play yêu cầu. Không có biến môi trường ghi đè.
+val versionFile = rootProject.file("../../VERSION")
+val appVersionName: String = versionFile.readText().trim()
+val versionParts: List<Int> = Regex("""^(\d+)\.(\d+)\.(\d+)$""").matchEntire(appVersionName)
+    ?.groupValues?.drop(1)?.map { it.toInt() }
+    ?: throw GradleException("Tệp VERSION (${versionFile.absolutePath}) phải có dạng X.Y.Z, đang là \"$appVersionName\"")
+if (versionParts[1] > 99 || versionParts[2] > 99) throw GradleException("VERSION: số phụ và số vá phải < 100")
+val appVersionCode = versionParts[0] * 10000 + versionParts[1] * 100 + versionParts[2]
+// Số bản dựng (CI: github.run_number) và ngày dựng (YYYY-MM-DD, giờ UTC) — chỉ để hiển thị và nhắc cập nhật.
+val appBuildNumber: String = System.getenv("LVHV_BUILD_NUMBER")?.takeIf { it.isNotBlank() } ?: "0"
+val appBuildDate: String = System.getenv("LVHV_BUILD_DATE")?.takeIf { it.isNotBlank() }
+    ?: java.time.LocalDate.now(java.time.ZoneOffset.UTC).toString()
+if (!Regex("""^\d{4}-\d{2}-\d{2}$""").matches(appBuildDate)) throw GradleException("LVHV_BUILD_DATE phải có dạng YYYY-MM-DD")
+if (!Regex("""^\d+$""").matches(appBuildNumber)) throw GradleException("LVHV_BUILD_NUMBER phải là số")
 
 android {
     namespace = "vn.clevix.lichviet"
@@ -39,6 +52,8 @@ android {
         targetSdk = 35
         versionCode = appVersionCode
         versionName = appVersionName
+        buildConfigField("String", "BUILD_NUMBER", "\"$appBuildNumber\"")
+        buildConfigField("String", "BUILD_DATE", "\"$appBuildDate\"")
         // Chỉ đóng gói tài nguyên tiếng Việt (và mặc định).
         resourceConfigurations += listOf("vi")
         ndk {

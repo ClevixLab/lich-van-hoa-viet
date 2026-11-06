@@ -459,6 +459,9 @@ export global Data {
     in-out property <string> today-text;
     // Giới thiệu
     in-out property <string> version;
+    in-out property <string> running-version;
+    in-out property <string> copyright;
+    in-out property <bool> remind: false;
     in-out property <string> method-text;
     in-out property <string> attribution;
     in-out property <string> cadao-count-text;
@@ -479,6 +482,8 @@ export global Data {
     callback convert-lunar();
     callback open-solar();
     callback open-lunar();
+    callback check-update();
+    callback remind-later();
 }
 
 component H1 inherits VerticalLayout {
@@ -637,9 +642,17 @@ component AboutPage inherits ScrollView {
                 VerticalLayout { alignment: center;
                     S { text: "Lịch và Văn hóa Việt"; size: 26; }
                     T { text: "Clevix Lab"; color: Theme.red-ink; font-weight: 600; }
-                    T { text: "Phiên bản " + Data.version + " (thử nghiệm nội bộ)"; color: Theme.ink3; size: 12; }
+                    T { text: "Phiên bản " + Data.version + " (thử nghiệm)"; color: Theme.ink3; size: 12; }
                 }
             }
+            Card { VerticalLayout { padding: 16px; spacing: 8px;
+                S { text: "Phiên bản và cập nhật"; size: 20; }
+                T { text: Data.running-version; color: Theme.ink2; size: 16; }
+                T { text: "Ứng dụng không tự kết nối mạng để bảo vệ quyền riêng tư. Bấm nút để mở cửa hàng ứng dụng hoặc trang tải về và cập nhật lên phiên bản mới nhất."; color: Theme.ink2; size: 16; }
+                HorizontalLayout { alignment: start;
+                    Pill { text: "Kiểm tra cập nhật / Cập nhật"; active: true; nowrap: true; clicked => { Data.check-update(); } }
+                }
+            } }
             Card { VerticalLayout { padding: 16px; spacing: 8px;
                 S { text: "Về ứng dụng"; size: 20; }
                 T { text: "Lịch âm dương Việt Nam theo múi giờ UTC+7, từ năm 2000 đến năm 3000: ngày âm, Can Chi, tiết khí, giờ hoàng đạo, chọn ngày tốt, và một câu ca dao, tục ngữ cho mỗi ngày."; color: Theme.ink2; size: 16; }
@@ -654,7 +667,7 @@ component AboutPage inherits ScrollView {
             Card { VerticalLayout { padding: 16px; spacing: 8px;
                 S { text: "Quyền riêng tư"; size: 20; }
                 T { text: "Ứng dụng không thu thập dữ liệu, không có tài khoản, không quảng cáo và không gửi thông tin đi đâu. Mọi tính toán diễn ra ngay trên máy của bạn."; color: Theme.ink2; size: 16; }
-                T { text: "Ứng dụng không dùng mạng và hoạt động hoàn toàn khi không có mạng. Ứng dụng không ghi gì xuống máy; cỡ chữ và giao diện sáng tối trở về mặc định mỗi lần mở."; color: Theme.ink2; size: 16; }
+                T { text: "Ứng dụng không dùng mạng và hoạt động hoàn toàn khi không có mạng. Cỡ chữ và giao diện sáng tối trở về mặc định mỗi lần mở. Ứng dụng chỉ ghi một tệp nhỏ chứa ngày bạn bấm \"Để sau\" ở thẻ nhắc cập nhật (trong thư mục %LOCALAPPDATA%\\Clevix)."; color: Theme.ink2; size: 16; }
                 T { text: "Năm sinh nhập ở mục Chọn ngày tốt chỉ dùng trong lúc tính, không được lưu lại."; color: Theme.ink2; size: 16; }
             } }
             Card { VerticalLayout { padding: 16px; spacing: 8px;
@@ -667,6 +680,7 @@ component AboutPage inherits ScrollView {
                 T { text: "Phông chữ tiêu đề là bản rút gọn cho chữ Việt của phông Lora (The Lora Project Authors), cấp phép SIL Open Font License 1.1 (tệp OFL.txt đi kèm); bản rút gọn mang tên \"LVHV Serif\" theo điều kiện giấy phép."; color: Theme.ink2; size: 16; }
                 T { text: "Giao diện dựng bằng Slint (Made with Slint — https://slint.dev), theo giấy phép Slint Royalty-free 2.0."; color: Theme.ink2; size: 16; }
             } }
+            T { text: Data.copyright; color: Theme.ink3; size: 12; horizontal-alignment: center; }
         }
         if root.rules: VerticalLayout {
             spacing: 12px;
@@ -744,6 +758,22 @@ export component AppWindow inherits Window {
                 RoundBtn { glyph: "‹"; label: "Ngày trước"; enabled: Data.can-prev; clicked => { Data.step(-1); } }
                 Pill { text: "Hôm nay"; active: true; enabled: !Data.is-today; width: 160px; clicked => { Data.go-today(); } }
                 RoundBtn { glyph: "›"; label: "Ngày sau"; enabled: Data.can-next; clicked => { Data.step(1); } }
+            }
+            if root.tab == 0 && Data.remind: HorizontalLayout {
+                padding-left: 16px; padding-right: 16px; padding-top: 6px;
+                alignment: center;
+                Rectangle {
+                    max-width: 720px;
+                    horizontal-stretch: 1;
+                    background: Theme.gold-tint;
+                    border-radius: 14px;
+                    HorizontalLayout {
+                        padding: 10px; spacing: 10px;
+                        T { text: "Phiên bản này đã phát hành hơn 2 tháng. Hãy kiểm tra cập nhật để có dữ liệu và tính năng mới nhất."; size: 14; vertical-alignment: center; horizontal-stretch: 1; accessible-role: text; }
+                        Pill { text: "Kiểm tra cập nhật"; active: true; nowrap: true; clicked => { Data.check-update(); } }
+                        Pill { text: "Để sau"; nowrap: true; clicked => { Data.remind-later(); } }
+                    }
+                }
             }
             Rectangle {
                 vertical-stretch: 1;

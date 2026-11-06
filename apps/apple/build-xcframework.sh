@@ -67,5 +67,8 @@ xcodebuild -create-xcframework \
   -library "$LIBS/macos/liblvhv_ffi.a" -headers "$HDR" \
   -output "$XCF"
 
+"$HERE/gen-version.sh"
+
 echo "Xong: $XCF"
 echo "      $HERE/Generated/LvhvCore.swift"
+echo "      $HERE/Generated/Version.xcconfig"

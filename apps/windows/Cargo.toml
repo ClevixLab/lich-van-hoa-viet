@@ -1,6 +1,6 @@
 [package]
 name = "lvhv-windows"
-version = "0.1.0"
+version = "0.1.1" # PHẢI bằng tệp VERSION ở gốc kho — build.rs dừng dựng nếu khác
 edition = "2021"
 description = "Lịch và Văn hóa Việt — ứng dụng Windows (Slint), Clevix Lab"
 license = "MIT"
@@ -31,6 +31,11 @@ upgrade-guid = "6B1D2C5E-7A0F-4C8B-9E3D-2F4A6B8C1D01"
 path-guid = "6B1D2C5E-7A0F-4C8B-9E3D-2F4A6B8C1D02"
 license = false
 eula = false
+
+# Mã sản phẩm Microsoft Store (ví dụ "9NBLGGH4R32N"). Để trống cho tới khi có trang Store thật:
+# khi trống, nút "Kiểm tra cập nhật / Cập nhật" mở trang tải về của dự án. build.rs đọc giá trị này.
+[package.metadata.lvhv]
+ms-store-id = ""
 
 # Workspace riêng: crate này kéo nhiều thư viện (Slint, winit, femtovg). Giữ ngoài workspace gốc để
 # `cargo test` của lõi không phải dựng giao diện. Xem docs/04-BUILD-NATIVE.md.
