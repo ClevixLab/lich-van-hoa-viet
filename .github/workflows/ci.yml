@@ -155,9 +155,9 @@ jobs:
         run: |
           cargo build -p lvhv-core --release --bin lvhv-dump
           D=target/release/lvhv-dump
-          mkdir -p core/out/precise
-          for M in hnd precise; do
-            O=core/out; [ "$M" = precise ] && O=core/out/precise
+          mkdir -p core/out/precise core/out/jpl
+          for M in hnd precise jpl; do
+            O=core/out; [ "$M" = precise ] && O=core/out/precise; [ "$M" = jpl ] && O=core/out/jpl
             # tsport/test/compare.mjs so dải 1900–3000 (bổ sung A1, L12)
             $D --method $M dayinfo-jsonl 1900-01-01 3000-12-31 | gzip -1 > $O/dayinfo_1900_3000.jsonl.gz
             $D --method $M tet 1900 1999 > $O/tet_1900_1999.csv
@@ -165,7 +165,7 @@ jobs:
             { $D --method $M gooddays all 2026-01-01 2026-12-31 none
               $D --method $M gooddays all 2026-01-01 2026-12-31 1976; } > $O/gooddays_sample.jsonl
           done
-          ls -la core/out core/out/precise
+          ls -la core/out core/out/precise core/out/jpl
       - name: npm ci (pwa)
         working-directory: pwa
         run: npm ci
