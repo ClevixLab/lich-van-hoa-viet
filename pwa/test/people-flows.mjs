@@ -99,6 +99,11 @@ export async function runPeople({ browser, BASE, ORIGIN, ROOT, SHOTS, check, met
     await page.setInputFiles("#pf-file", { name: "khong-phai-anh.jpg", mimeType: "image/jpeg", buffer: Buffer.from("đây không phải ảnh", "utf8") });
     await page.waitForSelector(".photo-acts .ferr:not([hidden])");
     check((await text(".photo-acts .ferr")).includes("Không đọc được ảnh này"), "ảnh hỏng → \"Không đọc được ảnh này (định dạng không hỗ trợ)\"");
+    const bigPng = Buffer.alloc(64);
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]).copy(bigPng); bigPng.writeUInt32BE(13, 8); bigPng.write("IHDR", 12); bigPng.writeUInt32BE(20000, 16); bigPng.writeUInt32BE(20000, 20);
+    await page.setInputFiles("#pf-file", { name: "rat-lon.png", mimeType: "image/png", buffer: bigPng });
+    await page.waitForFunction(() => /Ảnh quá lớn/.test(document.querySelector(".photo-acts .ferr")?.textContent ?? ""));
+    check((await text(".photo-acts .ferr")) === "Ảnh quá lớn (20000 × 20000 điểm ảnh) — hãy chọn ảnh nhỏ hơn", "MA3-15-07: ảnh 20 000 × 20 000 điểm ảnh bị từ chối trước khi giải mã");
     await page.setInputFiles("#pf-file", { name: "chan-dung.jpg", mimeType: "image/jpeg", buffer: withExif });
     await page.waitForSelector(".pf-photo[data-drawn]");
     await page.click(".pform details.more > summary");
@@ -248,14 +253,25 @@ export async function runPeople({ browser, BASE, ORIGIN, ROOT, SHOTS, check, met
     check((await text("#period-list")).includes("Không có ngày giỗ, sinh nhật hay sự kiện nào trong kỳ này. (đang lọc: Người đang sống)"), "L5: trạng thái trống có ghi bộ lọc");
     await page.click('.pseg.three button[data-v="tat_ca"]');
     await page.click('.pseg.four button[data-v="nam"]');
-    check(await page.locator("#period-list .pmonth").count() >= 3, "R-UX-2: danh sách năm chia nhóm theo tháng");
-    // Tự kiểm tính nhất quán R13 (c) trên tập mong đợi: hợp tuần = tháng, hợp 3 tháng = quý, đã mất ∪ đang sống = tất cả
-    const all = expected("nam", t0, "tat_ca");
-    const union = [...expected("nam", t0, "da_mat"), ...expected("nam", t0, "dang_song")].sort();
-    check(JSON.stringify(union) === JSON.stringify(all.slice().sort()), "R13 (c): đã mất ∪ đang sống = tất cả (năm 2026), không trùng");
+    // R-UX-2: đúng một tiêu đề cho mỗi tháng có mục, theo thứ tự, không lặp, không thiếu.
+    const wantMonths = [...new Set(expected("nam", t0, "tat_ca").map((x) => x.split("@")[1].slice(0, 7)))].map((ym) => `Tháng ${+ym.slice(5, 7)}/${ym.slice(0, 4)}`);
+    const gotMonths = await page.$$eval("#period-list .pmonth", (els) => els.map((e) => e.textContent));
+    check(JSON.stringify(gotMonths) === JSON.stringify(wantMonths), `R-UX-2: danh sách năm có đúng các nhóm tháng (${gotMonths.join(", ")})`);
+    // R13 (c) trên GIAO DIỆN: "Người đã mất" ∪ "Người đang sống" = "Tất cả", không trùng mục (đo trên danh sách hiển thị).
+    const uiAll = await shown();
+    await page.click('.pseg.three button[data-v="da_mat"]'); const uiDead = await shown();
+    await page.click('.pseg.three button[data-v="dang_song"]'); const uiLive = await shown();
+    await page.click('.pseg.three button[data-v="tat_ca"]');
+    const dup = uiDead.filter((x) => uiLive.includes(x));
+    check(uiAll.length > 0 && JSON.stringify([...uiDead, ...uiLive].sort()) === JSON.stringify(uiAll.slice().sort()) && dup.length === 0,
+      `R13 (c) trên giao diện, năm 2026: ${uiDead.length} đã mất + ${uiLive.length} đang sống = ${uiAll.length} tất cả, ${dup.length} trùng`);
+    // Chạm mục đầu tiên → mở đúng hồ sơ của người ghi trên mục.
+    const firstTitle = await page.locator("#period-list .pitem .pi-l1").first().innerText();
+    const firstName = firstTitle.split(" · ").pop();
     await page.locator("#period-list .pitem").first().click();
     await page.waitForSelector("#person-name");
-    check(true, "L5: chạm một mục → mở hồ sơ");
+    const opened = await text("#person-name");
+    check(opened === firstName, `L5: chạm mục "${firstTitle}" → mở đúng hồ sơ "${opened}"`);
     metrics.people_period = { titles, all_match: periodOk };
 
     // ---------- L6: Sắp tới, L7: thẻ nhắc ----------
@@ -339,12 +355,37 @@ export async function runPeople({ browser, BASE, ORIGIN, ROOT, SHOTS, check, met
     check((await text("#bk-pw2-err")) === "Hai lần nhập mật khẩu chưa giống nhau" && await page.locator("#bk-pw1-err").isHidden(), "L9 (TK-14): hai lần nhập khác nhau → lỗi dưới ô nhập lại");
     await page.fill("#bk-pw2", "nhà có cây bàng");
     await shot("backup-dialog-360", false);
-    const [bk] = await Promise.all([page.waitForEvent("download", { timeout: 120000 }), page.click(".bk-dialog .dbtn.main")]);
+    const dlP = page.waitForEvent("download", { timeout: 120000 });
+    await page.click(".bk-dialog .dbtn.main");
+    await page.keyboard.press("Escape"); // MA3-15-03: đang mã hóa → Esc không đóng được hộp
+    const escHeld = await page.locator(".bk-dialog[open]").count();
+    const bk = await dlP;
     const bkBytes = readFileSync(await bk.path());
     check(bk.suggestedFilename() === `LichVanHoaViet-saoluu-${TODAY}.lvhv` && bkBytes.subarray(0, 7).toString() === "LVHVBAK", `L9: tải ${bk.suggestedFilename()} (${bkBytes.length} byte)`);
+    check(escHeld === 1, "MA3-15-03: nhấn Esc trong lúc mã hóa — hộp \"Tạo tệp sao lưu\" vẫn mở, tệp vẫn được tải");
     // Trang Sao lưu dựng lại sau khi xuất xong — chờ đúng dòng mới, không đọc bản cũ.
     const lastOk = await page.waitForSelector('#bk-last:has-text("Lần sao lưu gần nhất: 25/07/2026")', { timeout: 30000 }).then(() => true, () => false);
     check(lastOk, `L9: ghi lần sao lưu gần nhất (${await text("#bk-last")})`);
+    const srcBackup = readFileSync(join(ROOT, "src/people/backup.ts"), "utf8"), srcCrypto = readFileSync(join(ROOT, "src/store/backup-crypto.ts"), "utf8");
+    const num = (re, src) => Number(eval(re.exec(src)[1].replace(/_/g, "")));
+    const limitOk = num(/MAX_BACKUP_FILE = ([0-9 +*]+);/, srcBackup) === num(/HEADER_LEN = (\d+);/, srcCrypto) + num(/MAX_PLAINTEXT = ([0-9 *]+);/, srcCrypto) + num(/TAG_LEN = (\d+);/, srcCrypto);
+    const huge = await page.evaluate(() => {
+      // Tệp "thưa": ghép 130 lần cùng một Blob 1 MiB (trình duyệt không chép byte) → 130 MiB > giới hạn.
+      const mb = new Blob([new Uint8Array(1024 * 1024)]);
+      const f = new File(Array(130).fill(mb), "qua-lon.lvhv", { type: "application/octet-stream" });
+      window.__ab = 0;
+      for (const P of [Blob.prototype, File.prototype]) { const o = P.arrayBuffer; P.arrayBuffer = function (...a) { window.__ab++; return o.apply(this, a); }; }
+      const dt = new DataTransfer(); dt.items.add(f);
+      const inp = document.querySelector("#bk-file"); inp.files = dt.files; inp.dispatchEvent(new Event("change"));
+      return f.size;
+    });
+    await page.fill("#bk-ipw", "nhà có cây bàng");
+    await page.click("#bk-open");
+    await page.waitForSelector("#bk-imp-err:not([hidden])", { timeout: 5000 });
+    const hugeReads = await page.evaluate(() => window.__ab);
+    check(limitOk && (await text("#bk-imp-err")) === "Sai mật khẩu hoặc tệp bị hỏng" && hugeReads === 0,
+      `MA3-15-02 (S12): tệp ${(huge / 1048576).toFixed(0)} MiB > giới hạn → thông báo chung, 0 lần đọc tệp (${hugeReads}); giới hạn = 72 + MAX_PLAINTEXT + 16 (${limitOk})`);
+    await page.fill("#bk-ipw", "");
     await store(`async (s) => { await s.deletePerson("${idC}"); }`);
     await page.setInputFiles("#bk-file", { name: bk.suggestedFilename(), mimeType: "application/octet-stream", buffer: bkBytes });
     check((await text("#bk-file-name")) === `Đã chọn: ${bk.suggestedFilename()}`, "TK-06: hiện tên tệp đã chọn");
@@ -361,9 +402,11 @@ export async function runPeople({ browser, BASE, ORIGIN, ROOT, SHOTS, check, met
     await page.click(".imp-dialog .dbtn.main");
     await page.waitForSelector('.pdialog[open] .dbtn.danger');
     await page.click('.pdialog[open] .dbtn.danger');
+    await page.keyboard.press("Escape"); // MA3-15-03: đang khôi phục → Esc không đóng hộp; kết quả vẫn được báo
     await page.waitForSelector('.toast:has-text("Đã khôi phục: 3 người, 2 sự kiện.")', { timeout: 60000 });
     const h2 = await store(`async (s) => s.stateHash()`);
     check(h1 === h2, "L9/L10: xuất → xóa một hồ sơ → nhập \"Thay toàn bộ\" → dữ liệu giống hệt (stateHash)");
+    check((await text(".toast")).startsWith("Đã khôi phục: 3 người") && await page.locator(".pdialog[open]").count() === 0, "MA3-15-03: nhấn Esc trong lúc khôi phục — hộp không bị hủy giữa chừng, có thông báo \"Đã khôi phục\", không còn hộp mở");
 
     // ---------- Ảnh chụp mọi màn hình mới: 360/1280 × sáng/tối; bố cục (TK-02) và vùng chạm (TK-05) ở A và A++ ----------
     const screens = [

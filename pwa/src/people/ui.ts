@@ -45,28 +45,35 @@ export interface DialogOpts {
   cls?: string;
 }
 /** Hộp thoại gốc của trình duyệt; trả true nếu người dùng đồng ý. Tiêu điểm trở về phần tử đã mở hộp. */
+let dialogSeq = 0;
 export function confirmDialog(o: DialogOpts): Promise<boolean> {
   const back = document.activeElement as HTMLElement | null;
   const err = h("p", { class: "ferr", role: "alert", hidden: true });
   const okBtn = h("button", { type: "button", class: `dbtn ${o.danger ? "danger" : "main"}` }, o.ok);
   const cancelBtn = h("button", { type: "button", class: "dbtn" }, o.cancel ?? "Hủy");
-  const dlg = h("dialog", { class: `mdialog pdialog ${o.cls ?? ""}`, "aria-labelledby": "pd-title" },
-    h("h2", { id: "pd-title", class: "pd-title" }, o.title),
+  const tid = `pd-title-${++dialogSeq}`;
+  const dlg = h("dialog", { class: `mdialog pdialog ${o.cls ?? ""}`, "aria-labelledby": tid, "aria-busy": "false" },
+    h("h2", { id: tid, class: "pd-title" }, o.title),
     h("div", { class: "pd-body" }, ...o.body),
     err,
     h("div", { class: "pd-acts" }, cancelBtn, okBtn));
   document.body.append(dlg);
   return new Promise((resolve) => {
-    let result = false;
+    let result = false, busy = false;
     const finish = () => { dlg.close(); };
+    // MA3-15-03: trong lúc việc đang chạy (mã hóa, khôi phục…) phím Esc không đóng được hộp — nếu không, dữ liệu vẫn bị
+    // thay mà trang không báo gì.
+    dlg.addEventListener("cancel", (e) => { if (busy) e.preventDefault(); });
     dlg.addEventListener("close", () => { dlg.remove(); back?.focus?.(); resolve(result); });
     cancelBtn.addEventListener("click", finish);
     okBtn.addEventListener("click", async () => {
       err.hidden = true;
       okBtn.setAttribute("disabled", "");
       cancelBtn.setAttribute("disabled", "");
+      busy = true; dlg.setAttribute("aria-busy", "true");
       let r: boolean | string | void = true;
       try { r = o.onOk ? await o.onOk() : true; } catch (e) { r = (e as Error).message || "Có lỗi xảy ra"; }
+      busy = false; dlg.setAttribute("aria-busy", "false");
       okBtn.removeAttribute("disabled");
       cancelBtn.removeAttribute("disabled");
       if (typeof r === "string") { err.textContent = r; err.hidden = false; return; }

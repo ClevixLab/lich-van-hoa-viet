@@ -8,6 +8,19 @@ import { openBackup, type VerifiedBackup } from "../store/index";
 
 const iso = (d: M.Ymd) => M.iso(d);
 
+/**
+ * MA3-15-02 (S12): cỡ lớn nhất của một tệp sao lưu hợp lệ = phần đầu 72 byte + bản rõ ≤ 128 MiB + thẻ 16 byte
+ * (03 §2.1–§2.3; cùng giá trị HEADER_LEN, MAX_PLAINTEXT, TAG_LEN của store/backup-crypto — không import tĩnh tệp đó
+ * vì nó kéo theo mã mật mã, P6). Tệp lớn hơn bị từ chối TRƯỚC khi đọc vào bộ nhớ.
+ */
+export const MAX_BACKUP_FILE = 72 + 128 * 1024 * 1024 + 16;
+
+/** Ngày theo giờ của máy từ một thời điểm RFC 3339 (…Z) — MA3-15-06. */
+function localDmy(ts: string): string {
+  const d = new Date(ts);
+  return dmy({ y: d.getFullYear(), m: d.getMonth() + 1, d: d.getDate() });
+}
+
 /** Tải một tệp qua thẻ <a download> (không gửi mạng). blob: chỉ dùng cho điều hướng tải xuống, không cho ảnh. */
 export function download(name: string, bytes: Uint8Array | string, type: string): void {
   const blob = new Blob([bytes as BlobPart], { type });
@@ -62,7 +75,7 @@ export async function renderBackup(root: HTMLElement, rerender: () => void): Pro
   const s = await store();
   const last = sn.settings.last_backup_at as string | null;
   const photos = (await s.photos()).length;
-  const lastTxt = last ? `Lần sao lưu gần nhất: ${dmy({ y: +last.slice(0, 4), m: +last.slice(5, 7), d: +last.slice(8, 10) })}` : "Chưa sao lưu lần nào";
+  const lastTxt = last ? `Lần sao lưu gần nhất: ${localDmy(last)}` : "Chưa sao lưu lần nào";
 
   // A. .ics
   const icsBtn = h("button", { type: "button", class: "primary", id: "ics-open", onclick: () => void openIcsDialog() }, "Xuất tệp lịch (.ics)…");
@@ -98,6 +111,7 @@ export async function renderBackup(root: HTMLElement, rerender: () => void): Pro
         if (a.normalize("NFC") !== b.normalize("NFC")) { mark(pw2, e2, "Hai lần nhập mật khẩu chưa giống nhau"); pw2.focus(); return false; }
         prog.hidden = false; progTxt.hidden = false;
         const bytes = await s.exportBackup(a, { version: APP_VERSION, platform: "pwa" }, (x) => { prog.value = x; });
+        pw1.value = ""; pw2.value = ""; // MA3-15-08: không giữ mật khẩu trong ô sau khi xuất
         download(`LichVanHoaViet-saoluu-${iso(today())}.lvhv`, bytes, "application/octet-stream");
         return true;
       },
@@ -118,6 +132,8 @@ export async function renderBackup(root: HTMLElement, rerender: () => void): Pro
     const f = fileIn.files?.[0];
     if (!f) { impErr.textContent = "Hãy chọn tệp sao lưu"; impErr.hidden = false; return; }
     if (!pwIn.value) { impErr.textContent = "Hãy nhập mật khẩu của tệp"; impErr.hidden = false; return; }
+    // S12: tệp lớn hơn mọi tệp sao lưu hợp lệ → thông báo chung (03 §2.4), không đọc tệp vào bộ nhớ.
+    if (f.size > MAX_BACKUP_FILE) { impErr.textContent = "Sai mật khẩu hoặc tệp bị hỏng"; impErr.hidden = false; return; }
     impBtn.disabled = true; impProg.hidden = false;
     let v: VerifiedBackup;
     try { v = await openBackup(new Uint8Array(await f.arrayBuffer()), pwIn.value, (x) => { impProg.value = x; }); }
@@ -125,7 +141,7 @@ export async function renderBackup(root: HTMLElement, rerender: () => void): Pro
     finally { impBtn.disabled = false; impProg.hidden = true; }
     pwIn.value = "";
     const pv = v.preview;
-    const exp = dmy({ y: +pv.exported_at.slice(0, 4), m: +pv.exported_at.slice(5, 7), d: +pv.exported_at.slice(8, 10) });
+    const exp = localDmy(pv.exported_at);
     const plat = ({ pwa: "ứng dụng web", android: "Android", ios: "iPhone/iPad", macos: "máy Mac", windows: "Windows" } as Record<string, string>)[pv.platform] ?? pv.platform;
     let mode: "merge" | "replace" = "merge";
     const radio = (val: "merge" | "replace", label: string, sub: string) => {

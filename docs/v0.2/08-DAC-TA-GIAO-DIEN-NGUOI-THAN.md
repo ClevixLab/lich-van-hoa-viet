@@ -615,12 +615,23 @@ nhắc rồi thứ tự 02 §7.2; quá 3 thẻ
 ### 8.2 Danh sách theo kỳ (R13) — bộ chuyển tạm
 `eventsInPeriod(cal, dataset, kind, anchor, filter) → {from, to, items}`, `periodBounds(kind, anchor)` và hàm kỳ
 trước/sau do vai B1 thêm vào `tsport` (nhánh `v0.2-w3-core`). Tới khi hàm đó có trên `main`, PWA dùng **một mô-đun
-chuyển tạm duy nhất** `pwa/src/people/period.ts` dựng cùng kết quả từ `occurrencesWithTt`; đổi sang hàm của `tsport`
-là sửa **một dòng** `export … from` trong tệp đó. Quy ước của bộ chuyển (phải khớp hàm của B1 khi thay):
-- Tuần bắt đầu Thứ Hai; kỳ gồm cả ngày đầu và ngày cuối.
-- Bộ lọc của sự kiện: theo hồ sơ **đầu tiên** trong `person_ids` (giao diện chỉ tạo sự kiện một người); sự kiện không
-  còn người nào: thuộc "Người đang sống" (để "đã mất" ∪ "đang sống" = "tất cả", không trùng). Nếu hàm của B1 quy ước
-  khác, theo hàm của B1 và sửa dòng này.
+chuyển tạm duy nhất** `pwa/src/people/period.ts` dựng kết quả từ `occurrencesWithTt`.
+
+**Đã biết sai (duyệt mã MA3-15-01, chờ PR #14 vào `main`):**
+- Quy tắc bộ lọc của bộ chuyển **khác** 02 §7.6 (PR #14). 02 §7.6: sự kiện thuộc "Người đã mất" khi `person_ids` không
+  rỗng và **mọi** người trong đó đã mất; còn lại thuộc "Người đang sống". Bộ chuyển chỉ nhìn người **đầu tiên**, nên lệch
+  với sự kiện gắn nhiều người có trạng thái khác nhau (giao diện bản này chỉ tạo sự kiện một người, nhưng dữ liệu từ sao
+  lưu của nền tảng khác thì có thể có).
+- Đổi sang hàm của `tsport` **không phải một dòng**:
+  - `prevPeriod`/`nextPeriod` trả `{from, to}` (bộ chuyển trả `Ymd`);
+  - `items` là `PeriodItem` (dùng `it.occ`, `it.date`);
+  - kiểu bộ lọc tên `PersonFilter`.
+  Cần sửa `period.ts` và các nơi gọi ở `views.ts`.
+- Khi thay: kiểm thử L5 so với `eventsInPeriod` của lõi (không tự viết lại quy tắc) và thêm một sự kiện gắn [người đã
+  mất, người đang sống], khẳng định nó ở "Người đang sống".
+
+Phần không đổi: tuần bắt đầu Thứ Hai; kỳ gồm cả ngày đầu và ngày cuối; dòng chính của mục ("Nhãn · tên") lấy theo người
+đầu tiên chỉ để **hiển thị**, không dùng cho bộ lọc.
 
 ### 8.3 Ảnh
 Không `blob:` trong `img-src`; ảnh luôn vẽ vào `<canvas>` (`createImageBitmap(Blob)`). Tải tệp xuất (.ics, .lvhv) dùng
@@ -719,3 +730,16 @@ Các điểm dưới đây được đổi hoặc làm rõ khi cài; phần trê
 | TK-29 | Gộp khối "Nhắc sinh nhật âm lịch" thành "giống sinh nhật dương lịch" đổi cách lưu `reminders.sinh_nhat_am` (hiện là một quy tắc riêng có `id` riêng); cần quyết định mô hình — để đợt sau |
 | TK-31 | Đánh dấu ngày giỗ/sinh nhật trên lịch tháng của Tờ lịch chạm vào màn hình v0.1 và tốn tính toán cho mỗi ô — đợt sau |
 | TK-35 (phần còn lại) | Kiểm thử cho nhắc sao lưu đến hạn, cho > 3 thẻ nhắc, cho lỗi kho; khung dây biểu mẫu 1280 px; trạng thái tên rất dài trên bia — chưa làm |
+
+### 12d. Sau duyệt mã (`docs/reviews/DUYET-MA-DOT3.md`, PR #19)
+
+| Mã | Mức | Việc |
+|---|---|---|
+| MA3-15-01 | chặn | **Chờ PR #14 vào `main`** — thay bộ chuyển bằng `eventsInPeriod` của lõi; xem §8.2 |
+| MA3-15-02 | chặn | Đã sửa: khôi phục kiểm `File.size` > 72 + 128 MiB + 16 **trước** khi đọc tệp → "Sai mật khẩu hoặc tệp bị hỏng" (S12). Kiểm thử: tệp thưa 130 MiB → thông báo chung, 0 lần đọc tệp; giới hạn khớp hằng số của `backup-crypto` |
+| MA3-15-03 | nên sửa | Đã sửa: trong lúc mã hóa/khôi phục, Esc không đóng hộp thoại (`cancel` bị chặn, `aria-busy`); kiểm thử nhấn Esc ở cả hai việc. Đã thử ngược: bỏ chặn thì kiểm thử báo lỗi |
+| MA3-15-04 | nên sửa | Đã sửa: chạm mục → so tên hồ sơ mở ra; nhóm tháng so đúng danh sách tháng; R13 (c) đo trên giao diện ba bộ lọc |
+| MA3-15-05 | góp ý | Đã sửa: thẻ nhắc dùng `allReminders` của lõi (múi giờ của máy), lọc lời nhắc có ngày địa phương = hôm nay |
+| MA3-15-06 | góp ý | Đã sửa: "Lần sao lưu gần nhất" và ngày xuất trong xem trước khôi phục theo giờ của máy |
+| MA3-15-07 | góp ý | Đã sửa: đọc kích thước điểm ảnh từ phần đầu tệp (PNG, GIF, JPEG, WebP); > 12 000 px mỗi cạnh hoặc > 50 MP → "Ảnh quá lớn (w × h điểm ảnh) — hãy chọn ảnh nhỏ hơn", không giải mã |
+| MA3-15-08 | góp ý | Đã sửa: xóa mật khẩu khỏi ô sau khi xuất. Thẻ nhắc trên trình duyệt không có `indexedDB.databases()`: cờ "đã dùng Người thân" (`people: true`) trong `lvhv.ui`. **Chưa:** `metrics.json` vẫn là tệp có trong kho (thay đổi theo mỗi lần chạy — PR này không commit lại số đo mới); `weekdayOf` lặp `jd.weekday` — bỏ khi thay bộ chuyển (MA3-15-01) |

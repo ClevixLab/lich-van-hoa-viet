@@ -6,11 +6,15 @@ import { renderEventForm, renderPersonForm, type Nav } from "./forms";
 import { disposeMemorial, renderMemorial } from "./memorial";
 import { setToastHost } from "./ui";
 import { reminderCards, renderList, renderPeriod, renderPerson, renderUpcoming } from "./views";
+import { getPrefs, setPref } from "../prefs";
 
 export type { Nav };
 
 const TABS: [string, string][] = [["", "Sắp tới"], ["theo-ky", "Theo kỳ"], ["ho-so", "Hồ sơ"], ["sao-luu", "Sao lưu"]];
 const TITLES: Record<string, string> = { "": "Người thân", "theo-ky": "Theo kỳ", "ho-so": "Hồ sơ", "sao-luu": "Sao lưu" };
+
+/** Ghi cờ "đã dùng Người thân" (MA3-15-08) khi kho có hồ sơ. */
+function markUsed(n: number): void { if (n > 0 && !getPrefs().people) setPref("people", true); }
 
 /** Dựng trang con `sub` (phần sau `#/nguoi-than/`) vào `root`. */
 export async function renderPeople(root: HTMLElement, sub: string, nav: Nav): Promise<void> {
@@ -38,7 +42,7 @@ export async function renderPeople(root: HTMLElement, sub: string, nav: Nav): Pr
     root.append(toastHost, body);
     if (top === "them") await renderPersonForm(body, parts[1] === "dang-song" ? "living" : "deceased", null, nav);
     else if (top === "sua" && parts[1]) await renderPersonForm(body, null, parts[1], nav);
-    else if (top === "nguoi" && parts[1]) await renderPerson(body, parts[1], nav);
+    else if (top === "nguoi" && parts[1]) { await renderPerson(body, parts[1], nav); markUsed(body.querySelector("#person-name") ? 1 : 0); }
     else if (top === "su-kien" && parts[1]) await renderEventForm(body, parts[1], parts[2] && parts[2] !== "moi" ? parts[2] : null, nav);
     else if (top === "tuong-niem" && parts[1]) { root.classList.add("is-memorial"); await renderMemorial(body, parts[1]); }
     else nav.go("#/nguoi-than", true);
@@ -52,6 +56,7 @@ export async function renderPeople(root: HTMLElement, sub: string, nav: Nav): Pr
 /** Thẻ nhắc khi mở ứng dụng (02 §7.5). Chỉ gọi khi đã có cơ sở dữ liệu `lvhv`. */
 export async function startupCards(host: HTMLElement, nav: Nav): Promise<boolean> {
   const sn = await snap();
+  markUsed(sn.persons.length);
   clear(host);
   const c = reminderCards(sn, nav, () => { host.hidden = true; }, true);
   if (c) host.append(c);

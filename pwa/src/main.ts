@@ -198,7 +198,8 @@ function renderPeopleRoute(page: HTMLElement, token: number): void {
 /** Khi mở ứng dụng: chỉ nạp mô-đun nếu đã có cơ sở dữ liệu `lvhv` (không tạo IndexedDB cho người chưa dùng). */
 async function startupReminders(): Promise<void> {
   try {
-    if (!indexedDB.databases || !(await indexedDB.databases()).some((d) => d.name === "lvhv")) return;
+    // Trình duyệt không có indexedDB.databases() (Firefox < 126): dựa vào cờ "đã dùng Người thân" trong tùy chọn.
+    if (indexedDB.databases ? !(await indexedDB.databases()).some((d) => d.name === "lvhv") : !getPrefs().people) return;
     const mod = await loadPeople();
     const has = await mod.startupCards(remindHost, peopleNav);
     remindHost.hidden = !has || state.route !== "ngay";

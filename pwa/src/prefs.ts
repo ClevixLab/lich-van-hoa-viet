@@ -6,7 +6,11 @@ export type Theme = "auto" | "light" | "dark";
 
 const KEY = "lvhv.ui";
 
-interface Prefs { size: TextSize; theme: Theme }
+/**
+ * `people`: máy này đã từng lưu hồ sơ ở mục Người thân (chỉ một cờ đúng/sai, không phải dữ liệu cá nhân). Dùng để
+ * biết có cần nạp mô-đun kiểm thẻ nhắc khi mở ứng dụng trên trình duyệt không có `indexedDB.databases()` (MA3-15-08).
+ */
+interface Prefs { size: TextSize; theme: Theme; people?: true }
 
 function read(): Prefs {
   const def: Prefs = { size: "1", theme: "auto" };
@@ -17,6 +21,7 @@ function read(): Prefs {
     return {
       size: p.size === "2" || p.size === "3" ? p.size : "1",
       theme: p.theme === "light" || p.theme === "dark" ? p.theme : "auto",
+      ...(p.people === true ? { people: true as const } : {}),
     };
   } catch {
     return def;

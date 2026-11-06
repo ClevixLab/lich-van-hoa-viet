@@ -64,18 +64,19 @@ export async function storageNotices(sn: Snap): Promise<HTMLElement[]> {
 
 // ---------------- thẻ nhắc hôm nay (02 §7.5, 08 §5.5) ----------------
 export interface Due { occ: M.Occurrence; t: M.RemType; time: number }
+/**
+ * Lời nhắc rơi vào hôm nay (02 §7.5). MA3-15-05: dùng đúng `allReminders` của lõi (02 §7.1, cùng hàm R3 đã kiểm
+ * parity) — không tự viết lại quy tắc mốc nhắc / tiên thường. Múi giờ = múi giờ hiện tại của máy; `now = −∞` để giữ cả
+ * lời nhắc đã qua giờ trong hôm nay. Cửa sổ lần xuất hiện: hôm nay … hôm nay + 61 ngày (mốc nhắc tối đa 60 ngày).
+ */
 export function dueToday(sn: Snap, t: Ymd = today()): Due[] {
-  const ds = sn.ds;
-  if (!ds.reminders_enabled) return [];
-  const out: Due[] = [];
-  for (const occ of M.occurrencesWithTt(cal(), ds, t, addDays(t, 61))) {
-    const rule = M.ruleOf(ds, occ);
-    if (!rule || !rule.enabled) continue;
-    if (occ.class === "tien_thuong") { if (daysBetween(t, occ.date) === 0) out.push({ occ, t: "tt", time: rule.time_local }); continue; }
-    for (const k of rule.offsets_days) if (daysBetween(t, occ.date) === k) out.push({ occ, t: k, time: rule.time_local });
-  }
-  out.sort((a, b) => a.time - b.time || M.cmpOcc(a.occ, b.occ));
-  return out;
+  const zone = M.Zone.fixed(-new Date().getTimezoneOffset());
+  const day = M.ymdJdn(t);
+  return M.allReminders(cal(), sn.ds, t, addDays(t, 61), -Infinity, zone)
+    .filter((r) => Math.floor(r.at_local / 1440) === day)
+    .map((r) => ({ occ: r.occ, t: r.rtype, time: r.at_local - day * 1440 }))
+    // 08 §5.5: theo giờ nhắc rồi theo thứ tự 02 §7.2 (allReminders xếp theo mã lời nhắc ngẫu nhiên khi cùng giờ).
+    .sort((a, b) => a.time - b.time || M.cmpOcc(a.occ, b.occ));
 }
 
 const dismissed = new Set<string>();
