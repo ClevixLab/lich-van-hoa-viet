@@ -541,6 +541,15 @@ L14–L17 ĐẠT và L12, P1, P3 vẫn ĐẠT (A4 mục 4).
 - Hai phần là cùng một lời giải tích phân số, chia đôi theo thời gian, chồng nhau quanh 1969-06/07. Quy ước:
   thời điểm (thang TDB) **trước JD 2440403,5 (1969-07-01 00:00 TDB)** đọc từ `part-1`, **từ đó trở đi** đọc từ
   `part-2`. (Chọn bất kỳ điểm nào trong vùng chồng cho cùng kết quả đến mức số học máy.)
+- **Đính chính 2026-11-07 (sự kiện, không đổi phương pháp):** đường dẫn ssd.jpl.nasa.gov ở trên trả 404 cho hai tệp
+  phần; JPL hiện phát hành DE441 tại đó dưới dạng một tệp `de441.bsp` (hai đoạn nối nhau quanh 1969-07-29/30). Bộ sinh
+  bảng của dự án thực tế đã tải **hai tệp phần từ kho NAIF của JPL**:
+  <https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/planets/de441_part-1.bsp> (1 651 119 104 byte, SHA-256
+  `13757827f5db41b835a24bbd637488636ce79a8ca754062fed17844f7d5b618e`, phủ JD −3100015,5 → 2440432,5 tức đến
+  1969-07-29) và <https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/planets/de441_part-2.bsp> (1 656 830 976 byte,
+  SHA-256 `3abb17dae2d78dd34880377544aacb54892104a0d4462b322cb9f4454d4887f6`, phủ JD 2440400,5 → 8000016,5 tức từ
+  1969-06-27). Điểm chuyển JD 2440403,5 nằm trong vùng chồng. Dùng `de441.bsp` một tệp là cùng lời giải DE441; bên cài
+  lại dùng tệp nào cũng được (khác biệt chỉ ở mức số học máy).
 - Các thân dùng: Mặt Trời (10), Mặt Trăng (301), Trái Đất (399), qua tâm khối Trái Đất–Mặt Trăng (3) và tâm khối
   hệ Mặt Trời (0), tất cả lấy trực tiếp từ DE441 (không thêm mô hình nào khác cho vị trí các thân).
 - Thang thời gian: đối số của DE441 là TDB (T_eph). Mọi thời điểm của bảng là **TT**. Đổi TT → TDB bằng
