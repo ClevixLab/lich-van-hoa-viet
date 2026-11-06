@@ -101,13 +101,13 @@ jobs:
 
       # ---------- tính thời điểm từ DE441 ----------
       - name: Bộ nhớ đệm DE441
-        if: steps.task.outputs.task == 'instants'
+        if: steps.task.outputs.task == 'instants' || steps.task.outputs.task == 'overlap'
         uses: actions/cache@v4
         with:
           path: ~/de441
           key: verifier-de441-full-v1
       - name: Tải DE441
-        if: steps.task.outputs.task == 'instants'
+        if: steps.task.outputs.task == 'instants' || steps.task.outputs.task == 'overlap'
         run: |
           mkdir -p ~/de441 && cd ~/de441
           # Thư mục JPL hiện chỉ còn de441.bsp (hai đoạn mỗi thân, nối quanh 1969); thử tệp part-1/part-2 nếu cần.
@@ -127,6 +127,13 @@ jobs:
               --nutation 2000B --no-hash --out oracle/de441/out/instants_tt_nut2000B.csv.gz 2>&1 | tail -1
           pip freeze > oracle/de441/out/pip_freeze_instants.txt
           python3 --version >> oracle/de441/out/pip_freeze_instants.txt
+
+      - name: overlap
+        if: steps.task.outputs.task == 'overlap'
+        run: |
+          mkdir -p oracle/de441/out
+          python3 -I oracle/de441/overlap_check.py ~/de441/de441.bsp > oracle/de441/out/overlap_check.txt 2>&1
+          cat oracle/de441/out/overlap_check.txt
 
       # ---------- hộp đen của bên xây dựng ----------
       - name: Dựng bản của bên xây dựng (không đọc mã)

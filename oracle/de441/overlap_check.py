@@ -19,7 +19,7 @@ nseg = min(len(v[0]) for v in base.segs.values())
 print("so doan moi cap than:", {k: len(v[0]) for k, v in base.segs.items()})
 for p, (lst, sp) in base.segs.items():
     for s in lst:
-        print("  %s doan %s .. %s" % (p, I.jd_to_iso(s.start_jd)[:10], I.jd_to_iso(s.end_jd)[:10]))
+        print("  %s doan JD %.1f .. %.1f" % (p, s.start_jd, s.end_jd))
 if nseg < 2:
     print("chi co mot doan; khong co vung chung")
     sys.exit(0)
