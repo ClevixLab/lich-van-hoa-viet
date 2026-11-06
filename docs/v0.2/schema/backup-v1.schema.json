@@ -1,0 +1,314 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ClevixLab/lich-van-hoa-viet/docs/v0.2/schema/backup-v1.schema.json",
+  "title": "Lịch và Văn hóa Việt — nội dung tệp sao lưu, lược đồ phiên bản 1",
+  "description": "Phần JSON (sau khi giải mã) của tệp sao lưu. Ràng buộc chéo (ngày tồn tại trong lịch âm, tham chiếu id, trường dẫn xuất) kiểm tra bằng mã: docs/v0.2/01-MO-HINH-DU-LIEU.md §6.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "schema_version", "app", "exported_at", "settings", "event_types", "persons", "events", "photos"],
+  "properties": {
+    "format": { "const": "lvhv-backup" },
+    "schema_version": { "const": 1 },
+    "app": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version", "platform"],
+      "properties": {
+        "name": { "const": "Lịch và Văn hóa Việt" },
+        "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+        "platform": { "enum": ["pwa", "android", "ios", "macos", "windows"] }
+      }
+    },
+    "exported_at": { "$ref": "#/$defs/timestamp" },
+    "settings": { "$ref": "#/$defs/AppSettings" },
+    "event_types": { "type": "array", "maxItems": 500, "items": { "$ref": "#/$defs/EventType" } },
+    "persons": { "type": "array", "maxItems": 10000, "items": { "$ref": "#/$defs/Person" } },
+    "events": { "type": "array", "maxItems": 50000, "items": { "$ref": "#/$defs/Event" } },
+    "photos": { "type": "array", "maxItems": 10000, "items": { "$ref": "#/$defs/Photo" } }
+  },
+  "$defs": {
+    "uuid": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "timestamp": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+    },
+    "rev": { "type": "integer", "minimum": 1 },
+    "text": {
+      "type": "string",
+      "pattern": "^[^\\u0000-\\u001f\\u007f-\\u009f]*$"
+    },
+    "multiline": {
+      "type": "string",
+      "pattern": "^[^\\u0000-\\u0009\\u000b-\\u001f\\u007f-\\u009f]*$"
+    },
+    "hhmm": { "type": "string", "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$" },
+    "offsets": {
+      "type": "array",
+      "maxItems": 8,
+      "uniqueItems": true,
+      "items": { "type": "integer", "minimum": 0, "maximum": 60 }
+    },
+    "DateValue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["calendar", "precision", "year", "month", "day", "leap"],
+      "properties": {
+        "calendar": { "enum": ["solar", "lunar"] },
+        "precision": { "enum": ["day", "month_day", "year"] },
+        "year": { "type": ["integer", "null"], "minimum": 1000, "maximum": 3000 },
+        "month": { "type": ["integer", "null"], "minimum": 1, "maximum": 12 },
+        "day": { "type": ["integer", "null"], "minimum": 1, "maximum": 31 },
+        "leap": { "type": "boolean" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "precision": { "const": "day" } } },
+          "then": { "properties": { "year": { "type": "integer" }, "month": { "type": "integer" }, "day": { "type": "integer" } } }
+        },
+        {
+          "if": { "properties": { "precision": { "const": "month_day" } } },
+          "then": { "properties": { "calendar": { "const": "lunar" }, "year": { "type": "null" }, "month": { "type": "integer" }, "day": { "type": "integer" } } }
+        },
+        {
+          "if": { "properties": { "precision": { "const": "year" } } },
+          "then": { "properties": { "year": { "type": "integer" }, "month": { "type": "null" }, "day": { "type": "null" }, "leap": { "const": false } } }
+        },
+        {
+          "if": { "properties": { "calendar": { "const": "solar" } } },
+          "then": { "properties": { "leap": { "const": false } } }
+        },
+        {
+          "if": { "properties": { "calendar": { "const": "lunar" } } },
+          "then": { "properties": { "day": { "type": ["integer", "null"], "maximum": 30 } } }
+        }
+      ]
+    },
+    "LunarDay": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["year", "month", "day", "leap"],
+      "properties": {
+        "year": { "type": ["integer", "null"], "minimum": 1000, "maximum": 3000 },
+        "month": { "type": "integer", "minimum": 1, "maximum": 12 },
+        "day": { "type": "integer", "minimum": 1, "maximum": 30 },
+        "leap": { "type": "boolean" }
+      }
+    },
+    "SolarDay": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["y", "m", "d"],
+      "properties": {
+        "y": { "type": "integer", "minimum": 1000, "maximum": 3000 },
+        "m": { "type": "integer", "minimum": 1, "maximum": 12 },
+        "d": { "type": "integer", "minimum": 1, "maximum": 31 }
+      }
+    },
+    "ReminderRule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "enabled", "offsets_days", "time_local", "tien_thuong"],
+      "properties": {
+        "id": { "$ref": "#/$defs/uuid" },
+        "enabled": { "type": "boolean" },
+        "offsets_days": { "$ref": "#/$defs/offsets" },
+        "time_local": { "$ref": "#/$defs/hhmm" },
+        "tien_thuong": { "type": "boolean" }
+      }
+    },
+    "DeathInfo": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["input", "lunar", "solar", "lunar_source", "method", "tuoi"],
+      "properties": {
+        "input": {
+          "allOf": [
+            { "$ref": "#/$defs/DateValue" },
+            { "properties": { "precision": { "enum": ["day", "month_day"] } } }
+          ]
+        },
+        "lunar": { "$ref": "#/$defs/LunarDay" },
+        "solar": { "oneOf": [{ "$ref": "#/$defs/SolarDay" }, { "type": "null" }] },
+        "lunar_source": { "enum": ["entered", "converted"] },
+        "method": { "enum": ["precise", "hnd"] },
+        "tuoi": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["value", "label", "manual", "approx"],
+          "properties": {
+            "value": { "type": ["integer", "null"], "minimum": 1, "maximum": 150 },
+            "label": { "enum": ["huong_tho", "huong_duong"] },
+            "manual": { "type": "boolean" },
+            "approx": { "type": "boolean" }
+          }
+        }
+      }
+    },
+    "BirthInfo": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["input", "noi_sinh", "lunar_year", "lunar_year_approx", "can_chi", "lunar", "solar"],
+      "properties": {
+        "input": {
+          "allOf": [
+            { "$ref": "#/$defs/DateValue" },
+            { "properties": { "precision": { "enum": ["day", "year"] } } }
+          ]
+        },
+        "noi_sinh": { "allOf": [{ "$ref": "#/$defs/text" }, { "maxLength": 300 }] },
+        "lunar_year": { "type": ["integer", "null"], "minimum": 999, "maximum": 3000 },
+        "lunar_year_approx": { "type": "boolean" },
+        "can_chi": { "type": ["string", "null"], "maxLength": 20 },
+        "lunar": { "oneOf": [{ "$ref": "#/$defs/LunarDay" }, { "type": "null" }] },
+        "solar": { "oneOf": [{ "$ref": "#/$defs/SolarDay" }, { "type": "null" }] }
+      }
+    },
+    "MemorialSettings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tray_style", "incense", "bia_tieu_de", "loi_tuong_niem", "gio_het_nam", "huong_duong_duoi"],
+      "properties": {
+        "tray_style": { "enum": ["phat_giao", "truyen_thong", "cong_giao"] },
+        "incense": { "type": "boolean" },
+        "bia_tieu_de": { "allOf": [{ "$ref": "#/$defs/text" }, { "maxLength": 60 }] },
+        "loi_tuong_niem": { "allOf": [{ "$ref": "#/$defs/multiline" }, { "maxLength": 2000 }] },
+        "gio_het_nam": { "enum": [2, 3] },
+        "huong_duong_duoi": { "type": "integer", "minimum": 1, "maximum": 150 }
+      },
+      "if": { "properties": { "tray_style": { "const": "cong_giao" } } },
+      "then": { "properties": { "incense": { "const": false } } }
+    },
+    "Person": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "danh_xung", "ho_ten", "ten_hieu", "quan_he", "birth", "death", "noi_an_tang",
+                   "photo_id", "memorial", "reminders", "sinh_nhat_am", "feb29_rule", "ghi_chu",
+                   "created_at", "updated_at", "rev"],
+      "properties": {
+        "id": { "$ref": "#/$defs/uuid" },
+        "kind": { "enum": ["deceased", "living"] },
+        "danh_xung": { "allOf": [{ "$ref": "#/$defs/text" }, { "maxLength": 40 }] },
+        "ho_ten": { "allOf": [{ "$ref": "#/$defs/text" }, { "minLength": 1, "maxLength": 120, "pattern": "\\S" }] },
+        "ten_hieu": { "allOf": [{ "$ref": "#/$defs/text" }, { "maxLength": 120 }] },
+        "quan_he": { "allOf": [{ "$ref": "#/$defs/text" }, { "maxLength": 120 }] },
+        "birth": { "oneOf": [{ "$ref": "#/$defs/BirthInfo" }, { "type": "null" }] },
+        "death": { "oneOf": [{ "$ref": "#/$defs/DeathInfo" }, { "type": "null" }] },
+        "noi_an_tang": { "allOf": [{ "$ref": "#/$defs/text" }, { "maxLength": 300 }] },
+        "photo_id": { "oneOf": [{ "$ref": "#/$defs/uuid" }, { "type": "null" }] },
+        "memorial": { "oneOf": [{ "$ref": "#/$defs/MemorialSettings" }, { "type": "null" }] },
+        "reminders": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["gio", "sinh_nhat", "sinh_nhat_am"],
+          "properties": {
+            "gio": { "oneOf": [{ "$ref": "#/$defs/ReminderRule" }, { "type": "null" }] },
+            "sinh_nhat": { "oneOf": [{ "$ref": "#/$defs/ReminderRule" }, { "type": "null" }] },
+            "sinh_nhat_am": { "oneOf": [{ "$ref": "#/$defs/ReminderRule" }, { "type": "null" }] }
+          }
+        },
+        "sinh_nhat_am": { "type": "boolean" },
+        "feb29_rule": { "enum": ["feb28", "mar1"] },
+        "ghi_chu": { "allOf": [{ "$ref": "#/$defs/multiline" }, { "maxLength": 2000 }] },
+        "created_at": { "$ref": "#/$defs/timestamp" },
+        "updated_at": { "$ref": "#/$defs/timestamp" },
+        "rev": { "$ref": "#/$defs/rev" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "kind": { "const": "deceased" } } },
+          "then": {
+            "properties": {
+              "death": { "$ref": "#/$defs/DeathInfo" },
+              "memorial": { "$ref": "#/$defs/MemorialSettings" },
+              "reminders": { "properties": { "sinh_nhat": { "type": "null" }, "sinh_nhat_am": { "type": "null" } } },
+              "sinh_nhat_am": { "const": false }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "living" } } },
+          "then": {
+            "properties": {
+              "death": { "type": "null" },
+              "memorial": { "type": "null" },
+              "noi_an_tang": { "const": "" },
+              "reminders": { "properties": { "gio": { "type": "null" } } }
+            }
+          }
+        }
+      ]
+    },
+    "EventType": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "builtin", "ten", "default_recurring", "created_at", "updated_at", "rev"],
+      "properties": {
+        "id": { "$ref": "#/$defs/uuid" },
+        "builtin": { "enum": ["tot_nghiep", "ngay_cuoi", "dinh_hon", "du_hoc", null] },
+        "ten": { "allOf": [{ "$ref": "#/$defs/text" }, { "minLength": 1, "maxLength": 60, "pattern": "\\S" }] },
+        "default_recurring": { "type": "boolean" },
+        "created_at": { "$ref": "#/$defs/timestamp" },
+        "updated_at": { "$ref": "#/$defs/timestamp" },
+        "rev": { "$ref": "#/$defs/rev" }
+      }
+    },
+    "Event": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type_id", "tieu_de", "date", "recurring", "person_ids", "ghi_chu", "reminder",
+                   "created_at", "updated_at", "rev"],
+      "properties": {
+        "id": { "$ref": "#/$defs/uuid" },
+        "type_id": { "$ref": "#/$defs/uuid" },
+        "tieu_de": { "allOf": [{ "$ref": "#/$defs/text" }, { "maxLength": 120 }] },
+        "date": {
+          "allOf": [
+            { "$ref": "#/$defs/DateValue" },
+            { "properties": { "precision": { "enum": ["day", "month_day"] } } }
+          ]
+        },
+        "recurring": { "type": "boolean" },
+        "person_ids": { "type": "array", "maxItems": 50, "uniqueItems": true, "items": { "$ref": "#/$defs/uuid" } },
+        "ghi_chu": { "allOf": [{ "$ref": "#/$defs/multiline" }, { "maxLength": 2000 }] },
+        "reminder": { "oneOf": [{ "$ref": "#/$defs/ReminderRule" }, { "type": "null" }] },
+        "created_at": { "$ref": "#/$defs/timestamp" },
+        "updated_at": { "$ref": "#/$defs/timestamp" },
+        "rev": { "$ref": "#/$defs/rev" }
+      },
+      "if": { "properties": { "date": { "properties": { "precision": { "const": "month_day" } } } } },
+      "then": { "properties": { "recurring": { "const": true } } }
+    },
+    "Photo": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "mime", "width", "height", "bytes", "sha256", "stripped", "created_at"],
+      "properties": {
+        "id": { "$ref": "#/$defs/uuid" },
+        "mime": { "enum": ["image/jpeg", "image/webp"] },
+        "width": { "type": "integer", "minimum": 1, "maximum": 2048 },
+        "height": { "type": "integer", "minimum": 1, "maximum": 2048 },
+        "bytes": { "type": "integer", "minimum": 1, "maximum": 1048576 },
+        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "stripped": { "const": true },
+        "created_at": { "$ref": "#/$defs/timestamp" }
+      }
+    },
+    "AppSettings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reminders_enabled", "default_offsets_days", "default_time_local", "upcoming_days",
+                   "last_backup_at", "backup_nag_days"],
+      "properties": {
+        "reminders_enabled": { "type": "boolean" },
+        "default_offsets_days": { "$ref": "#/$defs/offsets" },
+        "default_time_local": { "$ref": "#/$defs/hhmm" },
+        "upcoming_days": { "const": 30 },
+        "last_backup_at": { "oneOf": [{ "$ref": "#/$defs/timestamp" }, { "type": "null" }] },
+        "backup_nag_days": { "enum": [0, 30, 60, 90] }
+      }
+    }
+  }
+}

@@ -1,0 +1,328 @@
+{
+  "format": "lvhv-backup",
+  "schema_version": 1,
+  "app": {
+    "name": "Lịch và Văn hóa Việt",
+    "version": "0.2.0",
+    "platform": "pwa"
+  },
+  "exported_at": "2026-11-06T03:15:00Z",
+  "settings": {
+    "reminders_enabled": true,
+    "default_offsets_days": [
+      0,
+      3
+    ],
+    "default_time_local": "07:00",
+    "upcoming_days": 30,
+    "last_backup_at": null,
+    "backup_nag_days": 30
+  },
+  "event_types": [
+    {
+      "id": "6f1c2a1e-0b6e-4c55-9a51-0d1f2b7c0001",
+      "builtin": "tot_nghiep",
+      "ten": "Tốt nghiệp",
+      "default_recurring": false,
+      "created_at": "2026-11-06T03:15:00Z",
+      "updated_at": "2026-11-06T03:15:00Z",
+      "rev": 1
+    },
+    {
+      "id": "6f1c2a1e-0b6e-4c55-9a51-0d1f2b7c0002",
+      "builtin": "ngay_cuoi",
+      "ten": "Ngày cưới",
+      "default_recurring": true,
+      "created_at": "2026-11-06T03:15:00Z",
+      "updated_at": "2026-11-06T03:15:00Z",
+      "rev": 1
+    },
+    {
+      "id": "6f1c2a1e-0b6e-4c55-9a51-0d1f2b7c0003",
+      "builtin": "dinh_hon",
+      "ten": "Đính hôn",
+      "default_recurring": false,
+      "created_at": "2026-11-06T03:15:00Z",
+      "updated_at": "2026-11-06T03:15:00Z",
+      "rev": 1
+    },
+    {
+      "id": "6f1c2a1e-0b6e-4c55-9a51-0d1f2b7c0004",
+      "builtin": "du_hoc",
+      "ten": "Du học",
+      "default_recurring": false,
+      "created_at": "2026-11-06T03:15:00Z",
+      "updated_at": "2026-11-06T03:15:00Z",
+      "rev": 1
+    }
+  ],
+  "persons": [
+    {
+      "id": "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e01",
+      "kind": "deceased",
+      "danh_xung": "Ông",
+      "ho_ten": "Nguyễn Văn A",
+      "ten_hieu": "",
+      "quan_he": "ông nội",
+      "birth": {
+        "input": {
+          "calendar": "solar",
+          "precision": "day",
+          "year": 1940,
+          "month": 5,
+          "day": 1,
+          "leap": false
+        },
+        "noi_sinh": "Hà Nội",
+        "lunar_year": 1940,
+        "lunar_year_approx": false,
+        "can_chi": "Canh Thìn",
+        "lunar": {
+          "year": 1940,
+          "month": 3,
+          "day": 24,
+          "leap": false
+        },
+        "solar": {
+          "y": 1940,
+          "m": 5,
+          "d": 1
+        }
+      },
+      "death": {
+        "input": {
+          "calendar": "solar",
+          "precision": "day",
+          "year": 2025,
+          "month": 8,
+          "day": 8,
+          "leap": false
+        },
+        "lunar": {
+          "year": 2025,
+          "month": 6,
+          "day": 15,
+          "leap": true
+        },
+        "solar": {
+          "y": 2025,
+          "m": 8,
+          "d": 8
+        },
+        "lunar_source": "converted",
+        "method": "precise",
+        "tuoi": {
+          "value": 86,
+          "label": "huong_tho",
+          "manual": false,
+          "approx": false
+        }
+      },
+      "noi_an_tang": "Nghĩa trang quê",
+      "photo_id": "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09",
+      "memorial": {
+        "tray_style": "truyen_thong",
+        "incense": true,
+        "bia_tieu_de": "Hiển khảo",
+        "loi_tuong_niem": "Con cháu luôn nhớ ông.",
+        "gio_het_nam": 2,
+        "huong_duong_duoi": 60
+      },
+      "reminders": {
+        "gio": {
+          "id": "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e11",
+          "enabled": true,
+          "offsets_days": [
+            0,
+            3
+          ],
+          "time_local": "07:00",
+          "tien_thuong": false
+        },
+        "sinh_nhat": null,
+        "sinh_nhat_am": null
+      },
+      "sinh_nhat_am": false,
+      "feb29_rule": "feb28",
+      "ghi_chu": "",
+      "created_at": "2026-11-06T03:15:00Z",
+      "updated_at": "2026-11-06T03:15:00Z",
+      "rev": 1
+    },
+    {
+      "id": "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e02",
+      "kind": "deceased",
+      "danh_xung": "Cụ",
+      "ho_ten": "Trần Thị B",
+      "ten_hieu": "Diệu Hạnh",
+      "quan_he": "cụ bà bên nội",
+      "birth": null,
+      "death": {
+        "input": {
+          "calendar": "lunar",
+          "precision": "month_day",
+          "year": null,
+          "month": 3,
+          "day": 10,
+          "leap": false
+        },
+        "lunar": {
+          "year": null,
+          "month": 3,
+          "day": 10,
+          "leap": false
+        },
+        "solar": null,
+        "lunar_source": "entered",
+        "method": "precise",
+        "tuoi": {
+          "value": null,
+          "label": "huong_tho",
+          "manual": false,
+          "approx": false
+        }
+      },
+      "noi_an_tang": "",
+      "photo_id": null,
+      "memorial": {
+        "tray_style": "phat_giao",
+        "incense": true,
+        "bia_tieu_de": "Hiển tỷ",
+        "loi_tuong_niem": "",
+        "gio_het_nam": 2,
+        "huong_duong_duoi": 60
+      },
+      "reminders": {
+        "gio": {
+          "id": "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e12",
+          "enabled": true,
+          "offsets_days": [
+            0,
+            3,
+            10
+          ],
+          "time_local": "07:00",
+          "tien_thuong": true
+        },
+        "sinh_nhat": null,
+        "sinh_nhat_am": null
+      },
+      "sinh_nhat_am": false,
+      "feb29_rule": "feb28",
+      "ghi_chu": "Không rõ năm mất.",
+      "created_at": "2026-11-06T03:15:00Z",
+      "updated_at": "2026-11-06T03:15:00Z",
+      "rev": 2
+    },
+    {
+      "id": "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e03",
+      "kind": "living",
+      "danh_xung": "Chị",
+      "ho_ten": "Lê Thị C",
+      "ten_hieu": "",
+      "quan_he": "chị gái",
+      "birth": {
+        "input": {
+          "calendar": "solar",
+          "precision": "day",
+          "year": 1990,
+          "month": 1,
+          "day": 20,
+          "leap": false
+        },
+        "noi_sinh": "",
+        "lunar_year": 1989,
+        "lunar_year_approx": false,
+        "can_chi": "Kỷ Tỵ",
+        "lunar": {
+          "year": 1989,
+          "month": 12,
+          "day": 24,
+          "leap": false
+        },
+        "solar": {
+          "y": 1990,
+          "m": 1,
+          "d": 20
+        }
+      },
+      "death": null,
+      "noi_an_tang": "",
+      "photo_id": null,
+      "memorial": null,
+      "reminders": {
+        "gio": null,
+        "sinh_nhat": {
+          "id": "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e13",
+          "enabled": true,
+          "offsets_days": [
+            0,
+            3
+          ],
+          "time_local": "07:00",
+          "tien_thuong": false
+        },
+        "sinh_nhat_am": {
+          "id": "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e14",
+          "enabled": true,
+          "offsets_days": [
+            0
+          ],
+          "time_local": "07:00",
+          "tien_thuong": false
+        }
+      },
+      "sinh_nhat_am": true,
+      "feb29_rule": "feb28",
+      "ghi_chu": "",
+      "created_at": "2026-11-06T03:15:00Z",
+      "updated_at": "2026-11-06T03:15:00Z",
+      "rev": 1
+    }
+  ],
+  "events": [
+    {
+      "id": "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e21",
+      "type_id": "6f1c2a1e-0b6e-4c55-9a51-0d1f2b7c0002",
+      "tieu_de": "Ngày cưới anh chị C",
+      "date": {
+        "calendar": "solar",
+        "precision": "day",
+        "year": 2015,
+        "month": 12,
+        "day": 12,
+        "leap": false
+      },
+      "recurring": true,
+      "person_ids": [
+        "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e03"
+      ],
+      "ghi_chu": "",
+      "reminder": {
+        "id": "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e22",
+        "enabled": true,
+        "offsets_days": [
+          0,
+          1
+        ],
+        "time_local": "07:00",
+        "tien_thuong": false
+      },
+      "created_at": "2026-11-06T03:15:00Z",
+      "updated_at": "2026-11-06T03:15:00Z",
+      "rev": 1
+    }
+  ],
+  "photos": [
+    {
+      "id": "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09",
+      "mime": "image/jpeg",
+      "width": 768,
+      "height": 1024,
+      "bytes": 183422,
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "stripped": true,
+      "created_at": "2026-11-06T03:15:00Z"
+    }
+  ]
+}

@@ -4,6 +4,16 @@ Số phiên bản lấy từ tệp `VERSION` ở gốc kho (nguồn duy nhất c
 dưới tiêu đề của phiên bản đang dựng và đưa vào `version.json` làm ghi chú phát hành hiển thị cho người dùng,
 nên mỗi dòng nên ngắn, viết bằng tiếng Việt thường ngày.
 
+## [Chưa phát hành — 0.2]
+
+Đang xây dựng. Đặc tả và tiêu chí nghiệm thu: `docs/v0.2/`. Khi phát hành, tiêu đề này đổi thành `## [0.2.0] — <ngày>`
+và các dòng dưới đây được viết lại thành ghi chú cho người dùng.
+
+- Hồ sơ người thân đã khuất và người đang sống; ngày giỗ theo âm lịch, sinh nhật, sự kiện riêng của từng người.
+- Nhắc trước 1, 3, 5, 10, 15 ngày hoặc tự đặt, cả khi không có mạng; danh sách "Sắp tới" 30 ngày; xuất lịch .ics.
+- Màn hình tưởng niệm ngày giỗ: bia, ảnh, mâm lễ, ba nén hương.
+- Dữ liệu chỉ lưu trên máy; sao lưu ra tệp có mật khẩu.
+
 ## [0.1.1] — 2026-11-06
 
 - Mở rộng phạm vi lịch: từ năm 1900 đến năm 3000.
