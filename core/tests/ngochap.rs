@@ -137,7 +137,7 @@ fn gooddays_json_shape() {
     assert!(j.ends_with(r#""first_gio_hoang_dao":{"chi":"Tý","from":23,"to":1}}"#));
 }
 
-/// Tiêu chí N3 trên toàn bộ 2000–3000: mọi ngày × mọi việc × (không tuổi, tuổi 1976), cả hai phương
+/// Tiêu chí N3 trên toàn bộ 2000–3000: mọi ngày × mọi việc × (không tuổi, tuổi 1976), cả ba phương
 /// pháp. Định nghĩa "sao kỵ chính" lấy từ chính crate Ngọc Hạp (`major_taboos`).
 /// Chậm ở bản debug: `cargo test --release -p lvhv-core --test ngochap -- --ignored`.
 fn n3_full(method: Method) -> (u64, u64, u64) {
@@ -168,7 +168,7 @@ fn n3_full(method: Method) -> (u64, u64, u64) {
 #[test]
 #[ignore = "chậm ở bản debug; chạy: cargo test --release -p lvhv-core --test ngochap -- --ignored"]
 fn n3_all_days_2000_3000() {
-    for method in [Method::Hnd, Method::Precise] {
+    for method in [Method::Hnd, Method::Precise, Method::Jpl] {
         let (checked, taboo, viol) = n3_full(method);
         eprintln!("N3 {method:?}: {checked} lượt (ngày×việc×tuổi), {taboo} cặp ngày×việc phạm kỵ chính, {viol} vi phạm");
         assert_eq!(viol, 0);
@@ -179,7 +179,7 @@ fn n3_all_days_2000_3000() {
 #[test]
 #[ignore = "chậm ở bản debug; chạy: cargo test --release -p lvhv-core --test ngochap -- --ignored"]
 fn n3_find_good_days_2000_3000() {
-    for method in [Method::Hnd, Method::Precise] {
+    for method in [Method::Hnd, Method::Precise, Method::Jpl] {
         let mut n = 0usize;
         for act in activities() {
             for birth in [None, Some(1976)] {
@@ -254,7 +254,7 @@ fn check_suggestions(method: Method, a: i64, b: i64, birth: Option<i32>) -> usiz
 #[test]
 fn suggested_days_consistent_with_sheet_2026() {
     let (a, b) = (jdn_from_date(2026, 1, 1), jdn_from_date(2026, 12, 31));
-    for method in [Method::Hnd, Method::Precise] {
+    for method in [Method::Hnd, Method::Precise, Method::Jpl] {
         for birth in [None, Some(1975)] {
             assert!(check_suggestions(method, a, b, birth) > 1000);
         }
@@ -266,7 +266,7 @@ fn suggested_days_consistent_with_sheet_2026() {
 #[ignore = "chậm; chạy: cargo test --release -p lvhv-core --test ngochap -- --ignored"]
 fn suggested_days_consistent_with_sheet_2000_3000() {
     let (a, b) = (jdn_from_date(2000, 1, 1), jdn_from_date(3000, 12, 31));
-    for method in [Method::Hnd, Method::Precise] {
+    for method in [Method::Hnd, Method::Precise, Method::Jpl] {
         let n = check_suggestions(method, a, b, None);
         eprintln!("§2a {method:?}: {n} ngày đề xuất 2000–3000, 0 vi phạm");
     }

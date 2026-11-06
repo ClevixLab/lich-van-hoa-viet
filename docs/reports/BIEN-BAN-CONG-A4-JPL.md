@@ -18,6 +18,12 @@ mã của `Jpl`; ngưỡng không thay đổi sau đó.
 | P1 | **ĐẠT** | nhóm dự án | #10, #11 | `lvhv-dump --method jpl bench` (bản release, Linux x86_64, 2 vCPU): `day_info` trung bình 20–35 µs, p99 39–82 µs, lần gọi đầu (giải mã bảng) 0,32–0,50 ms (< 1 ms) |
 | P3 | **ĐẠT** | nhóm dự án | #10, #11 | `pwa/test/smoke.mjs` (`metrics.json`): lần tải đầu 357,0 KB gzip (< 500 KB), đã gồm bảng ngày `Jpl` |
 
+Ngoài các tiêu chí của A4, chạy lại khi đổi mặc định:
+
+| Mã | Kết luận | PR | Bằng chứng |
+|---|---|---|---|
+| N3 (`Jpl`) | **ĐẠT** | #11 | `core/tests/ngochap.rs` (`--include-ignored`, bản release, sandbox 2 vCPU, 17 phút 30 giây, 2026-11-07), mọi ngày 2000–3000 × 16 việc × (không tuổi, 1976): 11 699 456 lượt, 2 927 857 cặp ngày × việc phạm kỵ chính, **0 vi phạm**; qua `find_good_days`: 4 564 360 ngày đề xuất, 0 vi phạm; quy tắc đề xuất §2a: 2 346 262 ngày, 0 vi phạm. Cùng lượt chạy: `Hnd`, `Precise` cũng 0 vi phạm |
+
 L13 không áp dụng cho `Jpl` (A4 mục 4); với `precise` và `hnd`, kết quả 2000–3000 vẫn giống hệt tệp chuẩn L13.
 
 ## Lựa chọn của dự án mà chủ dự án cần biết
