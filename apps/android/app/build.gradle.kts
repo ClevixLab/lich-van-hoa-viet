@@ -118,9 +118,11 @@ val checkRustArtifacts by tasks.registering {
     doLast {
         val so = file("rustJniLibs/arm64-v8a/liblvhv_ffi.so")
         val kt = file("build/generated/uniffi/kotlin/vn/clevix/lichviet/core/lvhv_ffi.kt")
-        if (!so.exists() || !kt.exists()) {
+        val missing = listOf(so, kt).filterNot { it.exists() }
+        if (missing.isNotEmpty()) {
             throw GradleException(
-                "Thiếu thư viện Rust hoặc mã UniFFI. Chạy apps/android/build-rust.sh trước (xem docs/04-BUILD-NATIVE.md)."
+                "Thiếu thư viện Rust hoặc mã UniFFI (${missing.joinToString { it.absolutePath }}). " +
+                    "Chạy apps/android/build-rust.sh trước (xem docs/04-BUILD-NATIVE.md)."
             )
         }
     }

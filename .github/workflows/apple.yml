@@ -94,7 +94,7 @@ jobs:
           test -f "$IOS/PrivacyInfo.xcprivacy"
           test -f "$MAC/Contents/Resources/PrivacyInfo.xcprivacy"
           test -f "$IOS/LVHVSerif-Regular.ttf"
-          if grep -R "com.apple.security.network" ../../../../macOS/LichViet.entitlements; then
+          if grep -E "<key>com\.apple\.security\.network" ../../../../macOS/LichViet.entitlements; then
             echo "::error::Có quyền mạng trong entitlements"; exit 1
           fi
           ditto -c -k --sequesterRsrc --keepParent "$IOS" "$RUNNER_TEMP/LichViet-iOS-simulator.zip"

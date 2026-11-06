@@ -62,7 +62,9 @@ jobs:
       - name: Dựng Rust (.so cho 3 ABI) + sinh mã Kotlin UniFFI
         env:
           ANDROID_NDK_HOME: ${{ steps.ndk.outputs.ndk-path }}
-        run: apps/android/build-rust.sh
+        run: |
+          apps/android/build-rust.sh
+          find apps/android/app/rustJniLibs apps/android/app/build/generated -type f | sort
 
       - uses: gradle/actions/setup-gradle@v4
         with:
