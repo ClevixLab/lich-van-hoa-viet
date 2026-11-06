@@ -1,0 +1,40 @@
+----------------------------------------------------------
+Measurement of the Earth's rotation from 720 BC to AD 2015
+----------------------------------------------------------
+
+source: http://astro.ukho.gov.uk/nao/lvm/
+
+Her Majesty's Nautical Almanac Office
+
+This resource provides the results of the modern (updated in 2020) analysis of eclipse and 
+occultation timings from ancient Babylonian, China, and the Arab and European worlds 
+through early telescope observations to modern observations in the following papers:
+
+
+Measurement of the Earth's rotation: 720 BC to AD 201, F.R. Stephenson, L.V. Morrison and C.Y. Hohenkerk, 
+Proceedings of the Royal Society of London A472, p. 404, 2016, 
+https://royalsocietypublishing.org/doi/10.1098/rspa.2016.0404
+
+and updated in
+
+Addendum 2020 to Measurement of the Earth's rotation: 720 BC to AD 2015, 
+Morrison, L.V., Stephenson, F.R., Hohenkerk, C.Y. and Zawilski, M., 
+Proceedings of the Royal Society of London A478, (February), 2021, 
+https://royalsocietypublishing.org/doi/10.1098/rspa.2020.0776
+
+
+The analysis provides measurement of the rotation of the Earth and allows formation of the 
+change in the length of day (lod), relative to the standard day of 86400 SI seconds, 
+and DT(t), the difference (using current terminology) between TT and UT1, 
+via a spline fit using a weighted least-squares analysis of the data.
+
+For comparison with EOP series, we make them consistent with UT1 - TAI determined after 1958, 
+adding to UT1 - TT the offset TT - TAI = 32.184s at the date 1958 January 1. 
+So IERS EOP-PC provides DT'(t) = -DT(t) + 32.184 s.    
+ 
+The values of DT in the tables listed in the various sections should be used in conjunction 
+with lunar ephemeris designated JPL DE430/LE430 in which the tidal acceleration of the Moon is
+-25.85"/cy2.
+
+The menus below allows users to access all the data used in this Addendum 2020, which consists 
+of both new and updated data as well the data from the original 2016 Royal Society paper. 

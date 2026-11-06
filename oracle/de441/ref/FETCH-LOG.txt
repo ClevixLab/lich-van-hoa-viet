@@ -1,0 +1,9 @@
+fetched 2026-11-06T17:25:11Z
+OK  hmnao_a_2021.txt <- https://hpiers.obspm.fr/eoppc/series/longterm/hmnao_a_2021.txt
+ERR ukho_lvm_index.html <- http://astro.ukho.gov.uk/nao/lvm/
+ERR Table-S15.2020.txt <- http://astro.ukho.gov.uk/nao/lvm/Table-S15.2020.txt
+ERR Table-S15.txt <- http://astro.ukho.gov.uk/nao/lvm/Table-S15.txt
+OK  de441_dir.html <- https://ssd.jpl.nasa.gov/ftp/eph/planets/bsp/
+OK  de441_readme.txt <- https://ssd.jpl.nasa.gov/ftp/eph/planets/bsp/README.txt
+figshare 33197244 The Supplement: Observations & Calculated Data
+   file Supplement-Observations&CalculatedData-JHA2026v57(3)-314.pdf 18588476 https://ndownloader.figshare.com/files/67398033
