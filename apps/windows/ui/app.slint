@@ -460,7 +460,9 @@ export global Data {
     // Giới thiệu
     in-out property <string> version;
     in-out property <string> running-version;
-    in-out property <string> copyright;
+    in-out property <string> copyright-sign;
+    in-out property <string> copyright-holder;
+    in-out property <string> version-line;
     in-out property <bool> remind: false;
     in-out property <string> method-text;
     in-out property <string> attribution;
@@ -680,7 +682,19 @@ component AboutPage inherits ScrollView {
                 T { text: "Phông chữ tiêu đề là bản rút gọn cho chữ Việt của phông Lora (The Lora Project Authors), cấp phép SIL Open Font License 1.1 (tệp OFL.txt đi kèm); bản rút gọn mang tên \"LVHV Serif\" theo điều kiện giấy phép."; color: Theme.ink2; size: 16; }
                 T { text: "Giao diện dựng bằng Slint (Made with Slint — https://slint.dev), theo giấy phép Slint Royalty-free 2.0."; color: Theme.ink2; size: 16; }
             } }
-            T { text: Data.copyright; color: Theme.ink3; size: 12; horizontal-alignment: center; }
+            // Dòng bản quyền hai dòng (giống bản web): "© 2026 Clevix Lab" chữ serif, © nhỏ 0,82× và nhẹ
+            // hơn; dưới là "Phiên bản X.Y.Z" nhỏ, nhạt.
+            VerticalLayout {
+                spacing: 2px;
+                padding-top: 8px;
+                padding-bottom: 8px;
+                HorizontalLayout {
+                    alignment: center;
+                    S { text: Data.copyright-sign; size: 14 * 0.82; font-weight: 400; color: Theme.ink2; vertical-alignment: center; }
+                    S { text: Data.copyright-holder; size: 14; color: Theme.ink; vertical-alignment: center; }
+                }
+                T { text: Data.version-line; color: Theme.ink3; size: 11; letter-spacing: 0.4px; horizontal-alignment: center; }
+            }
         }
         if root.rules: VerticalLayout {
             spacing: 12px;

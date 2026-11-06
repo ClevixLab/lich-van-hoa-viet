@@ -28,8 +28,14 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
+import androidx.compose.ui.unit.sp
 import vn.clevix.lichviet.BuildConfig
 import vn.clevix.lichviet.R
 import vn.clevix.lichviet.data.Lich
@@ -90,13 +96,36 @@ fun AboutScreen(openRules: () -> Unit) {
             H2("Phông chữ")
             P("Phông chữ tiêu đề là bản rút gọn cho chữ Việt của phông Lora (The Lora Project Authors), cấp phép SIL Open Font License 1.1; bản rút gọn mang tên \"LVHV Serif\" theo điều kiện giấy phép.")
         }
-        Text(
-            UpdatePolicy.copyright(Updates.versionName),
-            style = MaterialTheme.typography.bodySmall,
-            color = c.ink3,
+        // Dòng bản quyền hai dòng (giống bản web): "© 2026 Clevix Lab" chữ serif, © nhỏ 0,82× và nhẹ hơn;
+        // dưới là "Phiên bản X.Y.Z" nhỏ, nhạt.
+        Column(
             modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-            textAlign = TextAlign.Center,
-        )
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(
+                buildAnnotatedString {
+                    withStyle(SpanStyle(fontSize = 0.82.em, fontWeight = FontWeight.Normal, color = c.ink2)) {
+                        append(UpdatePolicy.COPYRIGHT_SIGN)
+                    }
+                    append(UpdatePolicy.COPYRIGHT_HOLDER)
+                },
+                fontFamily = Serif,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 14.sp,
+                letterSpacing = 0.01.em,
+                color = c.ink,
+                textAlign = TextAlign.Center,
+            )
+            Text(
+                UpdatePolicy.versionLine(Updates.versionName),
+                style = MaterialTheme.typography.bodySmall,
+                fontSize = 11.sp,
+                letterSpacing = 0.04.em,
+                color = c.ink3,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(top = 2.dp),
+            )
+        }
     }
 }
 

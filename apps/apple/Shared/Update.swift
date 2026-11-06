@@ -29,7 +29,12 @@ enum AppUpdate {
     /// Mã số App Store (build setting APP_STORE_ID). Trống cho tới khi có bản ghi App Store thật.
     static var appStoreID: String { info("LVHVAppStoreID") }
 
-    static var copyright: String { "Bản quyền © 2026 của Clevix Lab, version \(version)" }
+    /// Dòng bản quyền (dòng 1 chân trang Giới thiệu); ký hiệu © được vẽ nhỏ và nhẹ hơn chữ.
+    static let copyrightSign = "©"
+    static let copyrightHolder = "\u{00A0}2026 Clevix Lab"
+    static var copyright: String { copyrightSign + copyrightHolder }
+    /// Dòng 2 chân trang Giới thiệu: số phiên bản, chữ nhỏ và nhạt.
+    static var versionLine: String { "Phiên bản \(version)" }
     static var runningVersion: String { "Phiên bản đang dùng: \(version) (bản dựng \(build))" }
 
     /// itms-apps://apps.apple.com/app/id<ID> khi có APP_STORE_ID (chỉ chữ số), nếu không: trang tải về.

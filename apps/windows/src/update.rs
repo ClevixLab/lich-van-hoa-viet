@@ -16,8 +16,13 @@ pub const REMIND_AFTER_DAYS: i64 = 60;
 pub const SNOOZE_DAYS: i64 = 30;
 pub const DOWNLOAD_PAGE: &str = "https://clevixlab.github.io/lich-van-hoa-viet/";
 
-pub fn copyright() -> String {
-    format!("Bản quyền © 2026 của Clevix Lab, version {VERSION}")
+/// Dòng bản quyền (dòng 1 chân trang Giới thiệu); ký hiệu © được vẽ nhỏ và nhẹ hơn chữ.
+pub const COPYRIGHT_SIGN: &str = "©";
+pub const COPYRIGHT_HOLDER: &str = "\u{a0}2026 Clevix Lab";
+
+/// Dòng 2 chân trang Giới thiệu: số phiên bản, chữ nhỏ và nhạt.
+pub fn version_line() -> String {
+    format!("Phiên bản {VERSION}")
 }
 
 pub fn running_version() -> String {
@@ -147,9 +152,10 @@ mod tests {
     fn texts_and_urls() {
         assert_eq!(VERSION, include_str!("../../../VERSION").trim());
         assert_eq!(
-            copyright(),
-            format!("Bản quyền © 2026 của Clevix Lab, version {VERSION}")
+            format!("{COPYRIGHT_SIGN}{COPYRIGHT_HOLDER}"),
+            "©\u{a0}2026 Clevix Lab"
         );
+        assert_eq!(version_line(), format!("Phiên bản {VERSION}"));
         assert_eq!(update_url(""), DOWNLOAD_PAGE);
         assert_eq!(update_url("9ABC"), "ms-windows-store://pdp/?productid=9ABC");
     }

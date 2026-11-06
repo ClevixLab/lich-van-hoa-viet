@@ -1,44 +1,44 @@
 {
-  "date": "2026-11-06T07:05:00.351Z",
+  "date": "2026-11-06T13:45:36.185Z",
   "machine": "linux x64, Node v22.23.4, Chromium 153.0.8010.12",
   "viewports": {
     "360x780": {
-      "first_load_transfer_gzip_bytes": 359997,
-      "first_load_transfer_gzip_kb": 351.6,
-      "first_load_cdp_encoded_bytes": 156428,
+      "first_load_transfer_gzip_bytes": 359851,
+      "first_load_transfer_gzip_kb": 351.4,
+      "first_load_cdp_encoded_bytes": 156185,
       "first_load_files_page_and_sw_precache": 26,
-      "js_heap_used_bytes": 2574112,
-      "js_heap_used_mb": 2.45,
+      "js_heap_used_bytes": 2574424,
+      "js_heap_used_mb": 2.46,
       "js_heap_total_mb": 3.12,
-      "render_ms_max": 2.2,
-      "render_ms_median": 1.1,
+      "render_ms_max": 3.8,
+      "render_ms_median": 1.6,
       "service_worker_active": true,
       "offline_second_visit": true,
       "console_errors": [],
       "external_requests": []
     },
     "1280x800": {
-      "first_load_transfer_gzip_bytes": 355765,
-      "first_load_transfer_gzip_kb": 347.4,
-      "js_heap_used_bytes": 2539272,
-      "js_heap_used_mb": 2.42,
+      "first_load_transfer_gzip_bytes": 355619,
+      "first_load_transfer_gzip_kb": 347.3,
+      "js_heap_used_bytes": 2547344,
+      "js_heap_used_mb": 2.43,
       "console_errors": [],
       "external_requests": []
     }
   },
   "update_simulation": {
-    "from": "0.1.1",
-    "to": "0.1.2",
-    "banner": "Đã có phiên bản mới 0.1.2. Cập nhật ngay Để sau",
+    "from": "0.1.2",
+    "to": "0.1.3",
+    "banner": "Đã có phiên bản mới 0.1.3. Cập nhật ngay Để sau",
     "pass": true
   },
   "criteria": {
     "P3_first_load_gzip_under_500KB": {
-      "value_kb": 351.6,
+      "value_kb": 351.4,
       "pass": true
     },
     "P4_js_heap_under_30MB": {
-      "value_mb": 2.45,
+      "value_mb": 2.46,
       "pass": true
     },
     "P5_offline_after_first_load": {
@@ -55,8 +55,8 @@
   },
   "dist": {
     "files": 18,
-    "raw_bytes": 607601,
-    "gzip_bytes_all_files": 203302
+    "raw_bytes": 607512,
+    "gzip_bytes_all_files": 203063
   },
   "engine": "tsport",
   "method": "precise",

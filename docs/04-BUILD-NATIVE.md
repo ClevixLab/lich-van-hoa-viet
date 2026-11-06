@@ -178,7 +178,7 @@ dựng nếu hai nơi khác nhau).
 
 **Hiển thị:** màn hình Giới thiệu có mục "Phiên bản và cập nhật" với dòng "Phiên bản đang dùng: X.Y.Z
 (bản dựng N)", nút **Kiểm tra cập nhật / Cập nhật** và câu giải thích "Ứng dụng không tự kết nối mạng để
-bảo vệ quyền riêng tư…"; cuối trang có dòng "Bản quyền © 2026 của Clevix Lab, version X.Y.Z" (cùng
+bảo vệ quyền riêng tư…"; cuối trang có hai dòng "© 2026 Clevix Lab" (serif, © nhỏ và nhẹ hơn) và "Phiên bản X.Y.Z" (nhỏ, nhạt) (cùng
 cách viết với chân trang PWA; ứng dụng native không có chân trang cố định nên dòng này nằm cuối Giới thiệu).
 
 **Nút cập nhật** chỉ giao một địa chỉ cho hệ điều hành mở; ứng dụng không có quyền/mã mạng:
