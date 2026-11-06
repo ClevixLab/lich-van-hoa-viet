@@ -30,6 +30,7 @@ CAP = 64
 START, END = dt.date(2026, 1, 1), dt.date(2028, 12, 31)
 END_T = dt.datetime(2028, 12, 31, 23, 59)
 SENT = "lvhv:sentinel"
+SKIP_FIRST_DRAW = "--rut-tu-ngay-2" in sys.argv
 
 
 def mulberry32_js(seed):
@@ -99,7 +100,8 @@ def simulate(rem, scenario, steps=None, size=None):
     open_times = []
     day = START
     while day <= END:
-        u = rng()
+        # Bien the SAU DOI CHIEU (co --rut-tu-ngay-2): khong rut so o ngay dau (ngay dau luon mo).
+        u = rng() if (day != START or not SKIP_FIRST_DRAW) else 1.0
         is_open = day == START or (scenario == "p1") or (scenario == "p0.1" and u < 0.1)
         if is_open:
             now = dt.datetime(day.year, day.month, day.day, 9, 0)

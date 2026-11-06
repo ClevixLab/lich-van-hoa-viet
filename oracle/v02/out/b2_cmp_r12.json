@@ -1,0 +1,282 @@
+{
+ "10/p1": {
+  "core": {
+   "opens": "1096",
+   "max_pending": "37",
+   "delivered": "71",
+   "sentinel_delivered": "0",
+   "violations": "0",
+   "missed": "0",
+   "missed_without_sentinel": "0"
+  },
+  "oracle": {
+   "opens": "1096",
+   "max_pending": "37",
+   "delivered": "71",
+   "sentinel_delivered": "0",
+   "violations": "0",
+   "missed": "0",
+   "missed_without_sentinel": "0"
+  },
+  "khac_tong_hop": {},
+  "steps_core": 1096,
+  "steps_oracle": 1096,
+  "steps_chung": 1096,
+  "steps_khac": 0,
+  "vi_du_steps_khac": [],
+  "vi_pham_steps_core": 0
+ },
+ "10/p0.1": {
+  "core": {
+   "opens": "100",
+   "max_pending": "36",
+   "delivered": "71",
+   "sentinel_delivered": "0",
+   "violations": "0",
+   "missed": "0",
+   "missed_without_sentinel": "0"
+  },
+  "oracle": {
+   "opens": "99",
+   "max_pending": "35",
+   "delivered": "71",
+   "sentinel_delivered": "0",
+   "violations": "0",
+   "missed": "0",
+   "missed_without_sentinel": "0"
+  },
+  "khac_tong_hop": {
+   "opens": [
+    "100",
+    "99"
+   ],
+   "max_pending": [
+    "36",
+    "35"
+   ]
+  },
+  "steps_core": 100,
+  "steps_oracle": 99,
+  "steps_chung": 6,
+  "steps_khac": 0,
+  "vi_du_steps_khac": [],
+  "vi_pham_steps_core": 0
+ },
+ "10/p0": {
+  "core": {
+   "opens": "1",
+   "max_pending": "33",
+   "delivered": "33",
+   "sentinel_delivered": "0",
+   "violations": "0",
+   "missed": "38",
+   "missed_without_sentinel": "38"
+  },
+  "oracle": {
+   "opens": "1",
+   "max_pending": "33",
+   "delivered": "33",
+   "sentinel_delivered": "0",
+   "violations": "0",
+   "missed": "38",
+   "missed_without_sentinel": "38"
+  },
+  "khac_tong_hop": {},
+  "steps_core": 1,
+  "steps_oracle": 1,
+  "steps_chung": 1,
+  "steps_khac": 0,
+  "vi_du_steps_khac": [],
+  "vi_pham_steps_core": 0
+ },
+ "50/p1": {
+  "core": {
+   "opens": "1096",
+   "max_pending": "64",
+   "delivered": "296",
+   "sentinel_delivered": "0",
+   "violations": "0",
+   "missed": "0",
+   "missed_without_sentinel": "0"
+  },
+  "oracle": {
+   "opens": "1096",
+   "max_pending": "64",
+   "delivered": "296",
+   "sentinel_delivered": "0",
+   "violations": "0",
+   "missed": "0",
+   "missed_without_sentinel": "0"
+  },
+  "khac_tong_hop": {},
+  "steps_core": 1096,
+  "steps_oracle": 1096,
+  "steps_chung": 1096,
+  "steps_khac": 0,
+  "vi_du_steps_khac": [],
+  "vi_pham_steps_core": 0
+ },
+ "50/p0.1": {
+  "core": {
+   "opens": "100",
+   "max_pending": "64",
+   "delivered": "296",
+   "sentinel_delivered": "0",
+   "violations": "0",
+   "missed": "0",
+   "missed_without_sentinel": "0"
+  },
+  "oracle": {
+   "opens": "99",
+   "max_pending": "64",
+   "delivered": "296",
+   "sentinel_delivered": "0",
+   "violations": "0",
+   "missed": "0",
+   "missed_without_sentinel": "0"
+  },
+  "khac_tong_hop": {
+   "opens": [
+    "100",
+    "99"
+   ]
+  },
+  "steps_core": 100,
+  "steps_oracle": 99,
+  "steps_chung": 6,
+  "steps_khac": 0,
+  "vi_du_steps_khac": [],
+  "vi_pham_steps_core": 0
+ },
+ "50/p0": {
+  "core": {
+   "opens": "1",
+   "max_pending": "64",
+   "delivered": "64",
+   "sentinel_delivered": "1",
+   "violations": "0",
+   "missed": "233",
+   "missed_without_sentinel": "0"
+  },
+  "oracle": {
+   "opens": "1",
+   "max_pending": "64",
+   "delivered": "63",
+   "sentinel_delivered": "1",
+   "violations": "0",
+   "missed": "233",
+   "missed_without_sentinel": "0"
+  },
+  "khac_tong_hop": {
+   "delivered": [
+    "64",
+    "63"
+   ]
+  },
+  "steps_core": 1,
+  "steps_oracle": 1,
+  "steps_chung": 1,
+  "steps_khac": 0,
+  "vi_du_steps_khac": [],
+  "vi_pham_steps_core": 0
+ },
+ "200/p1": {
+  "core": {
+   "opens": "1096",
+   "max_pending": "64",
+   "delivered": "1125",
+   "sentinel_delivered": "0",
+   "violations": "0",
+   "missed": "0",
+   "missed_without_sentinel": "0"
+  },
+  "oracle": {
+   "opens": "1096",
+   "max_pending": "64",
+   "delivered": "1125",
+   "sentinel_delivered": "0",
+   "violations": "0",
+   "missed": "0",
+   "missed_without_sentinel": "0"
+  },
+  "khac_tong_hop": {},
+  "steps_core": 1096,
+  "steps_oracle": 1096,
+  "steps_chung": 1096,
+  "steps_khac": 0,
+  "vi_du_steps_khac": [],
+  "vi_pham_steps_core": 0
+ },
+ "200/p0.1": {
+  "core": {
+   "opens": "100",
+   "max_pending": "64",
+   "delivered": "967",
+   "sentinel_delivered": "3",
+   "violations": "0",
+   "missed": "161",
+   "missed_without_sentinel": "0"
+  },
+  "oracle": {
+   "opens": "99",
+   "max_pending": "64",
+   "delivered": "949",
+   "sentinel_delivered": "3",
+   "violations": "0",
+   "missed": "176",
+   "missed_without_sentinel": "0"
+  },
+  "khac_tong_hop": {
+   "opens": [
+    "100",
+    "99"
+   ],
+   "delivered": [
+    "967",
+    "949"
+   ],
+   "missed": [
+    "161",
+    "176"
+   ]
+  },
+  "steps_core": 100,
+  "steps_oracle": 99,
+  "steps_chung": 6,
+  "steps_khac": 0,
+  "vi_du_steps_khac": [],
+  "vi_pham_steps_core": 0
+ },
+ "200/p0": {
+  "core": {
+   "opens": "1",
+   "max_pending": "64",
+   "delivered": "64",
+   "sentinel_delivered": "1",
+   "violations": "0",
+   "missed": "1062",
+   "missed_without_sentinel": "0"
+  },
+  "oracle": {
+   "opens": "1",
+   "max_pending": "64",
+   "delivered": "63",
+   "sentinel_delivered": "1",
+   "violations": "0",
+   "missed": "1062",
+   "missed_without_sentinel": "0"
+  },
+  "khac_tong_hop": {
+   "delivered": [
+    "64",
+    "63"
+   ]
+  },
+  "steps_core": 1,
+  "steps_oracle": 1,
+  "steps_chung": 1,
+  "steps_khac": 0,
+  "vi_du_steps_khac": [],
+  "vi_pham_steps_core": 0
+ }
+}
