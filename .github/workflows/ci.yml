@@ -37,7 +37,8 @@ jobs:
         run: cargo test --workspace --release
       - name: S1 — không có unsafe trong lvhv-core
         run: |
-          if grep -rn --include='*.rs' -E '\bunsafe\b' core/src; then
+          # bỏ qua dòng chú thích (//, //!, ///) và thuộc tính #![forbid(unsafe_code)]
+          if grep -rn --include='*.rs' -E '\bunsafe\b' core/src | grep -vE '^[^:]+:[0-9]+:[[:space:]]*(//|#!\[forbid\(unsafe_code\)\])'; then
             echo "::error::Tìm thấy unsafe trong core/src (tiêu chí S1)"; exit 1
           fi
           grep -q '#!\[forbid(unsafe_code)\]' core/src/lib.rs
@@ -105,8 +106,8 @@ jobs:
       - name: PWA — typecheck + build
         working-directory: pwa
         run: |
+          npm run build      # sinh src/gen/ trước, typecheck cần các tệp này
           npm run typecheck
-          npm run build
       - name: Cài Chromium cho Playwright
         working-directory: pwa
         run: npx playwright-core install --with-deps chromium
