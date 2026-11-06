@@ -1,0 +1,16 @@
+# cargo-deny — chạy trên CI (job "deps", cần mạng tới cơ sở dữ liệu RustSec). Tiêu chí S11 (docs/v0.2/04):
+# phụ thuộc mật mã ghim chính xác, 0 cảnh báo bảo mật chưa xử lý.
+[graph]
+all-features = false
+
+[advisories]
+# Mọi lỗ hổng (vulnerability) là lỗi; crate không còn bảo trì / bị rút (yanked) cũng là lỗi.
+yanked = "deny"
+unmaintained = "all"
+# Ngoại lệ phải ghi lý do và ngày, ví dụ: { id = "RUSTSEC-YYYY-NNNN", reason = "…, xem lại 2026-12" }
+ignore = []
+
+[bans]
+multiple-versions = "allow"
+wildcards = "deny"
+allow-wildcard-paths = true
