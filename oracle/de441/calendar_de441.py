@@ -171,7 +171,9 @@ def main():
     ap.add_argument("--switch1968", default="1968-01-01T00+08", choices=sorted(SWITCHES_1968))
     ap.add_argument("--switch1929", default="LMT", choices=sorted(SWITCHES_1929))
     ap.add_argument("--suffix", default="")
+    ap.add_argument("--last", default="3000-12-31", help="chi de thu voi lich thien van ngan")
     a = ap.parse_args()
+    last = dt.date.fromisoformat(a.last)
     tz = make_tz(SWITCHES_1968[a.switch1968], SWITCHES_1929[a.switch1929])
     nm_tt, terms_tt = load_instants(a.instants)
 
@@ -220,7 +222,7 @@ def main():
         w = csv.writer(f, lineterminator="\n")
         w.writerow(["start_date", "lunar_year", "month", "leap"])
         for start, ly, m, leap in months:
-            if date_to_jdn(FIRST) - 31 <= start <= date_to_jdn(LAST):
+            if date_to_jdn(FIRST) - 31 <= start <= date_to_jdn(last):
                 w.writerow([jdn_to_date(start).isoformat(), ly, m, 1 if leap else 0])
 
     # ---- tung ngay
@@ -230,7 +232,7 @@ def main():
                    newline="") as f:
         w = csv.writer(f, lineterminator="\n")
         w.writerow(["date", "ly", "lm", "ld", "leap", "cc_year", "cc_month", "cc_day", "tiet_khi"])
-        for jdn in range(date_to_jdn(FIRST), date_to_jdn(LAST) + 1):
+        for jdn in range(date_to_jdn(FIRST), date_to_jdn(last) + 1):
             i = bisect.bisect_right(starts, jdn) - 1
             start, ly, lm, leap = months[i]
             assert starts[i + 1] > jdn
