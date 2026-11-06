@@ -1,0 +1,2435 @@
+{
+  "format": "lvhv-backup",
+  "schema_version": 1,
+  "app": {
+    "name": "Lịch và Văn hóa Việt",
+    "version": "0.2.0",
+    "platform": "pwa"
+  },
+  "exported_at": "2026-11-06T03:15:00Z",
+  "settings": {
+    "reminders_enabled": true,
+    "default_offsets_days": [
+      0,
+      3
+    ],
+    "default_time_local": "07:00",
+    "upcoming_days": 30,
+    "last_backup_at": null,
+    "backup_nag_days": 30
+  },
+  "event_types": [
+    {
+      "id": "6f1c2a1e-0b6e-4c55-9a51-0d1f2b7c0001",
+      "builtin": "tot_nghiep",
+      "ten": "Tốt nghiệp",
+      "default_recurring": false,
+      "created_at": "2026-11-06T03:15:00Z",
+      "updated_at": "2026-11-06T03:15:00Z",
+      "rev": 1
+    },
+    {
+      "id": "6f1c2a1e-0b6e-4c55-9a51-0d1f2b7c0002",
+      "builtin": "ngay_cuoi",
+      "ten": "Ngày cưới",
+      "default_recurring": true,
+      "created_at": "2026-11-06T03:15:00Z",
+      "updated_at": "2026-11-06T03:15:00Z",
+      "rev": 1
+    },
+    {
+      "id": "6f1c2a1e-0b6e-4c55-9a51-0d1f2b7c0003",
+      "builtin": "dinh_hon",
+      "ten": "Đính hôn",
+      "default_recurring": false,
+      "created_at": "2026-11-06T03:15:00Z",
+      "updated_at": "2026-11-06T03:15:00Z",
+      "rev": 1
+    },
+    {
+      "id": "6f1c2a1e-0b6e-4c55-9a51-0d1f2b7c0004",
+      "builtin": "du_hoc",
+      "ten": "Du học",
+      "default_recurring": false,
+      "created_at": "2026-11-06T03:15:00Z",
+      "updated_at": "2026-11-06T03:15:00Z",
+      "rev": 1
+    },
+    {
+      "id": "e0000000-0000-4000-8000-000000000001",
+      "builtin": null,
+      "ten": "Lên lão",
+      "default_recurring": true,
+      "created_at": "2026-11-06T03:15:00Z",
+      "updated_at": "2026-11-06T03:15:00Z",
+      "rev": 1
+    }
+  ],
+  "persons": [
+    {
+      "id": "a0000000-0000-4000-8000-000000000001",
+      "kind": "deceased",
+      "danh_xung": "Ông",
+      "ho_ten": "Nguyễn Văn A",
+      "ten_hieu": "",
+      "quan_he": "",
+      "birth": {
+        "input": {
+          "calendar": "solar",
+          "precision": "day",
+          "year": 1940,
+          "month": 5,
+          "day": 1,
+          "leap": false
+        },
+        "noi_sinh": "",
+        "lunar_year": 1940,
+        "lunar_year_approx": false,
+        "can_chi": "Canh Thìn",
+        "lunar": {
+          "year": 1940,
+          "month": 3,
+          "day": 24,
+          "leap": false
+        },
+        "solar": {
+          "y": 1940,
+          "m": 5,
+          "d": 1
+        }
+      },
+      "death": {
+        "input": {
+          "calendar": "solar",
+          "precision": "day",
+          "year": 2025,
+          "month": 8,
+          "day": 8,
+          "leap": false
+        },
+        "lunar": {
+          "year": 2025,
+          "month": 6,
+          "day": 15,
+          "leap": true
+        },
+        "solar": {
+          "y": 2025,
+          "m": 8,
+          "d": 8
+        },
+        "lunar_source": "converted",
+        "method": "jpl",
+        "tuoi": {
+          "value": 86,
+          "label": "huong_tho",
+          "manual": false,
+          "approx": false
+        }
+      },
+      "noi_an_tang": "",
+      "photo_id": null,
+      "memorial": {
+        "tray_style": "truyen_thong",
+        "incense": true,
+        "bia_tieu_de": "",
+        "loi_tuong_niem": "",
+        "gio_het_nam": 2,
+        "huong_duong_duoi": 60
+      },
+      "reminders": {
+        "gio": {
+          "id": "c0000000-0000-4000-8000-000000000002",
+          "enabled": true,
+          "offsets_days": [
+            0,
+            3
+          ],
+          "time_local": "07:00",
+          "tien_thuong": false
+        },
+        "sinh_nhat": null,
+        "sinh_nhat_am": null
+      },
+      "sinh_nhat_am": false,
+      "feb29_rule": "feb28",
+      "ghi_chu": "",
+      "created_at": "2026-11-06T03:15:00Z",
+      "updated_at": "2026-11-06T03:15:00Z",
+      "rev": 1
+    },
+    {
+      "id": "a0000000-0000-4000-8000-000000000003",
+      "kind": "deceased",
+      "danh_xung": "Ông",
+      "ho_ten": "Phạm Văn GB",
+      "ten_hieu": "",
+      "quan_he": "",
+      "birth": null,
+      "death": {
+        "input": {
+          "calendar": "solar",
+          "precision": "day",
+          "year": 2025,
+          "month": 9,
+          "day": 21,
+          "leap": false
+        },
+        "lunar": {
+          "year": 2025,
+          "month": 7,
+          "day": 30,
+          "leap": false
+        },
+        "solar": {
+          "y": 2025,
+          "m": 9,
+          "d": 21
+        },
+        "lunar_source": "converted",
+        "method": "jpl",
+        "tuoi": {
+          "value": null,
+          "label": "huong_tho",
+          "manual": false,
+          "approx": false
+        }
+      },
+      "noi_an_tang": "",
+      "photo_id": null,
+      "memorial": {
+        "tray_style": "truyen_thong",
+        "incense": true,
+        "bia_tieu_de": "",
+        "loi_tuong_niem": "",
+        "gio_het_nam": 2,
+        "huong_duong_duoi": 60
+      },
+      "reminders": {
+        "gio": {
+          "id": "c0000000-0000-4000-8000-000000000004",
+          "enabled": true,
+          "offsets_days": [
+            0,
+            3
+          ],
+          "time_local": "07:00",
+          "tien_thuong": false
+        },
+        "sinh_nhat": null,
+        "sinh_nhat_am": null
+      },
+      "sinh_nhat_am": false,
+      "feb29_rule": "feb28",
+      "ghi_chu": "",
+      "created_at": "2026-11-06T03:15:00Z",
+      "updated_at": "2026-11-06T03:15:00Z",
+      "rev": 1
+    },
+    {
+      "id": "a0000000-0000-4000-8000-000000000006",
+      "kind": "deceased",
+      "danh_xung": "Cụ",
+      "ho_ten": "Trần Thị B",
+      "ten_hieu": "",
+      "quan_he": "",
+      "birth": null,
+      "death": {
+        "input": {
+          "calendar": "lunar",
+          "precision": "month_day",
+          "year": null,
+          "month": 3,
+          "day": 10,
+          "leap": false
+        },
+        "lunar": {
+          "year": null,
+          "month": 3,
+          "day": 10,
+          "leap": false
+        },
+        "solar": null,
+        "lunar_source": "entered",
+        "method": "jpl",
+        "tuoi": {
+          "value": null,
+          "label": "huong_tho",
+          "manual": false,
+          "approx": false
+        }
+      },
+      "noi_an_tang": "",
+      "photo_id": null,
+      "memorial": {
+        "tray_style": "phat_giao",
+        "incense": true,
+        "bia_tieu_de": "",
+        "loi_tuong_niem": "",
+        "gio_het_nam": 2,
+        "huong_duong_duoi": 60
+      },
+      "reminders": {
+        "gio": {
+          "id": "c0000000-0000-4000-8000-000000000005",
+          "enabled": true,
+          "offsets_days": [
+            0,
+            3,
+            10
+          ],
+          "time_local": "07:00",
+          "tien_thuong": true
+        },
+        "sinh_nhat": null,
+        "sinh_nhat_am": null
+      },
+      "sinh_nhat_am": false,
+      "feb29_rule": "feb28",
+      "ghi_chu": "",
+      "created_at": "2026-11-06T03:15:00Z",
+      "updated_at": "2026-11-06T03:15:00Z",
+      "rev": 1
+    },
+    {
+      "id": "a0000000-0000-4000-8000-000000000007",
+      "kind": "deceased",
+      "danh_xung": "Ông",
+      "ho_ten": "Lê Văn GD",
+      "ten_hieu": "",
+      "quan_he": "",
+      "birth": {
+        "input": {
+          "calendar": "lunar",
+          "precision": "year",
+          "year": 1950,
+          "month": null,
+          "day": null,
+          "leap": false
+        },
+        "noi_sinh": "",
+        "lunar_year": 1950,
+        "lunar_year_approx": false,
+        "can_chi": "Canh Dần",
+        "lunar": null,
+        "solar": null
+      },
+      "death": {
+        "input": {
+          "calendar": "solar",
+          "precision": "day",
+          "year": 2024,
+          "month": 2,
+          "day": 9,
+          "leap": false
+        },
+        "lunar": {
+          "year": 2023,
+          "month": 12,
+          "day": 30,
+          "leap": false
+        },
+        "solar": {
+          "y": 2024,
+          "m": 2,
+          "d": 9
+        },
+        "lunar_source": "converted",
+        "method": "jpl",
+        "tuoi": {
+          "value": 74,
+          "label": "huong_tho",
+          "manual": false,
+          "approx": false
+        }
+      },
+      "noi_an_tang": "",
+      "photo_id": null,
+      "memorial": {
+        "tray_style": "truyen_thong",
+        "incense": true,
+        "bia_tieu_de": "",
+        "loi_tuong_niem": "",
+        "gio_het_nam": 2,
+        "huong_duong_duoi": 60
+      },
+      "reminders": {
+        "gio": {
+          "id": "c0000000-0000-4000-8000-000000000008",
+          "enabled": true,
+          "offsets_days": [
+            0,
+            3
+          ],
+          "time_local": "07:00",
+          "tien_thuong": false
+        },
+        "sinh_nhat": null,
+        "sinh_nhat_am": null
+      },
+      "sinh_nhat_am": false,
+      "feb29_rule": "feb28",
+      "ghi_chu": "",
+      "created_at": "2026-11-06T03:15:00Z",
+      "updated_at": "2026-11-06T03:15:00Z",
+      "rev": 1
+    },
+    {
+      "id": "a0000000-0000-4000-8000-000000000009",
+      "kind": "deceased",
+      "danh_xung": "Bà",
+      "ho_ten": "Hoàng Thị GE",
+      "ten_hieu": "",
+      "quan_he": "",
+      "birth": null,
+      "death": {
+        "input": {
+          "calendar": "lunar",
+          "precision": "day",
+          "year": 2027,
+          "month": 5,
+          "day": 15,
+          "leap": false
+        },
+        "lunar": {
+          "year": 2027,
+          "month": 5,
+          "day": 15,
+          "leap": false
+        },
+        "solar": {
+          "y": 2027,
+          "m": 6,
+          "d": 19
+        },
+        "lunar_source": "entered",
+        "method": "jpl",
+        "tuoi": {
+          "value": null,
+          "label": "huong_tho",
+          "manual": false,
+          "approx": false
+        }
+      },
+      "noi_an_tang": "",
+      "photo_id": null,
+      "memorial": {
+        "tray_style": "truyen_thong",
+        "incense": true,
+        "bia_tieu_de": "",
+        "loi_tuong_niem": "",
+        "gio_het_nam": 2,
+        "huong_duong_duoi": 60
+      },
+      "reminders": {
+        "gio": {
+          "id": "c0000000-0000-4000-8000-000000000010",
+          "enabled": true,
+          "offsets_days": [
+            0,
+            3
+          ],
+          "time_local": "07:00",
+          "tien_thuong": false
+        },
+        "sinh_nhat": null,
+        "sinh_nhat_am": null
+      },
+      "sinh_nhat_am": false,
+      "feb29_rule": "feb28",
+      "ghi_chu": "",
+      "created_at": "2026-11-06T03:15:00Z",
+      "updated_at": "2026-11-06T03:15:00Z",
+      "rev": 1
+    },
+    {
+      "id": "a0000000-0000-4000-8000-000000000012",
+      "kind": "deceased",
+      "danh_xung": "Ông",
+      "ho_ten": "Đỗ Văn Tết",
+      "ten_hieu": "",
+      "quan_he": "",
+      "birth": null,
+      "death": {
+        "input": {
+          "calendar": "lunar",
+          "precision": "day",
+          "year": 2000,
+          "month": 1,
+          "day": 1,
+          "leap": false
+        },
+        "lunar": {
+          "year": 2000,
+          "month": 1,
+          "day": 1,
+          "leap": false
+        },
+        "solar": {
+          "y": 2000,
+          "m": 2,
+          "d": 5
+        },
+        "lunar_source": "entered",
+        "method": "jpl",
+        "tuoi": {
+          "value": null,
+          "label": "huong_tho",
+          "manual": false,
+          "approx": false
+        }
+      },
+      "noi_an_tang": "",
+      "photo_id": null,
+      "memorial": {
+        "tray_style": "truyen_thong",
+        "incense": true,
+        "bia_tieu_de": "",
+        "loi_tuong_niem": "",
+        "gio_het_nam": 2,
+        "huong_duong_duoi": 60
+      },
+      "reminders": {
+        "gio": {
+          "id": "c0000000-0000-4000-8000-000000000011",
+          "enabled": true,
+          "offsets_days": [
+            0,
+            15,
+            60
+          ],
+          "time_local": "07:00",
+          "tien_thuong": true
+        },
+        "sinh_nhat": null,
+        "sinh_nhat_am": null
+      },
+      "sinh_nhat_am": false,
+      "feb29_rule": "feb28",
+      "ghi_chu": "",
+      "created_at": "2026-11-06T03:15:00Z",
+      "updated_at": "2026-11-06T03:15:00Z",
+      "rev": 1
+    },
+    {
+      "id": "a0000000-0000-4000-8000-000000000014",
+      "kind": "deceased",
+      "danh_xung": "Bà",
+      "ho_ten": "Vũ Thị Chạp Ba Mươi",
+      "ten_hieu": "",
+      "quan_he": "",
+      "birth": null,
+      "death": {
+        "input": {
+          "calendar": "lunar",
+          "precision": "day",
+          "year": 1997,
+          "month": 12,
+          "day": 30,
+          "leap": false
+        },
+        "lunar": {
+          "year": 1997,
+          "month": 12,
+          "day": 30,
+          "leap": false
+        },
+        "solar": {
+          "y": 1998,
+          "m": 1,
+          "d": 27
+        },
+        "lunar_source": "entered",
+        "method": "jpl",
+        "tuoi": {
+          "value": null,
+          "label": "huong_tho",
+          "manual": false,
+          "approx": false
+        }
+      },
+      "noi_an_tang": "",
+      "photo_id": null,
+      "memorial": {
+        "tray_style": "truyen_thong",
+        "incense": true,
+        "bia_tieu_de": "",
+        "loi_tuong_niem": "",
+        "gio_het_nam": 2,
+        "huong_duong_duoi": 60
+      },
+      "reminders": {
+        "gio": {
+          "id": "c0000000-0000-4000-8000-000000000013",
+          "enabled": true,
+          "offsets_days": [
+            0,
+            1,
+            3
+          ],
+          "time_local": "07:00",
+          "tien_thuong": false
+        },
+        "sinh_nhat": null,
+        "sinh_nhat_am": null
+      },
+      "sinh_nhat_am": false,
+      "feb29_rule": "feb28",
+      "ghi_chu": "",
+      "created_at": "2026-11-06T03:15:00Z",
+      "updated_at": "2026-11-06T03:15:00Z",
+      "rev": 1
+    },
+    {
+      "id": "a0000000-0000-4000-8000-000000000016",
+      "kind": "deceased",
+      "danh_xung": "Ông",
+      "ho_ten": "Bùi Văn Chạp",
+      "ten_hieu": "",
+      "quan_he": "",
+      "birth": null,
+      "death": {
+        "input": {
+          "calendar": "lunar",
+          "precision": "day",
+          "year": 2010,
+          "month": 12,
+          "day": 29,
+          "leap": false
+        },
+        "lunar": {
+          "year": 2010,
+          "month": 12,
+          "day": 29,
+          "leap": false
+        },
+        "solar": {
+          "y": 2011,
+          "m": 2,
+          "d": 1
+        },
+        "lunar_source": "entered",
+        "method": "jpl",
+        "tuoi": {
+          "value": null,
+          "label": "huong_tho",
+          "manual": false,
+          "approx": false
+        }
+      },
+      "noi_an_tang": "",
+      "photo_id": null,
+      "memorial": {
+        "tray_style": "truyen_thong",
+        "incense": true,
+        "bia_tieu_de": "",
+        "loi_tuong_niem": "",
+        "gio_het_nam": 2,
+        "huong_duong_duoi": 60
+      },
+      "reminders": {
+        "gio": {
+          "id": "c0000000-0000-4000-8000-000000000015",
+          "enabled": true,
+          "offsets_days": [
+            0,
+            1
+          ],
+          "time_local": "23:59",
+          "tien_thuong": true
+        },
+        "sinh_nhat": null,
+        "sinh_nhat_am": null
+      },
+      "sinh_nhat_am": false,
+      "feb29_rule": "feb28",
+      "ghi_chu": "",
+      "created_at": "2026-11-06T03:15:00Z",
+      "updated_at": "2026-11-06T03:15:00Z",
+      "rev": 1
+    },
+    {
+      "id": "a0000000-0000-4000-8000-000000000017",
+      "kind": "deceased",
+      "danh_xung": "Bà",
+      "ho_ten": "Đặng Thị Nhuận",
+      "ten_hieu": "",
+      "quan_he": "",
+      "birth": {
+        "input": {
+          "calendar": "solar",
+          "precision": "day",
+          "year": 1980,
+          "month": 7,
+          "day": 7,
+          "leap": false
+        },
+        "noi_sinh": "",
+        "lunar_year": 1980,
+        "lunar_year_approx": false,
+        "can_chi": "Canh Thân",
+        "lunar": {
+          "year": 1980,
+          "month": 5,
+          "day": 25,
+          "leap": false
+        },
+        "solar": {
+          "y": 1980,
+          "m": 7,
+          "d": 7
+        }
+      },
+      "death": {
+        "input": {
+          "calendar": "lunar",
+          "precision": "day",
+          "year": 2020,
+          "month": 4,
+          "day": 10,
+          "leap": true
+        },
+        "lunar": {
+          "year": 2020,
+          "month": 4,
+          "day": 10,
+          "leap": true
+        },
+        "solar": {
+          "y": 2020,
+          "m": 6,
+          "d": 1
+        },
+        "lunar_source": "entered",
+        "method": "jpl",
+        "tuoi": {
+          "value": 41,
+          "label": "huong_duong",
+          "manual": false,
+          "approx": false
+        }
+      },
+      "noi_an_tang": "",
+      "photo_id": null,
+      "memorial": {
+        "tray_style": "truyen_thong",
+        "incense": true,
+        "bia_tieu_de": "",
+        "loi_tuong_niem": "",
+        "gio_het_nam": 2,
+        "huong_duong_duoi": 60
+      },
+      "reminders": {
+        "gio": {
+          "id": "c0000000-0000-4000-8000-000000000018",
+          "enabled": true,
+          "offsets_days": [
+            0,
+            3
+          ],
+          "time_local": "07:00",
+          "tien_thuong": false
+        },
+        "sinh_nhat": null,
+        "sinh_nhat_am": null
+      },
+      "sinh_nhat_am": false,
+      "feb29_rule": "feb28",
+      "ghi_chu": "",
+      "created_at": "2026-11-06T03:15:00Z",
+      "updated_at": "2026-11-06T03:15:00Z",
+      "rev": 1
+    },
+    {
+      "id": "a0000000-0000-4000-8000-000000000020",
+      "kind": "deceased",
+      "danh_xung": "Cụ ông",
+      "ho_ten": "Ngô Văn Ba Mươi",
+      "ten_hieu": "",
+      "quan_he": "",
+      "birth": null,
+      "death": {
+        "input": {
+          "calendar": "lunar",
+          "precision": "month_day",
+          "year": null,
+          "month": 11,
+          "day": 30,
+          "leap": false
+        },
+        "lunar": {
+          "year": null,
+          "month": 11,
+          "day": 30,
+          "leap": false
+        },
+        "solar": null,
+        "lunar_source": "entered",
+        "method": "jpl",
+        "tuoi": {
+          "value": null,
+          "label": "huong_tho",
+          "manual": false,
+          "approx": false
+        }
+      },
+      "noi_an_tang": "",
+      "photo_id": null,
+      "memorial": {
+        "tray_style": "truyen_thong",
+        "incense": true,
+        "bia_tieu_de": "",
+        "loi_tuong_niem": "",
+        "gio_het_nam": 2,
+        "huong_duong_duoi": 60
+      },
+      "reminders": {
+        "gio": {
+          "id": "c0000000-0000-4000-8000-000000000019",
+          "enabled": true,
+          "offsets_days": [
+            5
+          ],
+          "time_local": "00:00",
+          "tien_thuong": false
+        },
+        "sinh_nhat": null,
+        "sinh_nhat_am": null
+      },
+      "sinh_nhat_am": false,
+      "feb29_rule": "feb28",
+      "ghi_chu": "",
+      "created_at": "2026-11-06T03:15:00Z",
+      "updated_at": "2026-11-06T03:15:00Z",
+      "rev": 1
+    },
+    {
+      "id": "a0000000-0000-4000-8000-000000000021",
+      "kind": "deceased",
+      "danh_xung": "Cụ bà",
+      "ho_ten": "Dương Thị Nhuận Không Năm",
+      "ten_hieu": "",
+      "quan_he": "",
+      "birth": null,
+      "death": {
+        "input": {
+          "calendar": "lunar",
+          "precision": "month_day",
+          "year": null,
+          "month": 7,
+          "day": 15,
+          "leap": true
+        },
+        "lunar": {
+          "year": null,
+          "month": 7,
+          "day": 15,
+          "leap": true
+        },
+        "solar": null,
+        "lunar_source": "entered",
+        "method": "jpl",
+        "tuoi": {
+          "value": null,
+          "label": "huong_tho",
+          "manual": false,
+          "approx": false
+        }
+      },
+      "noi_an_tang": "",
+      "photo_id": null,
+      "memorial": {
+        "tray_style": "truyen_thong",
+        "incense": true,
+        "bia_tieu_de": "",
+        "loi_tuong_niem": "",
+        "gio_het_nam": 2,
+        "huong_duong_duoi": 60
+      },
+      "reminders": {
+        "gio": {
+          "id": "c0000000-0000-4000-8000-000000000022",
+          "enabled": true,
+          "offsets_days": [
+            0,
+            3
+          ],
+          "time_local": "07:00",
+          "tien_thuong": false
+        },
+        "sinh_nhat": null,
+        "sinh_nhat_am": null
+      },
+      "sinh_nhat_am": false,
+      "feb29_rule": "feb28",
+      "ghi_chu": "",
+      "created_at": "2026-11-06T03:15:00Z",
+      "updated_at": "2026-11-06T03:15:00Z",
+      "rev": 1
+    },
+    {
+      "id": "a0000000-0000-4000-8000-000000000023",
+      "kind": "deceased",
+      "danh_xung": "Ông",
+      "ho_ten": "Lý Văn Giỗ Hết Ba",
+      "ten_hieu": "",
+      "quan_he": "",
+      "birth": {
+        "input": {
+          "calendar": "solar",
+          "precision": "day",
+          "year": 1966,
+          "month": 1,
+          "day": 1,
+          "leap": false
+        },
+        "noi_sinh": "",
+        "lunar_year": 1965,
+        "lunar_year_approx": false,
+        "can_chi": "Ất Tỵ",
+        "lunar": {
+          "year": 1965,
+          "month": 12,
+          "day": 10,
+          "leap": false
+        },
+        "solar": {
+          "y": 1966,
+          "m": 1,
+          "d": 1
+        }
+      },
+      "death": {
+        "input": {
+          "calendar": "solar",
+          "precision": "day",
+          "year": 2024,
+          "month": 6,
+          "day": 15,
+          "leap": false
+        },
+        "lunar": {
+          "year": 2024,
+          "month": 5,
+          "day": 10,
+          "leap": false
+        },
+        "solar": {
+          "y": 2024,
+          "m": 6,
+          "d": 15
+        },
+        "lunar_source": "converted",
+        "method": "jpl",
+        "tuoi": {
+          "value": 60,
+          "label": "huong_tho",
+          "manual": false,
+          "approx": false
+        }
+      },
+      "noi_an_tang": "",
+      "photo_id": null,
+      "memorial": {
+        "tray_style": "truyen_thong",
+        "incense": true,
+        "bia_tieu_de": "",
+        "loi_tuong_niem": "",
+        "gio_het_nam": 3,
+        "huong_duong_duoi": 60
+      },
+      "reminders": {
+        "gio": {
+          "id": "c0000000-0000-4000-8000-000000000024",
+          "enabled": true,
+          "offsets_days": [
+            0,
+            3
+          ],
+          "time_local": "07:00",
+          "tien_thuong": false
+        },
+        "sinh_nhat": null,
+        "sinh_nhat_am": null
+      },
+      "sinh_nhat_am": false,
+      "feb29_rule": "feb28",
+      "ghi_chu": "",
+      "created_at": "2026-11-06T03:15:00Z",
+      "updated_at": "2026-11-06T03:15:00Z",
+      "rev": 1
+    },
+    {
+      "id": "a0000000-0000-4000-8000-000000000026",
+      "kind": "deceased",
+      "danh_xung": "Ông",
+      "ho_ten": "Mai Văn Đầu Năm",
+      "ten_hieu": "",
+      "quan_he": "",
+      "birth": null,
+      "death": {
+        "input": {
+          "calendar": "solar",
+          "precision": "day",
+          "year": 1995,
+          "month": 1,
+          "day": 5,
+          "leap": false
+        },
+        "lunar": {
+          "year": 1994,
+          "month": 12,
+          "day": 5,
+          "leap": false
+        },
+        "solar": {
+          "y": 1995,
+          "m": 1,
+          "d": 5
+        },
+        "lunar_source": "converted",
+        "method": "jpl",
+        "tuoi": {
+          "value": null,
+          "label": "huong_tho",
+          "manual": false,
+          "approx": false
+        }
+      },
+      "noi_an_tang": "",
+      "photo_id": null,
+      "memorial": {
+        "tray_style": "truyen_thong",
+        "incense": true,
+        "bia_tieu_de": "",
+        "loi_tuong_niem": "",
+        "gio_het_nam": 2,
+        "huong_duong_duoi": 60
+      },
+      "reminders": {
+        "gio": {
+          "id": "c0000000-0000-4000-8000-000000000025",
+          "enabled": true,
+          "offsets_days": [
+            15
+          ],
+          "time_local": "07:00",
+          "tien_thuong": false
+        },
+        "sinh_nhat": null,
+        "sinh_nhat_am": null
+      },
+      "sinh_nhat_am": false,
+      "feb29_rule": "feb28",
+      "ghi_chu": "",
+      "created_at": "2026-11-06T03:15:00Z",
+      "updated_at": "2026-11-06T03:15:00Z",
+      "rev": 1
+    },
+    {
+      "id": "a0000000-0000-4000-8000-000000000027",
+      "kind": "deceased",
+      "danh_xung": "Cụ",
+      "ho_ten": "Cao Văn Biên Đầu",
+      "ten_hieu": "",
+      "quan_he": "",
+      "birth": null,
+      "death": {
+        "input": {
+          "calendar": "solar",
+          "precision": "day",
+          "year": 1900,
+          "month": 1,
+          "day": 1,
+          "leap": false
+        },
+        "lunar": {
+          "year": 1899,
+          "month": 12,
+          "day": 1,
+          "leap": false
+        },
+        "solar": {
+          "y": 1900,
+          "m": 1,
+          "d": 1
+        },
+        "lunar_source": "converted",
+        "method": "jpl",
+        "tuoi": {
+          "value": null,
+          "label": "huong_tho",
+          "manual": false,
+          "approx": false
+        }
+      },
+      "noi_an_tang": "",
+      "photo_id": null,
+      "memorial": {
+        "tray_style": "truyen_thong",
+        "incense": true,
+        "bia_tieu_de": "",
+        "loi_tuong_niem": "",
+        "gio_het_nam": 2,
+        "huong_duong_duoi": 60
+      },
+      "reminders": {
+        "gio": {
+          "id": "c0000000-0000-4000-8000-000000000028",
+          "enabled": true,
+          "offsets_days": [
+            0,
+            3
+          ],
+          "time_local": "07:00",
+          "tien_thuong": false
+        },
+        "sinh_nhat": null,
+        "sinh_nhat_am": null
+      },
+      "sinh_nhat_am": false,
+      "feb29_rule": "feb28",
+      "ghi_chu": "",
+      "created_at": "2026-11-06T03:15:00Z",
+      "updated_at": "2026-11-06T03:15:00Z",
+      "rev": 1
+    },
+    {
+      "id": "a0000000-0000-4000-8000-000000000029",
+      "kind": "deceased",
+      "danh_xung": "Ông",
+      "ho_ten": "Tạ Văn Biên Cuối",
+      "ten_hieu": "",
+      "quan_he": "",
+      "birth": null,
+      "death": {
+        "input": {
+          "calendar": "solar",
+          "precision": "day",
+          "year": 3000,
+          "month": 12,
+          "day": 31,
+          "leap": false
+        },
+        "lunar": {
+          "year": 3000,
+          "month": 11,
+          "day": 14,
+          "leap": false
+        },
+        "solar": {
+          "y": 3000,
+          "m": 12,
+          "d": 31
+        },
+        "lunar_source": "converted",
+        "method": "jpl",
+        "tuoi": {
+          "value": null,
+          "label": "huong_tho",
+          "manual": false,
+          "approx": false
+        }
+      },
+      "noi_an_tang": "",
+      "photo_id": null,
+      "memorial": {
+        "tray_style": "truyen_thong",
+        "incense": true,
+        "bia_tieu_de": "",
+        "loi_tuong_niem": "",
+        "gio_het_nam": 2,
+        "huong_duong_duoi": 60
+      },
+      "reminders": {
+        "gio": {
+          "id": "c0000000-0000-4000-8000-000000000030",
+          "enabled": true,
+          "offsets_days": [
+            0,
+            3
+          ],
+          "time_local": "07:00",
+          "tien_thuong": false
+        },
+        "sinh_nhat": null,
+        "sinh_nhat_am": null
+      },
+      "sinh_nhat_am": false,
+      "feb29_rule": "feb28",
+      "ghi_chu": "",
+      "created_at": "2026-11-06T03:15:00Z",
+      "updated_at": "2026-11-06T03:15:00Z",
+      "rev": 1
+    },
+    {
+      "id": "a0000000-0000-4000-8000-000000000031",
+      "kind": "deceased",
+      "danh_xung": "Bà",
+      "ho_ten": "Hồ Thị Không Nhắc",
+      "ten_hieu": "",
+      "quan_he": "",
+      "birth": null,
+      "death": {
+        "input": {
+          "calendar": "solar",
+          "precision": "day",
+          "year": 2010,
+          "month": 10,
+          "day": 10,
+          "leap": false
+        },
+        "lunar": {
+          "year": 2010,
+          "month": 9,
+          "day": 3,
+          "leap": false
+        },
+        "solar": {
+          "y": 2010,
+          "m": 10,
+          "d": 10
+        },
+        "lunar_source": "converted",
+        "method": "jpl",
+        "tuoi": {
+          "value": null,
+          "label": "huong_tho",
+          "manual": false,
+          "approx": false
+        }
+      },
+      "noi_an_tang": "",
+      "photo_id": null,
+      "memorial": {
+        "tray_style": "cong_giao",
+        "incense": false,
+        "bia_tieu_de": "",
+        "loi_tuong_niem": "",
+        "gio_het_nam": 2,
+        "huong_duong_duoi": 60
+      },
+      "reminders": {
+        "gio": null,
+        "sinh_nhat": null,
+        "sinh_nhat_am": null
+      },
+      "sinh_nhat_am": false,
+      "feb29_rule": "feb28",
+      "ghi_chu": "",
+      "created_at": "2026-11-06T03:15:00Z",
+      "updated_at": "2026-11-06T03:15:00Z",
+      "rev": 1
+    },
+    {
+      "id": "a0000000-0000-4000-8000-000000000033",
+      "kind": "deceased",
+      "danh_xung": "Ông",
+      "ho_ten": "Châu Văn Sáu Mươi",
+      "ten_hieu": "",
+      "quan_he": "",
+      "birth": null,
+      "death": {
+        "input": {
+          "calendar": "solar",
+          "precision": "day",
+          "year": 2019,
+          "month": 12,
+          "day": 25,
+          "leap": false
+        },
+        "lunar": {
+          "year": 2019,
+          "month": 11,
+          "day": 30,
+          "leap": false
+        },
+        "solar": {
+          "y": 2019,
+          "m": 12,
+          "d": 25
+        },
+        "lunar_source": "converted",
+        "method": "jpl",
+        "tuoi": {
+          "value": null,
+          "label": "huong_tho",
+          "manual": false,
+          "approx": false
+        }
+      },
+      "noi_an_tang": "",
+      "photo_id": null,
+      "memorial": {
+        "tray_style": "truyen_thong",
+        "incense": true,
+        "bia_tieu_de": "",
+        "loi_tuong_niem": "",
+        "gio_het_nam": 2,
+        "huong_duong_duoi": 60
+      },
+      "reminders": {
+        "gio": {
+          "id": "c0000000-0000-4000-8000-000000000032",
+          "enabled": true,
+          "offsets_days": [
+            0,
+            60
+          ],
+          "time_local": "00:00",
+          "tien_thuong": false
+        },
+        "sinh_nhat": null,
+        "sinh_nhat_am": null
+      },
+      "sinh_nhat_am": false,
+      "feb29_rule": "feb28",
+      "ghi_chu": "",
+      "created_at": "2026-11-06T03:15:00Z",
+      "updated_at": "2026-11-06T03:15:00Z",
+      "rev": 1
+    },
+    {
+      "id": "a0000000-0000-4000-8000-000000000034",
+      "kind": "deceased",
+      "danh_xung": "Bà",
+      "ho_ten": "Đinh Thị Ba Mươi Dương",
+      "ten_hieu": "",
+      "quan_he": "",
+      "birth": null,
+      "death": {
+        "input": {
+          "calendar": "solar",
+          "precision": "day",
+          "year": 2025,
+          "month": 2,
+          "day": 27,
+          "leap": false
+        },
+        "lunar": {
+          "year": 2025,
+          "month": 1,
+          "day": 30,
+          "leap": false
+        },
+        "solar": {
+          "y": 2025,
+          "m": 2,
+          "d": 27
+        },
+        "lunar_source": "converted",
+        "method": "jpl",
+        "tuoi": {
+          "value": null,
+          "label": "huong_tho",
+          "manual": false,
+          "approx": false
+        }
+      },
+      "noi_an_tang": "",
+      "photo_id": null,
+      "memorial": {
+        "tray_style": "truyen_thong",
+        "incense": true,
+        "bia_tieu_de": "",
+        "loi_tuong_niem": "",
+        "gio_het_nam": 2,
+        "huong_duong_duoi": 60
+      },
+      "reminders": {
+        "gio": {
+          "id": "c0000000-0000-4000-8000-000000000035",
+          "enabled": true,
+          "offsets_days": [
+            0,
+            3
+          ],
+          "time_local": "07:00",
+          "tien_thuong": false
+        },
+        "sinh_nhat": null,
+        "sinh_nhat_am": null
+      },
+      "sinh_nhat_am": false,
+      "feb29_rule": "feb28",
+      "ghi_chu": "",
+      "created_at": "2026-11-06T03:15:00Z",
+      "updated_at": "2026-11-06T03:15:00Z",
+      "rev": 1
+    },
+    {
+      "id": "b0000000-0000-4000-8000-000000000036",
+      "kind": "living",
+      "danh_xung": "Chị",
+      "ho_ten": "Lê Thị C",
+      "ten_hieu": "",
+      "quan_he": "",
+      "birth": {
+        "input": {
+          "calendar": "solar",
+          "precision": "day",
+          "year": 1990,
+          "month": 1,
+          "day": 20,
+          "leap": false
+        },
+        "noi_sinh": "",
+        "lunar_year": 1989,
+        "lunar_year_approx": false,
+        "can_chi": "Kỷ Tỵ",
+        "lunar": {
+          "year": 1989,
+          "month": 12,
+          "day": 24,
+          "leap": false
+        },
+        "solar": {
+          "y": 1990,
+          "m": 1,
+          "d": 20
+        }
+      },
+      "death": null,
+      "noi_an_tang": "",
+      "photo_id": null,
+      "memorial": null,
+      "reminders": {
+        "gio": null,
+        "sinh_nhat": {
+          "id": "c0000000-0000-4000-8000-000000000037",
+          "enabled": true,
+          "offsets_days": [
+            0,
+            3
+          ],
+          "time_local": "07:00",
+          "tien_thuong": false
+        },
+        "sinh_nhat_am": {
+          "id": "c0000000-0000-4000-8000-000000000038",
+          "enabled": true,
+          "offsets_days": [
+            0
+          ],
+          "time_local": "07:00",
+          "tien_thuong": false
+        }
+      },
+      "sinh_nhat_am": true,
+      "feb29_rule": "feb28",
+      "ghi_chu": "",
+      "created_at": "2026-11-06T03:15:00Z",
+      "updated_at": "2026-11-06T03:15:00Z",
+      "rev": 1
+    },
+    {
+      "id": "b0000000-0000-4000-8000-000000000039",
+      "kind": "living",
+      "danh_xung": "Anh",
+      "ho_ten": "Phan Văn Hai Chín",
+      "ten_hieu": "",
+      "quan_he": "",
+      "birth": {
+        "input": {
+          "calendar": "solar",
+          "precision": "day",
+          "year": 2000,
+          "month": 2,
+          "day": 29,
+          "leap": false
+        },
+        "noi_sinh": "",
+        "lunar_year": 2000,
+        "lunar_year_approx": false,
+        "can_chi": "Canh Thìn",
+        "lunar": {
+          "year": 2000,
+          "month": 1,
+          "day": 25,
+          "leap": false
+        },
+        "solar": {
+          "y": 2000,
+          "m": 2,
+          "d": 29
+        }
+      },
+      "death": null,
+      "noi_an_tang": "",
+      "photo_id": null,
+      "memorial": null,
+      "reminders": {
+        "gio": null,
+        "sinh_nhat": {
+          "id": "c0000000-0000-4000-8000-000000000040",
+          "enabled": true,
+          "offsets_days": [
+            0,
+            3
+          ],
+          "time_local": "07:00",
+          "tien_thuong": false
+        },
+        "sinh_nhat_am": null
+      },
+      "sinh_nhat_am": false,
+      "feb29_rule": "feb28",
+      "ghi_chu": "",
+      "created_at": "2026-11-06T03:15:00Z",
+      "updated_at": "2026-11-06T03:15:00Z",
+      "rev": 1
+    },
+    {
+      "id": "b0000000-0000-4000-8000-000000000042",
+      "kind": "living",
+      "danh_xung": "Em",
+      "ho_ten": "Trịnh Thị Mồng Một",
+      "ten_hieu": "",
+      "quan_he": "",
+      "birth": {
+        "input": {
+          "calendar": "solar",
+          "precision": "day",
+          "year": 1996,
+          "month": 2,
+          "day": 29,
+          "leap": false
+        },
+        "noi_sinh": "",
+        "lunar_year": 1996,
+        "lunar_year_approx": false,
+        "can_chi": "Bính Tý",
+        "lunar": {
+          "year": 1996,
+          "month": 1,
+          "day": 11,
+          "leap": false
+        },
+        "solar": {
+          "y": 1996,
+          "m": 2,
+          "d": 29
+        }
+      },
+      "death": null,
+      "noi_an_tang": "",
+      "photo_id": null,
+      "memorial": null,
+      "reminders": {
+        "gio": null,
+        "sinh_nhat": {
+          "id": "c0000000-0000-4000-8000-000000000041",
+          "enabled": true,
+          "offsets_days": [
+            0,
+            1,
+            15
+          ],
+          "time_local": "23:59",
+          "tien_thuong": false
+        },
+        "sinh_nhat_am": null
+      },
+      "sinh_nhat_am": false,
+      "feb29_rule": "mar1",
+      "ghi_chu": "",
+      "created_at": "2026-11-06T03:15:00Z",
+      "updated_at": "2026-11-06T03:15:00Z",
+      "rev": 1
+    },
+    {
+      "id": "b0000000-0000-4000-8000-000000000044",
+      "kind": "living",
+      "danh_xung": "",
+      "ho_ten": "Kiều Văn Cuối Năm",
+      "ten_hieu": "",
+      "quan_he": "",
+      "birth": {
+        "input": {
+          "calendar": "solar",
+          "precision": "day",
+          "year": 1985,
+          "month": 12,
+          "day": 31,
+          "leap": false
+        },
+        "noi_sinh": "",
+        "lunar_year": 1985,
+        "lunar_year_approx": false,
+        "can_chi": "Ất Sửu",
+        "lunar": {
+          "year": 1985,
+          "month": 11,
+          "day": 20,
+          "leap": false
+        },
+        "solar": {
+          "y": 1985,
+          "m": 12,
+          "d": 31
+        }
+      },
+      "death": null,
+      "noi_an_tang": "",
+      "photo_id": null,
+      "memorial": null,
+      "reminders": {
+        "gio": null,
+        "sinh_nhat": {
+          "id": "c0000000-0000-4000-8000-000000000045",
+          "enabled": true,
+          "offsets_days": [
+            0,
+            3
+          ],
+          "time_local": "07:00",
+          "tien_thuong": false
+        },
+        "sinh_nhat_am": {
+          "id": "c0000000-0000-4000-8000-000000000043",
+          "enabled": true,
+          "offsets_days": [
+            0,
+            60
+          ],
+          "time_local": "07:00",
+          "tien_thuong": false
+        }
+      },
+      "sinh_nhat_am": true,
+      "feb29_rule": "feb28",
+      "ghi_chu": "",
+      "created_at": "2026-11-06T03:15:00Z",
+      "updated_at": "2026-11-06T03:15:00Z",
+      "rev": 1
+    },
+    {
+      "id": "b0000000-0000-4000-8000-000000000047",
+      "kind": "living",
+      "danh_xung": "",
+      "ho_ten": "Lương Thị Âm Ba Mươi",
+      "ten_hieu": "",
+      "quan_he": "",
+      "birth": {
+        "input": {
+          "calendar": "lunar",
+          "precision": "day",
+          "year": 1997,
+          "month": 12,
+          "day": 30,
+          "leap": false
+        },
+        "noi_sinh": "",
+        "lunar_year": 1997,
+        "lunar_year_approx": false,
+        "can_chi": "Đinh Sửu",
+        "lunar": {
+          "year": 1997,
+          "month": 12,
+          "day": 30,
+          "leap": false
+        },
+        "solar": {
+          "y": 1998,
+          "m": 1,
+          "d": 27
+        }
+      },
+      "death": null,
+      "noi_an_tang": "",
+      "photo_id": null,
+      "memorial": null,
+      "reminders": {
+        "gio": null,
+        "sinh_nhat": {
+          "id": "c0000000-0000-4000-8000-000000000046",
+          "enabled": true,
+          "offsets_days": [
+            3
+          ],
+          "time_local": "07:00",
+          "tien_thuong": false
+        },
+        "sinh_nhat_am": {
+          "id": "c0000000-0000-4000-8000-000000000048",
+          "enabled": true,
+          "offsets_days": [
+            0
+          ],
+          "time_local": "07:00",
+          "tien_thuong": false
+        }
+      },
+      "sinh_nhat_am": true,
+      "feb29_rule": "feb28",
+      "ghi_chu": "",
+      "created_at": "2026-11-06T03:15:00Z",
+      "updated_at": "2026-11-06T03:15:00Z",
+      "rev": 1
+    },
+    {
+      "id": "b0000000-0000-4000-8000-000000000049",
+      "kind": "living",
+      "danh_xung": "Cháu",
+      "ho_ten": "Quách Văn Âm Nhuận",
+      "ten_hieu": "",
+      "quan_he": "",
+      "birth": {
+        "input": {
+          "calendar": "lunar",
+          "precision": "day",
+          "year": 2020,
+          "month": 4,
+          "day": 10,
+          "leap": true
+        },
+        "noi_sinh": "",
+        "lunar_year": 2020,
+        "lunar_year_approx": false,
+        "can_chi": "Canh Tý",
+        "lunar": {
+          "year": 2020,
+          "month": 4,
+          "day": 10,
+          "leap": true
+        },
+        "solar": {
+          "y": 2020,
+          "m": 6,
+          "d": 1
+        }
+      },
+      "death": null,
+      "noi_an_tang": "",
+      "photo_id": null,
+      "memorial": null,
+      "reminders": {
+        "gio": null,
+        "sinh_nhat": {
+          "id": "c0000000-0000-4000-8000-000000000050",
+          "enabled": true,
+          "offsets_days": [
+            0,
+            3
+          ],
+          "time_local": "07:00",
+          "tien_thuong": false
+        },
+        "sinh_nhat_am": {
+          "id": "c0000000-0000-4000-8000-000000000051",
+          "enabled": true,
+          "offsets_days": [
+            0
+          ],
+          "time_local": "07:00",
+          "tien_thuong": false
+        }
+      },
+      "sinh_nhat_am": true,
+      "feb29_rule": "feb28",
+      "ghi_chu": "",
+      "created_at": "2026-11-06T03:15:00Z",
+      "updated_at": "2026-11-06T03:15:00Z",
+      "rev": 1
+    },
+    {
+      "id": "b0000000-0000-4000-8000-000000000052",
+      "kind": "living",
+      "danh_xung": "Bác",
+      "ho_ten": "Tôn Thất Chỉ Năm",
+      "ten_hieu": "",
+      "quan_he": "",
+      "birth": {
+        "input": {
+          "calendar": "solar",
+          "precision": "year",
+          "year": 1970,
+          "month": null,
+          "day": null,
+          "leap": false
+        },
+        "noi_sinh": "",
+        "lunar_year": 1970,
+        "lunar_year_approx": true,
+        "can_chi": "Canh Tuất",
+        "lunar": null,
+        "solar": null
+      },
+      "death": null,
+      "noi_an_tang": "",
+      "photo_id": null,
+      "memorial": null,
+      "reminders": {
+        "gio": null,
+        "sinh_nhat": {
+          "id": "c0000000-0000-4000-8000-000000000053",
+          "enabled": true,
+          "offsets_days": [
+            0,
+            3
+          ],
+          "time_local": "07:00",
+          "tien_thuong": false
+        },
+        "sinh_nhat_am": null
+      },
+      "sinh_nhat_am": false,
+      "feb29_rule": "feb28",
+      "ghi_chu": "",
+      "created_at": "2026-11-06T03:15:00Z",
+      "updated_at": "2026-11-06T03:15:00Z",
+      "rev": 1
+    },
+    {
+      "id": "b0000000-0000-4000-8000-000000000054",
+      "kind": "living",
+      "danh_xung": "Bé",
+      "ho_ten": "Mạc Thị Mới Sinh",
+      "ten_hieu": "",
+      "quan_he": "",
+      "birth": {
+        "input": {
+          "calendar": "solar",
+          "precision": "day",
+          "year": 2026,
+          "month": 1,
+          "day": 15,
+          "leap": false
+        },
+        "noi_sinh": "",
+        "lunar_year": 2025,
+        "lunar_year_approx": false,
+        "can_chi": "Ất Tỵ",
+        "lunar": {
+          "year": 2025,
+          "month": 11,
+          "day": 27,
+          "leap": false
+        },
+        "solar": {
+          "y": 2026,
+          "m": 1,
+          "d": 15
+        }
+      },
+      "death": null,
+      "noi_an_tang": "",
+      "photo_id": null,
+      "memorial": null,
+      "reminders": {
+        "gio": null,
+        "sinh_nhat": {
+          "id": "c0000000-0000-4000-8000-000000000055",
+          "enabled": true,
+          "offsets_days": [
+            0,
+            3
+          ],
+          "time_local": "07:00",
+          "tien_thuong": false
+        },
+        "sinh_nhat_am": {
+          "id": "c0000000-0000-4000-8000-000000000056",
+          "enabled": true,
+          "offsets_days": [
+            0
+          ],
+          "time_local": "07:00",
+          "tien_thuong": false
+        }
+      },
+      "sinh_nhat_am": true,
+      "feb29_rule": "feb28",
+      "ghi_chu": "",
+      "created_at": "2026-11-06T03:15:00Z",
+      "updated_at": "2026-11-06T03:15:00Z",
+      "rev": 1
+    },
+    {
+      "id": "b0000000-0000-4000-8000-000000000058",
+      "kind": "living",
+      "danh_xung": "Ông",
+      "ho_ten": "Âu Văn Ba Mốt",
+      "ten_hieu": "",
+      "quan_he": "",
+      "birth": {
+        "input": {
+          "calendar": "solar",
+          "precision": "day",
+          "year": 1950,
+          "month": 3,
+          "day": 1,
+          "leap": false
+        },
+        "noi_sinh": "",
+        "lunar_year": 1950,
+        "lunar_year_approx": false,
+        "can_chi": "Canh Dần",
+        "lunar": {
+          "year": 1950,
+          "month": 1,
+          "day": 13,
+          "leap": false
+        },
+        "solar": {
+          "y": 1950,
+          "m": 3,
+          "d": 1
+        }
+      },
+      "death": null,
+      "noi_an_tang": "",
+      "photo_id": null,
+      "memorial": null,
+      "reminders": {
+        "gio": null,
+        "sinh_nhat": {
+          "id": "c0000000-0000-4000-8000-000000000057",
+          "enabled": true,
+          "offsets_days": [
+            0,
+            1,
+            3,
+            5,
+            10,
+            15
+          ],
+          "time_local": "07:00",
+          "tien_thuong": false
+        },
+        "sinh_nhat_am": null
+      },
+      "sinh_nhat_am": false,
+      "feb29_rule": "feb28",
+      "ghi_chu": "",
+      "created_at": "2026-11-06T03:15:00Z",
+      "updated_at": "2026-11-06T03:15:00Z",
+      "rev": 1
+    }
+  ],
+  "events": [
+    {
+      "id": "d0000000-0000-4000-8000-000000000060",
+      "type_id": "6f1c2a1e-0b6e-4c55-9a51-0d1f2b7c0002",
+      "tieu_de": "Ngày cưới anh chị C",
+      "date": {
+        "calendar": "solar",
+        "precision": "day",
+        "year": 2015,
+        "month": 12,
+        "day": 12,
+        "leap": false
+      },
+      "recurring": true,
+      "person_ids": [
+        "b0000000-0000-4000-8000-000000000036"
+      ],
+      "ghi_chu": "",
+      "reminder": {
+        "id": "c0000000-0000-4000-8000-000000000059",
+        "enabled": true,
+        "offsets_days": [
+          0,
+          1
+        ],
+        "time_local": "07:00",
+        "tien_thuong": false
+      },
+      "created_at": "2026-11-06T03:15:00Z",
+      "updated_at": "2026-11-06T03:15:00Z",
+      "rev": 1
+    },
+    {
+      "id": "d0000000-0000-4000-8000-000000000061",
+      "type_id": "6f1c2a1e-0b6e-4c55-9a51-0d1f2b7c0002",
+      "tieu_de": "",
+      "date": {
+        "calendar": "solar",
+        "precision": "day",
+        "year": 2012,
+        "month": 2,
+        "day": 29,
+        "leap": false
+      },
+      "recurring": true,
+      "person_ids": [
+        "a0000000-0000-4000-8000-000000000001",
+        "b0000000-0000-4000-8000-000000000039"
+      ],
+      "ghi_chu": "",
+      "reminder": {
+        "id": "c0000000-0000-4000-8000-000000000062",
+        "enabled": true,
+        "offsets_days": [
+          0,
+          3
+        ],
+        "time_local": "07:00",
+        "tien_thuong": false
+      },
+      "created_at": "2026-11-06T03:15:00Z",
+      "updated_at": "2026-11-06T03:15:00Z",
+      "rev": 3
+    },
+    {
+      "id": "d0000000-0000-4000-8000-000000000064",
+      "type_id": "e0000000-0000-4000-8000-000000000001",
+      "tieu_de": "Kỷ niệm thành lập họ",
+      "date": {
+        "calendar": "solar",
+        "precision": "day",
+        "year": 2020,
+        "month": 12,
+        "day": 31,
+        "leap": false
+      },
+      "recurring": true,
+      "person_ids": [],
+      "ghi_chu": "",
+      "reminder": {
+        "id": "c0000000-0000-4000-8000-000000000063",
+        "enabled": true,
+        "offsets_days": [
+          0,
+          60
+        ],
+        "time_local": "07:00",
+        "tien_thuong": false
+      },
+      "created_at": "2026-11-06T03:15:00Z",
+      "updated_at": "2026-11-06T03:15:00Z",
+      "rev": 1
+    },
+    {
+      "id": "d0000000-0000-4000-8000-000000000065",
+      "type_id": "e0000000-0000-4000-8000-000000000001",
+      "tieu_de": "Giỗ tổ dòng họ",
+      "date": {
+        "calendar": "lunar",
+        "precision": "day",
+        "year": 2010,
+        "month": 8,
+        "day": 15,
+        "leap": false
+      },
+      "recurring": true,
+      "person_ids": [
+        "a0000000-0000-4000-8000-000000000027",
+        "a0000000-0000-4000-8000-000000000026"
+      ],
+      "ghi_chu": "",
+      "reminder": {
+        "id": "c0000000-0000-4000-8000-000000000066",
+        "enabled": true,
+        "offsets_days": [
+          0,
+          3
+        ],
+        "time_local": "07:00",
+        "tien_thuong": false
+      },
+      "created_at": "2026-11-06T03:15:00Z",
+      "updated_at": "2026-11-06T03:15:00Z",
+      "rev": 1
+    },
+    {
+      "id": "d0000000-0000-4000-8000-000000000068",
+      "type_id": "e0000000-0000-4000-8000-000000000001",
+      "tieu_de": "Họp họ đầu xuân",
+      "date": {
+        "calendar": "lunar",
+        "precision": "month_day",
+        "year": null,
+        "month": 1,
+        "day": 1,
+        "leap": false
+      },
+      "recurring": true,
+      "person_ids": [
+        "a0000000-0000-4000-8000-000000000006"
+      ],
+      "ghi_chu": "",
+      "reminder": {
+        "id": "c0000000-0000-4000-8000-000000000067",
+        "enabled": true,
+        "offsets_days": [
+          0,
+          15
+        ],
+        "time_local": "07:00",
+        "tien_thuong": false
+      },
+      "created_at": "2026-11-06T03:15:00Z",
+      "updated_at": "2026-11-06T03:15:00Z",
+      "rev": 1
+    },
+    {
+      "id": "d0000000-0000-4000-8000-000000000069",
+      "type_id": "e0000000-0000-4000-8000-000000000001",
+      "tieu_de": "Tất niên dòng họ",
+      "date": {
+        "calendar": "lunar",
+        "precision": "month_day",
+        "year": null,
+        "month": 12,
+        "day": 30,
+        "leap": false
+      },
+      "recurring": true,
+      "person_ids": [
+        "a0000000-0000-4000-8000-000000000014"
+      ],
+      "ghi_chu": "",
+      "reminder": {
+        "id": "c0000000-0000-4000-8000-000000000070",
+        "enabled": true,
+        "offsets_days": [
+          0,
+          3
+        ],
+        "time_local": "07:00",
+        "tien_thuong": false
+      },
+      "created_at": "2026-11-06T03:15:00Z",
+      "updated_at": "2026-11-06T03:15:00Z",
+      "rev": 1
+    },
+    {
+      "id": "d0000000-0000-4000-8000-000000000071",
+      "type_id": "e0000000-0000-4000-8000-000000000001",
+      "tieu_de": "Lễ nhuận",
+      "date": {
+        "calendar": "lunar",
+        "precision": "day",
+        "year": 2023,
+        "month": 2,
+        "day": 10,
+        "leap": true
+      },
+      "recurring": true,
+      "person_ids": [
+        "b0000000-0000-4000-8000-000000000049"
+      ],
+      "ghi_chu": "",
+      "reminder": {
+        "id": "c0000000-0000-4000-8000-000000000072",
+        "enabled": true,
+        "offsets_days": [
+          0,
+          3
+        ],
+        "time_local": "07:00",
+        "tien_thuong": false
+      },
+      "created_at": "2026-11-06T03:15:00Z",
+      "updated_at": "2026-11-06T03:15:00Z",
+      "rev": 1
+    },
+    {
+      "id": "d0000000-0000-4000-8000-000000000073",
+      "type_id": "6f1c2a1e-0b6e-4c55-9a51-0d1f2b7c0001",
+      "tieu_de": "Tốt nghiệp đại học",
+      "date": {
+        "calendar": "solar",
+        "precision": "day",
+        "year": 2026,
+        "month": 3,
+        "day": 15,
+        "leap": false
+      },
+      "recurring": false,
+      "person_ids": [
+        "a0000000-0000-4000-8000-000000000034"
+      ],
+      "ghi_chu": "",
+      "reminder": {
+        "id": "c0000000-0000-4000-8000-000000000074",
+        "enabled": true,
+        "offsets_days": [
+          0,
+          3
+        ],
+        "time_local": "07:00",
+        "tien_thuong": false
+      },
+      "created_at": "2026-11-06T03:15:00Z",
+      "updated_at": "2026-11-06T03:15:00Z",
+      "rev": 1
+    },
+    {
+      "id": "d0000000-0000-4000-8000-000000000076",
+      "type_id": "6f1c2a1e-0b6e-4c55-9a51-0d1f2b7c0003",
+      "tieu_de": "Đính hôn đầu năm",
+      "date": {
+        "calendar": "solar",
+        "precision": "day",
+        "year": 2026,
+        "month": 1,
+        "day": 1,
+        "leap": false
+      },
+      "recurring": false,
+      "person_ids": [
+        "b0000000-0000-4000-8000-000000000044",
+        "b0000000-0000-4000-8000-000000000047"
+      ],
+      "ghi_chu": "",
+      "reminder": {
+        "id": "c0000000-0000-4000-8000-000000000075",
+        "enabled": true,
+        "offsets_days": [
+          0
+        ],
+        "time_local": "00:00",
+        "tien_thuong": false
+      },
+      "created_at": "2026-11-06T03:15:00Z",
+      "updated_at": "2026-11-06T03:15:00Z",
+      "rev": 1
+    },
+    {
+      "id": "d0000000-0000-4000-8000-000000000077",
+      "type_id": "e0000000-0000-4000-8000-000000000001",
+      "tieu_de": "Lễ âm một lần",
+      "date": {
+        "calendar": "lunar",
+        "precision": "day",
+        "year": 2026,
+        "month": 6,
+        "day": 15,
+        "leap": false
+      },
+      "recurring": false,
+      "person_ids": [
+        "a0000000-0000-4000-8000-000000000031"
+      ],
+      "ghi_chu": "",
+      "reminder": {
+        "id": "c0000000-0000-4000-8000-000000000078",
+        "enabled": true,
+        "offsets_days": [
+          0,
+          3
+        ],
+        "time_local": "07:00",
+        "tien_thuong": false
+      },
+      "created_at": "2026-11-06T03:15:00Z",
+      "updated_at": "2026-11-06T03:15:00Z",
+      "rev": 1
+    },
+    {
+      "id": "d0000000-0000-4000-8000-000000000080",
+      "type_id": "6f1c2a1e-0b6e-4c55-9a51-0d1f2b7c0004",
+      "tieu_de": "Du học Nhật",
+      "date": {
+        "calendar": "solar",
+        "precision": "day",
+        "year": 2030,
+        "month": 7,
+        "day": 1,
+        "leap": false
+      },
+      "recurring": false,
+      "person_ids": [
+        "b0000000-0000-4000-8000-000000000054"
+      ],
+      "ghi_chu": "",
+      "reminder": {
+        "id": "c0000000-0000-4000-8000-000000000079",
+        "enabled": true,
+        "offsets_days": [
+          0,
+          3,
+          60
+        ],
+        "time_local": "07:00",
+        "tien_thuong": false
+      },
+      "created_at": "2026-11-06T03:15:00Z",
+      "updated_at": "2026-11-06T03:15:00Z",
+      "rev": 1
+    },
+    {
+      "id": "d0000000-0000-4000-8000-000000000082",
+      "type_id": "e0000000-0000-4000-8000-000000000001",
+      "tieu_de": "Mốc cuối cửa sổ",
+      "date": {
+        "calendar": "solar",
+        "precision": "day",
+        "year": 2036,
+        "month": 12,
+        "day": 31,
+        "leap": false
+      },
+      "recurring": false,
+      "person_ids": [
+        "a0000000-0000-4000-8000-000000000029",
+        "b0000000-0000-4000-8000-000000000058"
+      ],
+      "ghi_chu": "",
+      "reminder": {
+        "id": "c0000000-0000-4000-8000-000000000081",
+        "enabled": true,
+        "offsets_days": [
+          0,
+          1
+        ],
+        "time_local": "23:59",
+        "tien_thuong": false
+      },
+      "created_at": "2026-11-06T03:15:00Z",
+      "updated_at": "2026-11-06T03:15:00Z",
+      "rev": 1
+    },
+    {
+      "id": "d0000000-0000-4000-8000-000000000083",
+      "type_id": "e0000000-0000-4000-8000-000000000001",
+      "tieu_de": "Sự kiện đã qua",
+      "date": {
+        "calendar": "lunar",
+        "precision": "day",
+        "year": 2025,
+        "month": 6,
+        "day": 15,
+        "leap": true
+      },
+      "recurring": false,
+      "person_ids": [
+        "a0000000-0000-4000-8000-000000000001"
+      ],
+      "ghi_chu": "",
+      "reminder": {
+        "id": "c0000000-0000-4000-8000-000000000084",
+        "enabled": true,
+        "offsets_days": [
+          0,
+          3
+        ],
+        "time_local": "07:00",
+        "tien_thuong": false
+      },
+      "created_at": "2026-11-06T03:15:00Z",
+      "updated_at": "2026-11-06T03:15:00Z",
+      "rev": 1
+    },
+    {
+      "id": "f0000000-0000-4000-8000-000000000001",
+      "type_id": "e0000000-0000-4000-8000-000000000001",
+      "tieu_de": "Lễ tạ mộ",
+      "date": {
+        "calendar": "lunar",
+        "precision": "month_day",
+        "year": null,
+        "month": 3,
+        "day": 10,
+        "leap": false
+      },
+      "recurring": true,
+      "person_ids": [
+        "a0000000-0000-4000-8000-000000000006"
+      ],
+      "ghi_chu": "",
+      "reminder": {
+        "id": "f1000000-0000-4000-8000-000000000001",
+        "enabled": true,
+        "offsets_days": [
+          0,
+          3
+        ],
+        "time_local": "07:00",
+        "tien_thuong": false
+      },
+      "created_at": "2026-11-06T03:15:00Z",
+      "updated_at": "2026-11-06T03:15:00Z",
+      "rev": 1
+    },
+    {
+      "id": "f0000000-0000-4000-8000-000000000002",
+      "type_id": "6f1c2a1e-0b6e-4c55-9a51-0d1f2b7c0002",
+      "tieu_de": "Ngày cưới ông bà",
+      "date": {
+        "calendar": "solar",
+        "precision": "day",
+        "year": 1964,
+        "month": 2,
+        "day": 29,
+        "leap": false
+      },
+      "recurring": true,
+      "person_ids": [
+        "a0000000-0000-4000-8000-000000000001",
+        "a0000000-0000-4000-8000-000000000006"
+      ],
+      "ghi_chu": "",
+      "reminder": {
+        "id": "f1000000-0000-4000-8000-000000000002",
+        "enabled": false,
+        "offsets_days": [
+          0,
+          3
+        ],
+        "time_local": "07:00",
+        "tien_thuong": false
+      },
+      "created_at": "2026-11-06T03:15:00Z",
+      "updated_at": "2026-11-06T03:15:00Z",
+      "rev": 1
+    },
+    {
+      "id": "f0000000-0000-4000-8000-000000000003",
+      "type_id": "6f1c2a1e-0b6e-4c55-9a51-0d1f2b7c0001",
+      "tieu_de": "",
+      "date": {
+        "calendar": "solar",
+        "precision": "day",
+        "year": 2027,
+        "month": 6,
+        "day": 7,
+        "leap": false
+      },
+      "recurring": false,
+      "person_ids": [
+        "a0000000-0000-4000-8000-000000000017"
+      ],
+      "ghi_chu": "",
+      "reminder": null,
+      "created_at": "2026-11-06T03:15:00Z",
+      "updated_at": "2026-11-06T03:15:00Z",
+      "rev": 1
+    },
+    {
+      "id": "f0000000-0000-4000-8000-000000000004",
+      "type_id": "e0000000-0000-4000-8000-000000000001",
+      "tieu_de": "Mừng thọ",
+      "date": {
+        "calendar": "solar",
+        "precision": "day",
+        "year": 2021,
+        "month": 1,
+        "day": 1,
+        "leap": false
+      },
+      "recurring": true,
+      "person_ids": [
+        "b0000000-0000-4000-8000-000000000058",
+        "a0000000-0000-4000-8000-000000000007"
+      ],
+      "ghi_chu": "",
+      "reminder": {
+        "id": "f1000000-0000-4000-8000-000000000004",
+        "enabled": true,
+        "offsets_days": [
+          0,
+          3
+        ],
+        "time_local": "07:00",
+        "tien_thuong": false
+      },
+      "created_at": "2026-11-06T03:15:00Z",
+      "updated_at": "2026-11-06T03:15:00Z",
+      "rev": 1
+    }
+  ],
+  "photos": []
+}

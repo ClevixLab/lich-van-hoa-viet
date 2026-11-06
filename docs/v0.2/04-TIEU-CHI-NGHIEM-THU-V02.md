@@ -256,3 +256,24 @@ của bên kiểm định độc lập nêu bốn điểm dưới đây. Mọi q
 
 Ngoài các tiêu chí: hai chỗ đếm khác nhau trong cột tổng hợp của R12 (lần rút số ngẫu nhiên ngày đầu; có tính thông
 báo nhắc mở ứng dụng vào `delivered` hay không) được thống nhất trong Phụ lục A.5. Hai chỗ này không ảnh hưởng bất biến.
+
+## Bổ sung B4 — với người đã mất chỉ nhắc ngày giỗ (2026-11-07, quyết định của chủ dự án)
+
+Nguyên văn chủ dự án (07/11/2026, 06:12): "Người Việt nam không hay tổ chức lễ kỷ niệm ngày cưới, đặc biệt nếu 1 người
+đã mất thì mọi người bỏ qua luôn sự kiện đó không nhắc tới, nên với người đã mất, sự kiện duy nhất cần báo là ngày giỗ,
+mặc dù các dữ liệu khác vẫn còn lưu."
+
+Đây là thay đổi yêu cầu sản phẩm, được quyết **sau khi** đã có kết quả kiểm định R3, R11, R12, R13. Ngưỡng các tiêu chí
+giữ nguyên; tập lần xuất hiện được định nghĩa lại như sau và mọi tiêu chí liên quan phải chạy lại.
+
+1. **Hồ sơ có ngày mất:** chỉ sinh ra lần xuất hiện **giỗ**, và **tiên thường** nếu người dùng bật (O-1, mặc định tắt).
+   Sinh nhật dương, sinh nhật âm và sự kiện của người này **không** sinh lần xuất hiện, không có lời nhắc, không vào
+   "Sắp tới", danh sách theo kỳ hay tệp .ics. Dữ liệu vẫn được lưu, hiển thị trên trang hồ sơ, và vẫn có trong sao lưu.
+2. **Sự kiện gắn với nhiều người:** nếu **có ít nhất một** người đã mất thì sự kiện không sinh lần xuất hiện, với lý
+   do như mục 1. Sự kiện chỉ gắn với người đang sống, hoặc không gắn với ai, sinh lần xuất hiện như cũ.
+3. **Bộ lọc R13:** "Người đã mất" = giỗ và tiên thường; "Người đang sống" = mọi lần xuất hiện còn lại. Yêu cầu
+   "đã mất ∪ đang sống = tất cả, không trùng" giữ nguyên.
+4. **Chuyển trạng thái:** khi một người đang sống được cập nhật ngày mất, các lời nhắc sinh nhật và sự kiện của người
+   đó bị gỡ ở lần lập lịch kế tiếp (02 §7.3–7.5).
+5. **Phạm vi chạy lại:** R3, R4, R11, R12, R13 (bên kiểm định độc lập tự cài lại từ mục 1–3); kiểm thử giao diện
+   các nền tảng.
