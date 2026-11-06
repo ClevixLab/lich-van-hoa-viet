@@ -256,6 +256,9 @@ async function newCtx(vp, opts = {}) {
   // Tết Giáp Ngọ 1954 = 03/02/1954 (Đài Thiên văn Hồng Kông, lịch 1954; trước 1968 lịch Việt tính theo UTC+8).
   cv = await solar(3, 2, 1954);
   check(cv.includes("Ngày 1 tháng 1 năm Giáp Ngọ"), `03/02/1954 → mùng 1 Tết Giáp Ngọ (${cv.split("\n")[0]})`);
+  // Tết Bính Thìn 1916 = 03/02/1916 (HKO lịch 1916; trước 1929 tính theo giờ Bắc Kinh).
+  cv = await solar(3, 2, 1916);
+  check(cv.includes("Ngày 1 tháng 1 năm Bính Thìn"), `03/02/1916 → mùng 1 Tết Bính Thìn (${cv.split("\n")[0]})`);
   cv = await solar(1, 1, 1900);
   check(cv.includes("Ngày 1 tháng 12 năm Kỷ Hợi"), `01/01/1900 (đầu phạm vi) → 1 tháng Chạp Kỷ Hợi (${cv.split("\n")[0]})`);
   cv = await solar(31, 12, 1899);
@@ -285,7 +288,7 @@ async function newCtx(vp, opts = {}) {
   cv2 = await lunar(1, 1, 3001);
   check(cv2.includes(RANGE), `năm âm 3001 → thông báo phạm vi (${cv2})`);
   const note = await page.locator(".tz-note").innerText();
-  check(note.includes("Trước năm 1968, âm lịch tính theo múi giờ UTC+8"), "Đổi ngày có ghi chú múi giờ trước 1968");
+  check(note.includes("Trước năm 1929, âm lịch tính theo giờ địa phương Bắc Kinh"), "Đổi ngày có ghi chú múi giờ (Bắc Kinh trước 1929, UTC+8 1929–1967, UTC+7 từ 1968)");
   await solar(8, 11, 1977); await lunar(27, 9, 1977);
   await page.screenshot({ path: join(SHOTS, "phone-360-convert.png"), fullPage: true });
 
@@ -297,7 +300,7 @@ async function newCtx(vp, opts = {}) {
 
   await page.goto(BASE + "#/gioi-thieu");
   await page.waitForSelector("#nguon-ca-dao");
-  check((await page.innerText("main")).includes("Trước năm 1968, âm lịch tính theo múi giờ UTC+8"), "Giới thiệu có ghi chú múi giờ trước 1968");
+  check((await page.innerText("main")).includes("Trước năm 1929, âm lịch tính theo giờ địa phương Bắc Kinh"), "Giới thiệu có ghi chú múi giờ trước 1968");
   const about = await page.innerText("#nguon-ca-dao");
   for (const s of ["CC BY-SA 4.0", "Wikiquote tiếng Việt", "Huỳnh Tịnh Của", "phạm vi công cộng", "Clevix Lab"]) check(about.includes(s), `Giới thiệu ghi công ca dao có "${s}"`);
   check(await page.locator('img[src*="wikimedia" i], img[alt*="wikimedia" i]').count() === 0, "không dùng logo Wikimedia");

@@ -220,3 +220,17 @@ Tiêu chí khóa trước: docs/02 "Bổ sung A1" (L9–L13). Quy tắc, bằng 
 Lỗi người dùng báo (bên điều phối): 1977-11-08 ở bản 2000+ không hiện gì — nguyên nhân: `<input type=date min=2000-01-01>` bỏ giá trị ngoài min/max và nhánh lỗi không chạy khi `change` không phát. Đã sửa bằng ba ô số + nút + thông báo mọi nhánh. 1977-11-08 nay = 27/9 Đinh Tỵ, ngày Kỷ Tỵ, tháng Canh Tuất (khớp giá trị PyEphem UTC+7 của bên điều phối; năm 1977 sau điểm chuyển nên quy tắc múi giờ không ảnh hưởng).
 
 Kiểm tra cuối đợt: `cargo fmt --check`, `cargo clippy --workspace --all-targets -D warnings` sạch; `cargo test --workspace --release` xanh; `cargo test --release -p lvhv-core -- --ignored` (xem kết quả trong commit); `scripts/check-parity.sh` ĐẠT; PWA `npm run typecheck && npm run build && node test/smoke.mjs` ĐẠT (94 kiểm tra). Metrics (`pwa/test/metrics.json`): P3 346,3 KB gzip lần tải đầu (< 500), P4 heap 2,43 MB (< 30), P5 offline ĐẠT, S3/S4 ĐẠT.
+
+## H. Bổ sung A2 — giờ địa phương Bắc Kinh trước 1929 (2026-11-06)
+
+Quyết định chủ dự án ghi ở docs/02 "Bổ sung A2" (sau khi thấy kết quả L9 lần 1, có bằng chứng độc lập).
+Quy tắc và bằng chứng: docs/03 §16.1, §16.3–16.5.
+
+| Hạng mục | Thay đổi | Bằng chứng |
+|---|---|---|
+| Quy tắc | `core/src/astro.rs`, `tsport/src/astro.ts`: thêm `TZ_BEIJING = 27940/3600` (UT+7:45:40), `TZ_1929_JDN`; trước 1929-01-01 00:00 giờ Bắc Kinh → giờ Bắc Kinh; 1929 → 1967 UTC+8; từ 1968 UTC+7. Cả hai phương pháp. 1928-12-31 dài 24 giờ, 1929-01-01 dài 23:45:40 | `range1900.rs::switch_constants`, `continuity_around_1929` |
+| Tết 1916 | 1916-02-03 (trước đây 02-04), khớp HKO 1916 và TK20 | `range1900.rs::tet_1916_beijing_time`; bỏ `known_limitation_1916` |
+| TK20 | Bảng nhúng nguyên văn (có nguồn) trong test; Precise trùng 1237/1237 tháng, Hnd 1233/1237 (vị trí tháng nhuận 1917, 1922 do mô hình Mặt Trời HND; docs/03 §16.4); Tết 100/100 năm cả hai phương pháp | `range1900.rs::tk20_month_starts_1900_1999` |
+| Dữ liệu kiểm định | Sinh lại `core/out/{,precise/}{lunar,tet,newmoons}_1900_1999.csv`, `dayinfo_1900_3000.jsonl.gz`; độ lệch trong `newmoons` ghi đến giây (`+07:45:40`) | — |
+| L12, L13 | `check-parity.sh` ĐẠT: dayinfo 402 132 dòng × 2, Tết 1 101 × 2, gooddays 4 470 × 2, 0 sai lệch; 2000–3000 giống hệt từng byte tệp chuẩn; khứ hồi 1900–3000: 402 132 ngày × 2, 0 lỗi | — |
+| PWA | Ghi chú: "Trước năm 1929, âm lịch tính theo giờ địa phương Bắc Kinh; 1929–1967 theo múi giờ UTC+8; từ 1968 theo UTC+7 (chuẩn miền Bắc). …" (Đổi ngày, Giới thiệu); smoke thêm 03/02/1916 → 1/1 Bính Thìn: 95 kiểm tra ĐẠT; P3 346,4 KB, P4 2,43 MB | `pwa/test/smoke.mjs`, `pwa/test/metrics.json` |

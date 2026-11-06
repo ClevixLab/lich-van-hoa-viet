@@ -10,7 +10,7 @@ import type { SolarDate } from "../types";
 export const RANGE_MSG = `Ứng dụng hỗ trợ từ 01/01/${MIN_YEAR} đến 31/12/${MAX_YEAR}.`;
 /** Ghi chú múi giờ lịch sử (bổ sung A1, docs/03 §16). */
 export const TZ_NOTE =
-  "Trước năm 1968, âm lịch tính theo múi giờ UTC+8 như lịch thời đó ở miền Bắc; miền Nam dùng UTC+8 đến năm 1975, nên một số tháng 1968–1975 có thể khác lịch miền Nam thời ấy.";
+  "Trước năm 1929, âm lịch tính theo giờ địa phương Bắc Kinh; 1929–1967 theo múi giờ UTC+8; từ 1968 theo UTC+7 (chuẩn miền Bắc). Miền Nam dùng UTC+8 đến năm 1975, nên một số tháng 1968–1975 có thể khác lịch miền Nam thời ấy.";
 
 /** Đọc một ô số nguyên; `null` nếu trống hoặc không phải số nguyên. */
 function intOf(el: HTMLInputElement): number | null {
