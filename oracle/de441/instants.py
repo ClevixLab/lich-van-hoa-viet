@@ -42,7 +42,7 @@ C_KM_DAY = erfa.CMPS / 1000.0 * 86400.0          # toc do anh sang, km/ngay
 AU_KM = erfa.DAU / 1000.0
 DJ0 = 2400000.5                                   # tach JD hai phan cho ERFA
 TT_START = 2414928.5   # 1899-10-01 00:00 TT
-TT_END = 2817242.5     # 3001-04-01 00:00 TT (tuc den het ngay 3001-03-31)
+TT_END = 2817548.5     # 3002-02-01 00:00 TT (docs/03 §17.3 mo rong tu 3001-03-31 de du thang 11 am nam 3001)
 TERM_RATE = 360.0 / 365.2422
 SYN = 29.530588861
 
