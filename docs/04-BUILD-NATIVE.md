@@ -271,7 +271,7 @@ Kết luận theo quy ước: **ĐÃ CHẠY** = đã biên dịch/chạy trong m
 | Script `Build-Windows.ps1` | Cú pháp ĐÃ CHẠY | trình phân tích của pwsh 7.4.6; chưa chạy thật |
 | Workflow YAML | ĐÃ CHẠY | `yaml.safe_load` + **actionlint 1.7.7** + shellcheck 0.10.0: sạch |
 | Ký Authenticode (Windows) | **CHƯA KIỂM** | chưa có secret `LVHV_WIN_CERT_*` |
-| Các workflow chạy thật trên GitHub | ĐÃ CHẠY, xanh ở commit `84d0dc8` | android [42164601463](https://github.com/ClevixLab/lich-van-hoa-viet/actions/runs/42164601463) · windows [42164601439](https://github.com/ClevixLab/lich-van-hoa-viet/actions/runs/42164601439) · ci [42164601448](https://github.com/ClevixLab/lich-van-hoa-viet/actions/runs/42164601448) · apple xanh ở `c5a168e` [42163747556](https://github.com/ClevixLab/lich-van-hoa-viet/actions/runs/42163747556) (các commit sau không đổi gì liên quan tới apple) |
+| Các workflow chạy thật trên GitHub | ĐÃ CHẠY, xanh ở commit `84d0dc8` | android [42164601463](https://github.com/ClevixLab/lich-van-hoa-viet/actions/runs/42164601463) · windows [42164601439](https://github.com/ClevixLab/lich-van-hoa-viet/actions/runs/42164601439) · ci [42164601448](https://github.com/ClevixLab/lich-van-hoa-viet/actions/runs/42164601448) · apple [42164601457](https://github.com/ClevixLab/lich-van-hoa-viet/actions/runs/42164601457) (cũng xanh ở `c5a168e`: [42163747556](https://github.com/ClevixLab/lich-van-hoa-viet/actions/runs/42163747556)) |
 
 ### 8.1 Nhật ký build CI (2026-11-06)
 
@@ -288,7 +288,7 @@ windows [42160816589](https://github.com/ClevixLab/lich-van-hoa-viet/actions/run
 
 Kết quả cuối: android ✓ [42164601463](https://github.com/ClevixLab/lich-van-hoa-viet/actions/runs/42164601463) (artifact `android-release`: `app-release-unsigned.apk`,
 `app-release.aab`, `mapping.txt`; `android-lint-report`) · windows ✓ [42164601439](https://github.com/ClevixLab/lich-van-hoa-viet/actions/runs/42164601439) (artifact `windows-x64`:
-`LichViet-0.1.0-x64.zip`, `LichViet-0.1.0-x64.msi`, `mem.txt`) · apple ✓ [42163747556](https://github.com/ClevixLab/lich-van-hoa-viet/actions/runs/42163747556) (artifact
+`LichViet-0.1.0-x64.zip`, `LichViet-0.1.0-x64.msi`, `mem.txt`) · apple ✓ [42164601457](https://github.com/ClevixLab/lich-van-hoa-viet/actions/runs/42164601457) (artifact
 `apple-unsigned`: `LichViet-iOS-simulator.zip`, `LichViet-macOS-unsigned.zip`, `ios-sim.png`) · ci ✓ [42164601448](https://github.com/ClevixLab/lich-van-hoa-viet/actions/runs/42164601448).
 Không cần sửa mã Compose, SwiftUI hay Slint nào. Không đổi `core/`, `ngochap/`, `tsport/`, `pwa/`, `content/`.
 
