@@ -3,8 +3,8 @@
 Trạng thái: bản 0.1 (A6/A7/A8/A11), 2026-11-06. Áp dụng cho `ffi/`, `apps/android/`, `apps/apple/`,
 `apps/windows/`, `.github/workflows/`.
 
-> **Đọc mục 8 trước.** Môi trường soạn mã (Linux, không có Android SDK, Xcode hay công cụ Windows) chưa
-> từng biên dịch ứng dụng Android, Apple hoặc gói Windows. Lần chạy CI đầu tiên là lần dựng đầu tiên.
+> **Đọc mục 8 trước.** Môi trường soạn mã (Linux) không có Android SDK, Xcode hay công cụ Windows; ứng dụng
+> Android, Apple và gói Windows chỉ được dựng trên CI (xanh từ 2026-11-06, mục 8.1). Chưa chạy thử trên thiết bị thật.
 
 ## 1. Kiến trúc
 
@@ -240,7 +240,7 @@ sung bước `xcodebuild archive` + `-exportArchive` với các secret `APPLE_CE
 | Windows: `link.exe not found` | Chưa cài Visual Studio Build Tools (C++) |
 | MSI: `candle.exe` không có | Cài WiX 3.14 (không phải WiX 4/5) |
 
-## 8. Trạng thái kiểm chứng (2026-11-06)
+## 8. Trạng thái kiểm chứng (2026-11-06, cập nhật sau lần chạy CI thật)
 
 Kết luận theo quy ước: **ĐÃ CHẠY** = đã biên dịch/chạy trong môi trường soạn mã (Linux x86_64);
 **CHƯA KIỂM** = chưa từng được biên dịch, không có bằng chứng là chạy được.
@@ -250,27 +250,50 @@ Kết luận theo quy ước: **ĐÃ CHẠY** = đã biên dịch/chạy trong m
 | `lvhv-ffi` dựng (debug + release, Linux) | ĐÃ CHẠY | `cargo build -p lvhv-ffi [--release]` |
 | `lvhv-ffi` test (API lõi mới, `Result<_, DateError>`) | ĐÃ CHẠY | 20 test ĐẠT: L8 2026-11-05; `day_info_json` và `find_good_days_json` giống lõi từng byte; ánh xạ đủ 6 loại `DateError`; lỗi không panic (kể cả tháng âm, năm `i32::MAX`); năm âm của ngày sinh trước/sau Tết; khứ hồi âm↔dương; ca dao select.md + không lặp trong N ngày; ghi công khớp SOURCES.md; ngưỡng nhãn giống PWA |
 | `cargo test --workspace --release` (core + ngochap + ffi) | ĐÃ CHẠY | mọi test ĐẠT |
-| `cargo fmt --all --check` | **KHÔNG ĐẠT** lúc viết | `core/src/bin/lvhv-dump.rs` (của A2) chưa được `cargo fmt`; bước fmt của `ci.yml` sẽ đỏ đến khi sửa |
+| `cargo fmt --all --check` | ĐÃ CHẠY (đạt) | đã sửa trước lần CI đầu; `ci.yml` xanh: [42164601448](https://github.com/ClevixLab/lich-van-hoa-viet/actions/runs/42164601448) |
 | `clippy -D warnings`, `rustfmt` cho ffi | ĐÃ CHẠY | sạch |
 | Sinh mã Kotlin + Swift bằng uniffi-bindgen 0.29.4 | ĐÃ CHẠY | `ffi/generated/` |
 | Mã Kotlin sinh ra **biên dịch và gọi thật** vào `liblvhv_ffi.so` trên JVM | ĐÃ CHẠY | kotlinc 2.0.21 (bản nhúng trong Gradle 8.14.3 của máy soạn mã) + JNA 5.15.0 (jar desktop), Java 21: mọi hàm, cả ném `LvhvException.InvalidDate/UnknownActivity` |
 | Lớp dữ liệu Android (`data/Json.kt`, `data/Lich.kt`) + `JsonReaderTest` | ĐÃ CHẠY trên JVM | biên dịch cùng mã UniFFI, gọi thư viện thật; test chạy bằng bộ giả JUnit tối giản (không phải JUnit thật) |
-| Giao diện Android (Compose: 7 tệp `ui/*.kt`, `MainActivity.kt`) | **CHƯA KIỂM** | không tải được AndroidX/Compose (maven.google.com bị chặn). Chỉ kiểm cân bằng ngoặc. Có thể có lỗi API khi biên dịch lần đầu |
-| Gradle Android (AGP 8.7.3, R8, lint, ký) | **CHƯA KIỂM** | |
-| cargo-ndk, `.so` Android 3 ABI, căn trang 16 KB | **CHƯA KIỂM** | |
-| Mã Swift sinh ra | **CHƯA KIỂM** biên dịch | không có Swift trong máy soạn mã |
-| Giao diện SwiftUI (9 tệp `Shared/*.swift`) | **CHƯA KIỂM** | chỉ kiểm cân bằng ngoặc. Tên trường/enum UniFFI đã đối chiếu tay với `LvhvCore.swift` sinh ra |
-| `build-xcframework.sh`, `project.yml` (XcodeGen), xcodebuild | **CHƯA KIỂM** | shellcheck 0.10.0 sạch; YAML hợp lệ |
+| Giao diện Android (Compose: 7 tệp `ui/*.kt`, `MainActivity.kt`) | ĐÃ DỰNG trên CI | biên dịch không lỗi, lint đạt: [42164601463](https://github.com/ClevixLab/lich-van-hoa-viet/actions/runs/42164601463). **Chưa chạy trên máy/emulator Android** |
+| Gradle Android (AGP 8.7.3, R8, lint, ký) | ĐÃ CHẠY trên CI (chưa ký) | `testReleaseUnitTest`, `lintRelease`, `assembleRelease`, `bundleRelease` đạt; `app-release-unsigned.apk` 4,8 MB, `app-release.aab` 4,3 MB; không quyền hệ thống nào (chỉ quyền signature tự định nghĩa của androidx.core). Ký bằng khóa: CHƯA KIỂM (chưa có secret) |
+| cargo-ndk, `.so` Android 3 ABI, căn trang 16 KB | ĐÃ DỰNG (3 ABI); căn 16 KB **CHƯA KIỂM** | APK có `lib/{arm64-v8a,armeabi-v7a,x86_64}/liblvhv_ffi.so` + `libjnidispatch.so`. Chưa có bước `zipalign -c -P 16` / `readelf` kiểm căn trang |
+| Mã Swift sinh ra | ĐÃ DỰNG trên CI | Xcode 16.4 (macos-15): [42163747556](https://github.com/ClevixLab/lich-van-hoa-viet/actions/runs/42163747556) |
+| Giao diện SwiftUI (9 tệp `Shared/*.swift`) | ĐÃ DỰNG trên CI; khởi động được trên iOS Simulator | biên dịch iOS Simulator, iOS thiết bị arm64 (không ký), macOS; app chạy trên Simulator và chụp được `ios-sim.png` (chưa xem ảnh, chưa chạy app macOS, chưa thử trên thiết bị thật) |
+| `build-xcframework.sh`, `project.yml` (XcodeGen), xcodebuild | ĐÃ CHẠY trên CI | XCFramework 5 target, XcodeGen 2.42.0; tên macOS có dấu không gây lỗi. Ký + Archive + nộp: CHƯA KIỂM |
 | `PrivacyInfo.xcprivacy`, entitlements, plist | Cú pháp ĐÃ CHẠY | `plistlib`/XML parse; nội dung chưa được Apple duyệt |
 | Biểu tượng iOS/macOS/Windows | ĐÃ TẠO | rsvg-convert từ `pwa/public/icons/*.svg` |
 | `lvhv-windows` (Slint 1.8.0) dựng **trên Linux** (debug + release) | ĐÃ CHẠY | `cargo build`, `cargo test` (3 test ĐẠT), `clippy -D warnings` sạch |
 | Giao diện Slint hiển thị đúng | ĐÃ CHẠY trên Linux/Xvfb | chụp màn hình tờ lịch + bảng tháng ở 1280×900 |
 | RAM ứng dụng Slint | ĐO trên Linux/Xvfb | ~52 MB (renderer phần mềm), ~170 MB (femtovg qua llvmpipe). Chưa đo trên Windows |
-| `lvhv-windows` dựng trên **Windows/MSVC**, nhúng tài nguyên, MSI (WiX), ký Authenticode | **CHƯA KIỂM** | |
+| `lvhv-windows` dựng trên **Windows/MSVC**, nhúng tài nguyên, MSI (WiX) | ĐÃ CHẠY trên CI | windows-2022: `cargo test`, `cargo build --release`, zip + MSI (WiX 3.14.1, cảnh báo ICE91 vô hại cho bộ cài theo người dùng): [42164601439](https://github.com/ClevixLab/lich-van-hoa-viet/actions/runs/42164601439). RAM sau 8 giây: Working set 56,2 MB, Private 39,5 MB. **Chưa cài thử MSI**, chưa kiểm tra giao diện trên Windows |
 | Script PowerShell `New-AndroidUploadKeystore.ps1` | ĐÃ CHẠY trên pwsh 7.4.6 (Linux) | tạo khóa thật bằng keytool, Base64 khứ hồi đúng, in SHA-256, từ chối ghi đè. `Read-Host`/`Set-Clipboard` được giả lập khi chạy thử. Chưa chạy trên Windows PowerShell 5.1 |
 | Script `Build-Windows.ps1` | Cú pháp ĐÃ CHẠY | trình phân tích của pwsh 7.4.6; chưa chạy thật |
 | Workflow YAML | ĐÃ CHẠY | `yaml.safe_load` + **actionlint 1.7.7** + shellcheck 0.10.0: sạch |
-| Các workflow chạy thật trên GitHub | **CHƯA KIỂM** | |
+| Ký Authenticode (Windows) | **CHƯA KIỂM** | chưa có secret `LVHV_WIN_CERT_*` |
+| Các workflow chạy thật trên GitHub | ĐÃ CHẠY, xanh ở commit `84d0dc8` | android [42164601463](https://github.com/ClevixLab/lich-van-hoa-viet/actions/runs/42164601463) · windows [42164601439](https://github.com/ClevixLab/lich-van-hoa-viet/actions/runs/42164601439) · ci [42164601448](https://github.com/ClevixLab/lich-van-hoa-viet/actions/runs/42164601448) · apple xanh ở `c5a168e` [42163747556](https://github.com/ClevixLab/lich-van-hoa-viet/actions/runs/42163747556) (các commit sau không đổi gì liên quan tới apple) |
+
+### 8.1 Nhật ký build CI (2026-11-06)
+
+Lần chạy đầu (commit `2ddb4ec`): android [42160816767](https://github.com/ClevixLab/lich-van-hoa-viet/actions/runs/42160816767) đỏ, apple [42160816591](https://github.com/ClevixLab/lich-van-hoa-viet/actions/runs/42160816591) đỏ,
+windows [42160816589](https://github.com/ClevixLab/lich-van-hoa-viet/actions/runs/42160816589) bị hủy (một lần push mới hơn đã thay nó).
+
+| # | Nền tảng | Lỗi | Nguyên nhân | Sửa (commit) |
+|---|---|---|---|---|
+| 1 | apple | bước "Kiểm tra": `Có quyền mạng trong entitlements` | `grep -R "com.apple.security.network"` khớp với **chú thích XML** trong `LichViet.entitlements` ("KHÔNG có quyền mạng (com.apple.security.network.client/server)"). Không có quyền mạng thật | grep chỉ bắt `<key>com.apple.security.network…` (`f71d2db`) |
+| 2 | android | `:app:checkRustArtifacts` báo thiếu `lvhv_ffi.kt` (dù `build-rust.sh` báo "Xong") | cargo-ndk **strip** `.so` Android nên mất ký hiệu `UNIFFI_META_*`; `uniffi-bindgen --library` khi đó không sinh tệp nào mà vẫn thoát 0 (tái hiện được trên Linux bằng `strip`) | `build-rust.sh` sinh mã Kotlin từ thư viện host chưa strip, cùng profile (giống `ci.yml`; tệp sinh ra giống hệt `ffi/generated`); script báo lỗi nếu không có `.kt`; Gradle in đường dẫn tệp thiếu (`f71d2db`, `c5a168e`) |
+| 3 | cả ba | run trên `main` bị hủy giữa chừng ("Canceling since a higher priority waiting request…") | `concurrency.cancel-in-progress: true` cùng nhóm theo ref, trong khi commit PWA được push liên tục lên `main` | nhóm concurrency theo commit trên main/thẻ; chỉ hủy run cũ của PR (`c5a168e`) |
+| 4 | windows | `candle` lỗi `CNDL0230` ở `wix/main.wxs` dòng 48, 54 | `Guid='*'` không dùng được cho thành phần có KeyPath là giá trị sổ đăng ký (bắt buộc với MSI cài theo người dùng) | GUID cố định cho 3 thành phần, không được đổi giữa các phiên bản (`277c68b`) |
+| 5 | android | bước kiểm quyền: `uses-permission: vn.clevix.lichviet.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION` | androidx.core ≥ 1.9 tự thêm quyền mức signature do chính ứng dụng định nghĩa (bảo vệ receiver nội bộ). Không phải quyền hệ thống; không có `INTERNET` | chỉ ngoại lệ đúng dòng đó; mọi `uses-permission` khác vẫn làm đỏ (`84d0dc8`) |
+
+Kết quả cuối: android ✓ [42164601463](https://github.com/ClevixLab/lich-van-hoa-viet/actions/runs/42164601463) (artifact `android-release`: `app-release-unsigned.apk`,
+`app-release.aab`, `mapping.txt`; `android-lint-report`) · windows ✓ [42164601439](https://github.com/ClevixLab/lich-van-hoa-viet/actions/runs/42164601439) (artifact `windows-x64`:
+`LichViet-0.1.0-x64.zip`, `LichViet-0.1.0-x64.msi`, `mem.txt`) · apple ✓ [42163747556](https://github.com/ClevixLab/lich-van-hoa-viet/actions/runs/42163747556) (artifact
+`apple-unsigned`: `LichViet-iOS-simulator.zip`, `LichViet-macOS-unsigned.zip`, `ios-sim.png`) · ci ✓ [42164601448](https://github.com/ClevixLab/lich-van-hoa-viet/actions/runs/42164601448).
+Không cần sửa mã Compose, SwiftUI hay Slint nào. Không đổi `core/`, `ngochap/`, `tsport/`, `pwa/`, `content/`.
+
+Còn mở: cảnh báo GitHub "Node.js 20 is deprecated" cho các action v4 (chưa lỗi); chưa kiểm căn trang 16 KB của
+`.so`; chưa cài/chạy thử APK, MSI, app macOS trên máy thật.
 
 Rủi ro lớn nhất khi chạy lần đầu (theo thứ tự): (1) lỗi biên dịch Compose/SwiftUI nhỏ (tên API, thiếu
 import) — sửa theo log CI; (2) `apple.yml`: đường dẫn sản phẩm `.app` có dấu tiếng Việt trong tên
