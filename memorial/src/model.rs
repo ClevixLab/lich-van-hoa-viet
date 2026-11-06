@@ -506,6 +506,7 @@ fn parse_person(v: &Value) -> Result<Person, ModelError> {
                 method: match f_str(d, "method")?.as_str() {
                     "precise" => lvhv_core::Method::Precise,
                     "hnd" => lvhv_core::Method::Hnd,
+                    "jpl" => lvhv_core::Method::Jpl,
                     _ => return e("method"),
                 },
                 tuoi: Tuoi {

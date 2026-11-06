@@ -10,7 +10,7 @@ import { computation } from "./error.ts";
 import { dateFromJdn, weekday } from "./jd.ts";
 import { DEFAULT_METHOD, type Method, checkMethod, checkedJdn, jdnToLunarWith } from "./lunar.ts";
 import { type NgocHap, type NgocHapCtx, evaluate, validateCtx, writeNgocHapJson } from "./ngochap.ts";
-import { TERM_NAMES, termIndexOfDay, tietMonthChiOfTerm } from "./terms.ts";
+import { TERM_NAMES, termIndexOfDayWith, tietMonthChiOfTerm } from "./terms.ts";
 import { writeJsonStr } from "./json.ts";
 
 /** Numeric context of a day (Rust `DayCtx`; same field names, snake_case). */
@@ -58,7 +58,7 @@ export function dayCtxJdn(jdn: number, method: Method = DEFAULT_METHOD): DayCtx 
   const dcan = dayCan(jdn);
   const dchi = dayChi(jdn);
   const ycan = yearCan(l.y);
-  const term = termIndexOfDay(jdn);
+  const term = termIndexOfDayWith(method, jdn);
   const mchiTiet = tietMonthChiOfTerm(term);
   return {
     jdn,

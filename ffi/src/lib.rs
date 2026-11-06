@@ -359,12 +359,13 @@ pub fn ngochap_sources_blocks_json() -> String {
     sources::blocks_json(sources::NGOCHAP_SOURCES_MD)
 }
 
-/// Phương pháp âm lịch mặc định của lõi: "hnd" hoặc "precise" (docs/03 §15).
+/// Phương pháp âm lịch mặc định của lõi: "hnd", "precise" hoặc "jpl" (docs/03 §15, §17).
 #[uniffi::export]
 pub fn lunar_method() -> String {
     match lvhv_core::DEFAULT_METHOD {
         lvhv_core::Method::Hnd => "hnd".to_string(),
         lvhv_core::Method::Precise => "precise".to_string(),
+        lvhv_core::Method::Jpl => "jpl".to_string(),
     }
 }
 

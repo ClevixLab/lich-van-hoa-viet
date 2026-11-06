@@ -3,8 +3,8 @@
 //! Mặt Trời biểu kiến dùng để hiển thị tiết khí).
 
 use crate::astro::{
-    apparent_sun_longitude_ut, hnd_new_moon, hnd_new_moon_day, hnd_sun_sector, local_day_of,
-    local_midnight_ut, precise_new_moon_ut,
+    apparent_sun_longitude_ut, hnd_new_moon, hnd_sun_sector, local_day_of, local_midnight_ut,
+    precise_new_moon_ut,
 };
 use crate::error::{
     check_jdn, checked_jdn, jdn_in_range, DateError, BIRTH_MIN_YEAR, INTERNAL_MAX_YY,
@@ -22,37 +22,50 @@ pub enum Method {
     /// Espenak–Meeus; Trung khí theo kinh độ biểu kiến (VSOP87 rút gọn + chương động + quang
     /// sai) — cùng mô hình với tiết khí hiển thị.
     Precise,
+    /// Sóc và 24 tiết khí từ bảng nhúng tính bằng JPL DE441, ΔT Morrison–Stephenson–Hohenkerk–Zawilski
+    /// 2021 (docs/03 §17, docs/02 "Bổ sung A4"). Chưa là mặc định.
+    Jpl,
 }
 
 /// Phương pháp mặc định của các hàm không có hậu tố `_with`: `Precise` (quyết định của chủ dự án,
 /// docs/02 "Bổ sung A3", 2026-11-06). `Hnd` vẫn giữ để đối chiếu qua các hàm `_with(Method::Hnd, …)`.
 pub const DEFAULT_METHOD: Method = Method::Precise;
+// Đổi mặc định sang `Jpl` (CHỈ sau khi L14–L17 ĐẠT và L12, P1, P3 vẫn ĐẠT — docs/02 A4 mục 4) là thay đúng
+// dòng trên bằng dòng dưới (và `DEFAULT_METHOD` trong tsport/src/lunar.ts, test `default_method_is_precise`):
+// pub const DEFAULT_METHOD: Method = Method::Jpl;
 
-/// Ngày (JDN, giờ lịch) chứa Sóc thứ k theo phương pháp (nội bộ, không kiểm miền).
-pub(crate) fn new_moon_day(method: Method, k: i64) -> i64 {
-    match method {
-        Method::Hnd => hnd_new_moon_day(k),
-        Method::Precise => local_day_of(precise_new_moon_ut(k)),
-    }
+/// Lỗi ngoài phạm vi bảng `Jpl` (sự kiện cần tra nằm ngoài bảng).
+fn jpl_oor() -> DateError {
+    DateError::OUT_OF_RANGE
 }
 
-/// Thời điểm Sóc thứ k (JD UT) theo phương pháp (nội bộ, không kiểm miền).
-pub(crate) fn new_moon_ut_with(method: Method, k: i64) -> f64 {
+/// Ngày (JDN, giờ lịch) chứa Sóc thứ k theo phương pháp (nội bộ). Chỉ `Jpl` có thể lỗi (ngoài bảng).
+pub(crate) fn new_moon_day(method: Method, k: i64) -> Result<i64, DateError> {
+    Ok(local_day_of(new_moon_ut_with(method, k)?))
+}
+
+/// Thời điểm Sóc thứ k (JD UT) theo phương pháp (nội bộ). Chỉ `Jpl` có thể lỗi (ngoài bảng).
+pub(crate) fn new_moon_ut_with(method: Method, k: i64) -> Result<f64, DateError> {
     match method {
-        Method::Hnd => hnd_new_moon(k),
-        Method::Precise => precise_new_moon_ut(k),
+        Method::Hnd => Ok(hnd_new_moon(k)),
+        Method::Precise => Ok(precise_new_moon_ut(k)),
+        Method::Jpl => crate::jpl::new_moon_ut(k).ok_or_else(jpl_oor),
     }
 }
 
 /// Cung 30° (0..11) của Mặt Trời lúc 00:00 giờ lịch ngày `jdn` theo phương pháp (nội bộ).
-pub(crate) fn sun_sector(method: Method, jdn: i64) -> i32 {
+pub(crate) fn sun_sector(method: Method, jdn: i64) -> Result<i32, DateError> {
     match method {
-        Method::Hnd => hnd_sun_sector(jdn),
+        Method::Hnd => Ok(hnd_sun_sector(jdn)),
         Method::Precise => {
             let l = apparent_sun_longitude_ut(local_midnight_ut(jdn));
             // `rem_euclid` (không `clamp`): kinh độ làm tròn thành đúng 360.0 thuộc cung 0 (C-6).
-            ((l / 30.0).floor() as i32).rem_euclid(12)
+            Ok(((l / 30.0).floor() as i32).rem_euclid(12))
         }
+        // docs/03 §17.6.3: ⌊i*/2⌋, i* = tiết khí muộn nhất có JD_UT ≤ 00:00 đầu ngày.
+        Method::Jpl => crate::jpl::term_at(local_midnight_ut(jdn))
+            .map(|i| (i / 2) as i32)
+            .ok_or_else(jpl_oor),
     }
 }
 
@@ -88,7 +101,7 @@ const MAX_K_ADJUST: u32 = 4;
 fn k_of_month_start(method: Method, start_jdn: i64) -> Result<i64, DateError> {
     let mut k = ((start_jdn as f64 - K_EPOCH) / SYNODIC + 0.5).floor() as i64;
     let mut n = 0;
-    while new_moon_day(method, k) > start_jdn {
+    while new_moon_day(method, k)? > start_jdn {
         k -= 1;
         n += 1;
         if n > MAX_K_ADJUST {
@@ -96,7 +109,7 @@ fn k_of_month_start(method: Method, start_jdn: i64) -> Result<i64, DateError> {
         }
     }
     let mut n = 0;
-    while new_moon_day(method, k + 1) <= start_jdn {
+    while new_moon_day(method, k + 1)? <= start_jdn {
         k += 1;
         n += 1;
         if n > MAX_K_ADJUST {
@@ -108,15 +121,15 @@ fn k_of_month_start(method: Method, start_jdn: i64) -> Result<i64, DateError> {
 
 /// JDN ngày bắt đầu tháng 11 âm lịch (tháng chứa Đông chí) của năm dương `yy`.
 /// Chỉ dùng nội bộ, với `yy` thuộc miền nội bộ (đã kiểm ở `YearTable::new`).
-fn lunar_month11(method: Method, yy: i32) -> i64 {
+fn lunar_month11(method: Method, yy: i32) -> Result<i64, DateError> {
     let off = jdn_from_date(yy, 12, 31) as f64 - 2415021.0;
     let k = (off / SYNODIC).floor() as i64;
-    let nm = new_moon_day(method, k);
+    let nm = new_moon_day(method, k)?;
     // Cung ≥ 9 (≥ 270°) lúc đầu ngày Sóc: Đông chí đã qua trước tháng này → lấy tháng trước.
-    if sun_sector(method, nm) >= 9 {
+    if sun_sector(method, nm)? >= 9 {
         new_moon_day(method, k - 1)
     } else {
-        nm
+        Ok(nm)
     }
 }
 
@@ -148,13 +161,13 @@ impl YearTable {
                 max: INTERNAL_MAX_YY,
             });
         }
-        let a11 = lunar_month11(method, yy - 1);
-        let b11 = lunar_month11(method, yy);
+        let a11 = lunar_month11(method, yy - 1)?;
+        let b11 = lunar_month11(method, yy)?;
         let k0 = k_of_month_start(method, a11)?;
         let mut starts = [0i64; 14];
         let mut n = 0usize;
         loop {
-            let s = new_moon_day(method, k0 + n as i64);
+            let s = new_moon_day(method, k0 + n as i64)?;
             if s >= b11 {
                 break;
             }
@@ -174,7 +187,7 @@ impl YearTable {
         let mut leap_idx = usize::MAX;
         if n == 13 {
             for i in 1..13 {
-                if sun_sector(method, starts[i]) == sun_sector(method, starts[i + 1]) {
+                if sun_sector(method, starts[i])? == sun_sector(method, starts[i + 1])? {
                     leap_idx = i;
                     break;
                 }
@@ -244,7 +257,7 @@ pub fn jdn_to_lunar_with(method: Method, jdn: i64) -> Result<LunarDate, DateErro
 /// Như `jdn_to_lunar_with` nhưng chỉ giới hạn bởi miền nội bộ của `YearTable`.
 fn jdn_to_lunar_internal(method: Method, jdn: i64) -> Result<LunarDate, DateError> {
     let (yy, _, _) = date_from_jdn(jdn);
-    let a = lunar_month11(method, yy);
+    let a = lunar_month11(method, yy)?;
     let table = YearTable::new(method, if jdn >= a { yy + 1 } else { yy })?;
     // Tìm có cận (không còn `i -= 1` tràn `usize`, RS-04).
     let i = (0..table.n)
@@ -369,14 +382,14 @@ pub fn new_moons_between(
     let mut k = ((from_jdn as f64 - K_EPOCH) / SYNODIC).floor() as i64 - 1;
     let mut out = Vec::new();
     loop {
-        let day = new_moon_day(method, k);
+        let day = new_moon_day(method, k)?;
         if day > to_jdn {
             break;
         }
         if day >= from_jdn {
             out.push(NewMoon {
                 k,
-                jd_ut: new_moon_ut_with(method, k),
+                jd_ut: new_moon_ut_with(method, k)?,
                 local_jdn: day,
             });
         }

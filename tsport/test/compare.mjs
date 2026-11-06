@@ -2,11 +2,13 @@
 //  1. dayInfoJson, every day 1900-01-01..3000-12-31 (L7 + L12), for BOTH methods:
 //       hnd     ← core/out/dayinfo_1900_3000.jsonl.gz
 //       precise ← core/out/precise/dayinfo_1900_3000.jsonl.gz
+//       jpl     ← core/out/jpl/dayinfo_1900_3000.jsonl.gz (docs/03 §17)
+//     (tsport/src/jpl_days.ts freshness: core/tests/jpl_ts.rs + scripts/check-parity.sh)
 //  2. tet() 1900..3000 vs tet_1900_1999.csv + tet.csv (2000..3000), each method dir
 //  3. findGoodDays JSONL vs core/out/gooddays_sample.jsonl (+ precise/ if present):
 //       every activity, 2026-01-01..2026-12-31, birth year none and 1976 (lvhv-dump gooddays all …)
 //  4. dayInfo micro-benchmark.
-// Usage: node tsport/test/compare.mjs [--method hnd|precise] [--skip-dayinfo]
+// Usage: node tsport/test/compare.mjs [--method hnd|precise|jpl] [--skip-dayinfo]
 import { createReadStream, existsSync, readFileSync } from "node:fs";
 import { createGunzip } from "node:zlib";
 import { createInterface } from "node:readline";
@@ -19,12 +21,12 @@ const lib = await import(join(HERE, "..", "dist", "lvhv.mjs"));
 const { dayInfo, dayInfoJson, tetWith, jd, activities, findGoodDaysWith, goodDayJson, DEFAULT_METHOD } = lib;
 
 const argv = process.argv.slice(2);
-const only = argv.includes("--method") ? [argv[argv.indexOf("--method") + 1]] : ["hnd", "precise"];
+const only = argv.includes("--method") ? [argv[argv.indexOf("--method") + 1]] : ["hnd", "precise", "jpl"];
 const skipDayinfo = argv.includes("--skip-dayinfo");
 // LVHV_GOLDEN_DIR=<dir>: read freshly generated dumps (<dir>/… and <dir>/precise/…) instead of the
 // committed core/out goldens (scripts/check-parity.sh uses this; RS-12).
 const GOLDEN = process.env.LVHV_GOLDEN_DIR || join(REPO, "core", "out");
-const OUT = { hnd: GOLDEN, precise: join(GOLDEN, "precise") };
+const OUT = { hnd: GOLDEN, precise: join(GOLDEN, "precise"), jpl: join(GOLDEN, "jpl") };
 
 function firstDiff(a, b) {
   let i = 0;
@@ -35,6 +37,7 @@ function firstDiff(a, b) {
 
 const summary = {};
 let failed = false;
+
 console.log(`DEFAULT_METHOD (tsport) = ${DEFAULT_METHOD}; goldens: ${GOLDEN}`);
 
 for (const method of only) {

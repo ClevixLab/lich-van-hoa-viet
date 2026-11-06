@@ -3,7 +3,7 @@
 //
 // Method selection mirrors Rust: every function defaults to DEFAULT_METHOD ("precise" = Method::Precise);
 // the `…With(method, …)` variants (and the optional trailing `method` argument of dayInfo /
-// dayInfoJson / dayCtx) select "hnd" | "precise" explicitly.
+// dayInfoJson / dayCtx) select "hnd" | "precise" | "jpl" explicitly.
 //
 // Errors mirror Rust (see error.ts): a Rust `Err(DateError::X)` is a thrown `LvhvError`
 // (subclass of RangeError) with `code === "X"`; a Rust `None` is `null`. Supported domain:
@@ -30,7 +30,8 @@ export {
 } from "./error.ts";
 export type { LvhvErrorCode } from "./error.ts";
 export type { LunarDate, Method, SolarDate } from "./lunar.ts";
-export { solarTermsOfYear, TERM_NAMES } from "./terms.ts";
+export { solarTermsOfYear, solarTermsOfYearWith, TERM_NAMES } from "./terms.ts";
+export * as jpl from "./jpl.ts";
 export type { SolarTerm } from "./terms.ts";
 export * as jd from "./jd.ts";
 export * as astro from "./astro.ts";

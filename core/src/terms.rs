@@ -7,6 +7,7 @@ pub use crate::astro::local_midnight_ut;
 use crate::astro::{apparent_sun_longitude_ut, local_day_of, solve_sun_longitude};
 use crate::error::{DateError, MAX_YEAR, MIN_YEAR};
 use crate::jd::jdn_from_date;
+use crate::lunar::Method;
 
 /// Tên 24 tiết khí, chỉ số i ↔ kinh độ 15·i°.
 pub const TERM_NAMES: [&str; 24] = [
@@ -44,6 +45,18 @@ pub fn term_index_of_day(jdn: i64) -> usize {
     ((l / 15.0).floor() as usize) % 24
 }
 
+/// Chỉ số tiết khí của ngày `jdn` theo phương pháp. `Hnd` và `Precise` dùng chung mô hình §6
+/// (`term_index_of_day`); `Jpl` tra bảng DE441: tiết khí muộn nhất có JD_UT ≤ 00:00 đầu ngày hôm sau
+/// (docs/03 §17.6.4). `Err(OutOfRange)` nếu ngoài bảng.
+pub fn term_index_of_day_with(method: Method, jdn: i64) -> Result<usize, DateError> {
+    match method {
+        Method::Hnd | Method::Precise => Ok(term_index_of_day(jdn)),
+        Method::Jpl => {
+            crate::jpl::term_at(local_midnight_ut(jdn + 1)).ok_or(DateError::OUT_OF_RANGE)
+        }
+    }
+}
+
 /// Chi (0 = Tý … 11 = Hợi) của tháng tiết khí chứa ngày `jdn`.
 /// Ranh giới tháng là 12 "Tiết" (kinh độ 15° + 30°·n); Lập Xuân (315°) mở đầu tháng Dần.
 pub fn tiet_month_chi_of_term(term_idx: usize) -> u32 {
@@ -75,8 +88,30 @@ impl SolarTerm {
 /// `Err(OutOfRange)` nếu `year` ngoài 1900–3000 (trước đây `year + 1` tràn với `i32::MAX`, RS-04);
 /// `Err(Computation)` nếu bộ giải không ra đủ 24 tiết khí hữu hạn.
 pub fn solar_terms_of_year(year: i32) -> Result<Vec<SolarTerm>, DateError> {
+    solar_terms_of_year_with(Method::Precise, year)
+}
+
+/// Như `solar_terms_of_year` theo phương pháp: `Hnd`/`Precise` cùng mô hình §6; `Jpl` từ bảng DE441
+/// (§17.6.4: ngày bắt đầu = `local_day_of(JD_UT)`).
+pub fn solar_terms_of_year_with(method: Method, year: i32) -> Result<Vec<SolarTerm>, DateError> {
     if !(MIN_YEAR..=MAX_YEAR).contains(&year) {
         return Err(DateError::OUT_OF_RANGE);
+    }
+    if method == Method::Jpl {
+        let start = jdn_from_date(year, 1, 1);
+        let end = jdn_from_date(year + 1, 1, 1);
+        // Mở rộng 2 ngày mỗi phía rồi lọc theo ngày lịch (múi giờ ≤ 8 giờ).
+        let v = crate::jpl::terms_between(start as f64 - 2.5, end as f64 + 1.5)
+            .ok_or(DateError::OUT_OF_RANGE)?;
+        let out: Vec<SolarTerm> = v
+            .into_iter()
+            .map(|(index, jd_ut)| SolarTerm { index, jd_ut })
+            .filter(|t| (start..end).contains(&t.local_jdn()))
+            .collect();
+        if out.len() != 24 {
+            return Err(DateError::Computation);
+        }
+        return Ok(out);
     }
     let start = jdn_from_date(year, 1, 1);
     // year ≤ 3000 nên year + 1 không tràn.

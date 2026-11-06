@@ -66,12 +66,13 @@ pub enum LunarSource {
     Converted,
 }
 
-/// `"precise"` | `"hnd"`.
+/// `"precise"` | `"hnd"` | `"jpl"` (`jpl` chưa được lược đồ sao lưu v1 chấp nhận — `validate.rs`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum MethodName {
     Precise,
     Hnd,
+    Jpl,
 }
 
 impl MethodName {
@@ -80,6 +81,7 @@ impl MethodName {
         match self {
             MethodName::Precise => lvhv_core::Method::Precise,
             MethodName::Hnd => lvhv_core::Method::Hnd,
+            MethodName::Jpl => lvhv_core::Method::Jpl,
         }
     }
     /// Từ phương pháp của lõi.
@@ -87,6 +89,7 @@ impl MethodName {
         match m {
             lvhv_core::Method::Precise => MethodName::Precise,
             lvhv_core::Method::Hnd => MethodName::Hnd,
+            lvhv_core::Method::Jpl => MethodName::Jpl,
         }
     }
 }

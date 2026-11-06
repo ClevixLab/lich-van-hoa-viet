@@ -4,6 +4,8 @@ import { apparentSunLongitudeUt, localDayOf, localMidnightUt, solveSunLongitude 
 export { localMidnightUt };
 import { MAX_YEAR, MIN_YEAR, computation, invalidArgument, outOfRange } from "./error.ts";
 import { jdnFromDate } from "./jd.ts";
+import { jplTermAtMidnight } from "./jpl.ts";
+import type { Method } from "./lunar.ts";
 
 export const TERM_NAMES: readonly string[] = [
   "Xuân Phân", "Thanh Minh", "Cốc Vũ", "Lập Hạ", "Tiểu Mãn", "Mang Chủng",
@@ -18,6 +20,12 @@ export function termIndexOfDay(jdn: number): number {
   let i = Math.floor(l / 15.0);
   if (!(i > 0)) i = 0; // `as usize` saturates negatives / NaN to 0
   return i % 24; // Rust `% 24` (C-7)
+}
+
+/** Rust `term_index_of_day_with`: "hnd"/"precise" share the §6 model; "jpl" uses the DE441 table. */
+export function termIndexOfDayWith(method: Method, jdn: number): number {
+  if (method !== "jpl") return termIndexOfDay(jdn);
+  return jplTermAtMidnight(jdn + 1);
 }
 
 /** Chi (0 = Tý) of the solar-term month for a term index. */
@@ -42,12 +50,19 @@ export function solarTermLocalJdn(t: SolarTerm): number {
 
 /** Throws LvhvError OutOfRange outside 1900–3000 (Rust → Err), InvalidArgument if not an integer. */
 export function solarTermsOfYear(year: number): SolarTerm[] {
+  return solarTermsOfYearWith("precise", year);
+}
+
+/** Rust `solar_terms_of_year_with`. */
+export function solarTermsOfYearWith(method: Method, year: number): SolarTerm[] {
   if (typeof year !== "number" || Number.isNaN(year) || (Number.isFinite(year) && !Number.isInteger(year))) {
     throw invalidArgument(`năm ${String(year)}`);
   }
   if (!(year >= MIN_YEAR && year <= MAX_YEAR)) throw outOfRange();
   const start = jdnFromDate(year, 1, 1);
   const end = jdnFromDate(year + 1, 1, 1);
+  // "jpl": term instants live only in the Rust core (`lvhv-dump --method jpl terms`); tsport has the day table.
+  if (method === "jpl") throw invalidArgument("jpl: thời điểm tiết khí chỉ có ở lõi Rust (tsport dùng bảng ngày)");
   const out: SolarTerm[] = [];
   let guess = localMidnightUt(start) - 15.0;
   let idx = 18;

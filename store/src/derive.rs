@@ -51,6 +51,9 @@ fn method_name(m: Method) -> &'static str {
     match m {
         Method::Precise => "precise",
         Method::Hnd => "hnd",
+        // Chưa ghi được vào bản sao lưu (lược đồ v1 chỉ nhận precise/hnd — store/src/validate.rs); chỉ đạt tới khi
+        // đổi DEFAULT_METHOD sang Jpl, lúc đó phải mở rộng lược đồ (docs/03 §17).
+        Method::Jpl => "jpl",
     }
 }
 
