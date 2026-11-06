@@ -53,7 +53,9 @@ def main(outdir, b_events, b_lunar, repdir):
     for r in read_csv_gz(b_events):
         kind = {"soc": "newmoon", "tk": "term"}[r["kind"]]
         lon = 15 * int(r["index"]) % 360 if kind == "term" else 0
-        theirs.append((kind, lon, float(r["jd_tt"]), r["index"], r.get("n_cs", "")))
+        # n_cs (so nguyen, 0.01 s tu J2000.0 TT, docs/03 §17.5) chinh xac hon cot jd_tt (8 chu so thap phan)
+        t = 2451545.0 + int(r["n_cs"]) / 8640000.0 if r.get("n_cs") else float(r["jd_tt"])
+        theirs.append((kind, lon, t, r["index"], r.get("n_cs", "")))
     l14 = []
     used = {"newmoon": set(), "term": set()}
     unmatched = []
@@ -70,7 +72,7 @@ def main(outdir, b_events, b_lunar, repdir):
         d = (arr[q] - t) * 86400.0
         l14.append((kind, idx, lon, t, arr[q], d))
     missing = [(k, mine[k][q]) for k in mine for q in range(len(mine[k])) if q not in used[k]]
-    with open(os.path.join(repdir, "l14_diff.csv"), "w", newline="", encoding="utf-8") as f:
+    with gzip.open(os.path.join(repdir, "l14_diff.csv.gz"), "wt", newline="", encoding="utf-8") as f:
         w = csv.writer(f, lineterminator="\n")
         w.writerow(["kind", "index", "lon_deg", "builder_jd_tt", "verifier_jd_tt", "diff_s_verifier_minus_builder"])
         for k, idx, lon, t, m, d in l14:
@@ -124,6 +126,8 @@ def main(outdir, b_events, b_lunar, repdir):
         print("  ", e[:7])
 
     # ---------------- L15
+    if b_lunar == "-":
+        return
     mine_days = {r["date"]: r for r in read_csv_gz(os.path.join(outdir, "days_1900_3000.csv.gz"))}
     their_days = {}
     for r in read_csv_gz(b_lunar):
