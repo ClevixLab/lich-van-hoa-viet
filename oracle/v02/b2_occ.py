@@ -39,6 +39,11 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import giolib as G  # noqa: E402
 
+# Bo sung B4 (04 B4 muc 1-2, quyet dinh cua chu du an 2026-11-07): bat bang bien moi truong LVHV_B4=1.
+#   Ho so co ngay mat: chi gio (+ tien thuong) — da dung tu dau trong bo sinh nay.
+#   Su kien gan voi IT NHAT MOT ho so co ngay mat: khong sinh lan xuat hien.
+B4 = os.environ.get("LVHV_B4") == "1"
+
 RANK = {"gio": 0, "tien_thuong": 1, "sinh_nhat": 2, "sinh_nhat_am": 2,
         "su_kien_duong_lap": 3, "su_kien_am_lap": 3, "su_kien_khong_lap": 3}
 
@@ -68,6 +73,7 @@ class Gen:
         self.data = data
         self.types = {t["id"]: t for t in data.get("event_types", [])}
         self.settings = data.get("settings", {})
+        self.persons = {p["id"]: p for p in data.get("persons", [])}
 
     # ------------------------------------------------------------------ dan xuat
     def _lunar_of(self, d):
@@ -131,8 +137,13 @@ class Gen:
         ty = self.types.get(e["type_id"])
         return ty["ten"] if ty else ""
 
+    def event_has_deceased(self, e):
+        return any((self.persons.get(i) or {}).get("death") is not None for i in (e.get("person_ids") or []))
+
     def event_occ(self, e, d0, d1):
         out = []
+        if B4 and self.event_has_deceased(e):
+            return out
         date = e["date"]
         rule = e.get("reminder")
         name = self.event_name(e)
