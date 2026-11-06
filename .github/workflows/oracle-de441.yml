@@ -118,6 +118,7 @@ jobs:
       - name: instants
         if: steps.task.outputs.task == 'instants'
         run: |
+          set -o pipefail
           mkdir -p oracle/de441/out
           python3 -I oracle/de441/instants.py --bsp1 ~/de441/de441.bsp \
               --out oracle/de441/out/instants_tt.csv.gz 2>&1 | tee oracle/de441/out/instants_log.txt

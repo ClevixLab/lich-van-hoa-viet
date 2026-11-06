@@ -54,9 +54,8 @@ def jd_of(y, m, d):
 class Ephem:
     """Doc cac doan SPK (mot tep de441.bsp co hai doan cho moi cap than, hoac hai tep part-1/part-2).
 
-    Moi cap (tam, dich) co the co nhieu doan noi tiep, chong lan nhau mot khoang ngan (DE441: quanh
-    1969). Moc tach giua doan i va i+1: 1969-01-01 neu nam trong vung chung (cach bien >= 2 ngay), neu
-    khong thi dau doan i+1 + 2 ngay. Truoc moc tach dung doan i, tu moc tach dung doan i+1.
+    Moi cap (tam, dich) co the co nhieu doan noi tiep (DE441: noi quanh 1969). Truoc moc tach dung doan i,
+    tu moc tach dung doan i+1 (xem __init__).
     """
 
     PAIRS = [(0, 3), (3, 399), (3, 301), (0, 10)]
@@ -73,10 +72,12 @@ class Ephem:
             assert lst, pair
             splits = []
             for s1, s2 in zip(lst, lst[1:]):
-                assert s2.start_jd < s1.end_jd, "hai doan khong noi tiep"
-                sp = jd_of(1969, 1, 1)
-                if not (s2.start_jd + 2 <= sp <= s1.end_jd - 2):
-                    sp = s2.start_jd + 2.0
+                assert s2.start_jd <= s1.end_jd, "hai doan khong noi tiep"
+                # docs/03 §17.2: TDB < JD 2440403.5 doc doan truoc, tu do doc doan sau; neu diem nay khong nam
+                # trong ca hai doan (tep de441.bsp lien ket noi dau-cuoi) thi tach dung tai bien chung.
+                sp = 2440403.5
+                if not (s2.start_jd <= sp <= s1.end_jd):
+                    sp = s2.start_jd
                 splits.append(sp)
             self.segs[pair] = (lst, np.array(splits))
         self.lo = max(v[0][0].start_jd for v in self.segs.values())

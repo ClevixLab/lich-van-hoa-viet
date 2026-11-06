@@ -30,6 +30,15 @@ for j in (0, 1):
     e.append(x)
 lo = max(v[0][1].start_jd for v in base.segs.values()) + 1
 hi = min(v[0][0].end_jd for v in base.segs.values()) - 1
+if hi <= lo:
+    # hai doan noi dau-cuoi: kiem tinh lien tuc vi tri/van toc tho (khong quy doi) cua tung cap than tai diem noi.
+    for pair, (lst, sp) in base.segs.items():
+        b = lst[1].start_jd
+        p0, v0 = lst[0].compute_and_differentiate(b, 0.0)
+        p1, v1 = lst[1].compute_and_differentiate(b, 0.0)
+        print("%s noi tai TDB %s: |dPos| = %.3e km, |dVel| = %.3e km/ngay" % (
+            pair, I.jd_to_iso(b), np.linalg.norm(p0 - p1), np.linalg.norm(v0 - v1)))
+    sys.exit(0)
 print("vung chung TDB: %s .. %s" % (I.jd_to_iso(lo), I.jd_to_iso(hi)))
 t = np.linspace(lo, hi, 25)
 r1 = I.Reducer(e[0]).apparent_lon(t)
