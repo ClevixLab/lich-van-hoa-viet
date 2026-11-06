@@ -304,8 +304,9 @@ export async function runPeople({ browser, BASE, ORIGIN, ROOT, SHOTS, check, met
     const [bk] = await Promise.all([page.waitForEvent("download", { timeout: 120000 }), page.click(".bk-dialog .dbtn.main")]);
     const bkBytes = readFileSync(await bk.path());
     check(bk.suggestedFilename() === `LichVanHoaViet-saoluu-${TODAY}.lvhv` && bkBytes.subarray(0, 7).toString() === "LVHVBAK", `L9: tải ${bk.suggestedFilename()} (${bkBytes.length} byte)`);
-    await page.waitForSelector("#bk-last");
-    check((await text("#bk-last")).includes(`Lần sao lưu gần nhất: 25/07/2026`), "L9: ghi lần sao lưu gần nhất");
+    // Trang Sao lưu dựng lại sau khi xuất xong — chờ đúng dòng mới, không đọc bản cũ.
+    const lastOk = await page.waitForSelector('#bk-last:has-text("Lần sao lưu gần nhất: 25/07/2026")', { timeout: 30000 }).then(() => true, () => false);
+    check(lastOk, `L9: ghi lần sao lưu gần nhất (${await text("#bk-last")})`);
     await store(`async (s) => { await s.deletePerson("${idC}"); }`);
     await page.setInputFiles("#bk-file", { name: bk.suggestedFilename(), mimeType: "application/octet-stream", buffer: bkBytes });
     await page.fill("#bk-ipw", "sai mật khẩu");
