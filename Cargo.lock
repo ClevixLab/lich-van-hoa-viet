@@ -283,6 +283,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "lvhv-memorial"
+version = "0.1.0"
+dependencies = [
+ "lvhv-core",
+]
+
+[[package]]
 name = "lvhv-ngochap"
 version = "0.1.0"
 

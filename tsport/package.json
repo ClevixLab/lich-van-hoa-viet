@@ -6,7 +6,7 @@
   "description": "TypeScript port of lvhv-core (zero runtime dependencies)",
   "scripts": {
     "typecheck": "../pwa/node_modules/.bin/tsc -p tsconfig.json",
-    "build": "../pwa/node_modules/.bin/esbuild src/index.ts --bundle --format=esm --platform=neutral --target=es2020 --outfile=dist/lvhv.mjs",
-    "test": "npm run build && node test/bad_input.mjs && node test/compare.mjs"
+    "build": "../pwa/node_modules/.bin/esbuild src/index.ts --bundle --format=esm --platform=neutral --target=es2020 --outfile=dist/lvhv.mjs && ../pwa/node_modules/.bin/esbuild src/memorial.ts --bundle --format=esm --platform=neutral --target=es2020 --outfile=dist/memorial.mjs",
+    "test": "npm run build && node test/bad_input.mjs && node test/compare.mjs && node test/memorial_unit.mjs"
   }
 }
