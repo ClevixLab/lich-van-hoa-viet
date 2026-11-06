@@ -78,7 +78,7 @@ fun AboutScreen(openRules: () -> Unit) {
         Panel {
             H2("Quyền riêng tư")
             P("Ứng dụng không thu thập dữ liệu, không có tài khoản, không quảng cáo và không gửi thông tin đi đâu. Mọi tính toán diễn ra ngay trên máy của bạn.")
-            P("Ứng dụng không xin quyền truy cập mạng và hoạt động hoàn toàn khi không có mạng. Máy chỉ ghi nhớ cỡ chữ, giao diện sáng tối mà bạn chọn và ngày bạn bấm "Để sau" ở thẻ nhắc cập nhật.")
+            P("Ứng dụng không xin quyền truy cập mạng và hoạt động hoàn toàn khi không có mạng. Máy chỉ ghi nhớ cỡ chữ, giao diện sáng tối mà bạn chọn và ngày bạn bấm “Để sau” ở thẻ nhắc cập nhật.")
             P("Năm sinh nhập ở mục Chọn ngày tốt chỉ dùng trong lúc tính, không được lưu lại.")
         }
         Panel {
