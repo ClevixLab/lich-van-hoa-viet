@@ -1,7 +1,10 @@
 // Giới thiệu và Nguồn quy tắc — cùng nội dung với pwa/src/ui/about.ts.
 import SwiftUI
 
+private let methodNote = "Với những năm rất xa, kết quả kém chắc chắn hơn vì không ai dự báo chính xác được tốc độ quay của Trái Đất (ΔT). Sau năm 2077, vài ngày có trăng mới hoặc tiết khí rơi sát nửa đêm có thể lệch một ngày so với các lịch khác."
+
 private let methodLabel = [
+    "jpl": "lịch thiên văn JPL DE441 của NASA JPL, với ΔT theo Morrison và Stephenson",
     "hnd": "thuật toán Hồ Ngọc Đức (phổ biến trong các lịch Việt)",
     "precise": "mô hình thiên văn chính xác hơn (Meeus đầy đủ)",
 ]
@@ -38,8 +41,10 @@ struct AboutView: View {
                     }
                     Panel {
                         H2("Về ứng dụng")
-                        P("Lịch âm dương Việt Nam theo múi giờ UTC+7, từ năm 2000 đến năm 3000: ngày âm, Can Chi, tiết khí, giờ hoàng đạo, chọn ngày tốt, và một câu ca dao, tục ngữ cho mỗi ngày.")
+                        P("Lịch âm dương Việt Nam từ năm 1900 đến năm 3000: ngày âm, Can Chi, tiết khí, giờ hoàng đạo, chọn ngày tốt, và một câu ca dao, tục ngữ cho mỗi ngày. Từ năm 1968, âm lịch tính theo múi giờ UTC+7 (giờ Hà Nội).")
+                        P("Trước năm 1929, âm lịch tính theo giờ địa phương Bắc Kinh; 1929–1967 theo múi giờ UTC+8; từ 1968 theo UTC+7 (chuẩn miền Bắc). Miền Nam dùng UTC+8 đến năm 1975, nên một số tháng 1968–1975 có thể khác lịch miền Nam thời ấy.")
                         P("Ngày âm lịch tính theo \(methodLabel[Lich.method] ?? Lich.method).")
+                        if Lich.method == "jpl" { P(methodNote) }
                         P("Phần xem ngày (sao tốt, sao xấu, việc nên làm và nên tránh, trực, hoàng đạo, hắc đạo) được biên soạn theo quan niệm truyền thống trong sách Ngọc Hạp Thông Thư. Đây là nét văn hóa dân gian, chỉ có giá trị tham khảo; những quyết định quan trọng xin cân nhắc thêm hoàn cảnh thực tế. Điểm số là quy ước của ứng dụng, không có trong sách.")
                         Button("Nguồn quy tắc xem ngày") { showRules = true }.buttonStyle(.plain).foregroundStyle(C.redInk)
                     }

@@ -473,7 +473,7 @@ fn death_info(v: &Value, path: &str) -> R {
         &p(path, "lunar_source"),
         &["entered", "converted"],
     )?;
-    enum_str(&o["method"], &p(path, "method"), &["precise", "hnd"])?;
+    enum_str(&o["method"], &p(path, "method"), &["precise", "hnd", "jpl"])?;
     let tp = p(path, "tuoi");
     let t = obj(&o["tuoi"], &tp, &["value", "label", "manual", "approx"])?;
     opt_int_in(&t["value"], &p(&tp, "value"), 1, 150)?;

@@ -1,6 +1,6 @@
 // TypeScript twin of `lvhv-memorial-dump` (memorial/src/bin/lvhv-memorial-dump.rs): same commands, same
 // bytes. scripts/check-parity.sh runs both and compares with cmp.
-// Usage: node tsport/test/memorial_dump.mjs [--method hnd|precise] [--gio-het 2|3] COMMAND ...
+// Usage: node tsport/test/memorial_dump.mjs [--method hnd|precise|jpl] [--gio-het 2|3] COMMAND ...
 import { readFileSync, writeSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -10,14 +10,14 @@ const M = await import(join(HERE, "..", "dist", "memorial.mjs"));
 const { Cal, dump: D, parseYmd, ymdJdn, ymdFromJdn, ymd, dvSolar, dvLunar, parseDataset, parseDateValue, Zone, generateIcs, writePretty, DEFAULT_GIO_HET_NAM, R3_CLASSES } = M;
 
 let args = process.argv.slice(2);
-let method = "precise";
+let method = "jpl"; // = Rust DEFAULT_METHOD
 let gioHet = DEFAULT_GIO_HET_NAM;
 for (;;) {
   if (args[0] === "--method" && args.length > 1) { method = args[1]; args = args.slice(2); }
   else if (args[0] === "--gio-het" && args.length > 1) { gioHet = Number(args[1]); args = args.slice(2); }
   else break;
 }
-if (method !== "precise" && method !== "hnd") die(`phương pháp không hợp lệ: ${method}`);
+if (method !== "precise" && method !== "hnd" && method !== "jpl") die(`phương pháp không hợp lệ: ${method}`);
 if (gioHet !== 2 && gioHet !== 3) die("--gio-het phải là 2 hoặc 3");
 const cal = Cal.get(method);
 

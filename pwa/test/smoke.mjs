@@ -469,7 +469,7 @@ const DIST_B = join(TMP_B, "dist");
   await page.waitForSelector("#check-update");
   const cur = await page.innerText(".cur-ver");
   check(cur.trim() === `Phiên bản đang dùng: ${VERSION_A}` && !cur.includes("bản dựng") && !cur.includes(vjA.build), `Giới thiệu chỉ hiện số phiên bản: "${cur}"`);
-  check((await page.innerText("main")).includes("mô hình thiên văn chính xác (Meeus)") && (await page.innerText("main")).includes("Hồ Ngọc Đức"), "Giới thiệu mô tả phương pháp Meeus, giữ HND để đối chiếu");
+  check((await page.innerText("main")).includes("lịch thiên văn JPL DE441 của NASA JPL") && (await page.innerText("main")).includes("Morrison và Stephenson") && (await page.innerText("main")).includes("Sau năm 2077"), "Giới thiệu mô tả phương pháp JPL DE441, ΔT Morrison–Stephenson và ghi chú độ bất định");
   await page.click("#check-update");
   await page.waitForFunction(() => /phiên bản mới nhất|ngoại tuyến|Có phiên bản/.test(document.querySelector(".upd-out")?.textContent ?? ""));
   check((await page.innerText(".upd-out")) === "Bạn đang dùng phiên bản mới nhất.", `Kiểm tra cập nhật (cùng bản) → "Bạn đang dùng phiên bản mới nhất." (${await page.innerText(".upd-out")})`);
@@ -491,7 +491,17 @@ const DIST_B = join(TMP_B, "dist");
   check(bar.includes(`Đã có phiên bản mới ${VERSION_B}.`) && bar.includes("Cập nhật ngay") && bar.includes("Để sau"), `thanh cập nhật: "${bar.replace(/\n/g, " ")}"`);
   check((await page.innerText(".upd-out")).includes(`Có phiên bản mới ${VERSION_B}`) && await page.locator("#apply-update").count() === 1, "Giới thiệu: có phiên bản mới + nút Cập nhật ngay");
   check(await page.locator(".update-bar").getAttribute("role") === "status", "thanh cập nhật role=status");
+  // Một phát hành được báo lặp: bản B cài xong (service worker chờ) báo lần nữa (update.ts attachRegistration), và
+  // mỗi lần bấm "Kiểm tra cập nhật" cũng báo. Trước đây mỗi lần báo dựng lại thanh → nút đang có tiêu điểm bàn phím bị
+  // xóa (kiểm thử chập chờn). Kiểm tất định: chờ bản B ở trạng thái chờ (lần báo của nó đã phát), đánh dấu nút, bấm
+  // kiểm tra lại (lần báo lặp chắc chắn), rồi kiểm nút vẫn là phần tử cũ và nhận/giữ tiêu điểm.
+  await page.waitForFunction(async () => !!(await navigator.serviceWorker.getRegistration())?.waiting, null, { timeout: 15000 });
+  await page.evaluate(() => { document.querySelector(".update-bar .ubtn").dataset.mark = "1"; });
+  await page.click("#check-update");
+  await page.waitForFunction(() => /Có phiên bản mới/.test(document.querySelector(".upd-out")?.textContent ?? ""), null, { timeout: 15000 });
+  check(await page.evaluate(() => document.querySelector(".update-bar .ubtn")?.dataset.mark === "1"), "thanh cập nhật không bị dựng lại khi báo lặp cùng phiên bản (giữ tiêu điểm)");
   await page.locator(".update-bar .ubtn").first().focus();
+  await page.waitForTimeout(300);
   check(await page.evaluate(() => document.activeElement?.textContent === "Cập nhật ngay"), "nút Cập nhật ngay nhận focus bàn phím");
   const ovBar = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   check(ovBar <= 0, `A++ 360 px: thanh cập nhật không tràn ngang (${ovBar}px)`);

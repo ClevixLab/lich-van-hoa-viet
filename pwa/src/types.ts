@@ -2,8 +2,8 @@
 // DayInfo khớp từng khóa của JSON trong hợp đồng. GoodDay khớp `GoodDay` của lõi
 // (core/src/gooddays.rs, tsport/src/gooddays.ts). Cadao khớp lược đồ content/cadao/README.md.
 
-/** Phương pháp âm lịch của lõi (Rust `Method::Hnd` / `Method::Precise`). */
-export type Method = "hnd" | "precise";
+/** Phương pháp âm lịch của lõi (Rust `Method::Hnd` / `Method::Precise` / `Method::Jpl`). */
+export type Method = "hnd" | "precise" | "jpl";
 
 export interface SolarInfo {
   y: number;

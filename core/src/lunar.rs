@@ -23,16 +23,14 @@ pub enum Method {
     /// sai) — cùng mô hình với tiết khí hiển thị.
     Precise,
     /// Sóc và 24 tiết khí từ bảng nhúng tính bằng JPL DE441, ΔT Morrison–Stephenson–Hohenkerk–Zawilski
-    /// 2021 (docs/03 §17, docs/02 "Bổ sung A4"). Chưa là mặc định.
+    /// 2021 (docs/03 §17, docs/02 "Bổ sung A4"). Mặc định từ bản 0.1.4.
     Jpl,
 }
 
-/// Phương pháp mặc định của các hàm không có hậu tố `_with`: `Precise` (quyết định của chủ dự án,
-/// docs/02 "Bổ sung A3", 2026-11-06). `Hnd` vẫn giữ để đối chiếu qua các hàm `_with(Method::Hnd, …)`.
-pub const DEFAULT_METHOD: Method = Method::Precise;
-// Đổi mặc định sang `Jpl` (CHỈ sau khi L14–L17 ĐẠT và L12, P1, P3 vẫn ĐẠT — docs/02 A4 mục 4) là thay đúng
-// dòng trên bằng dòng dưới (và `DEFAULT_METHOD` trong tsport/src/lunar.ts, test `default_method_is_precise`):
-// pub const DEFAULT_METHOD: Method = Method::Jpl;
+/// Phương pháp mặc định của các hàm không có hậu tố `_with`: `Jpl` (docs/02 "Bổ sung A4" mục 4: L12, L14–L17,
+/// P1, P3 ĐẠT — biên bản `docs/reports/BIEN-BAN-CONG-A4-JPL.md`; trước đó là `Precise` theo A3). `Precise` và `Hnd`
+/// vẫn giữ để đối chiếu qua các hàm `_with(Method::…, …)`.
+pub const DEFAULT_METHOD: Method = Method::Jpl;
 
 /// Lỗi ngoài phạm vi bảng `Jpl` (sự kiện cần tra nằm ngoài bảng).
 fn jpl_oor() -> DateError {

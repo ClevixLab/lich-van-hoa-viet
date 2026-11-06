@@ -740,6 +740,7 @@ fn setup(ui: &AppWindow) -> Rc<RefCell<State>> {
             update::snoozed_until(),
         ));
         let method = match lvhv_ffi::lunar_method().as_str() {
+            "jpl" => "lịch thiên văn JPL DE441 của NASA JPL, với ΔT theo Morrison và Stephenson. Với những năm rất xa, kết quả kém chắc chắn hơn vì không ai dự báo chính xác được tốc độ quay của Trái Đất (ΔT). Sau năm 2077, vài ngày có trăng mới hoặc tiết khí rơi sát nửa đêm có thể lệch một ngày so với các lịch khác".to_string(),
             "precise" => "mô hình thiên văn chính xác hơn (Meeus đầy đủ)".to_string(),
             "hnd" => "thuật toán Hồ Ngọc Đức (phổ biến trong các lịch Việt)".to_string(),
             other => other.to_string(),

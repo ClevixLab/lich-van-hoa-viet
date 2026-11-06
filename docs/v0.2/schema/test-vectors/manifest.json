@@ -9,7 +9,7 @@
       },
       "expect": "not_a_backup",
       "file": "corrupt/magic.lvhv",
-      "sha256": "4b9326d129a0d5a0ee8380a7c0e81664a1e6ee4794a93ca3e9e9bd0e24002295"
+      "sha256": "9ecba820c18faf61ae107ed6db34f48a86d5d3008b47f6c35cdf699dabb01c9e"
     },
     {
       "change": {
@@ -20,7 +20,7 @@
       },
       "expect": "unsupported",
       "file": "corrupt/file_version-0.lvhv",
-      "sha256": "88af10ce80c5f475991960d53272c6547d1666d6ea14b9055c8f535715af3047"
+      "sha256": "5117bcb42c2171cebc08cf1f7ffa57f54234de9486ea199c48f254e88806658b"
     },
     {
       "change": {
@@ -31,7 +31,7 @@
       },
       "expect": "newer_version",
       "file": "corrupt/file_version-2.lvhv",
-      "sha256": "391e7a36f1195d1545cf5b82ac2760dfb24a0298f2889461a9202810c3bceb5d"
+      "sha256": "522daa4f7ecafaae24910782edc024d2859f7f4294150ce19904fae9d77e71d2"
     },
     {
       "change": {
@@ -42,7 +42,7 @@
       },
       "expect": "unsupported",
       "file": "corrupt/kdf_id.lvhv",
-      "sha256": "a1bbba5cdd397f91f5c0d320330517e049e07651e17e78132427496135ce8ba4"
+      "sha256": "d8e21d50c67c771dca403a616edb1eebfa66c86d49c3c3262ddbb5c1d0761135"
     },
     {
       "change": {
@@ -53,7 +53,7 @@
       },
       "expect": "unsupported",
       "file": "corrupt/aead_id.lvhv",
-      "sha256": "819ac9d6d9dacbf89547eb89c220e17a24d9d7d5ced09181d3d531f9dc78f3f3"
+      "sha256": "5f890e358b87983ae054d2d124f4bf9855994040b74eae04c427d05d7320f613"
     },
     {
       "change": {
@@ -64,7 +64,7 @@
       },
       "expect": "wrong_password_or_corrupt",
       "file": "corrupt/m_cost_kib.lvhv",
-      "sha256": "e999039a78bb75e563b9a9f5357660c52fccf2455d97440aa73e14c2ab773c73"
+      "sha256": "5dd7f943f7e9e7e3d5a392a06104567892514c95d5c479787bfa2e1d6c720d59"
     },
     {
       "change": {
@@ -75,7 +75,7 @@
       },
       "expect": "bad_kdf_params",
       "file": "corrupt/m_cost_kib-4GiB.lvhv",
-      "sha256": "20b1e1d3d40ee948b7f54d9d8f14e9b127da62f3562d835c0e26114388565ebe"
+      "sha256": "867b4a136eec90af9e9ccd7af81d1a9a1008f27b54ff960ca130db513c8f6ac1"
     },
     {
       "change": {
@@ -86,7 +86,7 @@
       },
       "expect": "bad_kdf_params",
       "file": "corrupt/m_cost_kib-low.lvhv",
-      "sha256": "4de342d2847f5ad57192a9f707d0b5217d1d93bf40da531e4717aa1dd4faad67"
+      "sha256": "a24a8024d72d1bc212721da49cdaeb420b4e51aca3dd9f888361289f62fc6345"
     },
     {
       "change": {
@@ -97,7 +97,7 @@
       },
       "expect": "wrong_password_or_corrupt",
       "file": "corrupt/t_cost.lvhv",
-      "sha256": "f3f323af9ad910fafa8bd59de6683e62e435e46aa53532550f63ea3dae48d34f"
+      "sha256": "56bc216f548848f9e2feef895fa96b15b49cd2ea334f85694c5084d259fb72ce"
     },
     {
       "change": {
@@ -108,7 +108,7 @@
       },
       "expect": "bad_kdf_params",
       "file": "corrupt/t_cost-0.lvhv",
-      "sha256": "79485d10e4170aa8478affae15cc3a8f353428703c1846c01277eebde20ad392"
+      "sha256": "8961d86b9fa7ab70172f92d0a95ca64cc0e0be491086e7393ffd761ce5d1817c"
     },
     {
       "change": {
@@ -119,7 +119,7 @@
       },
       "expect": "bad_kdf_params",
       "file": "corrupt/t_cost-11.lvhv",
-      "sha256": "6b9d3a2d14f5af9761ad8e57c0aba6df05d84df8eeea1fcfb089ff9309aaa16d"
+      "sha256": "f2f5c08780b33a9805656f9ae94556a293d96cea3f832493788e4230a254131b"
     },
     {
       "change": {
@@ -130,7 +130,7 @@
       },
       "expect": "wrong_password_or_corrupt",
       "file": "corrupt/p_cost.lvhv",
-      "sha256": "5fe77d634e9b6f903821e9e52aefe068d361fa061cc619e2a3aa917316954c46"
+      "sha256": "10bab36f26c6e79c21d0c30a433b1dbd5c495d84a25432c130f943e06c1c5715"
     },
     {
       "change": {
@@ -141,7 +141,7 @@
       },
       "expect": "bad_kdf_params",
       "file": "corrupt/p_cost-9.lvhv",
-      "sha256": "c1c4bc590770e45d01f7b3fc25dc1211db10231461ef51a68f12999852aeb94e"
+      "sha256": "dcad2fb7c569f2a49796adde6ab8ce5cdba23593c8b15088471336e77d809e97"
     },
     {
       "change": {
@@ -152,7 +152,7 @@
       },
       "expect": "wrong_password_or_corrupt",
       "file": "corrupt/salt.lvhv",
-      "sha256": "6759f451a58d85348f926a4b4df464809a60afa3d936a0ead50ecc4d222ac7d1"
+      "sha256": "c84e7d296738cb02b1059696cc5816ab533385d683d41ee6e26cef3cb16794bb"
     },
     {
       "change": {
@@ -163,7 +163,7 @@
       },
       "expect": "wrong_password_or_corrupt",
       "file": "corrupt/nonce.lvhv",
-      "sha256": "84e056f827271aa151f52bbd1dbf929a03811c3872de1ba14d5da528fd8784d4"
+      "sha256": "ef8e2108f502c6e05fa2355d21b6e6460d9823f96816d8d50ebff00b7aa6cf4b"
     },
     {
       "change": {
@@ -174,7 +174,7 @@
       },
       "expect": "bad_length",
       "file": "corrupt/plaintext_len.lvhv",
-      "sha256": "7fb4c49ab5aa2c528ec3af8a4dd311a864e6daf8a2b5de96c7ce4a0740962ebd"
+      "sha256": "ded41dfb4c975e3dfa2c60e1b8ad585906b3b2428bab81cf0a6696c326eca0d1"
     },
     {
       "change": {
@@ -185,7 +185,7 @@
       },
       "expect": "wrong_password_or_corrupt",
       "file": "corrupt/ciphertext.lvhv",
-      "sha256": "5849d3139040dabda717d0bc19f095ca47f6d6581a3b95a512516922932afc78"
+      "sha256": "7df08522905af63ebc86340cfeb4dfed381fc0c52ab3544375259aa35766e9b3"
     },
     {
       "change": {
@@ -196,7 +196,7 @@
       },
       "expect": "wrong_password_or_corrupt",
       "file": "corrupt/tag.lvhv",
-      "sha256": "ff14fb6ff44840b850f1ccabc5ca9b24e7e5405fe49645f1eb4dde78290122ad"
+      "sha256": "46a10b02583f21502ac680e5aab0a85e20e9ce5a3b48f089df4ce3a44454f355"
     },
     {
       "change": {
@@ -204,7 +204,7 @@
       },
       "expect": "bad_length",
       "file": "corrupt/truncated-1.lvhv",
-      "sha256": "d22178441fff9c4d3e6c49ee5f7d101add477f577bb39e96ddaa44f6edb2fe67"
+      "sha256": "c0c142a18a28bb69f4ab26968780d4d8757114ee107e02857cb8c4a1ba5dbc66"
     },
     {
       "change": {
@@ -212,7 +212,7 @@
       },
       "expect": "not_a_backup",
       "file": "corrupt/truncated-to-87.lvhv",
-      "sha256": "c82b2c8b199be85550f0bed20975f9dae3cc2333afce604ad2673388c45e6641"
+      "sha256": "d26d305ff8d2c5dd1c27696bae5d98cda8d61f095b6f448f1a7a641464c6af34"
     },
     {
       "change": {
@@ -222,23 +222,23 @@
       },
       "expect": "bad_length",
       "file": "corrupt/appended-1.lvhv",
-      "sha256": "e7fce266c65d834b4f65044e76a0a10ed1c9267ca373a511080039b3cb662b7b"
+      "sha256": "65fcfb131210541ef51fc54538c2acd359188286d61b8021f0c1370e6a95fab4"
     }
   ],
   "dataset_r6": {
     "file": "dataset-r6.json",
-    "fixed_rng_file_len": 293479,
-    "fixed_rng_file_sha256": "75796604c3b22cf473a93ba7a115c3707dcbecf32627c64d1b820c4529bf475d",
+    "fixed_rng_file_len": 293359,
+    "fixed_rng_file_sha256": "b3ccd03f009b4ad66caccfc61b8ca3495134bb369a52689b6db4d1f2b7bbca1f",
     "photo_bytes": "r6_photo_bytes(i), i = 0..19 (store/examples/gen_test_vectors.rs)",
-    "store_state_sha256": "45f170c27f310eb1d22c278eebf759d910ae4794c0f8c488a1e1228adede7c20"
+    "store_state_sha256": "11ecb4a30b8a96082a074c9316ec4a6082d7a6524a5b0bd1c97f013034330efa"
   },
   "example": {
     "file": "example-v1.lvhv",
     "json": "example-v1.json",
-    "json_sha256": "e60a9e47f685003d42575566a2ec0e9b74c1b2a90b6c378f675b404502742292",
+    "json_sha256": "b723677890238aa351dde2e690315a00a81bdc76b2f4ac86dc7da9835363a1f3",
     "photo": "photo-0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09.jpg",
     "photo_sha256": "22a5c04266a6d2e27fa3085bd0623296dfb7e91b5763e8a746c6a4d220dfb7e9",
-    "sha256": "d4cb2ecde5e9fde48f9e2ef0bfdddddbf85d4d92e7e5618a342cea74b820fea0"
+    "sha256": "a17f91d914488c2e3cabf60752f7d162ef95ae719fdeb9af603cf7a3c9315a0f"
   },
   "format": "lvhv-backup test vectors, file_version 1 (docs/v0.2/03 §2.5)",
   "generator": "cargo run --release -p lvhv-store --example gen_test_vectors",
@@ -256,5 +256,5 @@
   "password": "mật khẩu thử nghiệm",
   "password_utf8_nfc_hex": "6de1baad74206b68e1baa975207468e1bbad206e676869e1bb876d",
   "salt_hex": "000102030405060708090a0b0c0d0e0f",
-  "validation_cases": 63
+  "validation_cases": 65
 }

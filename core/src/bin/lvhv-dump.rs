@@ -13,7 +13,7 @@ use std::io::{self, BufWriter, Write};
 use std::process::ExitCode;
 use std::time::Instant;
 
-const USAGE: &str = "Cách dùng: lvhv-dump [--method hnd|precise|jpl] LỆNH ...  (mặc định: precise)
+const USAGE: &str = "Cách dùng: lvhv-dump [--method hnd|precise|jpl] LỆNH ...  (mặc định: jpl)
   lvhv-dump lunar-csv FROM TO          (ngày dạng YYYY-MM-DD)
   lvhv-dump dayinfo-jsonl FROM TO
   lvhv-dump tet FROM_YEAR TO_YEAR

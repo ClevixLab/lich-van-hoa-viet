@@ -307,8 +307,15 @@ armMidnight();
 
 // ---------- Phiên bản và cập nhật (update.ts) ----------
 // "Để sau" chỉ ẩn thanh; lần kiểm tra kế tiếp (tự động, tối đa 6 giờ một lần) sẽ nhắc lại.
+// Một lần phát hành thường báo HAI lần (version.json, rồi service worker mới cài xong — update.ts
+// attachRegistration). Nếu nội dung thanh không đổi thì KHÔNG dựng lại: dựng lại sẽ xóa nút đang có tiêu điểm
+// bàn phím (hoặc nút "Đang cập nhật…" đã bấm) — lỗi trợ năng tìm thấy qua kiểm thử khói chập chờn.
+let updateBarKey: string | null = null;
 onUpdateResult((r) => {
   if (r.status !== "new") return;
+  const key = r.version ?? "";
+  if (key === updateBarKey) { updateBar.hidden = false; return; }
+  updateBarKey = key;
   clear(updateBar);
   const now = h("button", { type: "button", class: "ubtn primary", onclick: () => {
     now.setAttribute("disabled", ""); now.textContent = "Đang cập nhật…"; void applyUpdate();

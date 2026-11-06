@@ -213,7 +213,7 @@ function deathInfo(v: Json, path: string): void {
   lunarDay(o.lunar, p(path, "lunar"));
   nullable(o.solar, p(path, "solar"), solarDay);
   enumStr(o.lunar_source, p(path, "lunar_source"), ["entered", "converted"]);
-  enumStr(o.method, p(path, "method"), ["precise", "hnd"]);
+  enumStr(o.method, p(path, "method"), ["precise", "hnd", "jpl"]);
   const tp = p(path, "tuoi");
   const t = obj(o.tuoi, tp, ["value", "label", "manual", "approx"]);
   optIntIn(t.value, p(tp, "value"), 1, 150);

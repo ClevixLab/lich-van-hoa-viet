@@ -133,7 +133,7 @@
         "lunar": { "$ref": "#/$defs/LunarDay" },
         "solar": { "oneOf": [{ "$ref": "#/$defs/SolarDay" }, { "type": "null" }] },
         "lunar_source": { "enum": ["entered", "converted"] },
-        "method": { "enum": ["precise", "hnd"] },
+        "method": { "enum": ["precise", "hnd", "jpl"] },
         "tuoi": {
           "type": "object",
           "additionalProperties": false,
