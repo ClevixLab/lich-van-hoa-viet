@@ -448,6 +448,22 @@ fileprivate struct FfiConverterInt32: FfiConverterPrimitive {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterInt64: FfiConverterPrimitive {
+    typealias FfiType = Int64
+    typealias SwiftType = Int64
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Int64 {
+        return try lift(readInt(&buf))
+    }
+
+    public static func write(_ value: Int64, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterBool : FfiConverter {
     typealias FfiType = Int8
     typealias SwiftType = Bool
@@ -508,6 +524,810 @@ fileprivate struct FfiConverterString: FfiConverter {
         writeInt(&buf, len)
         writeBytes(&buf, value.utf8)
     }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterData: FfiConverterRustBuffer {
+    typealias SwiftType = Data
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Data {
+        let len: Int32 = try readInt(&buf)
+        return Data(try readBytes(&buf, count: Int(len)))
+    }
+
+    public static func write(_ value: Data, into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        writeBytes(&buf, value)
+    }
+}
+
+
+
+
+/**
+ * Kho SQLite của ứng dụng (01 §4.2) trên một thư mục riêng của ứng dụng. Mọi lệnh ghi kiểm V1–V8.
+ */
+public protocol LvhvStoreProtocol: AnyObject, Sendable {
+    
+    /**
+     * Thêm ảnh chân dung (byte **đã** được nền tảng giải mã và mã hóa lại, không còn EXIF — 01 §3.8).
+     * Trả bản ghi `Photo`; gắn vào người bằng `photo_id` rồi `save_person_json`.
+     */
+    func addPhoto(id: String, mime: String, width: UInt32, height: UInt32, bytes: Data) throws  -> String
+    
+    /**
+     * `android_alarm_step_json` trên dữ liệu của kho, tùy chọn O-9 của kho.
+     */
+    func androidAlarmStepJson(nowUnixS: Int64, lastRunUnixS: Int64?, zone: DeviceZone) throws  -> String
+    
+    /**
+     * Ghi tệp đã kiểm tra (Thay toàn bộ / Gộp) trong một giao dịch; lỗi → không ghi gì.
+     */
+    func applyImport(backup: VerifiedBackup, mode: BackupImportMode) throws 
+    
+    /**
+     * Có nên nhắc người dùng sao lưu không (01 §3.9 `backup_nag_days`).
+     */
+    func backupReminderDue() throws  -> Bool
+    
+    /**
+     * Toàn bộ kho dạng tài liệu sao lưu v1 (01 §5, chưa có byte ảnh) — đầu vào `dataset_json` của các
+     * hàm ngày giỗ / nhắc / danh sách / .ics bên dưới.
+     */
+    func datasetJson() throws  -> String
+    
+    /**
+     * Xóa một sự kiện.
+     */
+    func deleteEvent(id: String) throws 
+    
+    /**
+     * Xóa một người (gỡ id khỏi mọi sự kiện, xóa ảnh không còn ai dùng).
+     */
+    func deletePerson(id: String) throws 
+    
+    /**
+     * Mọi `EventType` (mảng JSON).
+     */
+    func eventTypesJson() throws  -> String
+    
+    /**
+     * `events_in_period_json` trên dữ liệu của kho.
+     */
+    func eventsInPeriodJson(kind: String, anchor: SolarDay, filter: String) throws  -> String
+    
+    /**
+     * Mọi `Event` (mảng JSON, sắp theo id).
+     */
+    func eventsJson() throws  -> String
+    
+    /**
+     * Xuất tệp sao lưu mã hóa (03 §2). `platform`: "android" | "ios" | "macos" | "windows";
+     * `app_version` dạng X.Y.Z. Ứng dụng ghi byte qua hộp thoại lưu tệp của hệ điều hành.
+     */
+    func exportBackup(password: String, appVersion: String, platform: String) throws  -> Data
+    
+    /**
+     * Tùy chọn "hiện tên trên màn hình khóa" (O-9), mặc định `false`. Lưu cục bộ trên thiết bị, không
+     * đi vào tệp sao lưu.
+     */
+    func lockScreenNames() throws  -> Bool
+    
+    /**
+     * Cập nhật một người **đang sống** (hoặc sửa người đã mất) thành người đã mất trên **cùng** hồ sơ
+     * (01 §3.2a, US-M-07): giữ id, tên, ảnh, ngày sinh; thêm `death` (tính trường dẫn xuất từ
+     * `death_date_value_json`) và tùy chọn `notice` (thông tin báo tử, chuỗi được cắt khoảng trắng và chuẩn hóa
+     * NFC, rỗng → `null`); `kind = deceased`; tạo `memorial` mặc định nếu chưa có; quy tắc nhắc giỗ mặc định theo
+     * cài đặt nếu chưa có; bỏ quy tắc nhắc sinh nhật (lược đồ: người đã khuất chỉ có nhắc giỗ); tăng `rev`.
+     * Theo 02 §6.1 (Bổ sung B4), sinh nhật và sự kiện của người này không còn lần xuất hiện. `today`: ngày hôm
+     * nay của thiết bị — ngày mất và ngày nhận tin không được sau hôm nay. Trả bản đã lưu.
+     */
+    func markDeceasedJson(personId: String, deathDateValueJson: String, noticeJson: String?, today: SolarDay) throws  -> String
+    
+    /**
+     * Một `Person`.
+     */
+    func personJson(id: String) throws  -> String
+    
+    /**
+     * Mọi `Person` (mảng JSON, sắp theo id).
+     */
+    func personsJson() throws  -> String
+    
+    /**
+     * Byte của một ảnh (kiểm `sha256` khi đọc).
+     */
+    func photoBytes(id: String) throws  -> Data
+    
+    /**
+     * Ghi `AppSettings` (đủ trường, kiểm V1/V8).
+     */
+    func putSettingsJson(json: String) throws 
+    
+    /**
+     * `reminders_json` trên dữ liệu của kho, tùy chọn O-9 của kho.
+     */
+    func remindersJson(nowUnixS: Int64, zone: DeviceZone, horizonDays: UInt32) throws  -> String
+    
+    /**
+     * `reschedule_json` trên dữ liệu của kho, tùy chọn O-9 của kho.
+     */
+    func rescheduleJson(nowUnixS: Int64, zone: DeviceZone, pendingJson: String) throws  -> String
+    
+    /**
+     * Lưu một `Event` (thêm hoặc sửa); gắn id/`created_at`/`updated_at`/`rev`, kiểm rồi ghi. Trả bản đã lưu.
+     */
+    func saveEventJson(json: String) throws  -> String
+    
+    /**
+     * Lưu một `EventType` (tên duy nhất — V7); gắn id/thời điểm/rev. Trả bản đã lưu.
+     */
+    func saveEventTypeJson(json: String) throws  -> String
+    
+    /**
+     * Lưu một `Person` (thêm hoặc sửa): tính lại trường dẫn xuất (ngày âm/dương của ngày mất và ngày
+     * sinh, Can Chi, hưởng thọ/hưởng dương trừ khi `tuoi.manual`), gắn id/`created_at`/`updated_at`/`rev`,
+     * kiểm V1–V8 rồi ghi. Trả bản đã lưu.
+     */
+    func savePersonJson(json: String) throws  -> String
+    
+    /**
+     * Đặt tùy chọn "hiện tên trên màn hình khóa" (O-9).
+     */
+    func setLockScreenNames(show: Bool) throws 
+    
+    /**
+     * `AppSettings` (01 §3.9).
+     */
+    func settingsJson() throws  -> String
+    
+    /**
+     * `upcoming_json` trên dữ liệu của kho.
+     */
+    func upcomingJson(today: SolarDay, days: UInt32) throws  -> String
+    
+}
+/**
+ * Kho SQLite của ứng dụng (01 §4.2) trên một thư mục riêng của ứng dụng. Mọi lệnh ghi kiểm V1–V8.
+ */
+open class LvhvStore: LvhvStoreProtocol, @unchecked Sendable {
+    fileprivate let pointer: UnsafeMutableRawPointer!
+
+    /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoPointer {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    required public init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
+        self.pointer = pointer
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noPointer: NoPointer) {
+        self.pointer = nil
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiClonePointer() -> UnsafeMutableRawPointer {
+        return try! rustCall { uniffi_lvhv_ffi_fn_clone_lvhvstore(self.pointer, $0) }
+    }
+    // No primary constructor declared for this class.
+
+    deinit {
+        guard let pointer = pointer else {
+            return
+        }
+
+        try! rustCall { uniffi_lvhv_ffi_fn_free_lvhvstore(pointer, $0) }
+    }
+
+    
+    /**
+     * Mở (hoặc tạo) kho trong thư mục `dir` (tạo `lvhv.sqlite` và `photos/`), chuyển đổi phiên bản nếu cần.
+     */
+public static func `open`(dir: String)throws  -> LvhvStore  {
+    return try  FfiConverterTypeLvhvStore_lift(try rustCallWithError(FfiConverterTypeLvhvDataError_lift) {
+    uniffi_lvhv_ffi_fn_constructor_lvhvstore_open(
+        FfiConverterString.lower(dir),$0
+    )
+})
+}
+    
+
+    
+    /**
+     * Thêm ảnh chân dung (byte **đã** được nền tảng giải mã và mã hóa lại, không còn EXIF — 01 §3.8).
+     * Trả bản ghi `Photo`; gắn vào người bằng `photo_id` rồi `save_person_json`.
+     */
+open func addPhoto(id: String, mime: String, width: UInt32, height: UInt32, bytes: Data)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeLvhvDataError_lift) {
+    uniffi_lvhv_ffi_fn_method_lvhvstore_add_photo(self.uniffiClonePointer(),
+        FfiConverterString.lower(id),
+        FfiConverterString.lower(mime),
+        FfiConverterUInt32.lower(width),
+        FfiConverterUInt32.lower(height),
+        FfiConverterData.lower(bytes),$0
+    )
+})
+}
+    
+    /**
+     * `android_alarm_step_json` trên dữ liệu của kho, tùy chọn O-9 của kho.
+     */
+open func androidAlarmStepJson(nowUnixS: Int64, lastRunUnixS: Int64?, zone: DeviceZone)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeLvhvDataError_lift) {
+    uniffi_lvhv_ffi_fn_method_lvhvstore_android_alarm_step_json(self.uniffiClonePointer(),
+        FfiConverterInt64.lower(nowUnixS),
+        FfiConverterOptionInt64.lower(lastRunUnixS),
+        FfiConverterTypeDeviceZone_lower(zone),$0
+    )
+})
+}
+    
+    /**
+     * Ghi tệp đã kiểm tra (Thay toàn bộ / Gộp) trong một giao dịch; lỗi → không ghi gì.
+     */
+open func applyImport(backup: VerifiedBackup, mode: BackupImportMode)throws   {try rustCallWithError(FfiConverterTypeLvhvDataError_lift) {
+    uniffi_lvhv_ffi_fn_method_lvhvstore_apply_import(self.uniffiClonePointer(),
+        FfiConverterTypeVerifiedBackup_lower(backup),
+        FfiConverterTypeBackupImportMode_lower(mode),$0
+    )
+}
+}
+    
+    /**
+     * Có nên nhắc người dùng sao lưu không (01 §3.9 `backup_nag_days`).
+     */
+open func backupReminderDue()throws  -> Bool  {
+    return try  FfiConverterBool.lift(try rustCallWithError(FfiConverterTypeLvhvDataError_lift) {
+    uniffi_lvhv_ffi_fn_method_lvhvstore_backup_reminder_due(self.uniffiClonePointer(),$0
+    )
+})
+}
+    
+    /**
+     * Toàn bộ kho dạng tài liệu sao lưu v1 (01 §5, chưa có byte ảnh) — đầu vào `dataset_json` của các
+     * hàm ngày giỗ / nhắc / danh sách / .ics bên dưới.
+     */
+open func datasetJson()throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeLvhvDataError_lift) {
+    uniffi_lvhv_ffi_fn_method_lvhvstore_dataset_json(self.uniffiClonePointer(),$0
+    )
+})
+}
+    
+    /**
+     * Xóa một sự kiện.
+     */
+open func deleteEvent(id: String)throws   {try rustCallWithError(FfiConverterTypeLvhvDataError_lift) {
+    uniffi_lvhv_ffi_fn_method_lvhvstore_delete_event(self.uniffiClonePointer(),
+        FfiConverterString.lower(id),$0
+    )
+}
+}
+    
+    /**
+     * Xóa một người (gỡ id khỏi mọi sự kiện, xóa ảnh không còn ai dùng).
+     */
+open func deletePerson(id: String)throws   {try rustCallWithError(FfiConverterTypeLvhvDataError_lift) {
+    uniffi_lvhv_ffi_fn_method_lvhvstore_delete_person(self.uniffiClonePointer(),
+        FfiConverterString.lower(id),$0
+    )
+}
+}
+    
+    /**
+     * Mọi `EventType` (mảng JSON).
+     */
+open func eventTypesJson()throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeLvhvDataError_lift) {
+    uniffi_lvhv_ffi_fn_method_lvhvstore_event_types_json(self.uniffiClonePointer(),$0
+    )
+})
+}
+    
+    /**
+     * `events_in_period_json` trên dữ liệu của kho.
+     */
+open func eventsInPeriodJson(kind: String, anchor: SolarDay, filter: String)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeLvhvDataError_lift) {
+    uniffi_lvhv_ffi_fn_method_lvhvstore_events_in_period_json(self.uniffiClonePointer(),
+        FfiConverterString.lower(kind),
+        FfiConverterTypeSolarDay_lower(anchor),
+        FfiConverterString.lower(filter),$0
+    )
+})
+}
+    
+    /**
+     * Mọi `Event` (mảng JSON, sắp theo id).
+     */
+open func eventsJson()throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeLvhvDataError_lift) {
+    uniffi_lvhv_ffi_fn_method_lvhvstore_events_json(self.uniffiClonePointer(),$0
+    )
+})
+}
+    
+    /**
+     * Xuất tệp sao lưu mã hóa (03 §2). `platform`: "android" | "ios" | "macos" | "windows";
+     * `app_version` dạng X.Y.Z. Ứng dụng ghi byte qua hộp thoại lưu tệp của hệ điều hành.
+     */
+open func exportBackup(password: String, appVersion: String, platform: String)throws  -> Data  {
+    return try  FfiConverterData.lift(try rustCallWithError(FfiConverterTypeLvhvDataError_lift) {
+    uniffi_lvhv_ffi_fn_method_lvhvstore_export_backup(self.uniffiClonePointer(),
+        FfiConverterString.lower(password),
+        FfiConverterString.lower(appVersion),
+        FfiConverterString.lower(platform),$0
+    )
+})
+}
+    
+    /**
+     * Tùy chọn "hiện tên trên màn hình khóa" (O-9), mặc định `false`. Lưu cục bộ trên thiết bị, không
+     * đi vào tệp sao lưu.
+     */
+open func lockScreenNames()throws  -> Bool  {
+    return try  FfiConverterBool.lift(try rustCallWithError(FfiConverterTypeLvhvDataError_lift) {
+    uniffi_lvhv_ffi_fn_method_lvhvstore_lock_screen_names(self.uniffiClonePointer(),$0
+    )
+})
+}
+    
+    /**
+     * Cập nhật một người **đang sống** (hoặc sửa người đã mất) thành người đã mất trên **cùng** hồ sơ
+     * (01 §3.2a, US-M-07): giữ id, tên, ảnh, ngày sinh; thêm `death` (tính trường dẫn xuất từ
+     * `death_date_value_json`) và tùy chọn `notice` (thông tin báo tử, chuỗi được cắt khoảng trắng và chuẩn hóa
+     * NFC, rỗng → `null`); `kind = deceased`; tạo `memorial` mặc định nếu chưa có; quy tắc nhắc giỗ mặc định theo
+     * cài đặt nếu chưa có; bỏ quy tắc nhắc sinh nhật (lược đồ: người đã khuất chỉ có nhắc giỗ); tăng `rev`.
+     * Theo 02 §6.1 (Bổ sung B4), sinh nhật và sự kiện của người này không còn lần xuất hiện. `today`: ngày hôm
+     * nay của thiết bị — ngày mất và ngày nhận tin không được sau hôm nay. Trả bản đã lưu.
+     */
+open func markDeceasedJson(personId: String, deathDateValueJson: String, noticeJson: String?, today: SolarDay)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeLvhvDataError_lift) {
+    uniffi_lvhv_ffi_fn_method_lvhvstore_mark_deceased_json(self.uniffiClonePointer(),
+        FfiConverterString.lower(personId),
+        FfiConverterString.lower(deathDateValueJson),
+        FfiConverterOptionString.lower(noticeJson),
+        FfiConverterTypeSolarDay_lower(today),$0
+    )
+})
+}
+    
+    /**
+     * Một `Person`.
+     */
+open func personJson(id: String)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeLvhvDataError_lift) {
+    uniffi_lvhv_ffi_fn_method_lvhvstore_person_json(self.uniffiClonePointer(),
+        FfiConverterString.lower(id),$0
+    )
+})
+}
+    
+    /**
+     * Mọi `Person` (mảng JSON, sắp theo id).
+     */
+open func personsJson()throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeLvhvDataError_lift) {
+    uniffi_lvhv_ffi_fn_method_lvhvstore_persons_json(self.uniffiClonePointer(),$0
+    )
+})
+}
+    
+    /**
+     * Byte của một ảnh (kiểm `sha256` khi đọc).
+     */
+open func photoBytes(id: String)throws  -> Data  {
+    return try  FfiConverterData.lift(try rustCallWithError(FfiConverterTypeLvhvDataError_lift) {
+    uniffi_lvhv_ffi_fn_method_lvhvstore_photo_bytes(self.uniffiClonePointer(),
+        FfiConverterString.lower(id),$0
+    )
+})
+}
+    
+    /**
+     * Ghi `AppSettings` (đủ trường, kiểm V1/V8).
+     */
+open func putSettingsJson(json: String)throws   {try rustCallWithError(FfiConverterTypeLvhvDataError_lift) {
+    uniffi_lvhv_ffi_fn_method_lvhvstore_put_settings_json(self.uniffiClonePointer(),
+        FfiConverterString.lower(json),$0
+    )
+}
+}
+    
+    /**
+     * `reminders_json` trên dữ liệu của kho, tùy chọn O-9 của kho.
+     */
+open func remindersJson(nowUnixS: Int64, zone: DeviceZone, horizonDays: UInt32)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeLvhvDataError_lift) {
+    uniffi_lvhv_ffi_fn_method_lvhvstore_reminders_json(self.uniffiClonePointer(),
+        FfiConverterInt64.lower(nowUnixS),
+        FfiConverterTypeDeviceZone_lower(zone),
+        FfiConverterUInt32.lower(horizonDays),$0
+    )
+})
+}
+    
+    /**
+     * `reschedule_json` trên dữ liệu của kho, tùy chọn O-9 của kho.
+     */
+open func rescheduleJson(nowUnixS: Int64, zone: DeviceZone, pendingJson: String)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeLvhvDataError_lift) {
+    uniffi_lvhv_ffi_fn_method_lvhvstore_reschedule_json(self.uniffiClonePointer(),
+        FfiConverterInt64.lower(nowUnixS),
+        FfiConverterTypeDeviceZone_lower(zone),
+        FfiConverterString.lower(pendingJson),$0
+    )
+})
+}
+    
+    /**
+     * Lưu một `Event` (thêm hoặc sửa); gắn id/`created_at`/`updated_at`/`rev`, kiểm rồi ghi. Trả bản đã lưu.
+     */
+open func saveEventJson(json: String)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeLvhvDataError_lift) {
+    uniffi_lvhv_ffi_fn_method_lvhvstore_save_event_json(self.uniffiClonePointer(),
+        FfiConverterString.lower(json),$0
+    )
+})
+}
+    
+    /**
+     * Lưu một `EventType` (tên duy nhất — V7); gắn id/thời điểm/rev. Trả bản đã lưu.
+     */
+open func saveEventTypeJson(json: String)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeLvhvDataError_lift) {
+    uniffi_lvhv_ffi_fn_method_lvhvstore_save_event_type_json(self.uniffiClonePointer(),
+        FfiConverterString.lower(json),$0
+    )
+})
+}
+    
+    /**
+     * Lưu một `Person` (thêm hoặc sửa): tính lại trường dẫn xuất (ngày âm/dương của ngày mất và ngày
+     * sinh, Can Chi, hưởng thọ/hưởng dương trừ khi `tuoi.manual`), gắn id/`created_at`/`updated_at`/`rev`,
+     * kiểm V1–V8 rồi ghi. Trả bản đã lưu.
+     */
+open func savePersonJson(json: String)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeLvhvDataError_lift) {
+    uniffi_lvhv_ffi_fn_method_lvhvstore_save_person_json(self.uniffiClonePointer(),
+        FfiConverterString.lower(json),$0
+    )
+})
+}
+    
+    /**
+     * Đặt tùy chọn "hiện tên trên màn hình khóa" (O-9).
+     */
+open func setLockScreenNames(show: Bool)throws   {try rustCallWithError(FfiConverterTypeLvhvDataError_lift) {
+    uniffi_lvhv_ffi_fn_method_lvhvstore_set_lock_screen_names(self.uniffiClonePointer(),
+        FfiConverterBool.lower(show),$0
+    )
+}
+}
+    
+    /**
+     * `AppSettings` (01 §3.9).
+     */
+open func settingsJson()throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeLvhvDataError_lift) {
+    uniffi_lvhv_ffi_fn_method_lvhvstore_settings_json(self.uniffiClonePointer(),$0
+    )
+})
+}
+    
+    /**
+     * `upcoming_json` trên dữ liệu của kho.
+     */
+open func upcomingJson(today: SolarDay, days: UInt32)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeLvhvDataError_lift) {
+    uniffi_lvhv_ffi_fn_method_lvhvstore_upcoming_json(self.uniffiClonePointer(),
+        FfiConverterTypeSolarDay_lower(today),
+        FfiConverterUInt32.lower(days),$0
+    )
+})
+}
+    
+
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLvhvStore: FfiConverter {
+
+    typealias FfiType = UnsafeMutableRawPointer
+    typealias SwiftType = LvhvStore
+
+    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> LvhvStore {
+        return LvhvStore(unsafeFromRawPointer: pointer)
+    }
+
+    public static func lower(_ value: LvhvStore) -> UnsafeMutableRawPointer {
+        return value.uniffiClonePointer()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LvhvStore {
+        let v: UInt64 = try readInt(&buf)
+        // The Rust code won't compile if a pointer won't fit in a UInt64.
+        // We have to go via `UInt` because that's the thing that's the size of a pointer.
+        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
+        if (ptr == nil) {
+            throw UniffiInternalError.unexpectedNullPointer
+        }
+        return try lift(ptr!)
+    }
+
+    public static func write(_ value: LvhvStore, into buf: inout [UInt8]) {
+        // This fiddling is because `Int` is the thing that's the same size as a pointer.
+        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
+        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLvhvStore_lift(_ pointer: UnsafeMutableRawPointer) throws -> LvhvStore {
+    return try FfiConverterTypeLvhvStore.lift(pointer)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLvhvStore_lower(_ value: LvhvStore) -> UnsafeMutableRawPointer {
+    return FfiConverterTypeLvhvStore.lower(value)
+}
+
+
+
+
+
+
+/**
+ * Tệp sao lưu đã giải mã và kiểm tra xong (chưa ghi gì). Dùng `preview()` rồi `LvhvStore.apply_import`.
+ */
+public protocol VerifiedBackupProtocol: AnyObject, Sendable {
+    
+    func preview()  -> BackupPreview
+    
+}
+/**
+ * Tệp sao lưu đã giải mã và kiểm tra xong (chưa ghi gì). Dùng `preview()` rồi `LvhvStore.apply_import`.
+ */
+open class VerifiedBackup: VerifiedBackupProtocol, @unchecked Sendable {
+    fileprivate let pointer: UnsafeMutableRawPointer!
+
+    /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoPointer {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    required public init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
+        self.pointer = pointer
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noPointer: NoPointer) {
+        self.pointer = nil
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiClonePointer() -> UnsafeMutableRawPointer {
+        return try! rustCall { uniffi_lvhv_ffi_fn_clone_verifiedbackup(self.pointer, $0) }
+    }
+    // No primary constructor declared for this class.
+
+    deinit {
+        guard let pointer = pointer else {
+            return
+        }
+
+        try! rustCall { uniffi_lvhv_ffi_fn_free_verifiedbackup(pointer, $0) }
+    }
+
+    
+
+    
+open func preview() -> BackupPreview  {
+    return try!  FfiConverterTypeBackupPreview_lift(try! rustCall() {
+    uniffi_lvhv_ffi_fn_method_verifiedbackup_preview(self.uniffiClonePointer(),$0
+    )
+})
+}
+    
+
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeVerifiedBackup: FfiConverter {
+
+    typealias FfiType = UnsafeMutableRawPointer
+    typealias SwiftType = VerifiedBackup
+
+    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> VerifiedBackup {
+        return VerifiedBackup(unsafeFromRawPointer: pointer)
+    }
+
+    public static func lower(_ value: VerifiedBackup) -> UnsafeMutableRawPointer {
+        return value.uniffiClonePointer()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> VerifiedBackup {
+        let v: UInt64 = try readInt(&buf)
+        // The Rust code won't compile if a pointer won't fit in a UInt64.
+        // We have to go via `UInt` because that's the thing that's the size of a pointer.
+        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
+        if (ptr == nil) {
+            throw UniffiInternalError.unexpectedNullPointer
+        }
+        return try lift(ptr!)
+    }
+
+    public static func write(_ value: VerifiedBackup, into buf: inout [UInt8]) {
+        // This fiddling is because `Int` is the thing that's the same size as a pointer.
+        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
+        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeVerifiedBackup_lift(_ pointer: UnsafeMutableRawPointer) throws -> VerifiedBackup {
+    return try FfiConverterTypeVerifiedBackup.lift(pointer)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeVerifiedBackup_lower(_ value: VerifiedBackup) -> UnsafeMutableRawPointer {
+    return FfiConverterTypeVerifiedBackup.lower(value)
+}
+
+
+
+
+/**
+ * Xem trước tệp sao lưu (01 §6.3).
+ */
+public struct BackupPreview {
+    public var persons: UInt32
+    public var events: UInt32
+    public var photos: UInt32
+    public var exportedAt: String
+    public var platform: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(persons: UInt32, events: UInt32, photos: UInt32, exportedAt: String, platform: String) {
+        self.persons = persons
+        self.events = events
+        self.photos = photos
+        self.exportedAt = exportedAt
+        self.platform = platform
+    }
+}
+
+#if compiler(>=6)
+extension BackupPreview: Sendable {}
+#endif
+
+
+extension BackupPreview: Equatable, Hashable {
+    public static func ==(lhs: BackupPreview, rhs: BackupPreview) -> Bool {
+        if lhs.persons != rhs.persons {
+            return false
+        }
+        if lhs.events != rhs.events {
+            return false
+        }
+        if lhs.photos != rhs.photos {
+            return false
+        }
+        if lhs.exportedAt != rhs.exportedAt {
+            return false
+        }
+        if lhs.platform != rhs.platform {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(persons)
+        hasher.combine(events)
+        hasher.combine(photos)
+        hasher.combine(exportedAt)
+        hasher.combine(platform)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeBackupPreview: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> BackupPreview {
+        return
+            try BackupPreview(
+                persons: FfiConverterUInt32.read(from: &buf), 
+                events: FfiConverterUInt32.read(from: &buf), 
+                photos: FfiConverterUInt32.read(from: &buf), 
+                exportedAt: FfiConverterString.read(from: &buf), 
+                platform: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: BackupPreview, into buf: inout [UInt8]) {
+        FfiConverterUInt32.write(value.persons, into: &buf)
+        FfiConverterUInt32.write(value.events, into: &buf)
+        FfiConverterUInt32.write(value.photos, into: &buf)
+        FfiConverterString.write(value.exportedAt, into: &buf)
+        FfiConverterString.write(value.platform, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBackupPreview_lift(_ buf: RustBuffer) throws -> BackupPreview {
+    return try FfiConverterTypeBackupPreview.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBackupPreview_lower(_ value: BackupPreview) -> RustBuffer {
+    return FfiConverterTypeBackupPreview.lower(value)
 }
 
 
@@ -593,6 +1413,194 @@ public func FfiConverterTypeDayRating_lift(_ buf: RustBuffer) throws -> DayRatin
 #endif
 public func FfiConverterTypeDayRating_lower(_ value: DayRating) -> RustBuffer {
     return FfiConverterTypeDayRating.lower(value)
+}
+
+
+/**
+ * Múi giờ thiết bị: `offset_min` áp dụng trước lần chuyển đầu tiên; `transitions` tăng dần. Việt Nam:
+ * `{offset_min: 420, transitions: []}`. Ứng dụng lấy các lần chuyển sắp tới (≤ 401 ngày) từ hệ điều hành
+ * (`ZoneRules.nextTransition` / `TimeZone.nextDaylightSavingTimeTransition`).
+ */
+public struct DeviceZone {
+    public var offsetMin: Int32
+    public var transitions: [ZoneTransition]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(offsetMin: Int32, transitions: [ZoneTransition]) {
+        self.offsetMin = offsetMin
+        self.transitions = transitions
+    }
+}
+
+#if compiler(>=6)
+extension DeviceZone: Sendable {}
+#endif
+
+
+extension DeviceZone: Equatable, Hashable {
+    public static func ==(lhs: DeviceZone, rhs: DeviceZone) -> Bool {
+        if lhs.offsetMin != rhs.offsetMin {
+            return false
+        }
+        if lhs.transitions != rhs.transitions {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(offsetMin)
+        hasher.combine(transitions)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeDeviceZone: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> DeviceZone {
+        return
+            try DeviceZone(
+                offsetMin: FfiConverterInt32.read(from: &buf), 
+                transitions: FfiConverterSequenceTypeZoneTransition.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: DeviceZone, into buf: inout [UInt8]) {
+        FfiConverterInt32.write(value.offsetMin, into: &buf)
+        FfiConverterSequenceTypeZoneTransition.write(value.transitions, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeDeviceZone_lift(_ buf: RustBuffer) throws -> DeviceZone {
+    return try FfiConverterTypeDeviceZone.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeDeviceZone_lower(_ value: DeviceZone) -> RustBuffer {
+    return FfiConverterTypeDeviceZone.lower(value)
+}
+
+
+/**
+ * Tệp .ics đã sinh.
+ */
+public struct IcsExport {
+    /**
+     * `LichVanHoaViet-ngay-gio-<YYYY-MM-DD>.ics`.
+     */
+    public var fileName: String
+    /**
+     * Nội dung (UTF-8, CRLF); kiểu `text/calendar; charset=utf-8`.
+     */
+    public var content: String
+    /**
+     * Số VEVENT.
+     */
+    public var events: UInt32
+    /**
+     * Số người khác nhau có tên trong tệp (cho hộp xác nhận S10: "Tệp này chứa tên và ngày giỗ của … người").
+     */
+    public var persons: UInt32
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * `LichVanHoaViet-ngay-gio-<YYYY-MM-DD>.ics`.
+         */fileName: String, 
+        /**
+         * Nội dung (UTF-8, CRLF); kiểu `text/calendar; charset=utf-8`.
+         */content: String, 
+        /**
+         * Số VEVENT.
+         */events: UInt32, 
+        /**
+         * Số người khác nhau có tên trong tệp (cho hộp xác nhận S10: "Tệp này chứa tên và ngày giỗ của … người").
+         */persons: UInt32) {
+        self.fileName = fileName
+        self.content = content
+        self.events = events
+        self.persons = persons
+    }
+}
+
+#if compiler(>=6)
+extension IcsExport: Sendable {}
+#endif
+
+
+extension IcsExport: Equatable, Hashable {
+    public static func ==(lhs: IcsExport, rhs: IcsExport) -> Bool {
+        if lhs.fileName != rhs.fileName {
+            return false
+        }
+        if lhs.content != rhs.content {
+            return false
+        }
+        if lhs.events != rhs.events {
+            return false
+        }
+        if lhs.persons != rhs.persons {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(fileName)
+        hasher.combine(content)
+        hasher.combine(events)
+        hasher.combine(persons)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeIcsExport: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> IcsExport {
+        return
+            try IcsExport(
+                fileName: FfiConverterString.read(from: &buf), 
+                content: FfiConverterString.read(from: &buf), 
+                events: FfiConverterUInt32.read(from: &buf), 
+                persons: FfiConverterUInt32.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: IcsExport, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.fileName, into: &buf)
+        FfiConverterString.write(value.content, into: &buf)
+        FfiConverterUInt32.write(value.events, into: &buf)
+        FfiConverterUInt32.write(value.persons, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeIcsExport_lift(_ buf: RustBuffer) throws -> IcsExport {
+    return try FfiConverterTypeIcsExport.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeIcsExport_lower(_ value: IcsExport) -> RustBuffer {
+    return FfiConverterTypeIcsExport.lower(value)
 }
 
 
@@ -700,6 +1708,164 @@ public func FfiConverterTypeLunarDay_lower(_ value: LunarDay) -> RustBuffer {
 
 
 /**
+ * Biên một kỳ.
+ */
+public struct PeriodRange {
+    public var from: SolarDay
+    public var to: SolarDay
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(from: SolarDay, to: SolarDay) {
+        self.from = from
+        self.to = to
+    }
+}
+
+#if compiler(>=6)
+extension PeriodRange: Sendable {}
+#endif
+
+
+extension PeriodRange: Equatable, Hashable {
+    public static func ==(lhs: PeriodRange, rhs: PeriodRange) -> Bool {
+        if lhs.from != rhs.from {
+            return false
+        }
+        if lhs.to != rhs.to {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(from)
+        hasher.combine(to)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypePeriodRange: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> PeriodRange {
+        return
+            try PeriodRange(
+                from: FfiConverterTypeSolarDay.read(from: &buf), 
+                to: FfiConverterTypeSolarDay.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: PeriodRange, into buf: inout [UInt8]) {
+        FfiConverterTypeSolarDay.write(value.from, into: &buf)
+        FfiConverterTypeSolarDay.write(value.to, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePeriodRange_lift(_ buf: RustBuffer) throws -> PeriodRange {
+    return try FfiConverterTypePeriodRange.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePeriodRange_lower(_ value: PeriodRange) -> RustBuffer {
+    return FfiConverterTypePeriodRange.lower(value)
+}
+
+
+/**
+ * Thông báo nhắc mở ứng dụng (02 §7.4).
+ */
+public struct SentinelInfo {
+    /**
+     * `"lvhv:sentinel"`.
+     */
+    public var id: String
+    /**
+     * Nội dung thông báo.
+     */
+    public var text: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * `"lvhv:sentinel"`.
+         */id: String, 
+        /**
+         * Nội dung thông báo.
+         */text: String) {
+        self.id = id
+        self.text = text
+    }
+}
+
+#if compiler(>=6)
+extension SentinelInfo: Sendable {}
+#endif
+
+
+extension SentinelInfo: Equatable, Hashable {
+    public static func ==(lhs: SentinelInfo, rhs: SentinelInfo) -> Bool {
+        if lhs.id != rhs.id {
+            return false
+        }
+        if lhs.text != rhs.text {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+        hasher.combine(text)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeSentinelInfo: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SentinelInfo {
+        return
+            try SentinelInfo(
+                id: FfiConverterString.read(from: &buf), 
+                text: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: SentinelInfo, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterString.write(value.text, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSentinelInfo_lift(_ buf: RustBuffer) throws -> SentinelInfo {
+    return try FfiConverterTypeSentinelInfo.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSentinelInfo_lower(_ value: SentinelInfo) -> RustBuffer {
+    return FfiConverterTypeSentinelInfo.lower(value)
+}
+
+
+/**
  * Ngày dương lịch.
  */
 public struct SolarDay {
@@ -778,6 +1944,285 @@ public func FfiConverterTypeSolarDay_lift(_ buf: RustBuffer) throws -> SolarDay 
 public func FfiConverterTypeSolarDay_lower(_ value: SolarDay) -> RustBuffer {
     return FfiConverterTypeSolarDay.lower(value)
 }
+
+
+/**
+ * Một lần chuyển độ lệch giờ (ví dụ vào/ra giờ mùa hè).
+ */
+public struct ZoneTransition {
+    /**
+     * Thời điểm chuyển (giây Unix, UTC).
+     */
+    public var atUnixS: Int64
+    /**
+     * Độ lệch so với UTC từ thời điểm đó (phút, ví dụ 420 = +07:00).
+     */
+    public var offsetMin: Int32
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * Thời điểm chuyển (giây Unix, UTC).
+         */atUnixS: Int64, 
+        /**
+         * Độ lệch so với UTC từ thời điểm đó (phút, ví dụ 420 = +07:00).
+         */offsetMin: Int32) {
+        self.atUnixS = atUnixS
+        self.offsetMin = offsetMin
+    }
+}
+
+#if compiler(>=6)
+extension ZoneTransition: Sendable {}
+#endif
+
+
+extension ZoneTransition: Equatable, Hashable {
+    public static func ==(lhs: ZoneTransition, rhs: ZoneTransition) -> Bool {
+        if lhs.atUnixS != rhs.atUnixS {
+            return false
+        }
+        if lhs.offsetMin != rhs.offsetMin {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(atUnixS)
+        hasher.combine(offsetMin)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeZoneTransition: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ZoneTransition {
+        return
+            try ZoneTransition(
+                atUnixS: FfiConverterInt64.read(from: &buf), 
+                offsetMin: FfiConverterInt32.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: ZoneTransition, into buf: inout [UInt8]) {
+        FfiConverterInt64.write(value.atUnixS, into: &buf)
+        FfiConverterInt32.write(value.offsetMin, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeZoneTransition_lift(_ buf: RustBuffer) throws -> ZoneTransition {
+    return try FfiConverterTypeZoneTransition.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeZoneTransition_lower(_ value: ZoneTransition) -> RustBuffer {
+    return FfiConverterTypeZoneTransition.lower(value)
+}
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/**
+ * Cách nhập sao lưu (01 §6.3).
+ */
+
+public enum BackupImportMode {
+    
+    /**
+     * Thay toàn bộ dữ liệu trên máy.
+     */
+    case replace
+    /**
+     * Gộp theo id / rev / updated_at.
+     */
+    case merge
+}
+
+
+#if compiler(>=6)
+extension BackupImportMode: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeBackupImportMode: FfiConverterRustBuffer {
+    typealias SwiftType = BackupImportMode
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> BackupImportMode {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .replace
+        
+        case 2: return .merge
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: BackupImportMode, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .replace:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .merge:
+            writeInt(&buf, Int32(2))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBackupImportMode_lift(_ buf: RustBuffer) throws -> BackupImportMode {
+    return try FfiConverterTypeBackupImportMode.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBackupImportMode_lower(_ value: BackupImportMode) -> RustBuffer {
+    return FfiConverterTypeBackupImportMode.lower(value)
+}
+
+
+extension BackupImportMode: Equatable, Hashable {}
+
+
+
+
+
+
+
+/**
+ * Lỗi của phần dữ liệu v0.2. Thông điệp tiếng Việt, hiển thị được.
+ */
+public enum LvhvDataError: Swift.Error {
+
+    
+    
+    /**
+     * Dữ liệu nhập sai (ngày không tồn tại, trường thiếu, vi phạm V1–V8…).
+     */
+    case Invalid(message: String)
+    
+    /**
+     * Không tìm thấy bản ghi.
+     */
+    case NotFound(message: String)
+    
+    /**
+     * Lỗi kho (SQLite, tệp ảnh).
+     */
+    case Storage(message: String)
+    
+    /**
+     * Tệp sao lưu sai mật khẩu / hỏng / phiên bản mới hơn (03 §2.4: thông báo chung).
+     */
+    case Backup(message: String)
+    
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLvhvDataError: FfiConverterRustBuffer {
+    typealias SwiftType = LvhvDataError
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LvhvDataError {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        
+
+        
+        case 1: return .Invalid(
+            message: try FfiConverterString.read(from: &buf)
+        )
+        
+        case 2: return .NotFound(
+            message: try FfiConverterString.read(from: &buf)
+        )
+        
+        case 3: return .Storage(
+            message: try FfiConverterString.read(from: &buf)
+        )
+        
+        case 4: return .Backup(
+            message: try FfiConverterString.read(from: &buf)
+        )
+        
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: LvhvDataError, into buf: inout [UInt8]) {
+        switch value {
+
+        
+
+        
+        case .Invalid(_ /* message is ignored*/):
+            writeInt(&buf, Int32(1))
+        case .NotFound(_ /* message is ignored*/):
+            writeInt(&buf, Int32(2))
+        case .Storage(_ /* message is ignored*/):
+            writeInt(&buf, Int32(3))
+        case .Backup(_ /* message is ignored*/):
+            writeInt(&buf, Int32(4))
+
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLvhvDataError_lift(_ buf: RustBuffer) throws -> LvhvDataError {
+    return try FfiConverterTypeLvhvDataError.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLvhvDataError_lower(_ value: LvhvDataError) -> RustBuffer {
+    return FfiConverterTypeLvhvDataError.lower(value)
+}
+
+
+extension LvhvDataError: Equatable, Hashable {}
+
+
+
+
+extension LvhvDataError: Foundation.LocalizedError {
+    public var errorDescription: String? {
+        String(reflecting: self)
+    }
+}
+
+
+
 
 
 /**
@@ -932,6 +2377,54 @@ fileprivate struct FfiConverterOptionInt32: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionInt64: FfiConverterRustBuffer {
+    typealias SwiftType = Int64?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterInt64.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterInt64.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionString: FfiConverterRustBuffer {
+    typealias SwiftType = String?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterString.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterString.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionTypeSolarDay: FfiConverterRustBuffer {
     typealias SwiftType = SolarDay?
 
@@ -950,6 +2443,55 @@ fileprivate struct FfiConverterOptionTypeSolarDay: FfiConverterRustBuffer {
         case 1: return try FfiConverterTypeSolarDay.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionSequenceString: FfiConverterRustBuffer {
+    typealias SwiftType = [String]?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterSequenceString.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterSequenceString.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceString: FfiConverterRustBuffer {
+    typealias SwiftType = [String]
+
+    public static func write(_ value: [String], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterString.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [String] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [String]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterString.read(from: &buf))
+        }
+        return seq
     }
 }
 
@@ -977,6 +2519,31 @@ fileprivate struct FfiConverterSequenceTypeLunarDay: FfiConverterRustBuffer {
         return seq
     }
 }
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeZoneTransition: FfiConverterRustBuffer {
+    typealias SwiftType = [ZoneTransition]
+
+    public static func write(_ value: [ZoneTransition], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeZoneTransition.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [ZoneTransition] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [ZoneTransition]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeZoneTransition.read(from: &buf))
+        }
+        return seq
+    }
+}
 /**
  * Danh sách việc để chọn ngày, JSON `[{"id":"cuoi_hoi","name":"Cưới hỏi"}, …]`.
  */
@@ -994,6 +2561,28 @@ public func addDays(day: SolarDay, n: Int32)throws  -> SolarDay  {
     uniffi_lvhv_ffi_fn_func_add_days(
         FfiConverterTypeSolarDay_lower(day),
         FfiConverterInt32.lower(n),$0
+    )
+})
+}
+/**
+ * Một bước của chuỗi báo thức Android (02 §7.3): gọi khi báo thức chạy, khi khởi động lại, đổi giờ/múi
+ * giờ, mở ứng dụng, lưu dữ liệu, nhập sao lưu. `last_run_unix_s`: lần gọi trước (đã đăng thông báo tới
+ * thời điểm đó; `null` = chưa có). Kết quả
+ * `{"post":[R],"dropped_late":n,"next_at_unix_s":t|null,"next_fire_local":s|null}`:
+ * `post` = lời nhắc có thời điểm trong `(max(last_run, now − 24 giờ), now]` (đăng ngay; trễ hơn 24 giờ
+ * thì bỏ và đếm ở `dropped_late`), `next_*` = lời nhắc sớm nhất sau `now`, **không giới hạn cửa sổ**
+ * (đặt **một** báo thức `setAndAllowWhileIdle(RTC_WAKEUP, next_at_unix_s × 1000)`); `null` chỉ khi không
+ * còn lời nhắc tương lai nào. `R` như `reminders_json`. `show_names` mặc định `false` (O-9); nên gọi
+ * `LvhvStore.android_alarm_step_json`.
+ */
+public func androidAlarmStepJson(datasetJson: String, nowUnixS: Int64, lastRunUnixS: Int64?, zone: DeviceZone, showNames: Bool = false)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeLvhvDataError_lift) {
+    uniffi_lvhv_ffi_fn_func_android_alarm_step_json(
+        FfiConverterString.lower(datasetJson),
+        FfiConverterInt64.lower(nowUnixS),
+        FfiConverterOptionInt64.lower(lastRunUnixS),
+        FfiConverterTypeDeviceZone_lower(zone),
+        FfiConverterBool.lower(showNames),$0
     )
 })
 }
@@ -1094,6 +2683,43 @@ public func daysInMonth(y: Int32, m: Int32)throws  -> Int32  {
 })
 }
 /**
+ * Ngày sinh (02 §4.1): `DateValue` → `{lunar_year, lunar_year_approx, can_chi, lunar, solar}`.
+ */
+public func deriveBirthJson(dateValueJson: String)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeLvhvDataError_lift) {
+    uniffi_lvhv_ffi_fn_func_derive_birth_json(
+        FfiConverterString.lower(dateValueJson),$0
+    )
+})
+}
+/**
+ * Tính trường dẫn xuất của một `Person` (như `save_person_json`, không ghi) và kiểm V1–V8; trả bản
+ * đã tính. Dùng để xem trước trong màn hình nhập. Lỗi nhập liệu có thông báo theo 01 §6.1.
+ */
+public func derivePersonJson(json: String)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeLvhvDataError_lift) {
+    uniffi_lvhv_ffi_fn_func_derive_person_json(
+        FfiConverterString.lower(json),$0
+    )
+})
+}
+/**
+ * `events_in_period` (02 §7.6, R13). `filter` ∈ "tat_ca", "da_mat", "dang_song". JSON
+ * `{"kind","anchor","filter","from","to","items":[…]}`; mỗi mục có các trường của 02 Phụ lục A.6
+ * (`date, lunar, class, entity_id, person_ids, name, key, n, label`) cộng `class_text`, `headline`,
+ * `date_line` để hiển thị.
+ */
+public func eventsInPeriodJson(datasetJson: String, kind: String, anchor: SolarDay, filter: String)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeLvhvDataError_lift) {
+    uniffi_lvhv_ffi_fn_func_events_in_period_json(
+        FfiConverterString.lower(datasetJson),
+        FfiConverterString.lower(kind),
+        FfiConverterTypeSolarDay_lower(anchor),
+        FfiConverterString.lower(filter),$0
+    )
+})
+}
+/**
  * Chọn ngày tốt cho việc `activity` trong khoảng [`from`, `to`] (`to − from ≤ 366` ngày) —
  * `lvhv_core::find_good_days`. `birth_lunar_year`: năm ÂM lịch của ngày sinh (xem
  * `lunar_year_of_birth`). JSON là mảng `GoodDay::to_json` của lõi:
@@ -1107,6 +2733,20 @@ public func findGoodDaysJson(activity: String, from: SolarDay, to: SolarDay, bir
         FfiConverterTypeSolarDay_lower(from),
         FfiConverterTypeSolarDay_lower(to),
         FfiConverterOptionInt32.lower(birthLunarYear),$0
+    )
+})
+}
+/**
+ * Sinh tệp .ics 10 năm từ `today` (02 §8). `only_ids`: chỉ xuất các hồ sơ/sự kiện này; `null` = mặc
+ * định (mọi mục có quy tắc nhắc bật). `now_unix_s` cho `DTSTAMP`.
+ */
+public func icsExport(datasetJson: String, today: SolarDay, nowUnixS: Int64, onlyIds: [String]?)throws  -> IcsExport  {
+    return try  FfiConverterTypeIcsExport_lift(try rustCallWithError(FfiConverterTypeLvhvDataError_lift) {
+    uniffi_lvhv_ffi_fn_func_ics_export(
+        FfiConverterString.lower(datasetJson),
+        FfiConverterTypeSolarDay_lower(today),
+        FfiConverterInt64.lower(nowUnixS),
+        FfiConverterOptionSequenceString.lower(onlyIds),$0
     )
 })
 }
@@ -1158,11 +2798,138 @@ public func monthLunarDays(y: Int32, m: Int32)throws  -> [LunarDay]  {
 })
 }
 /**
+ * UUID v4 ngẫu nhiên (01 §1), chữ thường có gạch.
+ */
+public func newUuid()throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeLvhvDataError_lift) {
+    uniffi_lvhv_ffi_fn_func_new_uuid($0
+    )
+})
+}
+/**
  * Danh mục nguồn quy tắc Ngọc Hạp (content/ngochap/SOURCES.md) dạng khối như trên.
  */
 public func ngochapSourcesBlocksJson() -> String  {
     return try!  FfiConverterString.lift(try! rustCall() {
     uniffi_lvhv_ffi_fn_func_ngochap_sources_blocks_json($0
+    )
+})
+}
+/**
+ * Giải mã + kiểm tra toàn bộ một tệp sao lưu (03 §2, 01 §6.3) — **không** ghi gì. Sai mật khẩu, tệp
+ * hỏng hay bị sửa → `Backup("Sai mật khẩu hoặc tệp bị hỏng")`.
+ */
+public func openBackup(file: Data, password: String)throws  -> VerifiedBackup  {
+    return try  FfiConverterTypeVerifiedBackup_lift(try rustCallWithError(FfiConverterTypeLvhvDataError_lift) {
+    uniffi_lvhv_ffi_fn_func_open_backup(
+        FfiConverterData.lower(file),
+        FfiConverterString.lower(password),$0
+    )
+})
+}
+/**
+ * Biên kỳ chứa `anchor` (02 §7.6): `kind` ∈ "tuan" (Thứ Hai → Chủ nhật), "thang", "quy", "nam".
+ */
+public func periodBounds(kind: String, anchor: SolarDay)throws  -> PeriodRange  {
+    return try  FfiConverterTypePeriodRange_lift(try rustCallWithError(FfiConverterTypeLvhvDataError_lift) {
+    uniffi_lvhv_ffi_fn_func_period_bounds(
+        FfiConverterString.lower(kind),
+        FfiConverterTypeSolarDay_lower(anchor),$0
+    )
+})
+}
+/**
+ * Kỳ liền sau kỳ chứa `anchor`.
+ */
+public func periodNext(kind: String, anchor: SolarDay)throws  -> PeriodRange  {
+    return try  FfiConverterTypePeriodRange_lift(try rustCallWithError(FfiConverterTypeLvhvDataError_lift) {
+    uniffi_lvhv_ffi_fn_func_period_next(
+        FfiConverterString.lower(kind),
+        FfiConverterTypeSolarDay_lower(anchor),$0
+    )
+})
+}
+/**
+ * Kỳ liền trước kỳ chứa `anchor`.
+ */
+public func periodPrev(kind: String, anchor: SolarDay)throws  -> PeriodRange  {
+    return try  FfiConverterTypePeriodRange_lift(try rustCallWithError(FfiConverterTypeLvhvDataError_lift) {
+    uniffi_lvhv_ffi_fn_func_period_prev(
+        FfiConverterString.lower(kind),
+        FfiConverterTypeSolarDay_lower(anchor),$0
+    )
+})
+}
+/**
+ * Tóm tắt hiển thị của một `Person` (đã có trường dẫn xuất) tại ngày `today`:
+ * `{"display_name","can_chi","lunar_year","tuoi_duong","tuoi_am","tuoi_mat_text","death_lunar_text"}`
+ * (`null` khi không xác định). `tuoi_duong`/`tuoi_am` chỉ cho người đang sống (02 §4.3);
+ * `tuoi_mat_text` ("Hưởng thọ 86 tuổi", "(khoảng)") cho người đã khuất (02 §4.2).
+ */
+public func personSummaryJson(personJson: String, today: SolarDay)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeLvhvDataError_lift) {
+    uniffi_lvhv_ffi_fn_func_person_summary_json(
+        FfiConverterString.lower(personJson),
+        FfiConverterTypeSolarDay_lower(today),$0
+    )
+})
+}
+/**
+ * Mọi lời nhắc (02 §7.1) có thời điểm trong `(now, now + horizon_days ngày]`, sắp theo (thời điểm, id):
+ * `[{"id","at_unix_s","fire_local","type","title","body","occ"}]`. `show_names` mặc định `false` (O-9) →
+ * tiêu đề không có tên ("Sắp đến ngày giỗ" …) và `occ` rút gọn (xem `reminder_json`). Tôn trọng công tắc
+ * chung và `rule.enabled`. Ứng dụng native nên gọi `LvhvStore.reminders_json` (đọc tùy chọn O-9 từ kho).
+ */
+public func remindersJson(datasetJson: String, nowUnixS: Int64, zone: DeviceZone, horizonDays: UInt32, showNames: Bool = false)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeLvhvDataError_lift) {
+    uniffi_lvhv_ffi_fn_func_reminders_json(
+        FfiConverterString.lower(datasetJson),
+        FfiConverterInt64.lower(nowUnixS),
+        FfiConverterTypeDeviceZone_lower(zone),
+        FfiConverterUInt32.lower(horizonDays),
+        FfiConverterBool.lower(showNames),$0
+    )
+})
+}
+/**
+ * `reschedule(now)` (02 §7.4) cho iOS/macOS (`UNUserNotificationCenter`) và Windows
+ * (`ScheduledToastNotification`), giới hạn 64 yêu cầu chờ. `pending_json`: các yêu cầu đang chờ do hệ
+ * điều hành trả về, `[{"id","at_unix_s","content"}]` (`content` = `title + "\n" + body` đã đặt lần trước;
+ * thiếu → ""). Kết quả `{"keep":[P],"remove":[id],"add":[P],"replace":[P]}`, `P` =
+ * `{"id","at_unix_s","fire_local","title","body","content"}`; ứng dụng gỡ `remove`, thêm `add`, thay
+ * `replace` (trigger theo `fire_local`, không gắn múi giờ). Còn lời nhắc không đặt được (> 64 trong cửa
+ * sổ 400 ngày, hoặc ở ngoài cửa sổ) → tối đa 63 sớm nhất + thông báo nhắc mở ứng dụng
+ * (`id = "lvhv:sentinel"`) cùng phút với cái cuối cùng đã đặt (không có cái nào: 09:00 giờ thiết bị ngày hôm nay + 399) —
+ * 02 §7.4, Bổ sung B3. `show_names` mặc định `false` (O-9); nên gọi `LvhvStore.reschedule_json`.
+ */
+public func rescheduleJson(datasetJson: String, nowUnixS: Int64, zone: DeviceZone, pendingJson: String, showNames: Bool = false)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeLvhvDataError_lift) {
+    uniffi_lvhv_ffi_fn_func_reschedule_json(
+        FfiConverterString.lower(datasetJson),
+        FfiConverterInt64.lower(nowUnixS),
+        FfiConverterTypeDeviceZone_lower(zone),
+        FfiConverterString.lower(pendingJson),
+        FfiConverterBool.lower(showNames),$0
+    )
+})
+}
+/**
+ * `save_death` (02 §1): `DateValue` của ngày mất → `{lunar, solar, lunar_source, method}`. Đổi dương → âm
+ * (hoặc âm → dương) khi lưu.
+ */
+public func saveDeathJson(dateValueJson: String)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeLvhvDataError_lift) {
+    uniffi_lvhv_ffi_fn_func_save_death_json(
+        FfiConverterString.lower(dateValueJson),$0
+    )
+})
+}
+/**
+ * Mã và nội dung của thông báo nhắc mở ứng dụng (02 §7.4).
+ */
+public func sentinelInfo() -> SentinelInfo  {
+    return try!  FfiConverterTypeSentinelInfo_lift(try! rustCall() {
+    uniffi_lvhv_ffi_fn_func_sentinel_info($0
     )
 })
 }
@@ -1175,6 +2942,20 @@ public func solarToLunar(y: Int32, m: Int32, d: Int32)throws  -> LunarDay  {
         FfiConverterInt32.lower(y),
         FfiConverterInt32.lower(m),
         FfiConverterInt32.lower(d),$0
+    )
+})
+}
+/**
+ * Danh sách "Sắp tới" (02 §7.2): mọi lần xuất hiện trong `[today, today + days]` (gồm hai đầu), đúng
+ * thứ tự hiển thị. Mảng `[{"days","days_text","date","lunar","class","class_text","entity_id",
+ * "person_ids","name","key","n","label","headline","date_line"}]`. Không phụ thuộc công tắc nhắc.
+ */
+public func upcomingJson(datasetJson: String, today: SolarDay, days: UInt32)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeLvhvDataError_lift) {
+    uniffi_lvhv_ffi_fn_func_upcoming_json(
+        FfiConverterString.lower(datasetJson),
+        FfiConverterTypeSolarDay_lower(today),
+        FfiConverterUInt32.lower(days),$0
     )
 })
 }
@@ -1223,6 +3004,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_lvhv_ffi_checksum_func_add_days() != 41064) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_lvhv_ffi_checksum_func_android_alarm_step_json() != 45762) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_lvhv_ffi_checksum_func_build_info_json() != 56614) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -1250,7 +3034,19 @@ private let initializationResult: InitializationResult = {
     if (uniffi_lvhv_ffi_checksum_func_days_in_month() != 11945) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_lvhv_ffi_checksum_func_derive_birth_json() != 59472) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_lvhv_ffi_checksum_func_derive_person_json() != 47386) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_lvhv_ffi_checksum_func_events_in_period_json() != 32164) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_lvhv_ffi_checksum_func_find_good_days_json() != 10813) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_lvhv_ffi_checksum_func_ics_export() != 54353) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_lvhv_ffi_checksum_func_lunar_method() != 34114) {
@@ -1265,16 +3061,130 @@ private let initializationResult: InitializationResult = {
     if (uniffi_lvhv_ffi_checksum_func_month_lunar_days() != 40894) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_lvhv_ffi_checksum_func_new_uuid() != 5254) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_lvhv_ffi_checksum_func_ngochap_sources_blocks_json() != 11199) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_lvhv_ffi_checksum_func_open_backup() != 5743) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_lvhv_ffi_checksum_func_period_bounds() != 29895) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_lvhv_ffi_checksum_func_period_next() != 46764) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_lvhv_ffi_checksum_func_period_prev() != 37514) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_lvhv_ffi_checksum_func_person_summary_json() != 36375) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_lvhv_ffi_checksum_func_reminders_json() != 836) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_lvhv_ffi_checksum_func_reschedule_json() != 30285) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_lvhv_ffi_checksum_func_save_death_json() != 16966) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_lvhv_ffi_checksum_func_sentinel_info() != 57743) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_lvhv_ffi_checksum_func_solar_to_lunar() != 39424) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_lvhv_ffi_checksum_func_upcoming_json() != 31740) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_lvhv_ffi_checksum_func_weekday() != 50804) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_lvhv_ffi_checksum_func_year_can_chi() != 59633) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_lvhv_ffi_checksum_method_lvhvstore_add_photo() != 45983) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_lvhv_ffi_checksum_method_lvhvstore_android_alarm_step_json() != 13396) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_lvhv_ffi_checksum_method_lvhvstore_apply_import() != 38554) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_lvhv_ffi_checksum_method_lvhvstore_backup_reminder_due() != 64715) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_lvhv_ffi_checksum_method_lvhvstore_dataset_json() != 27745) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_lvhv_ffi_checksum_method_lvhvstore_delete_event() != 34738) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_lvhv_ffi_checksum_method_lvhvstore_delete_person() != 23321) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_lvhv_ffi_checksum_method_lvhvstore_event_types_json() != 18706) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_lvhv_ffi_checksum_method_lvhvstore_events_in_period_json() != 36429) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_lvhv_ffi_checksum_method_lvhvstore_events_json() != 58435) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_lvhv_ffi_checksum_method_lvhvstore_export_backup() != 56748) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_lvhv_ffi_checksum_method_lvhvstore_lock_screen_names() != 2023) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_lvhv_ffi_checksum_method_lvhvstore_mark_deceased_json() != 28404) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_lvhv_ffi_checksum_method_lvhvstore_person_json() != 48207) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_lvhv_ffi_checksum_method_lvhvstore_persons_json() != 41579) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_lvhv_ffi_checksum_method_lvhvstore_photo_bytes() != 22965) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_lvhv_ffi_checksum_method_lvhvstore_put_settings_json() != 14452) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_lvhv_ffi_checksum_method_lvhvstore_reminders_json() != 30582) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_lvhv_ffi_checksum_method_lvhvstore_reschedule_json() != 3105) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_lvhv_ffi_checksum_method_lvhvstore_save_event_json() != 16260) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_lvhv_ffi_checksum_method_lvhvstore_save_event_type_json() != 19012) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_lvhv_ffi_checksum_method_lvhvstore_save_person_json() != 47199) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_lvhv_ffi_checksum_method_lvhvstore_set_lock_screen_names() != 9557) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_lvhv_ffi_checksum_method_lvhvstore_settings_json() != 30343) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_lvhv_ffi_checksum_method_lvhvstore_upcoming_json() != 6769) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_lvhv_ffi_checksum_method_verifiedbackup_preview() != 6973) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_lvhv_ffi_checksum_constructor_lvhvstore_open() != 41415) {
         return InitializationResult.apiChecksumMismatch
     }
 

@@ -17,6 +17,9 @@ uniffi::setup_scaffolding!();
 
 mod cadao;
 mod sources;
+pub mod v02;
+
+pub use v02::*;
 
 use lvhv_core::jd::{days_in_month as core_days_in_month, jdn_from_date};
 use lvhv_core::{DateError, SolarDate};
@@ -386,3 +389,5 @@ pub fn build_info_json() -> String {
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tests_v02;

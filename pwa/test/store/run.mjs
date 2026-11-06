@@ -114,6 +114,45 @@ const exPhoto = rd(manifest.example.photo);
   results.corrupt_vectors = { n: manifest.corrupt.length, all_rejected_same_code: allOk };
 }
 
+// ---------- YC-2026-05: vector bổ sung thông tin báo tử (01 §3.2a; không thay vector đã khóa) ----------
+{
+  const SD = join(TV, "supplement-yc05");
+  const sm = JSON.parse(readFileSync(join(SD, "manifest.json"), "utf8"));
+  const nFile = new Uint8Array(readFileSync(join(SD, "notice-v1.lvhv")));
+  const nText = readFileSync(join(SD, "notice-v1.json"), "utf8");
+  const v = await S.openBackup(nFile, sm.password);
+  ok(S.canonicalJson(v.doc) === nText, "YC-2026-05: notice-v1.lvhv (Rust) mở trong JS, JSON giống từng byte");
+  const blobs = (v.doc.photos).map((ph) => ({ id: bc.uuidToBytes(ph.id), bytes: exPhoto }));
+  const f = await bc.exportWithFixedRng(sm.password, nText, blobs, unhex(sm.salt_hex), unhex(sm.nonce_hex));
+  ok(sha(f) === sm.file.sha256, "YC-2026-05: JS xuất notice-v1 với salt/nonce cố định = tệp của Rust (giống từng byte)");
+  const t = await freshStore();
+  await t.applyImport(v, "replace");
+  ok((await t.stateHash()) === sm.state_sha256, "YC-2026-05: nhập vào IndexedDB → stateHash = state_hash(SQLite) của Rust");
+  const pA = await t.person("0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e01");
+  ok(pA.death.notice.certificate_photo_ids[0] === sm.cert_photo_id, "YC-2026-05: báo tử và ảnh giấy báo tử được giữ");
+  await t.deletePerson("0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e01");
+  const left = (await t.snapshot({ version: "0.2.0", platform: "pwa" }, "2026-01-01T00:00:00Z")).photos.map((x) => x.id);
+  ok(!left.includes(sm.cert_photo_id), "YC-2026-05: xóa hồ sơ → xóa ảnh giấy báo tử");
+  const bad = structuredClone(v.doc);
+  bad.photos = bad.photos.filter((x) => x.id !== sm.cert_photo_id);
+  let got = "";
+  try { S.validate.document(bad); } catch (e) { got = `${e.code} ${e.path}`; }
+  ok(got === "V3 /persons/0/death/notice/certificate_photo_ids/0", "YC-2026-05: ảnh giấy báo tử không tồn tại → V3 (cùng đường dẫn với Rust)");
+  // "notice": null ≡ vắng khóa (Rust: serde default + skip_serializing_if) → PWA bỏ khóa khi lưu, stateHash như Rust.
+  const withNull = structuredClone(v.doc);
+  const pB = withNull.persons.find((x) => x.death !== null && !("notice" in x.death));
+  pB.death.notice = null;
+  S.validate.document(withNull);
+  const t2 = await freshStore();
+  await t2.applyImport({ ...v, doc: withNull }, "replace");
+  ok((await t2.stateHash()) === sm.state_sha256, "YC-2026-05: tài liệu có \"notice\": null → lưu không có khóa, stateHash = Rust");
+  const stored = await t2.person(pB.id);
+  ok(!("notice" in stored.death), "YC-2026-05: putPerson/applyImport bỏ \"notice\": null (như Rust skip_serializing_if)");
+  await t2.putPerson(structuredClone({ ...stored, death: { ...stored.death, notice: null } }));
+  ok(!("notice" in (await t2.person(pB.id)).death) && (await t2.stateHash()) === sm.state_sha256, "YC-2026-05: putPerson với \"notice\": null → không ghi khóa");
+  results.notice_supplement = { opens: true, js_fixed_rng_equals_rust: sha(f) === sm.file.sha256 };
+}
+
 // ---------- V1–V8 ----------
 {
   const cases = json("validation-cases.json");

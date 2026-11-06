@@ -6,7 +6,7 @@ import {
   type JsonObj, type Snap, type Ymd,
 } from "./core";
 import type { Nav } from "./forms";
-import { eventsInPeriod, periodBounds, periodNext, periodPrev, type PeriodFilter, type PeriodKind } from "./period";
+import { eventsInPeriod, nextPeriod, periodBounds, prevPeriod, type PersonFilter as PeriodFilter, type PeriodKind } from "./period";
 import { drawPhoto } from "./photo";
 import { PI, backLink, confirmDialog, occItem, pressGroup, ruleSummary, toast } from "./ui";
 
@@ -29,6 +29,8 @@ export function webLimitPanel(openIcs: () => void, open = true): HTMLElement {
   return h("details", { class: "panel notice-web", open },
     h("summary", null, "Lời nhắc trên ứng dụng web"),
     h("p", null, "Ứng dụng web không gửi được thông báo khi đang đóng. Lời nhắc chỉ hiện ở đầu trang khi bạn mở ứng dụng vào ngày cần nhắc. Để điện thoại tự nhắc cả khi không mở ứng dụng, hãy xuất tệp lịch (.ics) và mở bằng ứng dụng Lịch của máy."),
+    // O-9 / `show_names` (lõi, mặc định không hiện tên) chỉ áp cho thông báo trên màn hình khóa của ứng dụng cài đặt.
+    h("p", { class: "fine", id: "web-names" }, "Lời nhắc trong ứng dụng ghi tên người thân vì chỉ hiện khi bạn đã mở ứng dụng. Ứng dụng web không có thông báo trên màn hình khóa nên không có tùy chọn “hiện tên trên màn hình khóa” như ứng dụng điện thoại và máy tính (ở đó mặc định không hiện tên)."),
     h("button", { type: "button", class: "btn2", id: "web-ics", onclick: openIcs }, "Xuất tệp lịch (.ics)…"));
 }
 
@@ -182,9 +184,9 @@ export async function renderPeriod(root: HTMLElement, nav: Nav): Promise<void> {
     }
     const group = pstate.kind === "quy" || pstate.kind === "nam";
     let lastM = -1;
-    for (const o of r.items) {
-      if (group && o.date.m !== lastM) { lastM = o.date.m; list.append(h("h3", { class: "pmonth" }, `Tháng ${o.date.m}/${o.date.y}`)); }
-      list.append(occItem(sn, o, openPerson(nav), t));
+    for (const it of r.items) {
+      if (group && it.date.m !== lastM) { lastM = it.date.m; list.append(h("h3", { class: "pmonth" }, `Tháng ${it.date.m}/${it.date.y}`)); }
+      list.append(occItem(sn, it.occ, openPerson(nav), t));
     }
   };
   root.append(h("section", { class: "panel period" },
@@ -192,9 +194,9 @@ export async function renderPeriod(root: HTMLElement, nav: Nav): Promise<void> {
       pressGroup("Loại kỳ", KIND_OPTS, pstate.kind, (v) => { pstate.kind = v; draw(); }, "pseg four"),
       pressGroup("Lọc", FILTER_OPTS, pstate.filter, (v) => { pstate.filter = v; draw(); }, "pseg three"), filterNote),
     h("div", { class: "pnav" },
-      h("button", { type: "button", class: "iconbtn", id: "period-prev", "aria-label": "Kỳ trước", onclick: () => { pstate.anchor = periodPrev(pstate.kind, pstate.anchor!); draw(); } }, "‹"),
+      h("button", { type: "button", class: "iconbtn", id: "period-prev", "aria-label": "Kỳ trước", onclick: () => { pstate.anchor = prevPeriod(pstate.kind, pstate.anchor!).from; draw(); } }, "‹"),
       h("div", { class: "pnav-mid", "aria-live": "polite" }, title, count),
-      h("button", { type: "button", class: "iconbtn", id: "period-next", "aria-label": "Kỳ sau", onclick: () => { pstate.anchor = periodNext(pstate.kind, pstate.anchor!); draw(); } }, "›")),
+      h("button", { type: "button", class: "iconbtn", id: "period-next", "aria-label": "Kỳ sau", onclick: () => { pstate.anchor = nextPeriod(pstate.kind, pstate.anchor!).from; draw(); } }, "›")),
     h("div", { class: "pnav-today" }, todayBtn, curNote),
     list));
   draw();

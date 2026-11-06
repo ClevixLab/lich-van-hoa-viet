@@ -222,23 +222,14 @@ export async function runPeople({ browser, BASE, ORIGIN, ROOT, SHOTS, check, met
     const ds = M.parseDataset(await store(`async (s) => JSON.stringify({ settings: await s.settings(), persons: await s.persons(), events: await s.events(), event_types: await s.eventTypes() })`));
     const ymd = (s) => ({ y: +s.slice(0, 4), m: +s.slice(5, 7), d: +s.slice(8, 10) });
     const isoOf = (d) => `${d.y}-${String(d.m).padStart(2, "0")}-${String(d.d).padStart(2, "0")}`;
-    // Kỳ tính độc lập bằng Date (UTC), không dùng bộ chuyển của PWA.
-    const bounds = (kind, a) => {
-      const t = Date.UTC(a.y, a.m - 1, a.d), D = (ms) => { const x = new Date(ms); return { y: x.getUTCFullYear(), m: x.getUTCMonth() + 1, d: x.getUTCDate() }; };
-      if (kind === "tuan") { const wd = (new Date(t).getUTCDay() + 6) % 7; return [D(t - wd * 864e5), D(t + (6 - wd) * 864e5)]; }
-      if (kind === "thang") return [D(Date.UTC(a.y, a.m - 1, 1)), D(Date.UTC(a.y, a.m, 0))];
-      if (kind === "quy") { const q = Math.floor((a.m - 1) / 3) * 3; return [D(Date.UTC(a.y, q, 1)), D(Date.UTC(a.y, q + 3, 0))]; }
-      return [D(Date.UTC(a.y, 0, 1)), D(Date.UTC(a.y, 11, 31))];
-    };
-    const kindOf = new Map(ds.persons.map((p) => [p.id, p.kind]));
-    // Bổ sung B4 (04), viết lại độc lập trong kiểm thử: bỏ sự kiện gắn ít nhất một người đã mất; "đã mất" = giỗ + tiên thường.
-    const dsB4 = { ...ds, events: ds.events.filter((e) => !e.person_ids.some((id) => kindOf.get(id) === "deceased")) };
-    check(dsB4.events.length === ds.events.length - 2, `B4: ${ds.events.length - dsB4.events.length} sự kiện gắn người đã mất bị loại khỏi tập mong đợi (Ngày cưới của ông, Họp mặt chung)`);
-    const expected = (kind, anchor, filter) => {
-      const [from, to] = bounds(kind, anchor);
-      const dead = (o) => o.class === "gio" || o.class === "tien_thuong";
-      return M.occurrencesWithTt(cal, dsB4, from, to).filter((o) => filter === "tat_ca" || dead(o) === (filter === "da_mat")).map((o) => `${o.class}@${isoOf(o.date)}`);
-    };
+    // MA3-15-01: mong đợi = `eventsInPeriod` của lõi (tsport, cổng của memorial/src/period.rs) — kiểm thử không tự
+    // viết lại quy tắc kỳ hay B4. Giao diện phải hiện đúng từng mục, đúng thứ tự.
+    const mixed = ds.events.find((e) => e.tieu_de === "Họp mặt chung");
+    const expected = (kind, anchor, filter) => M.eventsInPeriod(cal, ds, kind, anchor, filter).items.map((it) => `${it.class}@${isoOf(it.date)}`);
+    // B4 mục 2: sự kiện gắn [đã mất, đang sống] không có ở BẤT KỲ bộ lọc nào (kỳ nào cũng vậy).
+    const mixedHits = ["tuan", "thang", "quy", "nam"].flatMap((k) => ["tat_ca", "da_mat", "dang_song"].flatMap((f) => M.eventsInPeriod(cal, ds, k, ymd("2026-08-15"), f).items.filter((it) => it.entity_id === mixed.id)));
+    const mixedRaw = M.occurrences(cal, { ...ds, events: [mixed], persons: ds.persons.map((p) => ({ ...p, death: null, kind: "living" })) }, ymd("2026-08-01"), ymd("2026-08-31")).length;
+    check(mixed && mixedRaw === 1 && mixedHits.length === 0, `B4 (L5): sự kiện "Họp mặt chung" gắn [Nguyễn Văn A (đã mất), Lê Văn C] không có ở bộ lọc nào (0 mục / 12 kỳ × bộ lọc; nếu không có B4 sẽ có ${mixedRaw})`);
     const shown = () => page.$$eval("#period-list .pitem", (els) => els.map((e) => `${e.dataset.class}@${e.dataset.date}`));
     await go("#/nguoi-than/theo-ky", "#period-title");
     const t0 = ymd(TODAY);
@@ -313,7 +304,7 @@ export async function runPeople({ browser, BASE, ORIGIN, ROOT, SHOTS, check, met
     // ---------- L6: Sắp tới, L7: thẻ nhắc ----------
     await go("#/nguoi-than", "#upcoming-list");
     const up = await page.$$eval("#upcoming-list .pitem", (els) => els.map((e) => `${e.dataset.class}@${e.dataset.date}`));
-    const upExp = M.upcoming(cal, dsB4, t0, 30).map((u) => `${u.occ.class}@${isoOf(u.occ.date)}`);
+    const upExp = M.upcoming(cal, ds, t0, 30).map((u) => `${u.occ.class}@${isoOf(u.occ.date)}`);
     check(JSON.stringify(up) === JSON.stringify(upExp), `L6: "Sắp tới" 30 ngày khớp upcoming() của lõi (${up.length} mục)`);
     check((await text("#upcoming-list")).includes("Còn 3 ngày"), "L6: mục ghi \"Còn 3 ngày\"");
     check((await text(".remind")).includes("Còn 3 ngày: Giỗ đầu Ông Nguyễn Văn A"), "L7: thẻ nhắc trong trang Sắp tới");
@@ -394,13 +385,18 @@ export async function runPeople({ browser, BASE, ORIGIN, ROOT, SHOTS, check, met
     await page.fill("#bk-pw2", "nhà có cây bàng");
     await shot("backup-dialog-360", false);
     const dlP = page.waitForEvent("download", { timeout: 120000 });
+    // MA3-15-03: ghi lại mọi sự kiện "cancel" (Esc) và việc nó có bị chặn không, để kết quả không phụ thuộc thời gian mã hóa.
+    await page.evaluate(() => { window.__esc = []; window.addEventListener("cancel", (e) => { const busy = e.target.getAttribute("aria-busy"); setTimeout(() => window.__esc.push({ busy, prevented: e.defaultPrevented })); }, true); });
     await page.click(".bk-dialog .dbtn.main");
-    await page.keyboard.press("Escape"); // MA3-15-03: đang mã hóa → Esc không đóng được hộp
-    const escHeld = await page.locator(".bk-dialog[open]").count();
+    await page.waitForSelector('.bk-dialog[aria-busy="true"]', { timeout: 5000 }).catch(() => {});
+    await page.keyboard.press("Escape"); // đang mã hóa → Esc không đóng được hộp
+    const escOpen = await page.locator(".bk-dialog[open]").count();
     const bk = await dlP;
     const bkBytes = readFileSync(await bk.path());
     check(bk.suggestedFilename() === `LichVanHoaViet-saoluu-${TODAY}.lvhv` && bkBytes.subarray(0, 7).toString() === "LVHVBAK", `L9: tải ${bk.suggestedFilename()} (${bkBytes.length} byte)`);
-    check(escHeld === 1, "MA3-15-03: nhấn Esc trong lúc mã hóa — hộp \"Tạo tệp sao lưu\" vẫn mở, tệp vẫn được tải");
+    const esc = await page.evaluate(() => window.__esc);
+    check(esc.length >= 1 && esc.every((x) => x.busy !== "true" || x.prevented) && esc.some((x) => x.busy === "true" && x.prevented) && escOpen <= 1,
+      `MA3-15-03: nhấn Esc trong lúc mã hóa — Esc bị chặn, hộp không bị hủy, tệp vẫn được tải (${JSON.stringify(esc)})`);
     // Trang Sao lưu dựng lại sau khi xuất xong — chờ đúng dòng mới, không đọc bản cũ.
     const lastOk = await page.waitForSelector('#bk-last:has-text("Lần sao lưu gần nhất: 25/07/2026")', { timeout: 30000 }).then(() => true, () => false);
     check(lastOk, `L9: ghi lần sao lưu gần nhất (${await text("#bk-last")})`);
@@ -444,6 +440,12 @@ export async function runPeople({ browser, BASE, ORIGIN, ROOT, SHOTS, check, met
     await page.waitForSelector('.toast:has-text("Đã khôi phục: 3 người, 4 sự kiện.")', { timeout: 60000 });
     const h2 = await store(`async (s) => s.stateHash()`);
     check(h1 === h2, "L9/L10: xuất → xóa một hồ sơ → nhập \"Thay toàn bộ\" → dữ liệu giống hệt (stateHash)");
+    // TK-16: sau "Thay toàn bộ", trang nói thật: dữ liệu khôi phục từ tệp ngày …; trên máy này chưa sao lưu.
+    await page.waitForSelector("#bk-restored");
+    const lastAfter = await text("#bk-last"), restoredTxt = await text("#bk-restored");
+    check(restoredTxt === `Dữ liệu được khôi phục từ bản sao lưu ngày ${TODAY.slice(8, 10)}/${TODAY.slice(5, 7)}/${TODAY.slice(0, 4)}.` && /^(Chưa sao lưu lần nào trên máy này|Lần sao lưu gần nhất: )/.test(lastAfter) && h1 === h2,
+      `TK-16: sau khôi phục "${lastAfter}" + "${restoredTxt}"; stateHash không đổi`);
+    await shot("backup-restored-360");
     check((await text(".toast")).startsWith("Đã khôi phục: 3 người") && await page.locator(".pdialog[open]").count() === 0, "MA3-15-03: nhấn Esc trong lúc khôi phục — hộp không bị hủy giữa chừng, có thông báo \"Đã khôi phục\", không còn hộp mở");
 
     // ---------- Ảnh chụp mọi màn hình mới: 360/1280 × sáng/tối; bố cục (TK-02) và vùng chạm (TK-05) ở A và A++ ----------
@@ -703,7 +705,7 @@ export async function runPeople({ browser, BASE, ORIGIN, ROOT, SHOTS, check, met
     await page.waitForSelector("#upcoming-list");
     await cdp.send("HeapProfiler.collectGarbage");
     const heap = await cdp.send("Runtime.getHeapUsage");
-    metrics.people = { screenshots: shots, heap_upcoming_mb: +(heap.usedSize / 1048576).toFixed(2), adapter: "pwa/src/people/period.ts (bộ chuyển tạm, chờ tsport eventsInPeriod)" };
+    metrics.people = { screenshots: shots, heap_upcoming_mb: +(heap.usedSize / 1048576).toFixed(2), period: "tsport eventsInPeriod (memorial_period.ts)" };
   } catch (e) {
     await page.screenshot({ path: join(SHOTS, "v02-FAIL.png"), fullPage: true }).catch(() => {});
     const diag = await page.evaluate(() => ({ url: location.hash, dialogs: [...document.querySelectorAll("dialog[open]")].map((d) => d.innerText.slice(0, 300)), main: document.querySelector("main")?.innerText.slice(0, 600) })).catch(() => ({}));

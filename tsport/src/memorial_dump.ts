@@ -83,14 +83,16 @@ export function reminderLine(out: string[], cfg: number, r: Reminder): void {
 export function classOccurrences(cal: Cal, ds: Dataset, cls: OccClass, from: Ymd, to: Ymd): Occurrence[] {
   return occurrences(cal, ds, from, to).filter((o) => o.class === cls);
 }
-export function r3Reminders(ds: Dataset, occs: Occurrence[], c: R3Config, now: number, tz: Zone): Reminder[] {
+/** R3 dump sub-mode (04 Bổ sung B3 item 2): "normal" | "global_off" | "rule_off". */
+export type R3Mode = "normal" | "global_off" | "rule_off";
+export function r3Reminders(ds: Dataset, occs: Occurrence[], c: R3Config, now: number, tz: Zone, mode: R3Mode = "normal"): Reminder[] {
   const offs = uiOffsets(c.state);
   const out: Reminder[] = [];
   for (const o of occs) {
     const base = ruleOf(ds, o);
     if (base === null) continue;
-    const rule: ReminderRule = { id: base.id, enabled: true, offsets_days: offs, time_local: c.time_local, tien_thuong: c.tien_thuong };
-    out.push(...remindersFor(true, rule, o, now, tz));
+    const rule: ReminderRule = { id: base.id, enabled: mode !== "rule_off", offsets_days: offs, time_local: c.time_local, tien_thuong: c.tien_thuong };
+    out.push(...remindersFor(mode !== "global_off", rule, o, now, tz));
   }
   sortReminders(out);
   return out;
@@ -190,7 +192,7 @@ export function scaledDataset(base: Dataset, n: number): Dataset {
   return ds;
 }
 
-export const R12_HEADER = "size,scenario,opens,max_pending,delivered,sentinel_delivered,violations,missed,missed_without_sentinel\n";
+export const R12_HEADER = "size,scenario,opens,max_pending,delivered,sentinel_delivered,violations,missed,missed_without_sentinel,i1,i2,i3,i4\n";
 export const R12_STEPS_HEADER = "size,scenario,day,future,pending,sentinel,dropped,violations\n";
 export const R12_SCENARIOS: readonly [string, number, number][] = [["p1", 1, 1], ["p0.1", 1, 10], ["p0", 0, 1]];
 
@@ -200,7 +202,7 @@ export function r12Lines(cal: Cal, base: Dataset, sizes: number[], out: string[]
     const ds = scaledDataset(base, n);
     for (const [name, pn, pd] of R12_SCENARIOS) {
       const r = simulate(cal, ds, tz, ymd(2026, 1, 1), ymd(2028, 12, 31), 9 * 60, pn, pd, 20261106, false);
-      out.push(`${n},${name},${r.opens},${r.max_pending},${r.delivered},${r.sentinel_delivered},${r.violations},${r.missed},${r.missed_without_sentinel}\n`);
+      out.push(`${n},${name},${r.opens},${r.max_pending},${r.delivered},${r.sentinel_delivered},${r.violations},${r.missed},${r.missed_without_sentinel},${r.by_inv.join(",")}\n`);
       if (steps !== null) {
         for (const st of r.steps) {
           steps.push(`${n},${name},${iso(st.day)},${st.future},${st.pending},${st.sentinel ? 1 : 0},${st.dropped},${st.violations.join(" ")}\n`);

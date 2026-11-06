@@ -112,8 +112,21 @@ pub struct Tuoi {
     pub approx: bool,
 }
 
+/// 01 §3.2a — thông tin báo tử (Bổ sung YC-2026-05). Chỉ hiện trên trang hồ sơ; không bao giờ vào thông
+/// báo, .ics, màn hình tưởng niệm, tên tệp hay URL.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DeathNotice {
+    pub reported_by: Option<String>,
+    pub place: Option<String>,
+    pub reason: Option<String>,
+    pub notice_date: Option<DateValue>,
+    pub certificate_photo_ids: Vec<String>,
+    pub note: Option<String>,
+}
+
 /// 01 §3.2.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct DeathInfo {
     pub input: DateValue,
@@ -122,6 +135,9 @@ pub struct DeathInfo {
     pub lunar_source: LunarSource,
     pub method: MethodName,
     pub tuoi: Tuoi,
+    /// 01 §3.2a: khóa tùy chọn, thiếu ≡ `null` (không ghi khi `None`, để tài liệu cũ giữ nguyên từng byte).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub notice: Option<DeathNotice>,
 }
 
 /// 01 §3.3.

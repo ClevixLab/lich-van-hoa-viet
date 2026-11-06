@@ -229,15 +229,21 @@ pub struct Plan {
     pub replace: Vec<Pending>,
 }
 
-/// Phần chọn của `reschedule` (02 §7.4): từ `desired` (đã sắp theo (at, id), mọi phần tử
-/// `at > now` và trong cửa sổ) chọn tối đa 64 yêu cầu.
-pub fn select_keep(desired: &[Pending]) -> Vec<Pending> {
-    if desired.len() > CAP {
-        let mut keep: Vec<Pending> = desired[..CAP - 1].to_vec();
-        let last = keep[CAP - 2].at;
+/// Phần chọn của `reschedule` (02 §7.4, Bổ sung B3): từ `desired` (đã sắp theo (at, id), mọi phần
+/// tử `at > now` và trong cửa sổ `(now, hi]`) chọn tối đa 64 yêu cầu. `beyond` = còn lời nhắc tương
+/// lai sau `hi` (ngoài cửa sổ 400 ngày).
+///
+/// Có lời nhắc không được đặt (vượt 64 trong cửa sổ, hoặc `beyond`) → giữ `k = min(len, 63)` cái sớm
+/// nhất + thông báo nhắc mở ứng dụng tại `at` của cái thứ `k` (cùng phút, xếp sau theo id); `k = 0`
+/// → thông báo đặt tại `fallback_at` (09:00 giờ thiết bị của ngày `hôm nay + 399`, xem [`sentinel_fallback`]).
+pub fn select_keep(desired: &[Pending], beyond: bool, fallback_at: i64) -> Vec<Pending> {
+    if desired.len() > CAP || beyond {
+        let k = desired.len().min(CAP - 1);
+        let mut keep: Vec<Pending> = desired[..k].to_vec();
+        let at = keep.last().map_or(fallback_at, |p| p.at);
         keep.push(Pending {
             id: SENTINEL_ID.to_string(),
-            at: last + 1,
+            at,
             content: SENTINEL_TEXT.to_string(),
         });
         keep
@@ -247,8 +253,20 @@ pub fn select_keep(desired: &[Pending]) -> Vec<Pending> {
 }
 
 /// `reschedule(now)` (02 §7.4) dạng thuần: `desired_all` là mọi lời nhắc tương lai (bất kỳ thứ
-/// tự), `pending` là hàng đợi hiện có.
-pub fn reschedule(now: i64, desired_all: &[Pending], pending: &[Pending]) -> Plan {
+/// tự; ngoài cửa sổ 400 ngày chỉ cần đủ để biết có hay không — xem [`reschedule_input`]), `pending`
+/// là hàng đợi hiện có.
+/// Thời điểm của thông báo nhắc mở ứng dụng khi không đặt được lời nhắc nào trong cửa sổ (02 §7.4, ghi chú
+/// duyệt mã MA3-14-06): 09:00 giờ thiết bị của ngày `hôm nay + 399` — sau `now`, không muộn hơn
+/// `now + 400 ngày`, và không kêu lúc nửa đêm.
+pub fn sentinel_fallback(now: i64, tz: &Zone) -> i64 {
+    let today = tz.to_local(now).div_euclid(1440);
+    tz.local_to_utc((today + WINDOW_DAYS - 1) * 1440 + SENTINEL_FALLBACK_HHMM)
+}
+
+/// Giờ đồng hồ của thông báo nhắc mở ứng dụng khi không đặt được lời nhắc nào (09:00).
+pub const SENTINEL_FALLBACK_HHMM: i64 = 9 * 60;
+
+pub fn reschedule(now: i64, desired_all: &[Pending], pending: &[Pending], tz: &Zone) -> Plan {
     let hi = now + WINDOW_DAYS * 1440;
     let mut desired: Vec<Pending> = desired_all
         .iter()
@@ -259,7 +277,8 @@ pub fn reschedule(now: i64, desired_all: &[Pending], pending: &[Pending]) -> Pla
         a.at.cmp(&b.at)
             .then_with(|| a.id.as_bytes().cmp(b.id.as_bytes()))
     });
-    let keep = select_keep(&desired);
+    let beyond = desired_all.iter().any(|p| p.at > hi);
+    let keep = select_keep(&desired, beyond, sentinel_fallback(now, tz));
     let mut plan = Plan::default();
     for p in pending {
         if !keep.iter().any(|k| k.id == p.id) {
@@ -295,6 +314,43 @@ pub fn apply_plan(pending: &[Pending], plan: &Plan) -> Vec<Pending> {
             .then_with(|| a.id.as_bytes().cmp(b.id.as_bytes()))
     });
     q
+}
+
+/// Số ngày sau cửa sổ cần quét để chắc chắn thấy lời nhắc ngoài cửa sổ của mục lặp hằng năm (năm âm
+/// dài tối đa 385 ngày + mốc nhắc trước tối đa 60 ngày, có dư).
+pub const BEYOND_SCAN_DAYS: i64 = 500;
+
+/// Đầu vào `desired_all` cho `reschedule` tại `now`: mọi lời nhắc `at > now` của các lần xuất hiện có
+/// ngày trong `[hôm nay, hôm nay + 400 + 500 ngày]` (đủ để thấy lời nhắc ngoài cửa sổ của mọi mục lặp),
+/// cộng mọi lời nhắc của sự kiện không lặp tới 3000-12-31. Đã sắp theo (at, id).
+pub fn reschedule_input(cal: &Cal, ds: &Dataset, now: i64, tz: &Zone) -> Vec<Reminder> {
+    let today = Ymd::from_jdn(tz.to_local(now).div_euclid(1440));
+    let to = Ymd::from_jdn(today.jdn() + WINDOW_DAYS + BEYOND_SCAN_DAYS);
+    let mut v = all_reminders(cal, ds, today, to, now, tz);
+    v.extend(once_reminders_after(cal, ds, to, now, tz));
+    sort_reminders(&mut v);
+    v
+}
+
+/// Lời nhắc (`at > now`) của sự kiện không lặp có ngày sau `after`, tới 3000-12-31.
+fn once_reminders_after(cal: &Cal, ds: &Dataset, after: Ymd, now: i64, tz: &Zone) -> Vec<Reminder> {
+    let once = Dataset {
+        reminders_enabled: ds.reminders_enabled,
+        persons: Vec::new(),
+        events: ds
+            .events
+            .iter()
+            .filter(|e| crate::occ::event_class(e) == OccClass::SuKienKhongLap)
+            .cloned()
+            .collect(),
+        event_types: ds.event_types.clone(),
+    };
+    let from = Ymd::from_jdn(after.jdn() + 1);
+    let end = Ymd::new(3000, 12, 31);
+    if once.events.is_empty() || from > end {
+        return Vec::new();
+    }
+    all_reminders(cal, &once, from, end, now, tz)
 }
 
 /// Chuyển lời nhắc thành yêu cầu chờ (nội dung = văn bản màn hình khóa theo `show_names`, O-9).
@@ -337,7 +393,7 @@ pub struct SimStep {
     pub sentinel: bool,
     /// Số lời nhắc trong cửa sổ bị `reschedule` bỏ (không giữ).
     pub dropped: usize,
-    /// Vi phạm bất biến (mã I1/I2/I3), rỗng nếu không có.
+    /// Vi phạm bất biến (mã I1/I2/I3/I4), rỗng nếu không có.
     pub violations: Vec<&'static str>,
 }
 
@@ -351,6 +407,8 @@ pub struct SimResult {
     pub sentinel_delivered: usize,
     pub max_pending: usize,
     pub violations: usize,
+    /// Số vi phạm theo từng bất biến I1, I2, I3, I4.
+    pub by_inv: [usize; 4],
     /// (Thông tin, không phải bất biến) lời nhắc đã qua thời điểm mà không được giao.
     pub missed: usize,
     /// … trong đó không có thông báo nhắc mở ứng dụng nào được giao trước hoặc cùng phút.
@@ -364,9 +422,19 @@ pub struct SimResult {
 /// Bất biến:
 /// - I1 (mọi ngày): số yêu cầu chờ ≤ 64;
 /// - I2 (sau mỗi `reschedule`): nếu số lời nhắc tương lai trong cửa sổ ≥ 64 thì 63 cái sớm nhất
-///   (theo (at, id)) đang chờ và thông báo nhắc mở ứng dụng có `at` = `at` của cái thứ 63 + 1 phút;
+///   (theo (at, id)) đang chờ và thông báo nhắc mở ứng dụng có `at` = `at` của cái thứ 63 (cùng phút,
+///   đứng sau theo id — 02 §7.4, Bổ sung B2);
 /// - I3 (sau mỗi `reschedule`): mọi lời nhắc trong cửa sổ không được giữ có `at` ≥ `at` của thông
-///   báo nhắc mở ứng dụng (thông báo này đứng trước hoặc cùng phút với nó).
+///   báo nhắc mở ứng dụng (thông báo này đứng trước hoặc cùng phút với nó);
+/// - I4 (sau mỗi `reschedule`, Bổ sung B3): nếu có lời nhắc tương lai nào (trong hay ngoài cửa sổ)
+///   không được đặt thì có thông báo nhắc mở ứng dụng với `at` ≤ lời nhắc sớm nhất trong số đó.
+///
+/// I2 mở rộng theo B3: khi có ≥ 64 lời nhắc trong cửa sổ, thông báo nhắc mở ứng dụng phải có (tại
+/// `at` của cái thứ 63) nếu còn lời nhắc không được đặt (> 64 trong cửa sổ hoặc có lời nhắc ngoài
+/// cửa sổ), và không có nếu không còn.
+///
+/// Đếm: `delivered` **gồm** thông báo nhắc mở ứng dụng (`sentinel_delivered` là phần đó). Ngày đầu
+/// luôn mở và **không** rút số ngẫu nhiên; số đầu tiên của bộ sinh dùng cho ngày thứ hai.
 #[allow(clippy::too_many_arguments)]
 pub fn simulate(
     cal: &Cal,
@@ -380,8 +448,11 @@ pub fn simulate(
     seed: u32,
     show_names: bool,
 ) -> SimResult {
-    let horizon_to = Ymd::from_jdn(end.jdn() + WINDOW_DAYS + 61);
-    let all = all_reminders(cal, ds, start, horizon_to, i64::MIN, tz);
+    // Đủ để thấy lời nhắc ngoài cửa sổ ở mọi lần mở (xem `reschedule_input`).
+    let horizon_to = Ymd::from_jdn(end.jdn() + WINDOW_DAYS + BEYOND_SCAN_DAYS);
+    let mut all = all_reminders(cal, ds, start, horizon_to, i64::MIN, tz);
+    all.extend(once_reminders_after(cal, ds, horizon_to, i64::MIN, tz));
+    sort_reminders(&mut all);
     let all_p: Vec<Pending> = all.iter().map(|r| to_pending(cal, r, show_names)).collect();
     let mut rng = Mulberry32(seed);
     let mut pending: Vec<Pending> = Vec::new();
@@ -418,7 +489,7 @@ pub fn simulate(
         };
         if opened {
             res.opens += 1;
-            let plan = reschedule(t_open, &all_p, &pending);
+            let plan = reschedule(t_open, &all_p, &pending, tz);
             pending = apply_plan(&pending, &plan);
             let hi = t_open + WINDOW_DAYS * 1440;
             let fut: Vec<&Pending> = all_p
@@ -431,8 +502,9 @@ pub fn simulate(
                 let ok63 = fut[..CAP - 1]
                     .iter()
                     .all(|f| pending.iter().any(|p| p.id == f.id && p.at == f.at));
-                let want_s = if fut.len() > CAP {
-                    Some(fut[CAP - 2].at + 1)
+                let beyond = all_p.iter().any(|p| p.at > hi);
+                let want_s = if fut.len() > CAP || beyond {
+                    Some(fut[CAP - 2].at)
                 } else {
                     None
                 };
@@ -445,8 +517,24 @@ pub fn simulate(
             if dropped.iter().any(|f| sentinel.is_none_or(|s| f.at < s)) {
                 v.push("I3");
             }
+            let earliest_unscheduled = all_p
+                .iter()
+                .filter(|p| p.at > t_open && !kept(&p.id))
+                .map(|p| p.at)
+                .min();
+            if earliest_unscheduled.is_some_and(|u| sentinel.is_none_or(|s| s > u)) {
+                v.push("I4");
+            }
             if pending.len() > CAP {
                 v.push("I1");
+            }
+            for c in &v {
+                res.by_inv[match *c {
+                    "I1" => 0,
+                    "I2" => 1,
+                    "I3" => 2,
+                    _ => 3,
+                }] += 1;
             }
             res.violations += v.len();
             res.max_pending = res.max_pending.max(pending.len());
@@ -460,6 +548,7 @@ pub fn simulate(
             });
         } else if pending.len() > CAP {
             res.violations += 1;
+            res.by_inv[0] += 1;
         }
     }
     let t_end = tz.local_to_utc(local_minutes(end, open_hhmm));

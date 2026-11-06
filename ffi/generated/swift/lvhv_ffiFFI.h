@@ -251,6 +251,161 @@ typedef void (*UniffiForeignFutureCompleteVoid)(uint64_t, UniffiForeignFutureStr
     );
 
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_CLONE_LVHVSTORE
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_CLONE_LVHVSTORE
+void*_Nonnull uniffi_lvhv_ffi_fn_clone_lvhvstore(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_FREE_LVHVSTORE
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_FREE_LVHVSTORE
+void uniffi_lvhv_ffi_fn_free_lvhvstore(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_CONSTRUCTOR_LVHVSTORE_OPEN
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_CONSTRUCTOR_LVHVSTORE_OPEN
+void*_Nonnull uniffi_lvhv_ffi_fn_constructor_lvhvstore_open(RustBuffer dir, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_ADD_PHOTO
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_ADD_PHOTO
+RustBuffer uniffi_lvhv_ffi_fn_method_lvhvstore_add_photo(void*_Nonnull ptr, RustBuffer id, RustBuffer mime, uint32_t width, uint32_t height, RustBuffer bytes, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_ANDROID_ALARM_STEP_JSON
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_ANDROID_ALARM_STEP_JSON
+RustBuffer uniffi_lvhv_ffi_fn_method_lvhvstore_android_alarm_step_json(void*_Nonnull ptr, int64_t now_unix_s, RustBuffer last_run_unix_s, RustBuffer zone, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_APPLY_IMPORT
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_APPLY_IMPORT
+void uniffi_lvhv_ffi_fn_method_lvhvstore_apply_import(void*_Nonnull ptr, void*_Nonnull backup, RustBuffer mode, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_BACKUP_REMINDER_DUE
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_BACKUP_REMINDER_DUE
+int8_t uniffi_lvhv_ffi_fn_method_lvhvstore_backup_reminder_due(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_DATASET_JSON
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_DATASET_JSON
+RustBuffer uniffi_lvhv_ffi_fn_method_lvhvstore_dataset_json(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_DELETE_EVENT
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_DELETE_EVENT
+void uniffi_lvhv_ffi_fn_method_lvhvstore_delete_event(void*_Nonnull ptr, RustBuffer id, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_DELETE_PERSON
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_DELETE_PERSON
+void uniffi_lvhv_ffi_fn_method_lvhvstore_delete_person(void*_Nonnull ptr, RustBuffer id, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_EVENT_TYPES_JSON
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_EVENT_TYPES_JSON
+RustBuffer uniffi_lvhv_ffi_fn_method_lvhvstore_event_types_json(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_EVENTS_IN_PERIOD_JSON
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_EVENTS_IN_PERIOD_JSON
+RustBuffer uniffi_lvhv_ffi_fn_method_lvhvstore_events_in_period_json(void*_Nonnull ptr, RustBuffer kind, RustBuffer anchor, RustBuffer filter, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_EVENTS_JSON
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_EVENTS_JSON
+RustBuffer uniffi_lvhv_ffi_fn_method_lvhvstore_events_json(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_EXPORT_BACKUP
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_EXPORT_BACKUP
+RustBuffer uniffi_lvhv_ffi_fn_method_lvhvstore_export_backup(void*_Nonnull ptr, RustBuffer password, RustBuffer app_version, RustBuffer platform, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_LOCK_SCREEN_NAMES
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_LOCK_SCREEN_NAMES
+int8_t uniffi_lvhv_ffi_fn_method_lvhvstore_lock_screen_names(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_MARK_DECEASED_JSON
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_MARK_DECEASED_JSON
+RustBuffer uniffi_lvhv_ffi_fn_method_lvhvstore_mark_deceased_json(void*_Nonnull ptr, RustBuffer person_id, RustBuffer death_date_value_json, RustBuffer notice_json, RustBuffer today, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_PERSON_JSON
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_PERSON_JSON
+RustBuffer uniffi_lvhv_ffi_fn_method_lvhvstore_person_json(void*_Nonnull ptr, RustBuffer id, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_PERSONS_JSON
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_PERSONS_JSON
+RustBuffer uniffi_lvhv_ffi_fn_method_lvhvstore_persons_json(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_PHOTO_BYTES
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_PHOTO_BYTES
+RustBuffer uniffi_lvhv_ffi_fn_method_lvhvstore_photo_bytes(void*_Nonnull ptr, RustBuffer id, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_PUT_SETTINGS_JSON
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_PUT_SETTINGS_JSON
+void uniffi_lvhv_ffi_fn_method_lvhvstore_put_settings_json(void*_Nonnull ptr, RustBuffer json, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_REMINDERS_JSON
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_REMINDERS_JSON
+RustBuffer uniffi_lvhv_ffi_fn_method_lvhvstore_reminders_json(void*_Nonnull ptr, int64_t now_unix_s, RustBuffer zone, uint32_t horizon_days, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_RESCHEDULE_JSON
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_RESCHEDULE_JSON
+RustBuffer uniffi_lvhv_ffi_fn_method_lvhvstore_reschedule_json(void*_Nonnull ptr, int64_t now_unix_s, RustBuffer zone, RustBuffer pending_json, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_SAVE_EVENT_JSON
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_SAVE_EVENT_JSON
+RustBuffer uniffi_lvhv_ffi_fn_method_lvhvstore_save_event_json(void*_Nonnull ptr, RustBuffer json, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_SAVE_EVENT_TYPE_JSON
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_SAVE_EVENT_TYPE_JSON
+RustBuffer uniffi_lvhv_ffi_fn_method_lvhvstore_save_event_type_json(void*_Nonnull ptr, RustBuffer json, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_SAVE_PERSON_JSON
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_SAVE_PERSON_JSON
+RustBuffer uniffi_lvhv_ffi_fn_method_lvhvstore_save_person_json(void*_Nonnull ptr, RustBuffer json, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_SET_LOCK_SCREEN_NAMES
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_SET_LOCK_SCREEN_NAMES
+void uniffi_lvhv_ffi_fn_method_lvhvstore_set_lock_screen_names(void*_Nonnull ptr, int8_t show, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_SETTINGS_JSON
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_SETTINGS_JSON
+RustBuffer uniffi_lvhv_ffi_fn_method_lvhvstore_settings_json(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_UPCOMING_JSON
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_UPCOMING_JSON
+RustBuffer uniffi_lvhv_ffi_fn_method_lvhvstore_upcoming_json(void*_Nonnull ptr, RustBuffer today, uint32_t days, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_CLONE_VERIFIEDBACKUP
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_CLONE_VERIFIEDBACKUP
+void*_Nonnull uniffi_lvhv_ffi_fn_clone_verifiedbackup(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_FREE_VERIFIEDBACKUP
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_FREE_VERIFIEDBACKUP
+void uniffi_lvhv_ffi_fn_free_verifiedbackup(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_VERIFIEDBACKUP_PREVIEW
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_VERIFIEDBACKUP_PREVIEW
+RustBuffer uniffi_lvhv_ffi_fn_method_verifiedbackup_preview(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_FUNC_ACTIVITIES_JSON
 #define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_FUNC_ACTIVITIES_JSON
 RustBuffer uniffi_lvhv_ffi_fn_func_activities_json(RustCallStatus *_Nonnull out_status
@@ -260,6 +415,11 @@ RustBuffer uniffi_lvhv_ffi_fn_func_activities_json(RustCallStatus *_Nonnull out_
 #ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_FUNC_ADD_DAYS
 #define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_FUNC_ADD_DAYS
 RustBuffer uniffi_lvhv_ffi_fn_func_add_days(RustBuffer day, int32_t n, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_FUNC_ANDROID_ALARM_STEP_JSON
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_FUNC_ANDROID_ALARM_STEP_JSON
+RustBuffer uniffi_lvhv_ffi_fn_func_android_alarm_step_json(RustBuffer dataset_json, int64_t now_unix_s, RustBuffer last_run_unix_s, RustBuffer zone, int8_t show_names, RustCallStatus *_Nonnull out_status
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_FUNC_BUILD_INFO_JSON
@@ -312,9 +472,29 @@ RustBuffer uniffi_lvhv_ffi_fn_func_day_rating(int32_t score, RustCallStatus *_No
 int32_t uniffi_lvhv_ffi_fn_func_days_in_month(int32_t y, int32_t m, RustCallStatus *_Nonnull out_status
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_FUNC_DERIVE_BIRTH_JSON
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_FUNC_DERIVE_BIRTH_JSON
+RustBuffer uniffi_lvhv_ffi_fn_func_derive_birth_json(RustBuffer date_value_json, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_FUNC_DERIVE_PERSON_JSON
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_FUNC_DERIVE_PERSON_JSON
+RustBuffer uniffi_lvhv_ffi_fn_func_derive_person_json(RustBuffer json, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_FUNC_EVENTS_IN_PERIOD_JSON
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_FUNC_EVENTS_IN_PERIOD_JSON
+RustBuffer uniffi_lvhv_ffi_fn_func_events_in_period_json(RustBuffer dataset_json, RustBuffer kind, RustBuffer anchor, RustBuffer filter, RustCallStatus *_Nonnull out_status
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_FUNC_FIND_GOOD_DAYS_JSON
 #define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_FUNC_FIND_GOOD_DAYS_JSON
 RustBuffer uniffi_lvhv_ffi_fn_func_find_good_days_json(RustBuffer activity, RustBuffer from, RustBuffer to, RustBuffer birth_lunar_year, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_FUNC_ICS_EXPORT
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_FUNC_ICS_EXPORT
+RustBuffer uniffi_lvhv_ffi_fn_func_ics_export(RustBuffer dataset_json, RustBuffer today, int64_t now_unix_s, RustBuffer only_ids, RustCallStatus *_Nonnull out_status
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_FUNC_LUNAR_METHOD
@@ -338,15 +518,72 @@ int32_t uniffi_lvhv_ffi_fn_func_lunar_year_of_birth(RustBuffer birth, RustCallSt
 RustBuffer uniffi_lvhv_ffi_fn_func_month_lunar_days(int32_t y, int32_t m, RustCallStatus *_Nonnull out_status
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_FUNC_NEW_UUID
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_FUNC_NEW_UUID
+RustBuffer uniffi_lvhv_ffi_fn_func_new_uuid(RustCallStatus *_Nonnull out_status
+    
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_FUNC_NGOCHAP_SOURCES_BLOCKS_JSON
 #define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_FUNC_NGOCHAP_SOURCES_BLOCKS_JSON
 RustBuffer uniffi_lvhv_ffi_fn_func_ngochap_sources_blocks_json(RustCallStatus *_Nonnull out_status
     
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_FUNC_OPEN_BACKUP
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_FUNC_OPEN_BACKUP
+void*_Nonnull uniffi_lvhv_ffi_fn_func_open_backup(RustBuffer file, RustBuffer password, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_FUNC_PERIOD_BOUNDS
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_FUNC_PERIOD_BOUNDS
+RustBuffer uniffi_lvhv_ffi_fn_func_period_bounds(RustBuffer kind, RustBuffer anchor, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_FUNC_PERIOD_NEXT
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_FUNC_PERIOD_NEXT
+RustBuffer uniffi_lvhv_ffi_fn_func_period_next(RustBuffer kind, RustBuffer anchor, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_FUNC_PERIOD_PREV
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_FUNC_PERIOD_PREV
+RustBuffer uniffi_lvhv_ffi_fn_func_period_prev(RustBuffer kind, RustBuffer anchor, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_FUNC_PERSON_SUMMARY_JSON
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_FUNC_PERSON_SUMMARY_JSON
+RustBuffer uniffi_lvhv_ffi_fn_func_person_summary_json(RustBuffer person_json, RustBuffer today, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_FUNC_REMINDERS_JSON
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_FUNC_REMINDERS_JSON
+RustBuffer uniffi_lvhv_ffi_fn_func_reminders_json(RustBuffer dataset_json, int64_t now_unix_s, RustBuffer zone, uint32_t horizon_days, int8_t show_names, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_FUNC_RESCHEDULE_JSON
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_FUNC_RESCHEDULE_JSON
+RustBuffer uniffi_lvhv_ffi_fn_func_reschedule_json(RustBuffer dataset_json, int64_t now_unix_s, RustBuffer zone, RustBuffer pending_json, int8_t show_names, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_FUNC_SAVE_DEATH_JSON
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_FUNC_SAVE_DEATH_JSON
+RustBuffer uniffi_lvhv_ffi_fn_func_save_death_json(RustBuffer date_value_json, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_FUNC_SENTINEL_INFO
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_FUNC_SENTINEL_INFO
+RustBuffer uniffi_lvhv_ffi_fn_func_sentinel_info(RustCallStatus *_Nonnull out_status
+    
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_FUNC_SOLAR_TO_LUNAR
 #define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_FUNC_SOLAR_TO_LUNAR
 RustBuffer uniffi_lvhv_ffi_fn_func_solar_to_lunar(int32_t y, int32_t m, int32_t d, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_FUNC_UPCOMING_JSON
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_FUNC_UPCOMING_JSON
+RustBuffer uniffi_lvhv_ffi_fn_func_upcoming_json(RustBuffer dataset_json, RustBuffer today, uint32_t days, RustCallStatus *_Nonnull out_status
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_FUNC_WEEKDAY
@@ -651,6 +888,12 @@ uint16_t uniffi_lvhv_ffi_checksum_func_add_days(void
     
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_FUNC_ANDROID_ALARM_STEP_JSON
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_FUNC_ANDROID_ALARM_STEP_JSON
+uint16_t uniffi_lvhv_ffi_checksum_func_android_alarm_step_json(void
+    
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_FUNC_BUILD_INFO_JSON
 #define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_FUNC_BUILD_INFO_JSON
 uint16_t uniffi_lvhv_ffi_checksum_func_build_info_json(void
@@ -705,9 +948,33 @@ uint16_t uniffi_lvhv_ffi_checksum_func_days_in_month(void
     
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_FUNC_DERIVE_BIRTH_JSON
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_FUNC_DERIVE_BIRTH_JSON
+uint16_t uniffi_lvhv_ffi_checksum_func_derive_birth_json(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_FUNC_DERIVE_PERSON_JSON
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_FUNC_DERIVE_PERSON_JSON
+uint16_t uniffi_lvhv_ffi_checksum_func_derive_person_json(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_FUNC_EVENTS_IN_PERIOD_JSON
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_FUNC_EVENTS_IN_PERIOD_JSON
+uint16_t uniffi_lvhv_ffi_checksum_func_events_in_period_json(void
+    
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_FUNC_FIND_GOOD_DAYS_JSON
 #define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_FUNC_FIND_GOOD_DAYS_JSON
 uint16_t uniffi_lvhv_ffi_checksum_func_find_good_days_json(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_FUNC_ICS_EXPORT
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_FUNC_ICS_EXPORT
+uint16_t uniffi_lvhv_ffi_checksum_func_ics_export(void
     
 );
 #endif
@@ -735,15 +1002,81 @@ uint16_t uniffi_lvhv_ffi_checksum_func_month_lunar_days(void
     
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_FUNC_NEW_UUID
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_FUNC_NEW_UUID
+uint16_t uniffi_lvhv_ffi_checksum_func_new_uuid(void
+    
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_FUNC_NGOCHAP_SOURCES_BLOCKS_JSON
 #define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_FUNC_NGOCHAP_SOURCES_BLOCKS_JSON
 uint16_t uniffi_lvhv_ffi_checksum_func_ngochap_sources_blocks_json(void
     
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_FUNC_OPEN_BACKUP
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_FUNC_OPEN_BACKUP
+uint16_t uniffi_lvhv_ffi_checksum_func_open_backup(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_FUNC_PERIOD_BOUNDS
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_FUNC_PERIOD_BOUNDS
+uint16_t uniffi_lvhv_ffi_checksum_func_period_bounds(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_FUNC_PERIOD_NEXT
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_FUNC_PERIOD_NEXT
+uint16_t uniffi_lvhv_ffi_checksum_func_period_next(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_FUNC_PERIOD_PREV
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_FUNC_PERIOD_PREV
+uint16_t uniffi_lvhv_ffi_checksum_func_period_prev(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_FUNC_PERSON_SUMMARY_JSON
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_FUNC_PERSON_SUMMARY_JSON
+uint16_t uniffi_lvhv_ffi_checksum_func_person_summary_json(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_FUNC_REMINDERS_JSON
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_FUNC_REMINDERS_JSON
+uint16_t uniffi_lvhv_ffi_checksum_func_reminders_json(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_FUNC_RESCHEDULE_JSON
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_FUNC_RESCHEDULE_JSON
+uint16_t uniffi_lvhv_ffi_checksum_func_reschedule_json(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_FUNC_SAVE_DEATH_JSON
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_FUNC_SAVE_DEATH_JSON
+uint16_t uniffi_lvhv_ffi_checksum_func_save_death_json(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_FUNC_SENTINEL_INFO
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_FUNC_SENTINEL_INFO
+uint16_t uniffi_lvhv_ffi_checksum_func_sentinel_info(void
+    
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_FUNC_SOLAR_TO_LUNAR
 #define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_FUNC_SOLAR_TO_LUNAR
 uint16_t uniffi_lvhv_ffi_checksum_func_solar_to_lunar(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_FUNC_UPCOMING_JSON
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_FUNC_UPCOMING_JSON
+uint16_t uniffi_lvhv_ffi_checksum_func_upcoming_json(void
     
 );
 #endif
@@ -756,6 +1089,168 @@ uint16_t uniffi_lvhv_ffi_checksum_func_weekday(void
 #ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_FUNC_YEAR_CAN_CHI
 #define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_FUNC_YEAR_CAN_CHI
 uint16_t uniffi_lvhv_ffi_checksum_func_year_can_chi(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_ADD_PHOTO
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_ADD_PHOTO
+uint16_t uniffi_lvhv_ffi_checksum_method_lvhvstore_add_photo(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_ANDROID_ALARM_STEP_JSON
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_ANDROID_ALARM_STEP_JSON
+uint16_t uniffi_lvhv_ffi_checksum_method_lvhvstore_android_alarm_step_json(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_APPLY_IMPORT
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_APPLY_IMPORT
+uint16_t uniffi_lvhv_ffi_checksum_method_lvhvstore_apply_import(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_BACKUP_REMINDER_DUE
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_BACKUP_REMINDER_DUE
+uint16_t uniffi_lvhv_ffi_checksum_method_lvhvstore_backup_reminder_due(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_DATASET_JSON
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_DATASET_JSON
+uint16_t uniffi_lvhv_ffi_checksum_method_lvhvstore_dataset_json(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_DELETE_EVENT
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_DELETE_EVENT
+uint16_t uniffi_lvhv_ffi_checksum_method_lvhvstore_delete_event(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_DELETE_PERSON
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_DELETE_PERSON
+uint16_t uniffi_lvhv_ffi_checksum_method_lvhvstore_delete_person(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_EVENT_TYPES_JSON
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_EVENT_TYPES_JSON
+uint16_t uniffi_lvhv_ffi_checksum_method_lvhvstore_event_types_json(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_EVENTS_IN_PERIOD_JSON
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_EVENTS_IN_PERIOD_JSON
+uint16_t uniffi_lvhv_ffi_checksum_method_lvhvstore_events_in_period_json(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_EVENTS_JSON
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_EVENTS_JSON
+uint16_t uniffi_lvhv_ffi_checksum_method_lvhvstore_events_json(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_EXPORT_BACKUP
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_EXPORT_BACKUP
+uint16_t uniffi_lvhv_ffi_checksum_method_lvhvstore_export_backup(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_LOCK_SCREEN_NAMES
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_LOCK_SCREEN_NAMES
+uint16_t uniffi_lvhv_ffi_checksum_method_lvhvstore_lock_screen_names(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_MARK_DECEASED_JSON
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_MARK_DECEASED_JSON
+uint16_t uniffi_lvhv_ffi_checksum_method_lvhvstore_mark_deceased_json(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_PERSON_JSON
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_PERSON_JSON
+uint16_t uniffi_lvhv_ffi_checksum_method_lvhvstore_person_json(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_PERSONS_JSON
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_PERSONS_JSON
+uint16_t uniffi_lvhv_ffi_checksum_method_lvhvstore_persons_json(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_PHOTO_BYTES
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_PHOTO_BYTES
+uint16_t uniffi_lvhv_ffi_checksum_method_lvhvstore_photo_bytes(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_PUT_SETTINGS_JSON
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_PUT_SETTINGS_JSON
+uint16_t uniffi_lvhv_ffi_checksum_method_lvhvstore_put_settings_json(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_REMINDERS_JSON
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_REMINDERS_JSON
+uint16_t uniffi_lvhv_ffi_checksum_method_lvhvstore_reminders_json(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_RESCHEDULE_JSON
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_RESCHEDULE_JSON
+uint16_t uniffi_lvhv_ffi_checksum_method_lvhvstore_reschedule_json(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_SAVE_EVENT_JSON
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_SAVE_EVENT_JSON
+uint16_t uniffi_lvhv_ffi_checksum_method_lvhvstore_save_event_json(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_SAVE_EVENT_TYPE_JSON
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_SAVE_EVENT_TYPE_JSON
+uint16_t uniffi_lvhv_ffi_checksum_method_lvhvstore_save_event_type_json(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_SAVE_PERSON_JSON
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_SAVE_PERSON_JSON
+uint16_t uniffi_lvhv_ffi_checksum_method_lvhvstore_save_person_json(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_SET_LOCK_SCREEN_NAMES
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_SET_LOCK_SCREEN_NAMES
+uint16_t uniffi_lvhv_ffi_checksum_method_lvhvstore_set_lock_screen_names(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_SETTINGS_JSON
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_SETTINGS_JSON
+uint16_t uniffi_lvhv_ffi_checksum_method_lvhvstore_settings_json(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_UPCOMING_JSON
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_UPCOMING_JSON
+uint16_t uniffi_lvhv_ffi_checksum_method_lvhvstore_upcoming_json(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_VERIFIEDBACKUP_PREVIEW
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_VERIFIEDBACKUP_PREVIEW
+uint16_t uniffi_lvhv_ffi_checksum_method_verifiedbackup_preview(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_CONSTRUCTOR_LVHVSTORE_OPEN
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_CONSTRUCTOR_LVHVSTORE_OPEN
+uint16_t uniffi_lvhv_ffi_checksum_constructor_lvhvstore_open(void
     
 );
 #endif

@@ -617,27 +617,19 @@ nhắc rồi thứ tự 02 §7.2; quá 3 thẻ
 - Lưu trữ: `pwa/src/store` (đợt 2): `buildPerson`, `putPerson`, `putEvent`, `putEventType`, `deletePerson`,
   `deleteEvent`, `exportBackup`, `openBackup`, `applyImport`, `backupReminderDue`, `persistResult`.
 
-### 8.2 Danh sách theo kỳ (R13) — bộ chuyển tạm
-`eventsInPeriod(cal, dataset, kind, anchor, filter) → {from, to, items}`, `periodBounds(kind, anchor)` và hàm kỳ
-trước/sau do vai B1 thêm vào `tsport` (nhánh `v0.2-w3-core`). Tới khi hàm đó có trên `main`, PWA dùng **một mô-đun
-chuyển tạm duy nhất** `pwa/src/people/period.ts` dựng kết quả từ `occurrencesWithTt`.
+### 8.2 Danh sách theo kỳ (R13) — hàm của lõi
 
-**Bổ sung B4 (04, quyết định của chủ dự án) — bộ chuyển áp cùng quy tắc tới khi lõi có:**
-- `snap()` (`pwa/src/people/core.ts`) bỏ mọi sự kiện gắn với **ít nhất một** người đã mất khỏi bộ dữ liệu dùng để tính
-  lần xuất hiện. Bộ dữ liệu này dùng chung cho "Sắp tới", thẻ nhắc, Theo kỳ, "Lần tới" và tệp .ics. Lõi đã không sinh
-  sinh nhật cho hồ sơ đã mất. Dữ liệu sự kiện thật vẫn giữ để hiện trên hồ sơ và vào sao lưu.
-- Bộ lọc theo **loại lần xuất hiện**: "Người đã mất" = `gio`, `tien_thuong`; "Người đang sống" = còn lại. Không còn
-  quy tắc "người đầu tiên" của bản trước. Kiểm thử thêm một sự kiện gắn [người đã mất, người đang sống] và khẳng định nó
-  không có ở đâu (Sắp tới, Theo kỳ, .ics).
+`pwa/src/people/period.ts` chỉ xuất lại hàm của `tsport/src/memorial_period.ts` (cổng của `memorial/src/period.rs`, có
+trên `main` từ PR #14, 25fe94f): `eventsInPeriod`, `periodBounds`, `prevPeriod`, `nextPeriod` và các kiểu `Period`,
+`PeriodItem`, `PersonFilter`. Bộ chuyển tạm đã bị xóa (MA3-15-01).
 
-**Còn chờ (duyệt mã MA3-15-01, chờ lệnh của điều phối sau khi PR #14 vào `main`):**
-- Đổi sang hàm của `tsport` **không phải một dòng**:
-  - `prevPeriod`/`nextPeriod` trả `{from, to}` (bộ chuyển trả `Ymd`);
-  - `items` là `PeriodItem` (dùng `it.occ`, `it.date`);
-  - kiểu bộ lọc tên `PersonFilter`.
-  Cần sửa `period.ts` và các nơi gọi ở `views.ts`.
-- Khi thay: kiểm thử L5 so với `eventsInPeriod` của lõi (không tự viết lại quy tắc B4 trong kiểm thử), bỏ đoạn lọc
-  B4 trong `snap()` nếu lõi đã lọc.
+- `views.ts`: kỳ trước/sau dùng `.from` của `{from, to}`; mỗi mục là `PeriodItem` (`it.date` để chia nhóm tháng, `it.occ`
+  để hiển thị).
+- Bổ sung B4 do lõi áp: `personOccurrences` không sinh sinh nhật cho hồ sơ có ngày mất; `eventHasDeceased` bỏ sự kiện gắn
+  ít nhất một người đã mất; bộ lọc 02 §7.6: "Người đã mất" = giỗ + tiên thường. PWA không còn đoạn lọc trùng nào.
+  `snap()` chỉ giữ một tập `dead` để giao diện biết khi nào ẩn khối nhắc và hiện câu giải thích.
+- Kiểm thử L5 so danh sách hiển thị với `eventsInPeriod` của lõi (4 loại kỳ × 3 bộ lọc). Sự kiện "Họp mặt chung" gắn
+  [người đã mất, người đang sống] không có ở bộ lọc nào; nếu bỏ B4 thì sự kiện đó sinh 1 lần xuất hiện.
 
 Phần không đổi: tuần bắt đầu Thứ Hai; kỳ gồm cả ngày đầu và ngày cuối; dòng chính của mục ("Nhãn · tên") lấy theo người
 đầu tiên chỉ để **hiển thị**, không dùng cho bộ lọc.
@@ -747,7 +739,7 @@ Các điểm dưới đây được đổi hoặc làm rõ khi cài; phần trê
 
 | Mã | Mức | Việc |
 |---|---|---|
-| MA3-15-01 | chặn | **Chờ PR #14 vào `main`** — thay bộ chuyển bằng `eventsInPeriod` của lõi; xem §8.2 |
+| MA3-15-01 | chặn | Đã làm (sau PR #14): dùng `eventsInPeriod`/`periodBounds`/`prevPeriod`/`nextPeriod` của lõi, xóa bộ chuyển; L5 so với lõi; xem §8.2 |
 | MA3-15-02 | chặn | Đã sửa: khôi phục kiểm `File.size` > 72 + 128 MiB + 16 **trước** khi đọc tệp → "Sai mật khẩu hoặc tệp bị hỏng" (S12). Kiểm thử: tệp thưa 130 MiB → thông báo chung, 0 lần đọc tệp; giới hạn khớp hằng số của `backup-crypto` |
 | MA3-15-03 | nên sửa | Đã sửa: trong lúc mã hóa/khôi phục, Esc không đóng hộp thoại (`cancel` bị chặn, `aria-busy`); kiểm thử nhấn Esc ở cả hai việc. Đã thử ngược: bỏ chặn thì kiểm thử báo lỗi |
 | MA3-15-04 | nên sửa | Đã sửa: chạm mục → so tên hồ sơ mở ra; nhóm tháng so đúng danh sách tháng; R13 (c) đo trên giao diện ba bộ lọc |
@@ -821,7 +813,7 @@ Khung dây biểu mẫu ở 1280 px (TK-35):
 | TK-31 (a) | Chấm ngày giỗ/sinh nhật trên lịch tháng của Tờ lịch **đổi giao diện lịch v0.1 mà người dùng thấy**. Theo quy tắc của vòng này, việc đó phải hỏi trước. Nếu được đồng ý: thêm một chấm nhỏ dưới số ngày, tính một lần cho cả tháng |
 | MA3-15-08 (`metrics.json`) | Bỏ `pwa/test/metrics.json` khỏi kho **đổi tệp số đo v0.1 đang được theo dõi** và đổi đường dẫn tạo phẩm CI mà các vòng duyệt trước dùng → cần điều phối quyết định. PR này không commit số đo mới |
 | TK-16 | Vẫn thuộc vai lưu trữ (§12b) |
-| MA3-15-01 | Vẫn chờ PR #14 vào `main` (§8.2) |
+| MA3-15-01 | Đã làm ở vòng sau (§8.2, §12h) |
 
 ### 12f. Bổ sung B4 — với người đã mất chỉ nhắc ngày giỗ (04, PR #20, quyết định của chủ dự án 07/11/2026)
 
@@ -829,7 +821,7 @@ Khung dây biểu mẫu ở 1280 px (TK-35):
   kiện của người đã mất — chỉ nhắc ngày giỗ. Thông tin vẫn được lưu và sao lưu." "Lần tới" chỉ có giỗ/tiên thường.
 - Biểu mẫu sự kiện (§3.7): sự kiện của người đã mất không có khối nhắc.
 - Theo kỳ (§3.2): "Người đã mất" chỉ có ngày giỗ (và tiên thường), có câu giải thích dưới bộ lọc.
-- Bộ chuyển tạm áp cùng quy tắc (§8.2). Việc thay bằng hàm của lõi (MA3-15-01) vẫn chờ lệnh.
+- Quy tắc do lõi áp (§8.2); PWA không lọc lại.
 - Ảnh chụp mới: `v02-form-event-deceased-360`, `v02-person-deceased-b4-360`, `v02-period-deceased-filter-360`.
 
 ### 12g. YC-2026-05 — "Cập nhật: đã mất" và thông tin báo tử (01 §3.2a, US-M-07, R-PRIV-2)
@@ -896,11 +888,27 @@ thông tin báo tử (người báo tin, nơi mất, lý do, ảnh giấy báo t
 | `putPerson(p, ảnh chân dung?, ảnh giấy báo tử[])` | Ghi ảnh và hồ sơ trong một giao dịch, kiểm ảnh tồn tại |
 | `deletePerson` | Xóa cả ảnh giấy báo tử |
 
-**Chờ lõi xác nhận — khóa `notice` vắng mặt.** PWA chỉ ghi khóa `death.notice` khi có thông tin báo tử, và đọc được
-dữ liệu không có khóa này. Nhờ vậy `stateHash` và các vectơ kiểm thử R6 có sẵn (không có `notice`) không đổi. Nếu bản
-Rust ở PR #14 luôn ghi `"notice": null`, hai bên sẽ lệch `stateHash` với hồ sơ người đã mất. Cần thống nhất một trong
-hai cách: bỏ khóa khi rỗng, hoặc luôn ghi `null` và cập nhật vectơ.
+**Khóa `notice` khi không có thông tin báo tử — theo lõi (Rust là chuẩn).** `store/src/model.rs` khai báo
+`notice` với `#[serde(default, skip_serializing_if = "Option::is_none")]`. Vì vậy `"notice": null` khi đọc ≡ vắng khóa,
+và khi ghi thì không có khóa. Lớp lưu trữ PWA làm đúng như vậy: `normNotice` trong `pwa/src/store/db.ts` bỏ
+`"notice": null` trước khi ghi, ở cả `putPerson` và `applyImport`. Nhờ đó `stateHash` và tệp xuất giống Rust từng byte.
+
+Kiểm chéo bằng `scripts/check-store.sh` (CI "Lưu trữ + sao lưu"), gồm ba trường hợp:
+- tệp có thông tin báo tử và tệp không có (vectơ bổ sung `supplement-yc05`: một hồ sơ có `notice`, một hồ sơ đã mất
+  không có);
+- tài liệu ghi `"notice": null` → `stateHash` = `state_sha256` của Rust;
+- bộ R6 (không có `notice`) theo hai chiều Rust ↔ PWA.
 
 Ảnh chụp: `v02-convert-form-360`, `v02-convert-confirm-360`, `v02-person-notice-360`, `v02-backup-notice-dialog-360`,
 `v02-convert-form-1280-{light,dark}`, `v02-convert-form-360-dark`, `v02-person-notice-1280-{light,dark}`,
 `v02-person-notice-360-dark`.
+
+### 12h. Vòng sau khi PR #14 vào `main` (MA3-15-01, TK-16, O-9)
+
+| Mã | Việc |
+|---|---|
+| MA3-15-01 | Như §8.2 |
+| TK-16 | Lõi không đổi được cách "Thay toàn bộ" lưu `settings` (vectơ R6 đã khóa), nên chỉ sửa ở giao diện, không đổi dữ liệu đã lưu hay logic nhắc sao lưu. Sau khi "Thay toàn bộ", trang Sao lưu ghi hai dòng: "Chưa sao lưu lần nào trên máy này" (hoặc "Lần sao lưu gần nhất: …") và "Dữ liệu được khôi phục từ bản sao lưu ngày dd/mm/yyyy". Ngày lấy từ `exported_at` trong phần đầu tệp đã khôi phục. Ngày này được ghi ở khóa giao diện `ui_restored_from` của kho `meta` trong IndexedDB, giống `ui_persist_notice_hidden_at`: không thuộc tài liệu sao lưu, không vào `stateHash`. Kiểm thử: `stateHash` trước và sau khôi phục như nhau, hai dòng chữ đúng |
+| O-9 `show_names` | Lõi lưu tùy chọn "hiện tên trên màn hình khóa" theo từng máy, mặc định **không** hiện (`lock_screen_names`, chỉ trong kho Rust). PWA không có thông báo trên màn hình khóa nên không có tùy chọn này. Thẻ nhắc trong ứng dụng vẫn ghi tên, vì chỉ hiện khi người dùng đã mở ứng dụng. Khung "Ứng dụng web" ở Sắp tới có câu giải thích (`#web-names`) để thống nhất với ứng dụng điện thoại và máy tính |
+| MA3-15-03 (kiểm thử) | Kiểm thử Esc khi mã hóa trước đây đếm hộp còn mở, nên kết quả phụ thuộc thời gian mã hóa. Nay kiểm thử ghi lại sự kiện `cancel`: phải có ít nhất một lần nhấn Esc khi hộp đang bận và lần đó bị chặn |
+| TK-31 (a), `metrics.json` | Giữ nguyên như hiện tại; điều phối sẽ hỏi chủ dự án |

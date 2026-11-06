@@ -18,6 +18,19 @@ export const SCHEMA_VERSION = 1;
 const STORES = ["persons", "events", "event_types", "photos", "settings", "meta"] as const;
 type StoreName = (typeof STORES)[number];
 
+/**
+ * 01 §3.2a: `death.notice` vắng ≡ `null`. Bản Rust (chuẩn) đọc `null` thành `None` và KHÔNG ghi khóa khi `None`
+ * (`skip_serializing_if`), nên ở đây cũng bỏ khóa `"notice": null` trước khi lưu — để `stateHash` và tệp xuất
+ * giống Rust từng byte kể cả khi tài liệu nhập vào có ghi `null`.
+ */
+export function normNotice(p: JsonObj): JsonObj {
+  const d = p.death as JsonObj | null;
+  if (!d || typeof d !== "object" || !Object.prototype.hasOwnProperty.call(d, "notice") || d.notice !== null) return p;
+  const { notice: _n, ...rest } = d;
+  void _n;
+  return { ...p, death: rest };
+}
+
 export class StoreError extends Error {
   constructor(public code: "invalid" | "input" | "newer_schema" | "not_found" | "backup", msg: string, public cause?: unknown) { super(msg); }
 }
@@ -143,7 +156,7 @@ export class Store {
    */
   async putPerson(p: JsonObj, newPhoto?: NewPhoto, extraPhotos: NewPhoto[] = []): Promise<void> {
     try { V.person(p, "/person"); } catch (e) { throw vErr(e); }
-    // `extraPhotos`: ảnh giấy báo tử mới (01 §3.2a), ghi cùng giao dịch với hồ sơ.
+    // `extraPhotos`: ảnh giấy báo tử mới (01 §3.2a) — ghi cùng giao dịch với hồ sơ.
     const recs: { id: string; meta: JsonObj; blob: Blob }[] = [];
     for (const np of newPhoto ? [newPhoto, ...extraPhotos] : extraPhotos) {
       const meta: JsonObj = { bytes: np.bytes.length, created_at: nowRfc3339(), height: np.height, id: np.id, mime: np.mime, sha256: await sha256Hex(np.bytes), stripped: true, width: np.width };
@@ -155,12 +168,12 @@ export class Store {
     const fin = done(tx);
     for (const r of recs) tx.objectStore("photos").put(r);
     const fresh = new Set(recs.map((r) => r.id));
-    for (const pid of [p.photo_id, ...V.certificateIds(p)]) {
-      if (typeof pid !== "string" || fresh.has(pid)) continue;
+    for (const pid of V.personPhotoRefs(p)) {
+      if (fresh.has(pid)) continue;
       const r = tx.objectStore("photos").getKey(pid);
-      r.onsuccess = () => { if (r.result === undefined) { try { tx.abort(); } catch { /* đã hủy */ } } };
+      r.onsuccess = () => { if (r.result === undefined) { tx.abort(); } };
     }
-    tx.objectStore("persons").put(p);
+    tx.objectStore("persons").put(normNotice(p));
     Store.markChanged(tx, nowRfc3339());
     try { await fin; } catch (e) { throw new StoreError("invalid", "V3 /person/photo_id: ảnh không tồn tại", e); }
     if (first && (await this.persistResult()) === null) await requestPersistentStorage(this);
@@ -200,12 +213,15 @@ export class Store {
     await done(tx);
   }
 
-  /** Xóa một người: gỡ id khỏi mọi sự kiện (01 §3.4), xóa ảnh nếu không còn ai dùng — một giao dịch. */
+  /**
+   * Xóa một người: gỡ id khỏi mọi sự kiện (01 §3.4), xóa ảnh chân dung và ảnh giấy báo tử (01 §3.2a) nếu không hồ
+   * sơ nào khác còn dùng — một giao dịch.
+   */
   async deletePerson(id: string): Promise<void> {
     const now = nowRfc3339();
     const p = await this.person(id);
-    const others = (await this.persons()).filter((x) => x.id !== id && x.photo_id === p.photo_id && p.photo_id !== null);
-    const certs = V.certificateIds(p); // ảnh giấy báo tử thuộc riêng hồ sơ này (01 §3.2a) — xóa cùng hồ sơ
+    const used = new Set((await this.persons()).filter((x) => x.id !== id).flatMap((x) => V.personPhotoRefs(x)));
+    const gone = V.personPhotoRefs(p).filter((x) => !used.has(x));
     const evs = await this.eventsOf(id);
     const tx = this.tx(["persons", "events", "photos", "meta"], "readwrite");
     const fin = done(tx);
@@ -213,8 +229,7 @@ export class Store {
       tx.objectStore("events").put({ ...e, person_ids: (e.person_ids as string[]).filter((x) => x !== id), rev: (e.rev as number) + 1, updated_at: now });
     }
     tx.objectStore("persons").delete(id);
-    if (typeof p.photo_id === "string" && others.length === 0) tx.objectStore("photos").delete(p.photo_id);
-    for (const c of certs) tx.objectStore("photos").delete(c);
+    for (const pid of gone) tx.objectStore("photos").delete(pid);
     Store.markChanged(tx, now);
     await fin;
   }
@@ -314,7 +329,7 @@ export class Store {
     for (const n of ["persons", "events", "event_types", "photos"] as const) tx.objectStore(n).clear();
     for (const r of [...keptPhotos, ...recs]) tx.objectStore("photos").put(r);
     for (const t of target.event_types as JsonObj[]) tx.objectStore("event_types").put({ id: t.id, name_key: V.nameKey(t.ten as string), doc: t });
-    for (const p of target.persons as JsonObj[]) tx.objectStore("persons").put(p);
+    for (const p of target.persons as JsonObj[]) tx.objectStore("persons").put(normNotice(p));
     for (const e of target.events as JsonObj[]) tx.objectStore("events").put(e);
     if (mode === "replace") tx.objectStore("settings").put(target.settings, "app");
     Store.markChanged(tx, nowRfc3339());

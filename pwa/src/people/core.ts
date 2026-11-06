@@ -38,12 +38,9 @@ export interface Snap {
 export async function snap(): Promise<Snap> {
   const s = await store();
   const [persons, events, types, settings] = await Promise.all([s.persons(), s.events(), s.eventTypes(), s.settings()]);
-  // Bổ sung B4 (04, quyết định của chủ dự án): với người đã mất chỉ nhắc ngày giỗ (và tiên thường nếu bật). Lõi đã
-  // không sinh sinh nhật cho hồ sơ đã mất; ở đây bỏ thêm mọi sự kiện gắn với ÍT NHẤT MỘT người đã mất khỏi bộ dữ liệu
-  // dùng để tính lần xuất hiện, lời nhắc, danh sách theo kỳ và tệp .ics. `events` (dữ liệu thật) giữ nguyên để hiện
-  // trên trang hồ sơ và vào sao lưu. Bỏ đoạn này khi lõi có quy tắc B4 (cùng lúc thay bộ chuyển — MA3-15-01).
-  const dead = new Set(persons.filter((p) => p.kind === "deceased").map((p) => p.id as string));
-  const active = events.filter((e) => !isDeadEvent(e, dead));
+  // Bổ sung B4 do lõi áp (02 §6.1: `personOccurrences`, `eventHasDeceased`). `dead` chỉ để giao diện biết khi nào
+  // ẩn khối nhắc / hiện câu giải thích.
+  const dead = new Set(persons.filter((p) => p.death !== null).map((p) => p.id as string));
   // R-PRIV-2 (01 §3.2a): thông tin báo tử không bao giờ vào lõi tính lần xuất hiện / lời nhắc / .ics.
   const forCore = persons.map((p) => {
     const d = p.death as JsonObj | null;
@@ -52,13 +49,8 @@ export async function snap(): Promise<Snap> {
     void _n;
     return { ...p, death: rest };
   });
-  const ds = M.parseDataset(JSON.stringify({ settings, persons: forCore, events: active, event_types: types }));
+  const ds = M.parseDataset(JSON.stringify({ settings, persons: forCore, events, event_types: types }));
   return { persons, events, types, settings, ds, dead, byId: new Map(persons.map((p) => [p.id as string, p])) };
-}
-
-/** B4 mục 2: sự kiện gắn với ít nhất một người đã mất thì không sinh lần xuất hiện. */
-export function isDeadEvent(e: JsonObj, dead: Set<string>): boolean {
-  return ((e.person_ids as string[]) ?? []).some((id) => dead.has(id));
 }
 
 // ---------------- định dạng ----------------

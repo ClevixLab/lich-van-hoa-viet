@@ -352,7 +352,7 @@ export async function renderPersonForm(root: HTMLElement, kindIn: "deceased" | "
 
 async function deletePhotoIfUnused(photoId: string): Promise<void> {
   const s = await store();
-  if ((await s.persons()).some((p) => p.photo_id === photoId)) return;
+  if ((await s.persons()).some((p) => validate.personPhotoRefs(p).includes(photoId))) return;
   await new Promise<void>((ok, ko) => {
     const tx = s.db.transaction("photos", "readwrite");
     tx.objectStore("photos").delete(photoId);

@@ -85,6 +85,8 @@ class R13:
         self.persons = {p["id"]: p for p in data["persons"]}
 
     def deceased(self, o):
+        if O.B4:                                   # 04 B4 muc 3: da_mat = gio + tien thuong
+            return o.cls in ("gio", "tien_thuong")
         if o.cls in ("su_kien_duong_lap", "su_kien_am_lap", "su_kien_khong_lap"):
             ids = o.person.get("person_ids") or []
             return bool(ids) and all(self.persons.get(i) is not None and self.persons[i].get("death") is not None

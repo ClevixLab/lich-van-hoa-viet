@@ -17,11 +17,14 @@ const USAGE: &str = "Cách dùng: lvhv-memorial-dump [--method hnd|precise|jpl] 
   gio-dates list FILE [N]              mỗi dòng của FILE một DateValue JSON (ngày mất), N năm giỗ
       (JSONL, docs/v0.2/04 R1; tùy chọn --gio-het 2|3 đứng trước gio-dates, mặc định 2)
   reminders configs                    r3-configs.csv: 140 544 cấu hình R3
-  reminders DATASET.json [FROM TO]     R3: mọi lời nhắc của mọi cấu hình (CSV), cửa sổ mặc định 2026-01-01…2036-12-31
+  reminders DATASET.json [FROM TO] [--global-off|--rule-off]
+                                       R3: mọi lời nhắc của mọi cấu hình (CSV), cửa sổ mặc định 2026-01-01…2036-12-31;
+                                       --global-off: công tắc chung tắt, --rule-off: rule.enabled = false (đều phải 0 dòng)
   upcoming DATASET.json FROM TO        R11: danh sách Sắp tới 30 ngày cho mỗi hôm nay FROM…TO (CSV)
   r10 a|b|c|d                          R10: (a) sinh 1900-01-01…2026-12-31, (b) Can Chi 1899–3000,
                                        (c) 10 000 cặp hạt 20261106, (d) 29/02 1900–3000
   r12 DATASET.json [--steps]           R12: mô phỏng 10/50/200 hồ sơ × 3 kịch bản (CSV)
+  r13 DATASET.json [FROM TO]           R13: danh sách theo tuần/tháng/quý/năm × 3 bộ lọc (JSONL), mặc định 2026-01-01…2036-12-31
   ics DATASET.json TODAY DTSTAMP       tệp .ics (DTSTAMP dạng YYYYMMDDTHHMMSSZ)
   derive DATASET.json                  tính lại trường dẫn xuất (JSON thụt lề)";
 
@@ -56,6 +59,15 @@ impl<W: Write> Out<W> {
         self.buf.clear();
         Ok(())
     }
+}
+
+/// Đối số sau `reminders DATASET`: `[FROM TO] [--global-off|--rule-off]`.
+fn r3_args_ok(rest: &[&str]) -> bool {
+    let n = match rest.last() {
+        Some(&"--global-off") | Some(&"--rule-off") => rest.len() - 1,
+        _ => rest.len(),
+    };
+    n == 0 || n == 2
 }
 
 fn run(args: &[String]) -> Result<(), String> {
@@ -161,8 +173,13 @@ fn run(args: &[String]) -> Result<(), String> {
                 r3_config_line(&mut o.buf, &c);
             }
         }
-        ["reminders", file, rest @ ..] if rest.is_empty() || rest.len() == 2 => {
+        ["reminders", file, rest @ ..] if r3_args_ok(rest) => {
             let ds = load(file)?;
+            let (mode, rest) = match rest.last() {
+                Some(&"--global-off") => (R3Mode::GlobalOff, &rest[..rest.len() - 1]),
+                Some(&"--rule-off") => (R3Mode::RuleOff, &rest[..rest.len() - 1]),
+                _ => (R3Mode::Normal, rest),
+            };
             let (f, t) = match rest {
                 [f, t] => (parse_ymd(f)?, parse_ymd(t)?),
                 _ => (Ymd::new(2026, 1, 1), Ymd::new(2036, 12, 31)),
@@ -180,7 +197,7 @@ fn run(args: &[String]) -> Result<(), String> {
                     .find(|(k, _)| *k == c.class)
                     .expect("lớp R3")
                     .1;
-                for r in r3_reminders(&ds, occs, &c, now, &tz) {
+                for r in r3_reminders_mode(&ds, occs, &c, now, &tz, mode) {
                     reminder_line(&mut o.buf, c.index, &r);
                 }
                 o.flush_if()?;
@@ -235,6 +252,14 @@ fn run(args: &[String]) -> Result<(), String> {
                 o.buf.push_str(R12_STEPS_HEADER);
                 o.buf.push_str(&steps);
             }
+        }
+        ["r13", file, rest @ ..] if rest.is_empty() || rest.len() == 2 => {
+            let ds = load(file)?;
+            let (f, t) = match rest {
+                [f, t] => (parse_ymd(f)?, parse_ymd(t)?),
+                _ => (Ymd::new(2026, 1, 1), Ymd::new(2036, 12, 31)),
+            };
+            lvhv_memorial::period::r13_lines(cal, &ds, f, t, &mut o.buf);
         }
         ["ics", file, today, stamp] => {
             let ds = load(file)?;

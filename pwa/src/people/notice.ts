@@ -24,7 +24,7 @@ export function noticeSection(old: JsonObj | null, open: boolean, onDirty: () =>
   const n = old ?? {};
   const fBy = textField("nf-by", "Người báo tin", (n.reported_by as string) ?? "", 200);
   const fPlace = textField("nf-place", "Mất tại", (n.place as string) ?? "", 200, { hint: "ví dụ: tại nhà, bệnh viện…" });
-  const fReason = textField("nf-reason", "Lý do", (n.reason as string) ?? "", 500, { multiline: true });
+  const fReason = textField("nf-reason", "Lý do", (n.reason as string) ?? "", 500);
   const fNote = textField("nf-note", "Ghi chú", (n.note as string) ?? "", 2000, { multiline: true });
   const date = dateInput("nf-date", "Ngày nhận tin", "notice", false);
   date.set((n.notice_date as unknown as DateValueJ | null) ?? null);

@@ -75,7 +75,11 @@ export async function renderBackup(root: HTMLElement, rerender: () => void): Pro
   const s = await store();
   const last = sn.settings.last_backup_at as string | null;
   const photos = (await s.photos()).length;
-  const lastTxt = last ? `Lần sao lưu gần nhất: ${localDmy(last)}` : "Chưa sao lưu lần nào";
+  const lastTxt = last ? `Lần sao lưu gần nhất: ${localDmy(last)}` : "Chưa sao lưu lần nào trên máy này";
+  // TK-16 (08 §12h): sau "Thay toàn bộ", cài đặt (kể cả last_backup_at) lấy theo tệp — lõi không đổi được vì vectơ R6
+  // đã khóa. Giao diện nói thật nguồn dữ liệu: ngày tạo của tệp đã khôi phục, ghi ở khóa giao diện `ui_restored_from`
+  // trong kho meta (không thuộc tài liệu sao lưu, không vào stateHash, không đổi logic nhắc sao lưu).
+  const restoredFrom = (await s.meta("ui_restored_from")) as string | undefined;
 
   // A. .ics
   const icsBtn = h("button", { type: "button", class: "primary", id: "ics-open", onclick: () => void openIcsDialog() }, "Xuất tệp lịch (.ics)…");
@@ -166,6 +170,13 @@ export async function renderBackup(root: HTMLElement, rerender: () => void): Pro
           if (!sure) return false;
         }
         try { await s.applyImport(v, mode); } catch { return "Chưa khôi phục được — dữ liệu trên máy giữ nguyên."; }
+        if (mode === "replace") {
+          await new Promise<void>((done) => {
+            const tx = s.db.transaction("meta", "readwrite");
+            tx.objectStore("meta").put(pv.exported_at, "ui_restored_from");
+            tx.oncomplete = () => done(); tx.onerror = () => done();
+          });
+        }
         return true;
       },
     });
@@ -185,6 +196,7 @@ export async function renderBackup(root: HTMLElement, rerender: () => void): Pro
         icsBtn),
       h("section", { class: "panel", id: "bk-out" }, h("h2", null, "Sao lưu dữ liệu"),
         h("p", { id: "bk-last" }, lastTxt),
+        restoredFrom ? h("p", { id: "bk-restored", class: "fine" }, `Dữ liệu được khôi phục từ bản sao lưu ngày ${localDmy(restoredFrom)}.`) : null,
         h("p", { class: "fine" }, "Tệp sao lưu được mã hóa bằng mật khẩu của bạn và chỉ nằm ở nơi bạn cất. Ứng dụng không gửi dữ liệu đi đâu."),
         expBtn)),
     h("div", { class: "pcol-side" },
