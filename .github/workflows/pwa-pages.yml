@@ -31,8 +31,8 @@ jobs:
         working-directory: pwa
         run: |
           npm ci
+          npm run build      # sinh src/gen/ trước, typecheck cần các tệp này
           npm run typecheck
-          npm run build
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
