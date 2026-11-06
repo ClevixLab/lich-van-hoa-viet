@@ -16,7 +16,7 @@ và các dòng dưới đây được viết lại thành ghi chú cho người 
 - (Đợt 1, nội bộ) Lõi tính ngày giỗ, tuổi, lời nhắc và tệp .ics (`memorial/`, `tsport/src/memorial*.ts`), chưa có giao diện.
 - (Nội bộ, đợt 2) Kho dữ liệu SQLite và IndexedDB, tệp sao lưu mã hóa đọc được giữa ứng dụng web và bản cài trên máy.
 
-## [Chưa phát hành — bản sửa Windows]
+## [0.1.3] — 2026-11-06
 
 - Windows: chữ đẹp và rõ hơn — phông chữ có đủ dấu tiếng Việt được nhúng sẵn, vẽ chữ sắc nét ở mọi tỉ lệ màn hình.
 - Windows: bấm "Chi tiết", "Xem thêm" và dải tháng trên tờ lịch đã hoạt động trở lại.
