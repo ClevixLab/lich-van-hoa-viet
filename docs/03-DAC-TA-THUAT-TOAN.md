@@ -720,8 +720,11 @@ trên và ghi rõ đây là lựa chọn có chủ ý; đổi parabol sẽ đổ
 - **Mã hóa** (không mất thông tin, chỉ để nén; không ảnh hưởng giá trị): tệp nhị phân `core/data/jpl_events.bin`
   gồm hai dãy (Sóc theo k tăng dần; tiết khí theo thời gian tăng dần với chỉ số i của phần tử đầu), mỗi dãy là các
   số nguyên n mã hóa bằng sai phân có dự báo tuyến tính + zigzag varint; định dạng chi tiết ghi ở đầu
-  `tools/jpl/gen_table.py`. TypeScript dùng đúng các byte đó (base64 trong `tsport/src/jpl_data.ts`, sinh từ tệp
-  nhị phân; kiểm bằng tổng kiểm SHA-256).
+  `tools/jpl/gen_table.py`. (Cài đặt, không thuộc đặc tả cho bên cài lại — sửa 2026-11-07:) bản TypeScript/PWA
+  không nhúng bảng thời điểm mà nhúng **bảng mức ngày** `tsport/src/jpl_days.ts` do chính lõi Rust suy ra từ bảng này
+  theo §17.6 (ngày Sóc; với mỗi tiết khí, ngày D đầu tiên có 00:00 ≥ thời điểm), sinh bằng `lvhv-dump jpl-days-ts`;
+  test `core/tests/jpl_ts.rs` và `scripts/check-parity.sh` bắt buộc tệp đó trùng bản sinh lại. Lý do: giữ P3 (bảng
+  thời điểm ~116 KB nén vào PWA, bị tải hai lần bởi trang và bộ đệm offline, làm lần tải đầu ~588 KB > 500 KB).
 - **Tệp kiểm toán** (người đọc được): `core/data/jpl_events.csv.gz` — mỗi dòng một sự kiện:
   `kind,index,n_cs,jd_tt,tt_iso` (`kind` = `soc` với `index` = k, hoặc `tk` với `index` = i; `tt_iso` là giờ TT dạng
   `YYYY-MM-DDTHH:MM:SS.ss`).

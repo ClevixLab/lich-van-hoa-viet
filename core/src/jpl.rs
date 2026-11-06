@@ -245,6 +245,63 @@ pub fn terms_between(from_ut: f64, to_ut: f64) -> Option<Vec<(usize, f64)>> {
     Some((a..b).map(|j| ((t.i0 + j) % 24, t.tk_ut[j])).collect())
 }
 
+/// Ngày lịch D của tiết khí tại `t` (JD UT) theo nghĩa của `term_at`: D = ngày nhỏ nhất có 00:00 đầu ngày
+/// (`local_midnight_ut`) ≥ t. Khi đó tiết khí được tính cho cung của ngày J ⇔ D ≤ J (§17.6.3), và cho tiết khí
+/// của ngày J ⇔ D ≤ J + 1 (§17.6.4).
+fn term_day(t: f64) -> i64 {
+    use crate::astro::{local_day_of, local_midnight_ut};
+    let mut j = local_day_of(t);
+    while local_midnight_ut(j) < t {
+        j += 1;
+    }
+    while local_midnight_ut(j - 1) >= t {
+        j -= 1;
+    }
+    j
+}
+
+/// Mã nguồn `tsport/src/jpl_days.ts`: bảng **mức ngày** suy ra từ bảng thời điểm (ngày Sóc theo
+/// `local_day_of`, ngày D của tiết khí theo `term_day`). Bản TypeScript (PWA) chỉ cần các ngày này để cho kết
+/// quả giống hệt từng byte lõi Rust, nên không phải nhúng bảng thời điểm (giữ P3). Test
+/// `core/tests/jpl_ts.rs` bắt buộc tệp đã commit trùng đầu ra hàm này.
+pub fn days_ts_source() -> Option<String> {
+    use crate::astro::local_day_of;
+    let t = table()?;
+    let soc: Vec<i64> = t.soc_ut.iter().map(|&x| local_day_of(x)).collect();
+    let tk: Vec<i64> = t.tk_ut.iter().map(|&x| term_day(x)).collect();
+    let mut sd = String::with_capacity(soc.len());
+    for w in soc.windows(2) {
+        let d = w[1] - w[0];
+        if !(29..=30).contains(&d) {
+            return None;
+        }
+        sd.push(if d == 29 { '0' } else { '1' });
+    }
+    let mut td = String::with_capacity(tk.len());
+    for w in tk.windows(2) {
+        let d = w[1] - w[0];
+        if !(10..=19).contains(&d) {
+            return None;
+        }
+        td.push(char::from(b'0' + (d - 10) as u8));
+    }
+    let sha = DATA_SHA_NOTE;
+    Some(format!(
+        "// SINH TỰ ĐỘNG bởi lõi Rust (`lvhv-dump jpl-days-ts`, core/src/jpl.rs::days_ts_source) — không sửa tay.\n\
+         // Bảng mức ngày của phương pháp Jpl suy ra từ core/data/jpl_events.bin ({sha}). docs/03 §17.5–17.6.\n\
+         // socDelta: ngày Sóc liên tiếp cách nhau 29 (\"0\") hoặc 30 (\"1\") ngày.\n\
+         // tkDelta: ngày D (00:00 đầu ngày đầu tiên ≥ thời điểm tiết khí) liên tiếp cách nhau 10 + chữ số ngày.\n\
+         export const JPL_DAYS = {{\n  k0: {k0},\n  socDay0: {s0},\n  i0: {i0},\n  tkDay0: {t0},\n  socDelta:\n    \"{sd}\",\n  tkDelta:\n    \"{td}\",\n}} as const;\n",
+        k0 = t.k0,
+        s0 = soc[0],
+        i0 = t.i0,
+        t0 = tk[0],
+    ))
+}
+
+/// Ghi chú nguồn trong tệp sinh ra (độ dài bảng nhị phân; tổng kiểm ở core/data/jpl_events.meta.txt).
+const DATA_SHA_NOTE: &str = "xem core/data/jpl_events.meta.txt";
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -314,6 +314,10 @@ fn run(args: &[String]) -> Result<(), String> {
             };
             gooddays_jsonl(&mut out, mt, act, parse_date(a)?, parse_date(b)?, birth).map_err(io_err)
         }
+        [c] if c == "jpl-days-ts" => {
+            let s = lvhv_core::jpl::days_ts_source().ok_or("bảng Jpl nhúng hỏng")?;
+            out.write_all(s.as_bytes()).map_err(io_err)
+        }
         [c] if c == "bench" => {
             drop(out);
             bench(mt);

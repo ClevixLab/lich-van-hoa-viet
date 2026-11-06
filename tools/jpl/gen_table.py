@@ -9,7 +9,7 @@ Cách dùng (chạy trên máy chủ tích hợp liên tục, xem .github/workfl
     core/data/jpl_events.bin       bảng nhị phân nhúng vào lõi Rust (include_bytes!)
     core/data/jpl_events.csv.gz    tệp kiểm toán người đọc được (kind,index,n_cs,jd_tt,tt_iso)
     core/data/jpl_events.meta.txt  phiên bản phần mềm, tổng kiểm SHA-256 của DE441 và của bảng
-    tsport/src/jpl_data.ts         cùng các byte của .bin, dạng base64, cho TypeScript
+(tsport/src/jpl_days.ts — bảng mức ngày cho TypeScript — do lõi Rust sinh: `lvhv-dump jpl-days-ts`.)
 
 Định nghĩa (docs/03 §17.3): λ là kinh độ hoàng đạo biểu kiến địa tâm (thời gian ánh sáng, lệch hấp dẫn,
 quang sai năm, tuế sai IAU 2006 + chương động IAU 2000A, hoàng đạo và điểm xuân phân thật của ngày).
@@ -29,7 +29,6 @@ Không còn byte nào sau dãy tiết khí.
 """
 
 import argparse
-import base64
 import datetime as dtm
 import gzip
 import hashlib
@@ -282,12 +281,6 @@ def main():
         f.write(f'jpl_events.bin sha256 {sha} bytes {len(b)}\n')
         f.write(f'soc {len(soc)} k {int(k[0])}..{int(k[-1])}; tiet_khi {len(tk)} i0 {int(idx[0])}\n')
         f.write(f'range TT [JD {JD_START}, JD {JD_END})\n')
-    ts_path = os.path.join(a.repo, 'tsport', 'src', 'jpl_data.ts')
-    with open(ts_path, 'w') as f:
-        f.write('// SINH TỰ ĐỘNG bởi tools/jpl/gen_table.py — không sửa tay. Cùng các byte với\n')
-        f.write(f'// core/data/jpl_events.bin (sha256 {sha}, {len(b)} byte). docs/03 §17.5.\n')
-        f.write(f'export const JPL_EVENTS_SHA256 = "{sha}";\n')
-        f.write(f'export const JPL_EVENTS_B64 =\n  "{base64.b64encode(b).decode()}";\n')
     print(f'[gen] Sóc {len(soc)}, tiết khí {len(tk)}, bin {len(b)} byte, sha256 {sha}', file=sys.stderr)
 
 

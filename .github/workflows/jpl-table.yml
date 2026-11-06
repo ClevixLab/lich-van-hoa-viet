@@ -56,12 +56,12 @@ jobs:
         run: |
           python tools/jpl/gen_table.py --part1 ~/de441/de441_part-1.bsp --part2 ~/de441/de441_part-2.bsp --repo .
           cat core/data/jpl_events.meta.txt
-          ls -la core/data tsport/src/jpl_data.ts
+          ls -la core/data
       - name: Commit lại vào nhánh
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add core/data/jpl_events.bin core/data/jpl_events.csv.gz core/data/jpl_events.meta.txt tsport/src/jpl_data.ts
+          git add core/data/jpl_events.bin core/data/jpl_events.csv.gz core/data/jpl_events.meta.txt
           if git diff --cached --quiet; then echo "Bảng không đổi."; exit 0; fi
           git commit -m "Bảng Jpl sinh từ DE441 (tools/jpl/gen_table.py, workflow jpl-table)" \
             -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>" \

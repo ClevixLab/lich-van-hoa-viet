@@ -3,14 +3,13 @@
 //       hnd     ← core/out/dayinfo_1900_3000.jsonl.gz
 //       precise ← core/out/precise/dayinfo_1900_3000.jsonl.gz
 //       jpl     ← core/out/jpl/dayinfo_1900_3000.jsonl.gz (docs/03 §17)
-//  0. tsport/src/jpl_data.ts holds exactly the bytes of core/data/jpl_events.bin (SHA-256)
+//     (tsport/src/jpl_days.ts freshness: core/tests/jpl_ts.rs + scripts/check-parity.sh)
 //  2. tet() 1900..3000 vs tet_1900_1999.csv + tet.csv (2000..3000), each method dir
 //  3. findGoodDays JSONL vs core/out/gooddays_sample.jsonl (+ precise/ if present):
 //       every activity, 2026-01-01..2026-12-31, birth year none and 1976 (lvhv-dump gooddays all …)
 //  4. dayInfo micro-benchmark.
 // Usage: node tsport/test/compare.mjs [--method hnd|precise|jpl] [--skip-dayinfo]
 import { createReadStream, existsSync, readFileSync } from "node:fs";
-import { createHash } from "node:crypto";
 import { createGunzip } from "node:zlib";
 import { createInterface } from "node:readline";
 import { dirname, join } from "node:path";
@@ -39,16 +38,6 @@ function firstDiff(a, b) {
 const summary = {};
 let failed = false;
 
-// ---- 0. Jpl table bytes: TS base64 ≡ core/data/jpl_events.bin ----
-{
-  const bin = readFileSync(join(REPO, "core", "data", "jpl_events.bin"));
-  const tsSrc = readFileSync(join(REPO, "tsport", "src", "jpl_data.ts"), "utf8");
-  const b64 = /JPL_EVENTS_B64 =\s*"([^"]*)"/.exec(tsSrc)[1];
-  const same = Buffer.from(b64, "base64").equals(bin);
-  const sha = createHash("sha256").update(bin).digest("hex");
-  console.log(`jpl_data.ts ≡ jpl_events.bin: ${same ? "giống hệt" : "KHÁC"} (sha256 ${sha}, ${bin.length} byte)`);
-  if (!same || !tsSrc.includes(sha)) failed = true;
-}
 console.log(`DEFAULT_METHOD (tsport) = ${DEFAULT_METHOD}; goldens: ${GOLDEN}`);
 
 for (const method of only) {

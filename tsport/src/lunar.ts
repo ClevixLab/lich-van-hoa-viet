@@ -8,7 +8,7 @@ import {
   checkJdn, computation, invalidArgument, invalidDate, jdnInRange, outOfRange,
 } from "./error.ts";
 import { dateFromJdn, isValidSolar, jdnFromDate } from "./jd.ts";
-import { jplNewMoonUt, jplTermAt } from "./jpl.ts";
+import { jplNewMoonDay, jplTermAtMidnight } from "./jpl.ts";
 
 /** Rust `Method` (`Method::Hnd` = "hnd", `Method::Precise` = "precise", `Method::Jpl` = "jpl"). */
 export type Method = "hnd" | "precise" | "jpl";
@@ -30,27 +30,21 @@ export function checkMethod(m: unknown): Method {
 
 /** Day (JDN, UTC+7) containing new moon k (Rust `new_moon_day`). */
 export function newMoonDay(method: Method, k: number): number {
+  if (method === "jpl") return jplNewMoonDay(k);
   return localDayOf(newMoonUtWith(method, k));
 }
 
 /** New moon k as JD UT (Rust `new_moon_ut_with`). */
 export function newMoonUtWith(method: Method, k: number): number {
-  if (method === "jpl") {
-    const t = jplNewMoonUt(k);
-    if (t === null) throw outOfRange();
-    return t;
-  }
+  // "jpl": instants live only in the Rust core (tsport keeps the day table — jpl.ts).
+  if (method === "jpl") throw invalidArgument("jpl: thời điểm Sóc chỉ có ở lõi Rust (tsport dùng bảng ngày)");
   return method === "hnd" ? hndNewMoon(k) : preciseNewMoonUt(k);
 }
 
 /** 30° sector (0..11) of the Sun at 00:00 UTC+7 of `jdn` (Rust `sun_sector`). */
 export function sunSector(method: Method, jdn: number): number {
   if (method === "hnd") return hndSunSector(jdn);
-  if (method === "jpl") {
-    const i = jplTermAt(localMidnightUt(jdn));
-    if (i === null) throw outOfRange();
-    return Math.trunc(i / 2);
-  }
+  if (method === "jpl") return Math.trunc(jplTermAtMidnight(jdn) / 2);
   const l = apparentSunLongitudeUt(localMidnightUt(jdn));
   // Rust: `((l / 30.0).floor() as i32).rem_euclid(12)` (C-6).
   const s = Math.floor(l / 30.0);

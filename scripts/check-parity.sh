@@ -124,6 +124,12 @@ for m in "${METHODS[@]}"; do
   if ! LVHV_GOLDEN_DIR="$TMP" node tsport/test/compare.mjs --method "$m"; then status=1; fi
 done
 
+log "bảng ngày Jpl của tsport phải được sinh từ Rust (lvhv-dump jpl-days-ts)"
+if ! "$DUMP" jpl-days-ts | cmp -s - tsport/src/jpl_days.ts; then
+  echo "[parity] LỖI: tsport/src/jpl_days.ts khác bản sinh từ lõi Rust (lvhv-dump jpl-days-ts)" >&2
+  status=1
+fi
+
 log "bảng Ngọc Hạp TS phải được sinh từ Rust (emit_ts_tables)"
 cp tsport/src/ngochap_tables.ts "$TMP/ngochap_tables.before.ts"
 cargo test --release --locked -p lvhv-ngochap --quiet emit_ts_tables -- --ignored >/dev/null
