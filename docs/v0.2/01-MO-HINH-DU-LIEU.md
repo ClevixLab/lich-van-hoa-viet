@@ -101,6 +101,25 @@ Event   1 ──── 1   ReminderRule     (nhúng)
 Quy tắc: nếu cả ngày sinh và ngày mất có năm âm xác định thì năm âm mất ≥ năm âm sinh; nếu vi phạm → lỗi "Ngày mất
 trước ngày sinh". Ngày mất ở tương lai (so với ngày hôm nay của thiết bị) → lỗi.
 
+### 3.2a `DeathNotice` — thông tin báo tử (tùy chọn; Bổ sung YC-2026-05, 2026-11-07)
+
+Nhúng trong `DeathInfo` dưới khóa `notice` (`null` hoặc đối tượng). Mọi trường đều tùy chọn; chuỗi đã cắt khoảng trắng
+hai đầu, rỗng ghi là `null`.
+
+| Trường | Kiểu | Kiểm tra / ghi chú |
+|---|---|---|
+| `reported_by` | chuỗi ≤ 200 ký tự \| `null` | Ai báo tin |
+| `place` | chuỗi ≤ 200 \| `null` | Mất ở đâu (khác nơi an táng ở `Person`) |
+| `reason` | chuỗi ≤ 500 \| `null` | Lý do. **Nhạy cảm**: chỉ hiện trên trang hồ sơ |
+| `notice_date` | `DateValue` \| `null` | Ngày nhận tin (dương), không được sau hôm nay |
+| `certificate_photo_ids` | mảng UUID, 0–4 phần tử | Ảnh giấy báo tử, lưu như `Photo` (§3.8: mã hóa lại, bỏ siêu dữ liệu), thuộc về hồ sơ này; xóa hồ sơ thì xóa ảnh |
+| `note` | chuỗi ≤ 2000 \| `null` | Ghi chú |
+
+Quy tắc: `notice` chỉ có khi có `DeathInfo`. Không trường nào của `notice` được đưa vào thông báo, tệp .ics, màn hình
+tưởng niệm, tên tệp xuất hay URL. `notice` có trong tệp sao lưu mã hóa (03) và đi qua kiểm tra khi nhập (§6.3).
+Chuyển một hồ sơ đang sống thành đã mất = thêm `death` (và tùy chọn `notice`) vào **cùng** hồ sơ, tăng `rev`; không
+tạo hồ sơ mới.
+
 ### 3.3 `BirthInfo` — ngày sinh
 
 | Trường | Kiểu | Bắt buộc | Kiểm tra / ghi chú |
