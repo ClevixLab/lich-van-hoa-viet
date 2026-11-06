@@ -103,6 +103,11 @@ if (c0 === "gio-dates" && c1 === "solar" && args.length >= 4) {
   out.push(D.R12_HEADER);
   D.r12Lines(cal, ds, [10, 50, 200], out, steps);
   if (steps !== null) { out.push(D.R12_STEPS_HEADER); out.push(steps.join("")); }
+} else if (c0 === "r13" && (args.length === 2 || args.length === 4)) {
+  const ds = load(c1);
+  const f = c2 === undefined ? ymd(2026, 1, 1) : pYmd(c2);
+  const t = c3 === undefined ? ymd(2036, 12, 31) : pYmd(c3);
+  M.r13Lines(cal, ds, f, t, out);
 } else if (c0 === "ics" && args.length === 4) {
   out.push(generateIcs(cal, load(c1), { today: pYmd(c2), dtstamp: c3, only_ids: null }));
 } else if (c0 === "derive" && args.length === 2) {

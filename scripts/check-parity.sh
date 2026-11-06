@@ -12,7 +12,7 @@
 # 6. v0.2 (lvhv-memorial): lvhv-memorial-dump (Rust) ↔ tsport/test/memorial_dump.mjs (TypeScript), so
 #    từng byte mọi đầu ra kiểm định (docs/v0.2/02 Phụ lục A): gio-dates solar 1900–3000 / lunar 1900–2999
 #    / unknown 1900–3000 (R1, cả --gio-het 3 cho một mẫu), reminders configs + reminders đầy đủ R3,
-#    upcoming 2026–2036 (R11), r10 a–d, r12 --steps, ics (bộ R3 và tệp ví dụ), derive; + test đơn vị TS.
+#    upcoming 2026–2036 (R11), r10 a–d, r12 --steps, r13 (R13, 02 Phụ lục A.6), ics (bộ R3 và tệp ví dụ), derive; + test đơn vị TS.
 # Thoát khác 0 nếu có bất kỳ sai lệch nào.
 #
 # Cách dùng (từ bất kỳ đâu):  scripts/check-parity.sh            # cả ba phương pháp
@@ -62,6 +62,9 @@ memorial_parity() {
     "upcoming $DS 2026-01-01 2036-12-31"
     "r10 a" "r10 b" "r10 c" "r10 d"
     "r12 $DS --steps"
+    "r13 $DS"
+    "--method precise r13 $DS 2026-01-01 2027-12-31"
+    "r13 $EX 2026-01-01 2030-12-31"
     "ics $DS 2026-11-06 20261106T031500Z"
     "ics $EX 2026-07-01 20261106T031500Z"
     "derive $EX"

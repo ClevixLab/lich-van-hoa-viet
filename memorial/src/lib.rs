@@ -16,6 +16,7 @@ pub mod ics;
 pub mod json;
 pub mod model;
 pub mod occ;
+pub mod period;
 pub mod remind;
 
 pub use cal::Cal;
@@ -26,4 +27,8 @@ pub use gio::{
 };
 pub use model::*;
 pub use occ::{notification_text, occurrences, upcoming, OccClass, OccKey, Occurrence, RemType};
+pub use period::{
+    events_in_period, next_period, period_bounds, prev_period, Period, PeriodItem, PeriodKind,
+    PersonFilter,
+};
 pub use remind::{reminders_for, reschedule, Reminder, Zone};

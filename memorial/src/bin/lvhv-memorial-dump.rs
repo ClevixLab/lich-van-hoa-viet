@@ -22,6 +22,7 @@ const USAGE: &str = "Cách dùng: lvhv-memorial-dump [--method hnd|precise|jpl] 
   r10 a|b|c|d                          R10: (a) sinh 1900-01-01…2026-12-31, (b) Can Chi 1899–3000,
                                        (c) 10 000 cặp hạt 20261106, (d) 29/02 1900–3000
   r12 DATASET.json [--steps]           R12: mô phỏng 10/50/200 hồ sơ × 3 kịch bản (CSV)
+  r13 DATASET.json [FROM TO]           R13: danh sách theo tuần/tháng/quý/năm × 3 bộ lọc (JSONL), mặc định 2026-01-01…2036-12-31
   ics DATASET.json TODAY DTSTAMP       tệp .ics (DTSTAMP dạng YYYYMMDDTHHMMSSZ)
   derive DATASET.json                  tính lại trường dẫn xuất (JSON thụt lề)";
 
@@ -235,6 +236,14 @@ fn run(args: &[String]) -> Result<(), String> {
                 o.buf.push_str(R12_STEPS_HEADER);
                 o.buf.push_str(&steps);
             }
+        }
+        ["r13", file, rest @ ..] if rest.is_empty() || rest.len() == 2 => {
+            let ds = load(file)?;
+            let (f, t) = match rest {
+                [f, t] => (parse_ymd(f)?, parse_ymd(t)?),
+                _ => (Ymd::new(2026, 1, 1), Ymd::new(2036, 12, 31)),
+            };
+            lvhv_memorial::period::r13_lines(cal, &ds, f, t, &mut o.buf);
         }
         ["ics", file, today, stamp] => {
             let ds = load(file)?;

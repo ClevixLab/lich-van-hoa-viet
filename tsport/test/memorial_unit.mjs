@@ -67,5 +67,88 @@ eq([M.trigger(3, 420), M.trigger(0, 420), M.trigger(1, 0), M.trigger(0, 0)], ["-
 eq(ics.split("\r\n").every((l) => Buffer.byteLength(l) <= 75), true, "≤ 75 octets");
 eq(M.cmpCodepoints("\u{1F600}", "￿") > 0, true, "code-point order (not UTF-16)");
 
+// 02 §7.4 (Bổ sung B2): thông báo nhắc mở ứng dụng cùng phút với cái thứ 63, đứng sau nó.
+{
+  const all = [];
+  for (let i = 0; i < 62; i++) all.push({ id: `lvhv:${i.toString(16).padStart(8, "0")}-0000-4000-8000-000000000000:2026:0`, at: 1000 + i, content: "" });
+  for (let k = 0; k < 3; k++) all.push({ id: `lvhv:ffffffff-0000-4000-8000-00000000000${k}:2026:0`, at: 5000, content: "" });
+  const plan = M.reschedule(0, all, []);
+  const s = plan.keep.find((p) => p.id === M.SENTINEL_ID);
+  eq([plan.keep.length, s.at], [64, 5000], "R12 sentinel same minute as 63rd");
+  const q = M.applyPlan([], plan);
+  eq([q[62].at, q[63].id], [5000, M.SENTINEL_ID], "R12 sentinel ordered after 63rd");
+}
+
+// R13 (02 §7.6): biên kỳ, (c) nhất quán, (d) ngày đầu/cuối, quy tắc lọc sự kiện.
+{
+  const calJ = M.Cal.get("jpl");
+  const r3 = M.parseDataset(readFileSync(join(REPO, "memorial/testdata/r3-dataset.json"), "utf8"));
+  const lo = M.ymd(2026, 1, 1), hi = M.ymd(2036, 12, 31);
+  const k = (it) => `${it.class}|${it.entity_id}|${it.key}`;
+  const keys = (p) => p.items.map(k);
+  const clip = (p, f, t) => p.items.filter((i) => M.cmpYmd(f, i.date) <= 0 && M.cmpYmd(i.date, t) <= 0).map(k);
+  const B = (kind, d) => { const r = M.periodBounds(kind, d); return [M.iso(r.from), M.iso(r.to)]; };
+  eq(B("tuan", M.ymd(2026, 1, 1)), ["2025-12-29", "2026-01-04"], "week Mon–Sun");
+  eq(B("tuan", M.ymd(2026, 1, 4)), ["2025-12-29", "2026-01-04"], "Sunday ends the week");
+  eq(B("thang", M.ymd(2028, 2, 10)), ["2028-02-01", "2028-02-29"], "month");
+  eq(B("quy", M.ymd(2026, 8, 31)), ["2026-07-01", "2026-09-30"], "quarter");
+  eq(B("nam", M.ymd(2026, 8, 31)), ["2026-01-01", "2026-12-31"], "year");
+  const pr = M.prevPeriod("quy", M.ymd(2026, 2, 1)), nx = M.nextPeriod("thang", M.ymd(2026, 12, 5));
+  eq([M.iso(pr.from), M.iso(pr.to), M.iso(nx.from), M.iso(nx.to)], ["2025-10-01", "2025-12-31", "2027-01-01", "2027-01-31"], "prev/next");
+  eq(M.PERIOD_KINDS.map((kd) => M.periodsCovering(kd, lo, hi).length), [575, 132, 44, 11], "period counts");
+  let okC = true, okDup = true, okF = true, okD = true, n = 0;
+  for (const f of M.PERSON_FILTERS) {
+    for (const m of M.periodsCovering("thang", lo, hi)) {
+      const month = M.eventsInPeriod(calJ, r3, "thang", m.anchor, f);
+      const fromWeeks = M.periodsCovering("tuan", m.from, m.to).flatMap((w) => clip(M.eventsInPeriod(calJ, r3, "tuan", w.anchor, f), m.from, m.to));
+      if (JSON.stringify(fromWeeks) !== JSON.stringify(keys(month))) okC = false;
+      if (new Set(keys(month)).size !== month.items.length) okDup = false;
+      n += month.items.length;
+    }
+    for (const q of M.periodsCovering("quy", lo, hi)) {
+      const months = M.periodsCovering("thang", q.from, q.to).flatMap((m) => keys(M.eventsInPeriod(calJ, r3, "thang", m.anchor, f)));
+      if (JSON.stringify(months) !== JSON.stringify(keys(M.eventsInPeriod(calJ, r3, "quy", q.anchor, f)))) okC = false;
+    }
+    for (const y of M.periodsCovering("nam", lo, hi)) {
+      const qs = M.periodsCovering("quy", y.from, y.to).flatMap((q) => keys(M.eventsInPeriod(calJ, r3, "quy", q.anchor, f)));
+      if (JSON.stringify(qs) !== JSON.stringify(keys(M.eventsInPeriod(calJ, r3, "nam", y.anchor, f)))) okC = false;
+    }
+  }
+  const wide = M.occurrencesWithTt(calJ, r3, M.ymd(2025, 12, 1), M.ymd(2037, 1, 31));
+  let hits = 0;
+  for (const kd of M.PERIOD_KINDS) {
+    for (const p of M.periodsCovering(kd, lo, hi)) {
+      const all = M.eventsInPeriod(calJ, r3, kd, p.anchor, "tat_ca");
+      const dm = keys(M.eventsInPeriod(calJ, r3, kd, p.anchor, "da_mat"));
+      const dsg = keys(M.eventsInPeriod(calJ, r3, kd, p.anchor, "dang_song"));
+      const s = new Set(dm);
+      if (JSON.stringify(keys(all).filter((x) => s.has(x))) !== JSON.stringify(dm)) okF = false;
+      if (JSON.stringify(keys(all).filter((x) => !s.has(x))) !== JSON.stringify(dsg)) okF = false;
+      const want = wide.filter((o) => M.cmpYmd(p.from, o.date) <= 0 && M.cmpYmd(o.date, p.to) <= 0).map((o) => `${o.class}|${o.entity_id}|${M.keyText(o.key)}`);
+      if (JSON.stringify(want) !== JSON.stringify(keys(all))) okD = false;
+      hits += all.items.filter((i) => M.cmpYmd(i.date, p.from) === 0 || M.cmpYmd(i.date, p.to) === 0).length;
+    }
+  }
+  eq([okC, okDup, okF, okD, n > 0, hits > 0], [true, true, true, true, true, true], "R13(c)(d) on R3 dataset 2026–2036");
+  // Sự kiện đúng tại biên.
+  const ev = (id, y, m, d) => ({ id, type_id: "6f1c2a1e-0b6e-4c55-9a51-0d1f2b7c0001", tieu_de: `Biên ${id}`, date: M.dvSolar(y, m, d), recurring: false, person_ids: [], reminder: null, rev: 1 });
+  const syn = { reminders_enabled: true, persons: [], events: [ev("e1", 2027, 1, 1), ev("e2", 2027, 3, 31), ev("e3", 2027, 12, 31), ev("e4", 2027, 6, 7), ev("e5", 2027, 6, 13)], event_types: [] };
+  const has = (kd, a, id) => M.eventsInPeriod(calJ, syn, kd, a, "tat_ca").items.some((i) => i.entity_id === id);
+  eq([
+    has("nam", M.ymd(2027, 7, 1), "e1"), has("nam", M.ymd(2027, 7, 1), "e3"), has("quy", M.ymd(2027, 2, 1), "e2"),
+    has("quy", M.ymd(2027, 4, 1), "e2"), has("tuan", M.ymd(2027, 6, 10), "e4"), has("tuan", M.ymd(2027, 6, 10), "e5"),
+    has("tuan", M.ymd(2027, 6, 14), "e5"),
+  ], [true, true, true, false, true, true, false], "R13(d) boundary days");
+  // Quy tắc lọc sự kiện nhiều người.
+  const r3b = structuredClone(r3);
+  const dead = r3b.persons.filter((p) => p.death !== null).map((p) => p.id);
+  const alive = r3b.persons.find((p) => p.death === null).id;
+  r3b.events[0].person_ids = [dead[0]];
+  r3b.events[1].person_ids = [dead[0], alive];
+  r3b.events[2].person_ids = [dead[0], dead[1]];
+  const dmY = M.eventsInPeriod(calJ, r3b, "nam", M.ymd(2027, 6, 1), "da_mat").items.map((i) => i.entity_id);
+  eq([0, 1, 2, 3].map((i) => dmY.includes(r3b.events[i].id)), [true, false, true, false], "event filter rule");
+}
+
 console.log(`memorial_unit: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
