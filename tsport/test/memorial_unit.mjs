@@ -72,7 +72,7 @@ eq(M.cmpCodepoints("\u{1F600}", "￿") > 0, true, "code-point order (not UTF-16)
   const all = [];
   for (let i = 0; i < 62; i++) all.push({ id: `lvhv:${i.toString(16).padStart(8, "0")}-0000-4000-8000-000000000000:2026:0`, at: 1000 + i, content: "" });
   for (let k = 0; k < 3; k++) all.push({ id: `lvhv:ffffffff-0000-4000-8000-00000000000${k}:2026:0`, at: 5000, content: "" });
-  const plan = M.reschedule(0, all, []);
+  const plan = M.reschedule(0, all, [], M.Zone.fixed(0));
   const s = plan.keep.find((p) => p.id === M.SENTINEL_ID);
   eq([plan.keep.length, s.at], [64, 5000], "R12 sentinel same minute as 63rd");
   const q = M.applyPlan([], plan);
@@ -84,14 +84,18 @@ eq(M.cmpCodepoints("\u{1F600}", "￿") > 0, true, "code-point order (not UTF-16)
   const hi = M.WINDOW_DAYS * 1440;
   const p = (i, at) => ({ id: `lvhv:${i.toString(16).padStart(8, "0")}-0000-4000-8000-000000000000:2026:0`, at, content: "" });
   const w = [...Array(10).keys()].map((i) => p(i, 1000 + i));
-  const k1 = M.reschedule(0, [...w, p(99, hi + 5)], []).keep;
+  const k1 = M.reschedule(0, [...w, p(99, hi + 5)], [], M.Zone.fixed(0)).keep;
   eq([k1.length, k1.at(-1).id, k1.at(-1).at], [11, M.SENTINEL_ID, 1009], "B3 sentinel after last scheduled");
-  const k2 = M.reschedule(0, [p(1, hi + 1)], []).keep;
-  eq(k2.map((x) => [x.id, x.at]), [[M.SENTINEL_ID, hi]], "B3 sentinel at now + 400 days when nothing in window");
+  const k2 = M.reschedule(0, [p(1, hi + 1)], [], M.Zone.fixed(0)).keep;
+  eq(k2.map((x) => [x.id, x.at]), [[M.SENTINEL_ID, 399 * 1440 + 540]], "sentinel at 09:00 of day today + 399 when nothing in window (MA3-14-06)");
   const w64 = [...Array(64).keys()].map((i) => p(i, 1000 + i));
-  const k3 = M.reschedule(0, [...w64, p(99, hi + 5)], []).keep;
+  const k3 = M.reschedule(0, [...w64, p(99, hi + 5)], [], M.Zone.fixed(0)).keep;
   eq([k3.length, k3[63].id, k3[63].at], [64, M.SENTINEL_ID, 1062], "B3 64 in window + beyond");
-  eq(M.reschedule(0, w64, []).keep.some((x) => x.id === M.SENTINEL_ID), false, "no sentinel when all fit");
+  eq(M.reschedule(0, w64, [], M.Zone.fixed(0)).keep.some((x) => x.id === M.SENTINEL_ID), false, "no sentinel when all fit");
+  const tzv7 = M.Zone.vietnam();
+  const n0 = tzv7.localToUtc(M.localMinutes(M.ymd(2026, 5, 28), 3 * 60 + 26));
+  const kf = M.reschedule(n0, [p(0, n0 + 700 * 1440)], [], tzv7).keep;
+  eq([kf.length, M.fmtLocal(tzv7.toLocal(kf[0].at))], [1, "2027-07-01T09:00"], "MA3-14-06 sentinel at 09:00 device time");
   // R3 modes.
   const r3d = M.parseDataset(readFileSync(join(REPO, "memorial/testdata/r3-dataset.json"), "utf8"));
   const tzv = M.Zone.vietnam(), now0 = M.dump.r3Now(tzv);

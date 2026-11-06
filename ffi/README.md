@@ -63,6 +63,9 @@ lược đồ `docs/v0.2/schema/backup-v1.schema.json` (Person, Event, EventType
 | `ics_export(dataset, today, now, only_ids)` → `IcsExport {file_name, content, events, persons}` | Tệp .ics 10 năm (02 §8); `persons` cho hộp xác nhận S10 |
 | `new_uuid()` | UUID v4 (01 §1) |
 
+Lược đồ đầu ra: `docs/v0.2/schema/ffi-v02-output.schema.json` (mọi đối tượng đóng; kiểm thử `output_matches_schema`
+so đầu ra thật của từng hàm với lược đồ). Đổi hay thêm trường phải sửa lược đồ cùng lúc.
+
 O-9: khi không hiện tên, phần tử lời nhắc chỉ có `occ = {entity_id, class, date, key}` (không có `name`,
 `headline`, `date_line`); **nội dung thông báo chỉ lấy từ `title`/`body`**.
 

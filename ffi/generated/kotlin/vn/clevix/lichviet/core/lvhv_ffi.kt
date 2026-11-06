@@ -1375,7 +1375,7 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_lvhv_ffi_checksum_func_reminders_json() != 836.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_lvhv_ffi_checksum_func_reschedule_json() != 38758.toShort()) {
+    if (lib.uniffi_lvhv_ffi_checksum_func_reschedule_json() != 30285.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_lvhv_ffi_checksum_func_save_death_json() != 16966.toShort()) {
@@ -4015,7 +4015,7 @@ public object FfiConverterSequenceTypeZoneTransition: FfiConverterRustBuffer<Lis
          * `{"id","at_unix_s","fire_local","title","body","content"}`; ứng dụng gỡ `remove`, thêm `add`, thay
          * `replace` (trigger theo `fire_local`, không gắn múi giờ). Còn lời nhắc không đặt được (> 64 trong cửa
          * sổ 400 ngày, hoặc ở ngoài cửa sổ) → tối đa 63 sớm nhất + thông báo nhắc mở ứng dụng
-         * (`id = "lvhv:sentinel"`) cùng phút với cái cuối cùng đã đặt (không có cái nào: tại now + 400 ngày) —
+         * (`id = "lvhv:sentinel"`) cùng phút với cái cuối cùng đã đặt (không có cái nào: 09:00 giờ thiết bị ngày hôm nay + 399) —
          * 02 §7.4, Bổ sung B3. `show_names` mặc định `false` (O-9); nên gọi `LvhvStore.reschedule_json`.
          */
     @Throws(LvhvDataException::class) fun `rescheduleJson`(`datasetJson`: kotlin.String, `nowUnixS`: kotlin.Long, `zone`: DeviceZone, `pendingJson`: kotlin.String, `showNames`: kotlin.Boolean = false): kotlin.String {

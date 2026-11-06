@@ -726,13 +726,11 @@ impl Store {
     }
 
     /// Xuất tệp sao lưu mã hóa (03 §2.4). Đặt `settings.last_backup_at` và xóa trạng thái "chờ sao lưu".
-    /// `settings.last_backup_at` **trong tệp** là thời điểm của chính lần xuất này (= `exported_at`), để khôi
-    /// phục "Thay toàn bộ" cho đúng ngày sao lưu gần nhất (TK-16) và kho sau khi xuất ≡ kho khôi phục từ tệp.
-    /// Vector kiểm thử (`export_backup_fixed`) không đổi.
+    /// `last_backup_at` trong tệp là giá trị **trước** lần xuất này (TK-16 chưa áp dụng: đổi thì R6 (a)/(d)
+    /// không còn so được với `manifest.dataset_r6.store_state_sha256` — xem PR #14).
     pub fn export_backup(&mut self, password: &str, app: &AppInfo) -> Result<Vec<u8>> {
         let now = now_rfc3339();
-        let (mut doc, blobs) = self.snapshot_with_photos(app, &now)?;
-        doc["settings"]["last_backup_at"] = json!(now);
+        let (doc, blobs) = self.snapshot_with_photos(app, &now)?;
         let file = lvhv_backup::export(password, &canonical_json(&doc), &blobs)?;
         self.after_export(&now)?;
         Ok(file)

@@ -857,7 +857,7 @@ fn reschedule_impl(
         .iter()
         .map(|r| to_pending(cal(), r, show_names))
         .collect();
-    let plan = reschedule(now, &desired, &pending);
+    let plan = reschedule(now, &desired, &pending, &tz);
     let list = |v: &[Pending]| -> Vec<Value> { v.iter().map(|p| pending_value(p, &tz)).collect() };
     Ok(to_text(&json!({
         "keep": list(&plan.keep),
@@ -874,7 +874,7 @@ fn reschedule_impl(
 /// `{"id","at_unix_s","fire_local","title","body","content"}`; ứng dụng gỡ `remove`, thêm `add`, thay
 /// `replace` (trigger theo `fire_local`, không gắn múi giờ). Còn lời nhắc không đặt được (> 64 trong cửa
 /// sổ 400 ngày, hoặc ở ngoài cửa sổ) → tối đa 63 sớm nhất + thông báo nhắc mở ứng dụng
-/// (`id = "lvhv:sentinel"`) cùng phút với cái cuối cùng đã đặt (không có cái nào: tại now + 400 ngày) —
+/// (`id = "lvhv:sentinel"`) cùng phút với cái cuối cùng đã đặt (không có cái nào: 09:00 giờ thiết bị ngày hôm nay + 399) —
 /// 02 §7.4, Bổ sung B3. `show_names` mặc định `false` (O-9); nên gọi `LvhvStore.reschedule_json`.
 #[uniffi::export(default(show_names = false))]
 pub fn reschedule_json(

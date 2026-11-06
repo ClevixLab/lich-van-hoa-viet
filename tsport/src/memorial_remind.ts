@@ -2,7 +2,7 @@
 // R12 simulation. Instants are minutes (UTC) since JDN 0 (exact in doubles: < 2^33).
 
 import type { Cal } from "./memorial_cal.ts";
-import { type Dataset, type ReminderRule, type Ymd, fmtHhmm, iso, parseHhmm, parseYmd, ymdFromJdn, ymdJdn } from "./memorial_model.ts";
+import { type Dataset, type ReminderRule, type Ymd, cmpYmd, fmtHhmm, iso, parseHhmm, parseYmd, ymdFromJdn, ymdJdn } from "./memorial_model.ts";
 import { type Occurrence, type RemType, eventClass, keyText, notificationText, occurrencesWithTt, ruleOf } from "./memorial_occ.ts";
 
 export class Zone {
@@ -111,10 +111,10 @@ export interface Plan { keep: Pending[]; remove: string[]; add: Pending[]; repla
 const cmpPending = (a: Pending, b: Pending) => a.at - b.at || cmpId(a.id, b.id);
 
 /** 02 §7.4 (Bổ sung B3): sentinel whenever any future reminder is left unscheduled (cap or beyond window). */
-export function selectKeep(desired: Pending[], beyond: boolean, hi: number): Pending[] {
+export function selectKeep(desired: Pending[], beyond: boolean, fallbackAt: number): Pending[] {
   if (desired.length > CAP || beyond) {
     const keep = desired.slice(0, Math.min(desired.length, CAP - 1));
-    const at = keep.length > 0 ? keep[keep.length - 1].at : hi;
+    const at = keep.length > 0 ? keep[keep.length - 1].at : fallbackAt;
     keep.push({ id: SENTINEL_ID, at, content: SENTINEL_TEXT });
     return keep;
   }
@@ -126,8 +126,9 @@ export const BEYOND_SCAN_DAYS = 500;
 function onceRemindersAfter(cal: Cal, ds: Dataset, after: Ymd, now: number, tz: Zone): Reminder[] {
   const once: Dataset = { ...ds, persons: [], events: ds.events.filter((e) => eventClass(e) === "su_kien_khong_lap") };
   const from = ymdFromJdn(ymdJdn(after) + 1);
-  if (once.events.length === 0 || from.y > 3000) return [];
-  return allReminders(cal, once, from, { y: 3000, m: 12, d: 31 }, now, tz);
+  const end = { y: 3000, m: 12, d: 31 };
+  if (once.events.length === 0 || cmpYmd(from, end) > 0) return [];
+  return allReminders(cal, once, from, end, now, tz);
 }
 
 /** Input `desiredAll` for `reschedule` at `now` (mirror of Rust `reschedule_input`). */
@@ -140,10 +141,17 @@ export function rescheduleInput(cal: Cal, ds: Dataset, now: number, tz: Zone): R
   return v;
 }
 
-export function reschedule(now: number, desiredAll: Pending[], pending: Pending[]): Plan {
+export const SENTINEL_FALLBACK_HHMM = 9 * 60;
+/** 09:00 device time of day `today + 399` (02 §7.4, MA3-14-06). */
+export function sentinelFallback(now: number, tz: Zone): number {
+  const today = Math.floor(tz.toLocal(now) / 1440);
+  return tz.localToUtc((today + WINDOW_DAYS - 1) * 1440 + SENTINEL_FALLBACK_HHMM);
+}
+
+export function reschedule(now: number, desiredAll: Pending[], pending: Pending[], tz: Zone): Plan {
   const hi = now + WINDOW_DAYS * 1440;
   const desired = desiredAll.filter((p) => p.at > now && p.at <= hi).sort(cmpPending);
-  const keep = selectKeep(desired, desiredAll.some((p) => p.at > hi), hi);
+  const keep = selectKeep(desired, desiredAll.some((p) => p.at > hi), sentinelFallback(now, tz));
   const keepIds = new Set(keep.map((k) => k.id));
   const byId = new Map(pending.map((p) => [p.id, p] as const));
   const plan: Plan = { keep, remove: [], add: [], replace: [] };
@@ -219,7 +227,7 @@ export function simulate(
     else opened = rng.nextU32() * pDen < pNum * 4294967296;
     if (opened) {
       res.opens++;
-      const plan = reschedule(tOpen, allP, pending);
+      const plan = reschedule(tOpen, allP, pending, tz);
       pending = applyPlan(pending, plan);
       const hi = tOpen + WINDOW_DAYS * 1440;
       const fut = allP.filter((p) => p.at > tOpen && p.at <= hi);

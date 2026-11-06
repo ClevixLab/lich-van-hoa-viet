@@ -536,25 +536,141 @@ fn input_domain_checks() {
     assert!(reminders_json(EXAMPLE.into(), now, dst, 60, false).is_ok());
 }
 
-/// TK-16: sau khôi phục "Thay toàn bộ", ngày sao lưu gần nhất là ngày của tệp đã khôi phục.
+// ---------------------------------------------------------------- MA3-14-07: lược đồ đầu ra
+
+const OUT_SCHEMA: &str = include_str!("../../docs/v0.2/schema/ffi-v02-output.schema.json");
+
+/// Kiểm tối giản theo tập con JSON Schema dùng trong `ffi-v02-output.schema.json`: `type` (một hoặc
+/// mảng), `enum`, `properties` + `required` + `additionalProperties: false`, `items`, `$ref`, `oneOf`.
+fn conforms(root: &Value, s: &Value, x: &Value, path: &str) -> Result<(), String> {
+    if let Some(r) = s.get("$ref").and_then(Value::as_str) {
+        let name = r.trim_start_matches("#/$defs/");
+        return conforms(root, &root["$defs"][name], x, path);
+    }
+    if let Some(alts) = s.get("oneOf").and_then(Value::as_array) {
+        let ok = alts
+            .iter()
+            .filter(|a| conforms(root, a, x, path).is_ok())
+            .count();
+        return if ok == 1 {
+            Ok(())
+        } else {
+            Err(format!("{path}: oneOf khớp {ok} nhánh"))
+        };
+    }
+    if let Some(t) = s.get("type") {
+        let ty = match x {
+            Value::Null => "null",
+            Value::Bool(_) => "boolean",
+            Value::Number(n) if n.is_i64() || n.is_u64() => "integer",
+            Value::Number(_) => "number",
+            Value::String(_) => "string",
+            Value::Array(_) => "array",
+            Value::Object(_) => "object",
+        };
+        let allowed: Vec<&str> = match t {
+            Value::String(t) => vec![t.as_str()],
+            Value::Array(a) => a.iter().filter_map(Value::as_str).collect(),
+            _ => vec![],
+        };
+        if !allowed.contains(&ty) {
+            return Err(format!("{path}: kiểu {ty}, lược đồ {t}"));
+        }
+    }
+    if let Some(e) = s.get("enum").and_then(Value::as_array) {
+        if !e.contains(x) {
+            return Err(format!("{path}: {x} không thuộc enum"));
+        }
+    }
+    if let (Some(props), Value::Object(o)) = (s.get("properties"), x) {
+        let props = props.as_object().unwrap();
+        for k in s["required"].as_array().into_iter().flatten() {
+            if !o.contains_key(k.as_str().unwrap()) {
+                return Err(format!("{path}: thiếu {k}"));
+            }
+        }
+        for (k, val) in o {
+            match props.get(k) {
+                Some(ps) => conforms(root, ps, val, &format!("{path}.{k}"))?,
+                None if s["additionalProperties"] == false => {
+                    return Err(format!("{path}: khóa lạ {k}"))
+                }
+                None => {}
+            }
+        }
+    }
+    if let (Some(items), Value::Array(a)) = (s.get("items"), x) {
+        for (i, val) in a.iter().enumerate() {
+            conforms(root, items, val, &format!("{path}[{i}]"))?;
+        }
+    }
+    Ok(())
+}
+
+fn check_out(func: &str, text: &str) {
+    let root = v(OUT_SCHEMA);
+    let x = v(text);
+    if let Err(e) = conforms(&root, &root["properties"][func], &x, func) {
+        panic!("{e}");
+    }
+}
+
+/// Mọi hàm FFI trả JSON đúng `docs/v0.2/schema/ffi-v02-output.schema.json` (khóa, kiểu, không khóa lạ).
 #[test]
-fn restore_keeps_last_backup_date() {
-    let (s, dir) = tmp_store();
-    s.save_person_json(person_a().to_string()).unwrap();
-    assert_eq!(
-        v(&s.settings_json().unwrap())["last_backup_at"],
-        Value::Null
-    );
-    let file = s
-        .export_backup("mật khẩu đúng".into(), "0.2.0".into(), "ios".into())
+fn output_matches_schema() {
+    let now = unix_vn(2026, 7, 1, 0, 0);
+    let up = upcoming_json(R3.into(), sd(2026, 1, 1), 365).unwrap();
+    assert!(v(&up).as_array().unwrap().len() > 3);
+    check_out("upcoming_json", &up);
+    for f in ["tat_ca", "da_mat", "dang_song"] {
+        let p = events_in_period_json(
+            include_str!("../../memorial/testdata/r13-linked.json").into(),
+            "nam".into(),
+            sd(2027, 1, 1),
+            f.into(),
+        )
         .unwrap();
-    let src_last = v(&s.settings_json().unwrap())["last_backup_at"].clone();
-    assert!(src_last.is_string());
-    let vb = open_backup(file, "mật khẩu đúng".into()).unwrap();
-    assert_eq!(json!(vb.preview().exported_at), src_last);
-    let (t, dir2) = tmp_store();
-    t.apply_import(vb, BackupImportMode::Replace).unwrap();
-    assert_eq!(v(&t.settings_json().unwrap())["last_backup_at"], src_last);
-    let _ = std::fs::remove_dir_all(dir);
-    let _ = std::fs::remove_dir_all(dir2);
+        check_out("events_in_period_json", &p);
+    }
+    for names in [false, true] {
+        check_out(
+            "reminders_json",
+            &reminders_json(R3.into(), now, vn(), 120, names).unwrap(),
+        );
+        check_out(
+            "reschedule_json",
+            &reschedule_json(R3.into(), now, vn(), "[]".into(), names).unwrap(),
+        );
+        check_out(
+            "android_alarm_step_json",
+            &android_alarm_step_json(
+                EXAMPLE.into(),
+                unix_vn(2026, 7, 28, 8, 0),
+                Some(unix_vn(2026, 7, 24, 0, 0)),
+                vn(),
+                names,
+            )
+            .unwrap(),
+        );
+    }
+    let ex = v(EXAMPLE);
+    for p in ex["persons"].as_array().unwrap() {
+        check_out(
+            "person_summary_json",
+            &person_summary_json(p.to_string(), sd(2026, 11, 6)).unwrap(),
+        );
+    }
+    check_out(
+        "save_death_json",
+        &save_death_json(ex["persons"][0]["death"]["input"].to_string()).unwrap(),
+    );
+    check_out(
+        "derive_birth_json",
+        &derive_birth_json(ex["persons"][0]["birth"]["input"].to_string()).unwrap(),
+    );
+    // Lược đồ phát hiện được khóa lạ.
+    let root = v(OUT_SCHEMA);
+    let mut bad = v(&up);
+    bad[0]["extra"] = json!(1);
+    assert!(conforms(&root, &root["properties"]["upcoming_json"], &bad, "x").is_err());
 }

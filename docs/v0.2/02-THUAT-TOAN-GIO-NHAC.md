@@ -249,7 +249,8 @@ reschedule(now):
   if len(desired) > CAP or beyond:                                     # còn lời nhắc không được đặt
       k    := min(len(desired), CAP-1)                                 # tối đa 63 lời nhắc sớm nhất
       keep := desired[0 .. k-1]
-      at_s := (k > 0) ? keep[k-1].at : hi                             # Bổ sung B2/B3: cùng phút với cái cuối đã đặt
+      at_s := (k > 0) ? keep[k-1].at                                   # Bổ sung B2/B3: cùng phút với cái cuối đã đặt
+                      : local_instant(hôm nay + 399 ngày, "09:00", tz)   # MA3-14-06 (trước đó: hi)
       sentinel := {id: "lvhv:sentinel", at: at_s,
                    nội dung: "Mở Lịch Việt để tiếp tục nhận lời nhắc giỗ và sinh nhật"}
       keep.append(sentinel)
@@ -273,7 +274,9 @@ reschedule(now):
 - (Bổ sung B3, 2026-11-07) Thông báo nhắc mở ứng dụng được thêm **khi còn bất kỳ lời nhắc tương lai nào không được
   đặt** — vì vượt 63 cái, hoặc vì nằm ngoài cửa sổ 400 ngày (`beyond`). Nó luôn ở cùng phút với lời nhắc cuối cùng
   đã đặt và xếp sau nó (thứ tự (at, id) như trên). Khi không đặt được lời nhắc nào trong cửa sổ mà vẫn có lời nhắc ở
-  xa hơn, thông báo đặt tại `now + 400 ngày` — không muộn hơn lời nhắc sớm nhất chưa đặt (lời nhắc đó có `at > hi`).
+  xa hơn, thông báo đặt lúc **09:00 giờ thiết bị của ngày `hôm nay + 399`** (ghi chú 2026-11-07 theo duyệt mã
+  MA3-14-06; bản B3 đầu tiên đặt đúng `now + 400 ngày`, có thể kêu nửa đêm) — vẫn sau `now`, không muộn hơn `hi`, nên
+  không muộn hơn lời nhắc sớm nhất chưa đặt (lời nhắc đó có `at > hi`). I4 không đổi.
   Khi mọi lời nhắc tương lai đều đã đặt (≤ 64 trong cửa sổ, không có gì ngoài cửa sổ) thì không có thông báo này.
   Bảo đảm thêm (I4 của R12): nếu có lời nhắc tương lai không được đặt thì có thông báo nhắc mở ứng dụng với `at` ≤
   lời nhắc sớm nhất trong số đó. Để biết `beyond` mà không phải tính mọi năm tới 3000, cài đặt quét các lần xuất hiện

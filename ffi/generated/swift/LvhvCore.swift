@@ -2844,7 +2844,7 @@ public func remindersJson(datasetJson: String, nowUnixS: Int64, zone: DeviceZone
  * `{"id","at_unix_s","fire_local","title","body","content"}`; ứng dụng gỡ `remove`, thêm `add`, thay
  * `replace` (trigger theo `fire_local`, không gắn múi giờ). Còn lời nhắc không đặt được (> 64 trong cửa
  * sổ 400 ngày, hoặc ở ngoài cửa sổ) → tối đa 63 sớm nhất + thông báo nhắc mở ứng dụng
- * (`id = "lvhv:sentinel"`) cùng phút với cái cuối cùng đã đặt (không có cái nào: tại now + 400 ngày) —
+ * (`id = "lvhv:sentinel"`) cùng phút với cái cuối cùng đã đặt (không có cái nào: 09:00 giờ thiết bị ngày hôm nay + 399) —
  * 02 §7.4, Bổ sung B3. `show_names` mặc định `false` (O-9); nên gọi `LvhvStore.reschedule_json`.
  */
 public func rescheduleJson(datasetJson: String, nowUnixS: Int64, zone: DeviceZone, pendingJson: String, showNames: Bool = false)throws  -> String  {
@@ -3030,7 +3030,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_lvhv_ffi_checksum_func_reminders_json() != 836) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_lvhv_ffi_checksum_func_reschedule_json() != 38758) {
+    if (uniffi_lvhv_ffi_checksum_func_reschedule_json() != 30285) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_lvhv_ffi_checksum_func_save_death_json() != 16966) {

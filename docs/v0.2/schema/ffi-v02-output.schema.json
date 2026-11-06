@@ -1,0 +1,186 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lich.clevix.vn/schema/ffi-v02-output.schema.json",
+  "title": "Đầu ra JSON của lớp FFI v0.2 (ffi/src/v02.rs)",
+  "description": "Hợp đồng đầu ra cho ứng dụng native (duyệt mã MA3-14-07). Mỗi khóa của 'properties' là tên một hàm FFI; giá trị là lược đồ chuỗi JSON hàm đó trả về. Hàm của LvhvStore cùng tên có cùng đầu ra. Đầu vào và persons_json/events_json/settings_json/dataset_json theo backup-v1.schema.json. Kiểm bằng ffi/src/tests_v02.rs (output_matches_schema). Mọi đối tượng đóng (additionalProperties: false): thêm hay đổi tên trường phải sửa tệp này.",
+  "type": "object",
+  "properties": {
+    "upcoming_json": { "type": "array", "items": { "$ref": "#/$defs/UpcomingItem" } },
+    "events_in_period_json": { "$ref": "#/$defs/Period" },
+    "reminders_json": { "type": "array", "items": { "$ref": "#/$defs/Reminder" } },
+    "reschedule_json": { "$ref": "#/$defs/ReschedulePlan" },
+    "android_alarm_step_json": { "$ref": "#/$defs/AndroidStep" },
+    "person_summary_json": { "$ref": "#/$defs/PersonSummary" },
+    "save_death_json": { "$ref": "#/$defs/DeathDerived" },
+    "derive_birth_json": { "$ref": "#/$defs/BirthDerived" }
+  },
+  "$defs": {
+    "Date": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+    "Local": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}$" },
+    "Lunar": {
+      "type": ["object", "null"],
+      "properties": {
+        "y": { "type": "integer" }, "m": { "type": "integer" }, "d": { "type": "integer" }, "leap": { "type": "boolean" }
+      },
+      "required": ["y", "m", "d", "leap"],
+      "additionalProperties": false
+    },
+    "OccClass": {
+      "type": "string",
+      "enum": ["gio", "tien_thuong", "sinh_nhat", "sinh_nhat_am", "su_kien_duong_lap", "su_kien_am_lap", "su_kien_khong_lap"]
+    },
+    "Occ": {
+      "description": "Một lần xuất hiện có tên (02 §7.6 + trường hiển thị). Trường của 02 Phụ lục A.6 cộng class_text, headline, date_line.",
+      "type": "object",
+      "properties": {
+        "date": { "$ref": "#/$defs/Date" },
+        "lunar": { "$ref": "#/$defs/Lunar" },
+        "class": { "$ref": "#/$defs/OccClass" },
+        "class_text": { "type": "string" },
+        "entity_id": { "type": "string" },
+        "person_ids": { "type": "array", "items": { "type": "string" } },
+        "name": { "type": "string" },
+        "key": { "type": "string" },
+        "n": { "type": ["integer", "null"] },
+        "label": { "type": ["string", "null"], "enum": ["gio", "gio_dau", "gio_het", null] },
+        "headline": { "type": "string" },
+        "date_line": { "type": "string" }
+      },
+      "required": ["date", "lunar", "class", "class_text", "entity_id", "person_ids", "name", "key", "n", "label", "headline", "date_line"],
+      "additionalProperties": false
+    },
+    "OccHidden": {
+      "description": "Lần xuất hiện không có tên (O-9, show_names = false): đủ để mở đúng màn hình khi chạm.",
+      "type": "object",
+      "properties": {
+        "entity_id": { "type": "string" },
+        "class": { "$ref": "#/$defs/OccClass" },
+        "date": { "$ref": "#/$defs/Date" },
+        "key": { "type": "string" }
+      },
+      "required": ["entity_id", "class", "date", "key"],
+      "additionalProperties": false
+    },
+    "UpcomingItem": {
+      "type": "object",
+      "properties": {
+        "date": { "$ref": "#/$defs/Date" },
+        "lunar": { "$ref": "#/$defs/Lunar" },
+        "class": { "$ref": "#/$defs/OccClass" },
+        "class_text": { "type": "string" },
+        "entity_id": { "type": "string" },
+        "person_ids": { "type": "array", "items": { "type": "string" } },
+        "name": { "type": "string" },
+        "key": { "type": "string" },
+        "n": { "type": ["integer", "null"] },
+        "label": { "type": ["string", "null"], "enum": ["gio", "gio_dau", "gio_het", null] },
+        "headline": { "type": "string" },
+        "date_line": { "type": "string" },
+        "days": { "type": "integer" },
+        "days_text": { "type": "string" }
+      },
+      "required": ["date", "lunar", "class", "class_text", "entity_id", "person_ids", "name", "key", "n", "label", "headline", "date_line", "days", "days_text"],
+      "additionalProperties": false
+    },
+    "Period": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["tuan", "thang", "quy", "nam"] },
+        "anchor": { "$ref": "#/$defs/Date" },
+        "filter": { "type": "string", "enum": ["tat_ca", "da_mat", "dang_song"] },
+        "from": { "$ref": "#/$defs/Date" },
+        "to": { "$ref": "#/$defs/Date" },
+        "items": { "type": "array", "items": { "$ref": "#/$defs/Occ" } }
+      },
+      "required": ["kind", "anchor", "filter", "from", "to", "items"],
+      "additionalProperties": false
+    },
+    "Reminder": {
+      "description": "Nội dung thông báo chỉ lấy từ title/body. occ là Occ khi hiện tên, OccHidden khi ẩn tên (O-9).",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "at_unix_s": { "type": "integer" },
+        "fire_local": { "$ref": "#/$defs/Local" },
+        "type": { "type": "string", "pattern": "^(k=[0-9]+|tt)$" },
+        "title": { "type": "string" },
+        "body": { "type": "string" },
+        "occ": { "oneOf": [{ "$ref": "#/$defs/Occ" }, { "$ref": "#/$defs/OccHidden" }] }
+      },
+      "required": ["id", "at_unix_s", "fire_local", "type", "title", "body", "occ"],
+      "additionalProperties": false
+    },
+    "Pending": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "at_unix_s": { "type": "integer" },
+        "fire_local": { "$ref": "#/$defs/Local" },
+        "title": { "type": "string" },
+        "body": { "type": "string" },
+        "content": { "type": "string" }
+      },
+      "required": ["id", "at_unix_s", "fire_local", "title", "body", "content"],
+      "additionalProperties": false
+    },
+    "ReschedulePlan": {
+      "type": "object",
+      "properties": {
+        "keep": { "type": "array", "items": { "$ref": "#/$defs/Pending" } },
+        "remove": { "type": "array", "items": { "type": "string" } },
+        "add": { "type": "array", "items": { "$ref": "#/$defs/Pending" } },
+        "replace": { "type": "array", "items": { "$ref": "#/$defs/Pending" } }
+      },
+      "required": ["keep", "remove", "add", "replace"],
+      "additionalProperties": false
+    },
+    "AndroidStep": {
+      "type": "object",
+      "properties": {
+        "post": { "type": "array", "items": { "$ref": "#/$defs/Reminder" } },
+        "dropped_late": { "type": "integer" },
+        "next_at_unix_s": { "type": ["integer", "null"] },
+        "next_fire_local": { "type": ["string", "null"] }
+      },
+      "required": ["post", "dropped_late", "next_at_unix_s", "next_fire_local"],
+      "additionalProperties": false
+    },
+    "PersonSummary": {
+      "type": "object",
+      "properties": {
+        "display_name": { "type": "string" },
+        "can_chi": { "type": ["string", "null"] },
+        "lunar_year": { "type": ["integer", "null"] },
+        "tuoi_duong": { "type": ["integer", "null"] },
+        "tuoi_am": { "type": ["integer", "null"] },
+        "tuoi_mat_text": { "type": ["string", "null"] },
+        "death_lunar_text": { "type": ["string", "null"] }
+      },
+      "required": ["display_name", "can_chi", "lunar_year", "tuoi_duong", "tuoi_am", "tuoi_mat_text", "death_lunar_text"],
+      "additionalProperties": false
+    },
+    "DeathDerived": {
+      "type": "object",
+      "properties": {
+        "lunar": { "type": "object" },
+        "solar": { "type": ["object", "null"] },
+        "lunar_source": { "type": "string", "enum": ["entered", "converted"] },
+        "method": { "type": "string" }
+      },
+      "required": ["lunar", "solar", "lunar_source", "method"],
+      "additionalProperties": false
+    },
+    "BirthDerived": {
+      "type": "object",
+      "properties": {
+        "lunar_year": { "type": ["integer", "null"] },
+        "lunar_year_approx": { "type": "boolean" },
+        "can_chi": { "type": ["string", "null"] },
+        "lunar": { "type": ["object", "null"] },
+        "solar": { "type": ["object", "null"] }
+      },
+      "required": ["lunar_year", "lunar_year_approx", "can_chi", "lunar", "solar"],
+      "additionalProperties": false
+    }
+  }
+}

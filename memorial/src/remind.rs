@@ -235,12 +235,12 @@ pub struct Plan {
 ///
 /// Có lời nhắc không được đặt (vượt 64 trong cửa sổ, hoặc `beyond`) → giữ `k = min(len, 63)` cái sớm
 /// nhất + thông báo nhắc mở ứng dụng tại `at` của cái thứ `k` (cùng phút, xếp sau theo id); `k = 0`
-/// → thông báo đặt tại `hi` (= now + 400 ngày).
-pub fn select_keep(desired: &[Pending], beyond: bool, hi: i64) -> Vec<Pending> {
+/// → thông báo đặt tại `fallback_at` (09:00 giờ thiết bị của ngày `hôm nay + 399`, xem [`sentinel_fallback`]).
+pub fn select_keep(desired: &[Pending], beyond: bool, fallback_at: i64) -> Vec<Pending> {
     if desired.len() > CAP || beyond {
         let k = desired.len().min(CAP - 1);
         let mut keep: Vec<Pending> = desired[..k].to_vec();
-        let at = keep.last().map_or(hi, |p| p.at);
+        let at = keep.last().map_or(fallback_at, |p| p.at);
         keep.push(Pending {
             id: SENTINEL_ID.to_string(),
             at,
@@ -255,7 +255,18 @@ pub fn select_keep(desired: &[Pending], beyond: bool, hi: i64) -> Vec<Pending> {
 /// `reschedule(now)` (02 §7.4) dạng thuần: `desired_all` là mọi lời nhắc tương lai (bất kỳ thứ
 /// tự; ngoài cửa sổ 400 ngày chỉ cần đủ để biết có hay không — xem [`reschedule_input`]), `pending`
 /// là hàng đợi hiện có.
-pub fn reschedule(now: i64, desired_all: &[Pending], pending: &[Pending]) -> Plan {
+/// Thời điểm của thông báo nhắc mở ứng dụng khi không đặt được lời nhắc nào trong cửa sổ (02 §7.4, ghi chú
+/// duyệt mã MA3-14-06): 09:00 giờ thiết bị của ngày `hôm nay + 399` — sau `now`, không muộn hơn
+/// `now + 400 ngày`, và không kêu lúc nửa đêm.
+pub fn sentinel_fallback(now: i64, tz: &Zone) -> i64 {
+    let today = tz.to_local(now).div_euclid(1440);
+    tz.local_to_utc((today + WINDOW_DAYS - 1) * 1440 + SENTINEL_FALLBACK_HHMM)
+}
+
+/// Giờ đồng hồ của thông báo nhắc mở ứng dụng khi không đặt được lời nhắc nào (09:00).
+pub const SENTINEL_FALLBACK_HHMM: i64 = 9 * 60;
+
+pub fn reschedule(now: i64, desired_all: &[Pending], pending: &[Pending], tz: &Zone) -> Plan {
     let hi = now + WINDOW_DAYS * 1440;
     let mut desired: Vec<Pending> = desired_all
         .iter()
@@ -267,7 +278,7 @@ pub fn reschedule(now: i64, desired_all: &[Pending], pending: &[Pending]) -> Pla
             .then_with(|| a.id.as_bytes().cmp(b.id.as_bytes()))
     });
     let beyond = desired_all.iter().any(|p| p.at > hi);
-    let keep = select_keep(&desired, beyond, hi);
+    let keep = select_keep(&desired, beyond, sentinel_fallback(now, tz));
     let mut plan = Plan::default();
     for p in pending {
         if !keep.iter().any(|k| k.id == p.id) {
@@ -478,7 +489,7 @@ pub fn simulate(
         };
         if opened {
             res.opens += 1;
-            let plan = reschedule(t_open, &all_p, &pending);
+            let plan = reschedule(t_open, &all_p, &pending, tz);
             pending = apply_plan(&pending, &plan);
             let hi = t_open + WINDOW_DAYS * 1440;
             let fut: Vec<&Pending> = all_p
