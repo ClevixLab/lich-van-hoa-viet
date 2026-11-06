@@ -1,0 +1,13 @@
+so doan moi cap than: {(0, 3): 2, (3, 399): 2, (3, 301): 2, (0, 10): 2}
+Traceback (most recent call last):
+  File "/home/runner/work/lich-van-hoa-viet/lich-van-hoa-viet/oracle/de441/overlap_check.py", line 22, in <module>
+    print("  %s doan %s .. %s" % (p, I.jd_to_iso(s.start_jd)[:10], I.jd_to_iso(s.end_jd)[:10]))
+                                     ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/lich-van-hoa-viet/lich-van-hoa-viet/oracle/de441/instants.py", line 248, in jd_to_iso
+    y, mo, d, _ = erfa.jd2cal(DJ0, float(day))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/erfa/core.py", line 599, in jd2cal
+    check_errwarn(c_retval, 'jd2cal')
+  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/erfa/core.py", line 124, in check_errwarn
+    raise ErfaError(f'ERFA function "{func_name}" yielded {emsg}')
+erfa.core.ErfaError: ERFA function "jd2cal" yielded 1 of "unacceptable date (Note 1)"
