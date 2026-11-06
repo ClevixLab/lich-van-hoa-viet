@@ -73,3 +73,14 @@ Bắc Kinh; bảng lịch Đài Thiên văn Hồng Kông năm 1916 xác nhận. 
 Tiêu chí L9, L10, L11, L12, L13 giữ nguyên ngưỡng; phải chạy lại toàn bộ với quy tắc mới. Bên kiểm định độc lập tự
 cài quy tắc từ bằng chứng lịch sử, không đọc mã lõi. Việc chấm L9 khi các nguồn Việt Nam mâu thuẫn nhau (1903, 1925,
 1935, 1965) CHƯA được chủ dự án quyết định: báo cáo phải nêu kết quả theo từng nguồn, không tự chọn nguồn.
+
+## Bổ sung A3 — quyết định của chủ dự án (2026-11-06, SAU KHI ĐÃ THẤY KẾT QUẢ)
+
+1. **Phương pháp lịch mặc định đổi sang `Precise`** (Sóc theo Meeus đầy đủ + ΔT Espenak–Meeus; một mô hình Mặt Trời
+   cho cả tháng nhuận và tiết khí). Căn cứ: L2 và L10 ĐẠT (0 sai lệch so với bên kiểm định độc lập 2000–2100 và
+   1900–1999), không tự mâu thuẫn tháng nhuận, khớp 1237/1237 tháng của bảng lịch 1900–1999 do Hồ Ngọc Đức công bố
+   (phương pháp `Hnd`: 1233/1237, sai vị trí tháng nhuận 1917 và 1922). `Hnd` vẫn giữ trong mã để đối chiếu.
+2. **L9 khi các nguồn Việt Nam mâu thuẫn nhau** (1903, 1935, 1965; và 1925 khi một nguồn tự mâu thuẫn): chấm theo
+   nguồn tuân thủ quy ước lịch sử đã chọn (lịch tính theo giờ Bắc Kinh trước 1929 / UTC+8 đến 1967). Biên bản phải
+   liệt kê từng năm, ngày của mỗi nguồn và ghi rõ nguồn khác lệch bao nhiêu ngày. Đây là cách chấm được quyết định
+   sau khi thấy kết quả; ngưỡng "0 sai lệch" giữ nguyên với các năm mà các nguồn thống nhất.
