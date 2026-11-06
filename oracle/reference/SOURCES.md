@@ -50,3 +50,61 @@ Tết Việt Nam khác Trung Quốc trong thế kỷ 21 chỉ ở 2007, 2030, 20
 ## Đối chiếu oracle (chỉ để thông tin; không dùng để điền chỗ trống)
 
 oracle/out/tet.csv khớp mọi dòng nguồn Việt Nam (51 năm); khác HKO đúng ở 2007, 2030, 2053, và theo đúng hướng nguồn VN.
+
+---
+
+# Nguồn công bố ngày Tết Nguyên Đán 1900–1999 (cho tiêu chí L9, Bổ sung A1)
+
+Thu thập: 2026-11-06, bởi bên kiểm định (oracle). Dữ liệu: `tet_published_1900_1999.csv` (125 dòng).
+Mọi ngày được chép từ trang nguồn đã đọc qua công cụ đọc web (WebFetch); KHÔNG lấy từ tính toán của oracle
+hay trí nhớ. Một năm có thể có nhiều dòng (nhiều nguồn). Tải trực tiếp (curl) bị proxy chặn (403).
+
+## Nguồn Việt Nam
+
+| source_id | Nguồn | Năm | Số năm | Ghi chú |
+|---|---|---|---|---|
+| VN_XEMLICHAM | https://www.xemlicham.com/am-lich/nam/YYYY (ô "1/1" trong bảng tháng); 1914 lấy từ trang ngày .../1914/thang/1/ngay/14; 1916 xác nhận thêm từ .../1916/thang/2/ngay/1; 1925 có thêm trang ngày .../1925/thang/1/ngay/24 | 1900–1999 (đủ 100 năm) | 100 | Trang KHÔNG nêu phương pháp/múi giờ. Có dấu hiệu là kết quả tính toán (không phải bản chụp lịch in): năm 1925 trang năm ghi 25/01 nhưng trang ngày 24/01/1925 có tiêu đề "Ngày Âm Lịch: 1-1-1925" (tự mâu thuẫn). |
+| VN_CHOGIA | https://chogia.vn/lich-am/sinh-nam/YYYY/ ("Năm … bắt đầu từ DD/MM/YYYY (mùng 1 Tết)") | 1900, 1903, 1914, 1916, 1925, 1935, 1950, 1965, 1968, 1969 | 10 | Chỉ lấy các năm phân biệt quy ước múi giờ + một số năm kiểm tra. Không nêu phương pháp. Kết quả khớp đúng phép tính UTC+7 suốt (không theo UTC+8 trước 1968). |
+| VN_WIKIPEDIA_VI_COPY | https://www.namkyluctinh.org/a-vh-vminh/tet-wiki.pdf (bản in bài vi.wikipedia "Tết Nguyên đán", chân trang "Nguồn: http://vi.wikipedia.org") | 1968 (miền Bắc 29/01), 1996–1999 | 5 | Văn bản: "Trước năm 1967, Việt Nam lấy giờ Bắc Kinh làm chuẩn cho âm lịch. Ngày 8 tháng 8 năm 1967 … đổi lịch dùng múi giờ GMT +7 … miền bắc ngày 29 tháng 1 trong khi miền nam thì ngày 30 tháng 1". vi.wikipedia.org trực tiếp không truy cập được. |
+| VN_BAOLAMDONG | https://baolamdong.vn/am-duong-lich-nam-1954.html | 1954 | 1 | "3 1/1 … Mồng 1 Tết Nguyên Đán". Trang các năm khác lỗi phía trang. |
+
+Hợp các nguồn VN phủ **100/100 năm** 1900–1999 (mọi năm có ít nhất xemlicham).
+
+**Mâu thuẫn giữa các nguồn VN (4 năm):**
+
+| Năm | xemlicham | chogia | Ghi chú |
+|---|---|---|---|
+| 1903 | 1903-01-29 | 1903-01-28 | Sóc 1903-01-28 23:38 UTC+7 / 00:38 UTC+8 (oracle) — phụ thuộc múi giờ |
+| 1925 | 1925-01-25 (trang năm) / 1925-01-24 (tiêu đề trang ngày) | 1925-01-24 | Sóc 1925-01-24 22:45 UTC+8 (oracle) — không múi giờ 7–8 nào cho 25/01; trang năm xemlicham nghi lỗi dữ liệu |
+| 1935 | 1935-02-04 | 1935-02-03 | Sóc 1935-02-03 23:27 UTC+7 / 00:27 UTC+8 |
+| 1965 | 1965-02-02 | 1965-02-01 | Sóc 1965-02-01 23:36 UTC+7 / 00:36 UTC+8 |
+
+Hai trang VN tra cứu phổ biến dùng HAI quy ước khác nhau cho trước 1968 (chogia ≈ UTC+7 suốt; xemlicham ≈ lịch
+Trung Quốc: UTC+8, riêng 1916 theo kinh tuyến Bắc Kinh). Không trang nào là bảng chính thức của Ban Lịch Nhà nước.
+
+## Nguồn hỗ trợ (KHÔNG phải nguồn Việt Nam — chỉ dùng làm bằng chứng phụ)
+
+| source_id | Nguồn | Năm | Ghi chú |
+|---|---|---|---|
+| HKO_CN_SUPPORT | Đài Thiên văn Hồng Kông: .../calendar/pdf/files/1916e.pdf, .../text/files/T1917e.txt, .../pdf/files/1965e.pdf, .../pdf/files/1967e.pdf, https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T1968c.txt | 1916 (02-03), 1917 (01-23), 1965 (02-02), 1967 (02-09), 1968 (01-30) | Lịch Trung Quốc. 1916-02-03 ≠ UTC+8 thuần (02-04): lịch TQ trước 1929 dùng giờ địa phương Bắc Kinh (~UTC+7:46). Bảng PDF 1967 bị vỡ bố cục; đọc gần đúng. |
+| SUPPORT_SADPONY_BLOG | https://sad-pony-mathematician.blogspot.com/2019/02/an-off-by-one-error-in-tet-offensive.html | 1968 (Bắc 01-29, Nam 01-30) | Blog; Sóc 1968-01-29 16:31 UT. |
+
+## Bằng chứng về quy ước múi giờ (dùng để đặt quy tắc oracle)
+
+- tz@iana.org (Brian Inglis, 2014, theo "Lịch Việt Nam thế kỷ XX–XXI", Trần Tiến Bình, Ban Lịch Nhà nước):
+  "Decision 121/CP dated 8.8.1967 confirmed the country's official time is seventh time zone … from 0 hours on 1.1.1968".
+  https://lists.iana.org/hyperkitty/list/tz@iana.org/message/LP343ZE3RZSV2V3IBP3RBODT4ZAXMIRX/
+- Cùng nguồn: giờ hành chính miền Bắc 1945–1967 phần lớn là UTC+7 (Hà Nội UTC+7 từ 10/1954) — tức giờ đồng hồ
+  KHÁC múi giờ dùng tính âm lịch (UTC+8, theo lịch Trung Quốc) trước 1968.
+- en.wikipedia "Vietnamese calendar" (bản sao wiki.riteme.site): "On 8 August 1967, the North Vietnamese government issued a decree to change Vietnamese standard time from UTC+8 to UTC+7"; Hiệp Kỷ 1841–1954 khác lịch Thời Hiến do kinh độ.
+- en.wikipedia "Time in Vietnam" (bản sao wiki.krisyotam.com): Bắc Việt "1 January 1968 – 12 June 1975: UTC+07:00 … confirmed as official".
+- vnexpress "Vì sao…"/RFA 2007 (Lê Thành Lân, Trịnh Tiến Điều): "Việc tính lịch là từ năm 67"; "Bắt đầu từ 68 chúng ta ăn tết khác Trung Quốc một ngày"; "Cuối 68 đầu 69 cũng chênh nhau một ngày"; năm 84/85 khác một tháng.
+  https://www.rfa.org/vietnamese/in_depth/WhyVietnameseLunarCalendarDiffersFromChina_GMinh-20070207.html
+- suikawiki (tổng hợp nhiều nguồn): VNCal 1301–1945 theo Hoàng Xuân Hãn, 1946 trở đi tính toán; "1967年以降は…UTC+07:00で計算したものと非常によく一致".
+  https://wiki.suikawiki.org/i/25985
+- Không truy cập được văn bản gốc Quyết định 121-CP (thuvienphapluat lỗi phía trang).
+
+## Đối chiếu oracle (chỉ để thông tin; không dùng để điền chỗ trống)
+
+Oracle (UTC+8 trước 1968-01-01 00:00 UTC+7) khớp xemlicham 97/100 năm (lệch 1916 — quy ước kinh tuyến Bắc Kinh —
+và 1925 — mâu thuẫn nội bộ của xemlicham); khớp chogia 6/10 (lệch 1903, 1916, 1935, 1965 — chogia theo UTC+7 suốt).
