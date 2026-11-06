@@ -122,8 +122,8 @@ def bisect(f, lo, hi):
 
 
 def new_moons(eph):
-    kmin = int(np.floor((JD_START - 2451550.09766) / 29.530588861)) - 2
-    kmax = int(np.ceil((JD_END - 2451550.09766) / 29.530588861)) + 2
+    kmin = int(np.floor((JD_START - 2451550.09766) / 29.530588861)) - 1
+    kmax = int(np.ceil((JD_END - 2451550.09766) / 29.530588861)) + 1
     k = np.arange(kmin, kmax + 1)
     T = k / 1236.85
     mean = 2451550.09766 + 29.530588861 * k + 0.00015437 * T ** 2
@@ -135,8 +135,8 @@ def new_moons(eph):
 
 def solar_terms(eph):
     # Xuân phân 2000 ≈ JD 2451623.82 TT; năm chí tuyến ≈ 365.24219 ngày.
-    n0 = int(np.floor((JD_START - 2451623.82) / 365.24219 * 24)) - 3
-    n1 = int(np.ceil((JD_END - 2451623.82) / 365.24219 * 24)) + 3
+    n0 = int(np.floor((JD_START - 2451623.82) / 365.24219 * 24)) - 2
+    n1 = int(np.ceil((JD_END - 2451623.82) / 365.24219 * 24)) + 2
     n = np.arange(n0, n1 + 1)
     idx = n % 24
     mean = 2451623.82 + n * (365.24219 / 24.0)
@@ -244,7 +244,12 @@ def main():
     ap.add_argument('--part1', required=True)
     ap.add_argument('--part2', required=True)
     ap.add_argument('--repo', default='.')
+    ap.add_argument('--test-jd-end', type=float, default=None,
+                    help='CHỈ để thử bộ sinh với lịch thiên văn ngắn (ví dụ DE421); không dùng cho bảng thật')
     a = ap.parse_args()
+    if a.test_jd_end is not None:
+        global JD_END
+        JD_END = a.test_jd_end
     eph = Ephem(a.part1, a.part2)
     k, tsoc = new_moons(eph)
     idx, tterm = solar_terms(eph)

@@ -1,0 +1,69 @@
+# Sinh bảng Sóc + 24 tiết khí của phương pháp Jpl từ JPL DE441 (docs/03 §17) và commit lại vào nhánh đang chạy.
+# Chạy tay: gh workflow run jpl-table.yml --ref <nhánh>
+name: jpl-table
+
+on:
+  workflow_dispatch:
+  # workflow_dispatch chỉ gọi được khi tệp có trên nhánh mặc định; thêm push (chỉ khi đổi bộ sinh) cho nhánh phát triển.
+  push:
+    branches: [jpl-method]
+    paths:
+      - tools/jpl/gen_table.py
+      - tools/jpl/requirements.txt
+      - .github/workflows/jpl-table.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: jpl-table-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  gen:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Bộ nhớ đệm DE441
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: ~/de441
+          key: de441-bsp-v1
+      - name: Tải DE441 (hai phần) từ ssd.jpl.nasa.gov
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ~/de441
+          for p in 1 2; do
+            curl -fSL --retry 5 --retry-delay 10 -o ~/de441/de441_part-$p.bsp \
+              "https://ssd.jpl.nasa.gov/ftp/eph/planets/bsp/de441_part-$p.bsp"
+          done
+      - name: Tổng kiểm DE441
+        run: ls -la ~/de441 && sha256sum ~/de441/*.bsp
+      - name: Cài phần mềm ghim phiên bản
+        run: python -m pip install -r tools/jpl/requirements.txt
+      - name: Sinh bảng
+        run: |
+          python tools/jpl/gen_table.py --part1 ~/de441/de441_part-1.bsp --part2 ~/de441/de441_part-2.bsp --repo .
+          cat core/data/jpl_events.meta.txt
+          ls -la core/data tsport/src/jpl_data.ts
+      - name: Commit lại vào nhánh
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add core/data/jpl_events.bin core/data/jpl_events.csv.gz core/data/jpl_events.meta.txt tsport/src/jpl_data.ts
+          if git diff --cached --quiet; then echo "Bảng không đổi."; exit 0; fi
+          git commit -m "Bảng Jpl sinh từ DE441 (tools/jpl/gen_table.py, workflow jpl-table)" \
+            -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>" \
+            -m "Claude-Session: https://claude.ai/code/session_01SKZXHbLz8ZHfr7rpCwfPLv"
+          for i in 1 2 3; do
+            git pull --rebase origin "${GITHUB_REF_NAME}" && git push origin "HEAD:${GITHUB_REF_NAME}" && exit 0
+            sleep 5
+          done
+          exit 1
