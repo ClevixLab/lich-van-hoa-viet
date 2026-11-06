@@ -96,6 +96,38 @@ fn r3_counts_match_definition() {
     assert_eq!(total, 38_432_256);
 }
 
+/// R12 I3 (04 Bổ sung B2 mục 1): cái thứ 63 và thứ 64 cùng phút → cái thứ 64 bị bỏ nhưng thông báo
+/// nhắc mở ứng dụng không muộn hơn nó.
+#[test]
+fn reschedule_same_minute_63_64() {
+    let mut all: Vec<Pending> = (0..62)
+        .map(|i| Pending {
+            id: format!("lvhv:{i:08x}-0000-4000-8000-000000000000:2026:0"),
+            at: 1000 + i,
+            content: String::new(),
+        })
+        .collect();
+    for k in 0..3 {
+        all.push(Pending {
+            id: format!("lvhv:ffffffff-0000-4000-8000-00000000000{k}:2026:0"),
+            at: 5000,
+            content: String::new(),
+        });
+    }
+    let plan = reschedule(0, &all, &[]);
+    assert_eq!(plan.keep.len(), 64);
+    let s = plan.keep.iter().find(|p| p.id == SENTINEL_ID).unwrap();
+    assert_eq!(s.at, 5000);
+    let dropped: Vec<&Pending> = all
+        .iter()
+        .filter(|a| !plan.keep.iter().any(|k| k.id == a.id))
+        .collect();
+    assert_eq!(dropped.len(), 2);
+    assert!(dropped.iter().all(|d| d.at >= s.at));
+    let q = apply_plan(&[], &plan);
+    assert_eq!(q.last().unwrap().id, SENTINEL_ID);
+}
+
 #[test]
 fn reschedule_basics() {
     let p = |i: i64| Pending {
@@ -107,7 +139,8 @@ fn reschedule_basics() {
     let plan = reschedule(0, &all, &[]);
     assert_eq!(plan.keep.len(), 64);
     assert_eq!(plan.keep[63].id, SENTINEL_ID);
-    assert_eq!(plan.keep[63].at, plan.keep[62].at + 1);
+    // 02 §7.4 (Bổ sung B2): cùng phút với cái thứ 63, không + 1 phút.
+    assert_eq!(plan.keep[63].at, plan.keep[62].at);
     let q = apply_plan(&[], &plan);
     // Lần sau: không đổi gì.
     let plan2 = reschedule(0, &all, &q);

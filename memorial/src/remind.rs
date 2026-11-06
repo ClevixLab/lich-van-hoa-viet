@@ -237,7 +237,7 @@ pub fn select_keep(desired: &[Pending]) -> Vec<Pending> {
         let last = keep[CAP - 2].at;
         keep.push(Pending {
             id: SENTINEL_ID.to_string(),
-            at: last + 1,
+            at: last,
             content: SENTINEL_TEXT.to_string(),
         });
         keep
@@ -364,7 +364,8 @@ pub struct SimResult {
 /// Bất biến:
 /// - I1 (mọi ngày): số yêu cầu chờ ≤ 64;
 /// - I2 (sau mỗi `reschedule`): nếu số lời nhắc tương lai trong cửa sổ ≥ 64 thì 63 cái sớm nhất
-///   (theo (at, id)) đang chờ và thông báo nhắc mở ứng dụng có `at` = `at` của cái thứ 63 + 1 phút;
+///   (theo (at, id)) đang chờ và thông báo nhắc mở ứng dụng có `at` = `at` của cái thứ 63 (cùng phút,
+///   đứng sau theo id — 02 §7.4, Bổ sung B2);
 /// - I3 (sau mỗi `reschedule`): mọi lời nhắc trong cửa sổ không được giữ có `at` ≥ `at` của thông
 ///   báo nhắc mở ứng dụng (thông báo này đứng trước hoặc cùng phút với nó).
 #[allow(clippy::too_many_arguments)]
@@ -432,7 +433,7 @@ pub fn simulate(
                     .iter()
                     .all(|f| pending.iter().any(|p| p.id == f.id && p.at == f.at));
                 let want_s = if fut.len() > CAP {
-                    Some(fut[CAP - 2].at + 1)
+                    Some(fut[CAP - 2].at)
                 } else {
                     None
                 };

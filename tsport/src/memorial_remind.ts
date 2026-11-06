@@ -113,7 +113,7 @@ const cmpPending = (a: Pending, b: Pending) => a.at - b.at || cmpId(a.id, b.id);
 export function selectKeep(desired: Pending[]): Pending[] {
   if (desired.length > CAP) {
     const keep = desired.slice(0, CAP - 1);
-    keep.push({ id: SENTINEL_ID, at: keep[CAP - 2].at + 1, content: SENTINEL_TEXT });
+    keep.push({ id: SENTINEL_ID, at: keep[CAP - 2].at, content: SENTINEL_TEXT });
     return keep;
   }
   return desired.slice();
@@ -203,7 +203,7 @@ export function simulate(
       const v: string[] = [];
       if (fut.length >= CAP) {
         const ok63 = fut.slice(0, CAP - 1).every((f) => pending.some((p) => p.id === f.id && p.at === f.at));
-        const wantS = fut.length > CAP ? fut[CAP - 2].at + 1 : null;
+        const wantS = fut.length > CAP ? fut[CAP - 2].at : null;
         if (!ok63 || sentinel !== wantS) v.push("I2");
       }
       const kept = new Set(pending.map((p) => p.id));
