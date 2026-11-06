@@ -38,9 +38,13 @@ def main():
             w("%d,%s,%s,%s,%d,%s,%s\n" % (i, " ".join(map(str, pr)), "" if cu is None else cu,
                                          " ".join(map(str, offs)), tt, tl, cls))
         return
-    ds = sys.argv[1]
-    f = dt.date.fromisoformat(sys.argv[2]) if len(sys.argv) > 2 else dt.date(2026, 1, 1)
-    t = dt.date.fromisoformat(sys.argv[3]) if len(sys.argv) > 3 else dt.date(2036, 12, 31)
+    # Bo sung B3: --global-off (reminders_enabled = false), --rule-off (moi rule.enabled = false)
+    gl_off = "--global-off" in sys.argv
+    rule_off = "--rule-off" in sys.argv
+    args = [a for a in sys.argv[1:] if not a.startswith("--")]
+    ds = args[0]
+    f = dt.date.fromisoformat(args[1]) if len(args) > 1 else dt.date(2026, 1, 1)
+    t = dt.date.fromisoformat(args[2]) if len(args) > 2 else dt.date(2036, 12, 31)
     g = O.Gen(O.load(ds))
     now = dt.datetime(2026, 1, 1, 0, 0)
     by = {c: [] for c in CLASSES}
@@ -51,7 +55,8 @@ def main():
     for i, pr, cu, offs, tt, tl, cls in configs():
         rows = []
         for o in by[cls]:
-            for at, nid, typ, _ in O.reminders_for(o.rule, o, now, True, offs, bool(tt) and cls == "gio", tl):
+            rule = dict(o.rule, enabled=False) if rule_off else o.rule
+            for at, nid, typ, _ in O.reminders_for(rule, o, now, not gl_off, offs, bool(tt) and cls == "gio", tl):
                 rows.append((at, nid, typ, o.date))
         rows.sort(key=lambda r: (r[0], r[1]))
         for at, nid, typ, d in rows:
