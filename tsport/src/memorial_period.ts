@@ -66,14 +66,9 @@ export function nextPeriod(kind: PeriodKind, anchor: Ymd): PeriodRange {
 
 const isEvent = (c: OccClass) => classGroup(c) === 3;
 
-/** 02 §7.6: "đã mất" = hồ sơ có ngày mất; sự kiện có person_ids không rỗng và mọi id trỏ tới hồ sơ có ngày mất. */
-export function isDeceasedOcc(ds: Dataset, occ: Occurrence): boolean {
-  if (isEvent(occ.class)) {
-    const ev = ds.events.find((e) => e.id === occ.entity_id);
-    if (ev === undefined) return false;
-    return ev.person_ids.length > 0 && ev.person_ids.every((id) => ds.persons.find((p) => p.id === id)?.death != null);
-  }
-  return ds.persons.find((p) => p.id === occ.entity_id)?.death != null;
+/** 02 §7.6 (Bổ sung B4): "đã mất" = giỗ + tiên thường; everything else is "đang sống". */
+export function isDeceasedOcc(_ds: Dataset, occ: Occurrence): boolean {
+  return occ.class === "gio" || occ.class === "tien_thuong";
 }
 
 export function passes(ds: Dataset, occ: Occurrence, filter: PersonFilter): boolean {

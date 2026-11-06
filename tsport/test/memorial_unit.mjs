@@ -180,8 +180,39 @@ eq(M.cmpCodepoints("\u{1F600}", "￿") > 0, true, "code-point order (not UTF-16)
   r3b.events[0].person_ids = [dead[0]];
   r3b.events[1].person_ids = [dead[0], alive];
   r3b.events[2].person_ids = [dead[0], dead[1]];
-  const dmY = M.eventsInPeriod(calJ, r3b, "nam", M.ymd(2027, 6, 1), "da_mat").items.map((i) => i.entity_id);
-  eq([0, 1, 2, 3].map((i) => dmY.includes(r3b.events[i].id)), [true, false, true, false], "event filter rule");
+  r3b.events[3].person_ids = [alive];
+  const allY = M.eventsInPeriod(calJ, r3b, "nam", M.ymd(2027, 6, 1), "tat_ca").items.map((i) => i.entity_id);
+  const dsY = M.eventsInPeriod(calJ, r3b, "nam", M.ymd(2027, 6, 1), "dang_song").items.map((i) => i.entity_id);
+  const dmC = M.eventsInPeriod(calJ, r3b, "nam", M.ymd(2027, 6, 1), "da_mat").items.map((i) => i.class);
+  // Bổ sung B4: sự kiện có người đã mất (một mình, hỗn hợp, hai người) → không có; chỉ người sống / không ai → đang sống.
+  eq([0, 1, 2].map((i) => allY.includes(r3b.events[i].id)), [false, false, false], "B4 event with a deceased person gives nothing");
+  eq([3, 4].map((i) => dsY.includes(r3b.events[i].id)), [true, true], "B4 living-only / unlinked event in dang_song");
+  eq(dmC.every((c) => c === "gio" || c === "tien_thuong"), true, "B4 da_mat = gio + tien_thuong");
+  // B4: người đã mất có ngày sinh + sinh nhật âm + quy tắc sinh nhật → chỉ giỗ (và tiên thường).
+  const r3c = structuredClone(r3);
+  const a = r3c.persons.find((p) => p.ho_ten === "Nguyễn Văn A");
+  const rl = (id) => ({ id, enabled: true, offsets_days: [0, 3], time_local: 420, tien_thuong: true });
+  a.sinh_nhat_am = true; a.rule_sinh_nhat = rl("c9000000-0000-4000-8000-000000000001");
+  a.rule_sinh_nhat_am = rl("c9000000-0000-4000-8000-000000000002"); a.rule_gio = rl("c9000000-0000-4000-8000-000000000003");
+  r3c.events[0].person_ids = [a.id];
+  const occA = M.occurrencesWithTt(calJ, r3c, M.ymd(2026, 1, 1), M.ymd(2036, 12, 31));
+  eq([...new Set(occA.filter((o) => o.entity_id === a.id).map((o) => o.class))].sort(), ["gio", "tien_thuong"], "B4 deceased with birthday → only giỗ");
+  eq(occA.some((o) => o.entity_id === r3c.events[0].id), false, "B4 deceased person's event → nothing");
+  // B4: người đang sống được cập nhật ngày mất → reschedule kế tiếp gỡ lời nhắc sinh nhật/sự kiện.
+  const r3d = structuredClone(r3);
+  const death = r3d.persons.find((p) => p.ho_ten === "Nguyễn Văn A").death;
+  const c = r3d.persons.find((p) => p.ho_ten === "Lê Thị C");
+  r3d.persons = [c]; r3d.events = [r3d.events[0]]; r3d.events[0].person_ids = [c.id];
+  const tzB = M.Zone.vietnam();
+  const nowB = tzB.localToUtc(M.localMinutes(M.ymd(2026, 3, 1), 540));
+  const desired = (d) => M.rescheduleInput(calJ, d, nowB, tzB).map((r) => M.toPending(calJ, r, false));
+  const ids = [c.rule_sinh_nhat.id, c.rule_sinh_nhat_am.id, r3d.events[0].reminder.id];
+  const q1 = M.applyPlan([], M.reschedule(nowB, desired(r3d), [], tzB));
+  eq(ids.map((r) => q1.some((p) => p.id.includes(r))), [true, true, true], "B4 before: birthday/event reminders scheduled");
+  c.kind = "deceased"; c.death = death; c.rule_gio = rl("c9000000-0000-4000-8000-0000000000aa");
+  const plan2 = M.reschedule(nowB, desired(r3d), q1, tzB);
+  const q2 = M.applyPlan(q1, plan2);
+  eq([ids.map((r) => q2.some((p) => p.id.includes(r))), q2.some((p) => p.id.includes("0000000000aa"))], [[false, false, false], true], "B4 after death update: removed at next reschedule");
 }
 
 console.log(`memorial_unit: ${pass} passed, ${fail} failed`);

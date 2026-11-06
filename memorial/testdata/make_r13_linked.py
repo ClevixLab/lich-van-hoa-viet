@@ -8,15 +8,14 @@ và thêm 4 sự kiện. Mọi `person_ids` trỏ tới hồ sơ có thật và 
 
     python3 memorial/testdata/make_r13_linked.py > memorial/testdata/r13-linked.json
 
-Ca (bộ lọc theo 02 §7.6):
-  - một người đang sống / nhiều người đang sống                       → dang_song
-  - một người đã mất / hai người đã mất                                → da_mat
-  - người đã mất + người đang sống (hỗn hợp)                           → dang_song
-  - không gắn ai                                                        → dang_song
-  - sự kiện âm lặp, không rõ năm, gắn người đã mất, cùng ngày với giỗ   → da_mat (giỗ đứng trước sự kiện)
-  - sự kiện dương lặp 29/02 gắn hai người đã mất, quy tắc nhắc tắt      → da_mat (danh sách không phụ thuộc nhắc)
-  - sự kiện một lần đã qua gắn người đã mất                             → không xuất hiện
-  - sự kiện không tiêu đề (hiện tên loại) gắn người đã mất, không có quy tắc nhắc
+Ca (sau Bổ sung B4, 02 §6.1 và §7.6 — bộ này nay kiểm phần loại trừ):
+  - một người đang sống / nhiều người đang sống / không gắn ai          → có lần xuất hiện, bộ lọc dang_song
+  - một người đã mất / hai người đã mất / hỗn hợp đã mất + đang sống     → KHÔNG có lần xuất hiện nào
+  - sự kiện âm lặp, không rõ năm, gắn người đã mất, cùng ngày với giỗ   → không có (chỉ còn giỗ, ở da_mat)
+  - sự kiện dương lặp 29/02 gắn hai người đã mất, quy tắc nhắc tắt      → không có
+  - sự kiện một lần đã qua gắn người đã mất                             → không có
+  - sự kiện không tiêu đề (hiện tên loại) gắn người đã mất, không có quy tắc nhắc → không có
+  (Trước B4: sự kiện mà mọi người đã mất thuộc da_mat; hỗn hợp thuộc dang_song.)
 """
 import json
 import os

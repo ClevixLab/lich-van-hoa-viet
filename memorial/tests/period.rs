@@ -6,7 +6,7 @@
 
 use lvhv_core::DEFAULT_METHOD;
 use lvhv_memorial::model::*;
-use lvhv_memorial::occ::occurrences_with_tt;
+use lvhv_memorial::occ::{occurrences_with_tt, OccClass};
 use lvhv_memorial::period::*;
 use lvhv_memorial::Cal;
 use std::collections::HashSet;
@@ -112,21 +112,33 @@ fn r13c_consistency() {
     r13c_on(&r3());
     let l = linked();
     r13c_on(&l);
-    // Bộ bổ sung có sự kiện ở cả hai bộ lọc.
-    let y = |f| {
-        events_in_period(
-            Cal::get(DEFAULT_METHOD),
-            &l,
-            PeriodKind::Nam,
-            Ymd::new(2027, 1, 1),
-            f,
-        )
-        .items
-        .iter()
-        .filter(|i| i.occ.class.is_event())
-        .count()
-    };
-    assert!(y(PersonFilter::DaMat) > 0 && y(PersonFilter::DangSong) > 0);
+    // Bổ sung B4: "đã mất" chỉ có giỗ/tiên thường; sự kiện gắn người đã mất không xuất hiện; sự kiện chỉ gắn
+    // người sống hoặc không gắn ai ở "đang sống".
+    let cal = Cal::get(DEFAULT_METHOD);
+    for f in PersonFilter::ALL {
+        let p = events_in_period(cal, &l, PeriodKind::Nam, Ymd::new(2027, 1, 1), f);
+        for i in &p.items {
+            if f == PersonFilter::DaMat {
+                assert!(matches!(i.occ.class, OccClass::Gio | OccClass::TienThuong));
+            }
+            if i.occ.class.is_event() {
+                let ev = l.events.iter().find(|e| e.id == i.occ.entity_id).unwrap();
+                assert!(!lvhv_memorial::occ::event_has_deceased(&l, ev));
+            }
+        }
+    }
+    let ds_events = events_in_period(
+        cal,
+        &l,
+        PeriodKind::Nam,
+        Ymd::new(2027, 1, 1),
+        PersonFilter::DangSong,
+    )
+    .items
+    .iter()
+    .filter(|i| i.occ.class.is_event())
+    .count();
+    assert!(ds_events > 0);
 }
 
 fn r13c_on(ds: &Dataset) {
@@ -303,23 +315,30 @@ fn filter_rule_for_events() {
     ds.events[2].person_ids = vec![dead, dead2];
     ds.events[3].person_ids = vec![alive];
     let e: Vec<String> = ds.events.iter().map(|e| e.id.clone()).collect();
-    let y = events_in_period(
+    let all = events_in_period(
         cal,
         &ds,
         PeriodKind::Nam,
         Ymd::new(2027, 6, 1),
-        PersonFilter::DaMat,
+        PersonFilter::TatCa,
     );
-    let in_dm = |id: &str| y.items.iter().any(|i| i.occ.entity_id == id);
-    assert!(in_dm(&e[0]));
-    assert!(!in_dm(&e[1]));
-    assert!(in_dm(&e[2]));
-    assert!(!in_dm(&e[3]));
-    assert!(!in_dm(&e[4])); // không gắn ai → đang sống
-    let it = y.items.iter().find(|i| i.occ.entity_id == e[2]).unwrap();
-    assert_eq!(it.person_ids.len(), 2);
+    let ds_ = events_in_period(
+        cal,
+        &ds,
+        PeriodKind::Nam,
+        Ymd::new(2027, 6, 1),
+        PersonFilter::DangSong,
+    );
+    let has = |p: &Period, id: &str| p.items.iter().any(|i| i.occ.entity_id == id);
+    // Bổ sung B4: có người đã mất (một mình, hỗn hợp, hai người) → không lần xuất hiện nào.
+    for k in 0..3 {
+        assert!(!has(&all, &e[k]), "sự kiện {k}");
+    }
+    // Chỉ người sống / không gắn ai → "đang sống".
+    assert!(has(&ds_, &e[3]));
+    assert!(has(&ds_, &e[4]));
     // Mục của hồ sơ: person_ids = [id], tên hiển thị, ngày âm = S2L(ngày).
-    for i in &y.items {
+    for i in &all.items {
         if !i.occ.class.is_event() {
             assert_eq!(i.person_ids, vec![i.occ.entity_id.clone()]);
         }

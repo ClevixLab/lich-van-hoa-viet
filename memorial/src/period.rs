@@ -132,21 +132,10 @@ pub struct Period {
     pub items: Vec<PeriodItem>,
 }
 
-/// Lần xuất hiện thuộc "đã mất" (02 §7.6): của hồ sơ có ngày mất; sự kiện có `person_ids` không rỗng
-/// và mọi id trỏ tới hồ sơ có ngày mất.
-pub fn is_deceased_occ(ds: &Dataset, occ: &Occurrence) -> bool {
-    if occ.class.is_event() {
-        let Some(ev) = ds.events.iter().find(|e| e.id == occ.entity_id) else {
-            return false;
-        };
-        !ev.person_ids.is_empty()
-            && ev
-                .person_ids
-                .iter()
-                .all(|id| ds.person(id).is_some_and(|p| p.death.is_some()))
-    } else {
-        ds.person(&occ.entity_id).is_some_and(|p| p.death.is_some())
-    }
+/// Lần xuất hiện thuộc "đã mất" (02 §7.6, Bổ sung B4): giỗ và tiên thường; mọi lần khác thuộc "đang sống".
+/// (Sinh nhật và sự kiện của người đã mất không có lần xuất hiện nào — 02 §6.1.)
+pub fn is_deceased_occ(_ds: &Dataset, occ: &Occurrence) -> bool {
+    matches!(occ.class, OccClass::Gio | OccClass::TienThuong)
 }
 
 /// Lần xuất hiện có qua bộ lọc không.
