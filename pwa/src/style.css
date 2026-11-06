@@ -809,3 +809,7 @@ h1[tabindex="-1"]:focus { outline: none; }
 .bia-name { font-size: 1.4rem; }
 .altar { margin-top: 6.2rem; }
 .incense { height: 104px; }
+/* Ô chọn tệp và mọi ô nhập trong mô-đun không được rộng hơn khung (phông dự phòng của máy khác có thể rộng hơn). */
+.people input[type="file"] { width: 100%; max-width: 100%; min-width: 0; font-size: .9rem; }
+.people .panel, .people .pfs, .people .field { min-width: 0; max-width: 100%; }
+.people select, .people .tin { max-width: 100%; }

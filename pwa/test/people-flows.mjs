@@ -283,6 +283,12 @@ export async function runPeople({ browser, BASE, ORIGIN, ROOT, SHOTS, check, met
 
     // ---------- L9/L10: sao lưu xuất → nhập ----------
     await go("#/nguoi-than/sao-luu", "#bk-export");
+    const ovBk = await page.evaluate(() => {
+      const over = document.documentElement.scrollWidth - window.innerWidth;
+      const wide = [...document.querySelectorAll("main *")].filter((e) => e.getBoundingClientRect().right > window.innerWidth + 0.5).slice(0, 3).map((e) => `${e.tagName}.${e.className}#${e.id} ${Math.round(e.getBoundingClientRect().right)}`);
+      return { over, wide };
+    });
+    check(ovBk.over <= 0, `Sao lưu 360 px không tràn ngang (${ovBk.over}px ${ovBk.wide.join(", ")})`);
     const h1 = await store(`async (s) => s.stateHash()`);
     await page.click("#bk-export");
     await page.fill("#bk-pw1", "ngắn");
