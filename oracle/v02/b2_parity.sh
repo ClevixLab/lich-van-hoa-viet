@@ -13,6 +13,10 @@ cmds=(
   "upcoming $DS 2026-01-01 2036-12-31"
   "r12 $DS --steps"
 )
+# Bo sung B3: them lenh khi co bien EXTRA_DS (duong dan bo r13-linked)
+if [ -n "$EXTRA_DS" ]; then
+  cmds+=("r13 $DS" "r13 $EXTRA_DS" "reminders $DS --global-off" "reminders $DS --rule-off")
+fi
 : > "$OUTF"
 for c in "${cmds[@]}"; do
   for m in "--method jpl " ""; do

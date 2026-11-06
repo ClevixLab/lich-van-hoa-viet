@@ -11,7 +11,10 @@ có sẵn. Công cụ của lõi (`lvhv-memorial-dump`, `tsport/test/memorial_du
 
 Kết quả `Precise` của R1 lần trước (KHÔNG ĐẠT, 2 932 sai lệch) **giữ nguyên** trong báo cáo cũ, không sửa.
 
-## 1. Kết luận
+## 1. Kết luận (lần B2)
+
+**Cập nhật sau Bổ sung B3: xem mục 10.** Sau B3, R3 chuyển từ CHƯA ĐỦ BẰNG CHỨNG sang ĐẠT; R12 ĐẠT với I1–I4; R13 ĐẠT
+trên cả bộ R3 và bộ `r13-linked`.
 
 | Mã | Phần | Kết luận | Số liệu |
 |---|---|---|---|
@@ -272,7 +275,84 @@ mặc định.
 - Mặc định của cả hai bản là Jpl: đầu ra có và không có `--method jpl` trùng nhau.
 - Phần "Rust ≡ TypeScript" của R1, lần trước ghi CHƯA ĐỦ BẰNG CHỨNG, nay **ĐẠT** cho Jpl.
 
-## 10. Tệp
+## 10. Kiểm định lại sau Bổ sung B3 (2026-11-07)
+
+Căn cứ: 04 Bổ sung B3 (`main` 433f4d8, PR #17); 02 §7.4, §7.6, Phụ lục A.3, A.5, A.6 tại `181c039` (PR #14). Không
+đọc mã của lõi. Bộ dữ liệu bổ sung `memorial/testdata/r13-linked.json` chỉ được đọc như dữ liệu; bản đã dùng được chép
+nguyên vào `oracle/v02/out/b3_input_r13-linked_181c039.json`. Các mục 1–9 và 11 giữ nguyên làm hồ sơ của lần B2.
+
+### 10.1 Kết luận
+
+| Mã | Kết luận | Số liệu |
+|---|---|---|
+| **R12** (§7.4 mới, I1–I4) | **ĐẠT** cả 9 ô | 0 vi phạm I1, I2, I3, I4 ở mọi ô, cả lõi (181c039) lẫn oracle. Bảng tổng hợp giống lõi ở **mọi cột** của 9 ô; khối `--steps` giống ở mọi bước (1 096 / 100 / 1 bước mỗi cỡ) |
+| **R3** (thêm `--global-off`, `--rule-off`) | **ĐẠT** | Cả hai chế độ: 0 lời nhắc ở cả hai bên (tệp chỉ có dòng tiêu đề, giống từng byte). Phần đối chiếu đầy đủ không đổi: 0 / 38 432 256, sha256 `86bcc3d2…` trùng ở 181c039. Bốn mục "Thêm" nay đều đã kiểm |
+| **R13** bộ `r13-linked` | **ĐẠT** (a), (b), (c), (d) | (a) 2 286 / 2 286 dòng giống từng byte; (b) Rust ≡ TS; (c) 561 phép hợp + 762 kỳ phân hoạch bộ lọc, 0 vi phạm; (d) 762 kỳ, 0 vi phạm (115 kỳ có mục ở ngày đầu, 98 ở ngày cuối) |
+| R13 bộ R3 | **ĐẠT** (giữ) | Đầu ra `r13` của 181c039 vẫn giống từng byte bản nộp `b2_r13.jsonl` |
+| R11 | **ĐẠT** (giữ) | Đầu ra `upcoming` của 181c039 giống từng byte `b2_r11_upcoming_sau_sua.csv`. A.3 nay ghi đúng cách hiểu đã dùng; lần sửa oracle vẫn là **sau đối chiếu** (mục 5) |
+| R1 (Jpl) | **ĐẠT** (giữ) | sha256 đầu ra `gio-dates` của 181c039 trùng bản `main` đã đối chiếu |
+| Rust ≡ TS | **ĐẠT** | 181c039: 24/24 lệnh giống (16 lệnh cũ + `r13` hai bộ + `reminders --global-off/--rule-off`, mỗi lệnh có và không có `--method jpl`), `out/b3_parity_181c039.tsv` |
+
+### 10.2 Trình tự
+
+| Giờ (+07) | Commit | Việc |
+|---|---|---|
+| ~03:35 | — | Đọc 04 B3 và các mục 02 tại 181c039; đọc dữ liệu `r13-linked.json` |
+| 03:41 | `950949d` | Đầu ra oracle: `b3_r12.csv` (I1–I4), `b3_r3_global_off.csv`, `b3_r3_rule_off.csv`, `b3_r13_linked.jsonl` + tự kiểm (c), (d); tổng băm `SHA256SUMS.b3`. **Trước** khi chạy bất kỳ dump nào của 181c039 |
+| sau 03:42 | commit báo cáo | Dựng dump 181c039 (Rust, TypeScript), chạy và so; cập nhật báo cáo |
+
+Không có sửa oracle nào sau đối chiếu ở lần B3.
+
+### 10.3 R12 — cài đặt oracle (`b3_r12.py`; `b2_r12.py` giữ nguyên)
+
+- `reschedule`: hi = now + 400 ngày; desired = lời nhắc có now < at ≤ hi, sắp (at, id); `beyond` = có lời nhắc at > hi.
+  Nếu len(desired) > 64 hoặc `beyond`: giữ k = min(len, 63) cái sớm nhất, thông báo nhắc mở ứng dụng tại at của cái
+  thứ k (k = 0 → tại hi).
+- Tập lời nhắc theo A.5: lần xuất hiện có ngày trong [2026-01-01, 2028-12-31 + 900 ngày] và mọi sự kiện không lặp tới
+  3000-12-31.
+- Cột theo A.5 đã làm rõ: `delivered` gồm thông báo nhắc mở ứng dụng; giao lúc 09:00 mỗi ngày; `missed` trong
+  (09:00 ngày đầu, 09:00 ngày cuối]; p0.1 không rút số ở ngày đầu, từ ngày 2 mở khi `u32 × 10 < 2³²`.
+- I4 kiểm trực tiếp: lời nhắc tương lai sớm nhất (trong hay ngoài cửa sổ) không đang chờ phải có thông báo nhắc mở
+  ứng dụng với at ≤ nó. **Đối chứng âm** (kiểm bộ kiểm có tác dụng): chạy thuật toán B2 (không xét `beyond`) dưới bộ
+  kiểm B3 cho I4 = 1 096 / 100 / 1 vi phạm ở 10-p1 / 10-p0.1 / 10-p0, đúng những ô cỡ 10 có lời nhắc ngoài cửa sổ mà
+  chưa tới 64 trong cửa sổ.
+
+| Ô | opens | max_pending | delivered | sentinel_delivered | missed | missed_without_sentinel | i1 | i2 | i3 | i4 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 10 / p1 | 1 096 | 38 | 71 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| 10 / p0.1 | 100 | 37 | 71 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| 10 / p0 | 1 | 34 | 34 | 1 | 38 | **0** | 0 | 0 | 0 | 0 |
+| 50 / p1 | 1 096 | 64 | 296 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| 50 / p0.1 | 100 | 64 | 296 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| 50 / p0 | 1 | 64 | 64 | 1 | 233 | 0 | 0 | 0 | 0 | 0 |
+| 200 / p1 | 1 096 | 64 | 1 125 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| 200 / p0.1 | 100 | 64 | 967 | 3 | 161 | 0 | 0 | 0 | 0 | 0 |
+| 200 / p0 | 1 | 64 | 64 | 1 | 1 062 | 0 | 0 | 0 | 0 | 0 |
+
+Bảng trên là của oracle và trùng từng giá trị với lõi (`out/b3_cmp_r12.json`: 0 ô khác, 0 bước khác). Phát hiện ở
+mục 6.3 đã được xử lý: ô 10 / p0 nay có thông báo nhắc mở ứng dụng được giao trước 38 lời nhắc ở xa
+(`missed_without_sentinel` 38 → 0).
+
+### 10.4 R13 — bộ `r13-linked`
+
+Bộ dữ liệu kiểm tới cả hai nhánh của quy tắc lọc sự kiện. Đếm mục theo năm, tổng 11 năm, ở đầu ra của oracle:
+- `da_mat`: giỗ 185, tiên thường 33, và các sự kiện gắn toàn người đã mất ("Giỗ tổ dòng họ", "Họp họ đầu xuân", "Tất
+  niên dòng họ", "Lễ tạ mộ" — cùng ngày với giỗ của người đó, xếp sau giỗ —, "Ngày cưới ông bà" 29/02 với quy tắc nhắc
+  tắt, sự kiện không tiêu đề hiện tên loại "Tốt nghiệp", và hai sự kiện một lần).
+- `dang_song`: sinh nhật 87, sinh nhật âm 54, sự kiện gắn người sống, sự kiện hỗn hợp (đã mất + sống: "Ngày cưới",
+  "Mốc cuối cửa sổ", "Mừng thọ") và sự kiện không gắn ai ("Kỷ niệm thành lập họ").
+(c), (d) chạy trên cả tệp oracle và tệp lõi, cùng kết quả (`out/b3_r13_linked_check_oracle.json`,
+`out/b3_r13_linked_check_core.json`).
+
+### 10.5 Tệp thêm (`oracle/v02/out/`)
+
+`b3_r12.csv`, `b3_core_r12_181c039.csv`, `b3_cmp_r12.json`; `b3_r3_global_off.csv`, `b3_r3_rule_off.csv`,
+`b3_core_r3_global_off.csv`, `b3_core_r3_rule_off.csv`; `b3_input_r13-linked_181c039.json`, `b3_r13_linked.jsonl`,
+`b3_core_r13_linked_181c039.jsonl`, `b3_r13_linked_check_oracle.json`, `b3_r13_linked_check_core.json`;
+`b3_parity_181c039.tsv`; `SHA256SUMS.b3`. Mã: `b3_r12.py`, `b3_cmp_r12.py`; `b2_r3.py` thêm hai cờ `--global-off`,
+`--rule-off` (chế độ thường không đổi: sinh lại cho cùng sha256 `86bcc3d2…`); `b2_parity.sh` thêm lệnh B3.
+
+## 11. Tệp (lần B2; tệp lần B3 ở mục 10.5)
 
 Đầu ra oracle (có trong kho), thư mục `oracle/v02/out/`:
 - R1: `r1_jpl_d.jsonl`, `b2_r1_jpl_summary.json`.
