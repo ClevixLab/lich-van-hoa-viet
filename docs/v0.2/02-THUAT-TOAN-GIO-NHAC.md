@@ -198,6 +198,10 @@ reminders_for(rule, occ, now, tz):          # occ: một lần xuất hiện (ng
   mở O-9.
 - (Bổ sung B2, 2026-11-07) Màn hình khóa khi không hiện tên (O-9): tiêu đề "Sắp đến ngày giỗ" (giỗ, tiên thường),
   "Sắp đến sinh nhật" (sinh nhật dương, sinh nhật âm) và **"Sắp đến sự kiện"** (mọi loại sự kiện); không có dòng phụ.
+- (Ghi chú 2026-11-07, duyệt mã MA3-14-02) Tùy chọn "hiện tên trên màn hình khóa" (O-9) mặc định **tắt**. Trên native
+  nó được lưu trong kho của thiết bị (`lvhv-store`, bảng `meta`, khóa `lock_screen_names`), là tùy chọn cục bộ như
+  `lvhv.ui` của PWA: không thuộc `AppSettings` (lược đồ v1 không đổi) và không đi vào tệp sao lưu. Các hàm nhắc của
+  kho đọc tùy chọn từ đó; khi tắt, dữ liệu lời nhắc trả cho ứng dụng không chứa tên người.
 - Ví dụ: G-A năm 2026, `[0, 3]`, `07:00` → 2026-07-25 07:00 và 2026-07-28 07:00 (giờ thiết bị).
 
 ### 7.2 Danh sách "Sắp tới" (30 ngày)
@@ -217,6 +221,10 @@ Hiển thị: "Hôm nay", "Ngày mai", "Còn n ngày".
 - Cơ chế (kiểm ở R5): **một chuỗi báo thức** — chỉ đặt **một** báo thức cho thời điểm nhắc sớm nhất; khi báo thức chạy, đăng
   mọi thông báo đã đến hạn (kể cả những cái bị trễ do máy tắt, nếu trễ ≤ 24 giờ; trễ hơn thì bỏ, vì "Sắp tới" vẫn
   hiển thị) rồi đặt báo thức kế tiếp. Không có giới hạn số lượng lời nhắc.
+- (Ghi chú 2026-11-07, duyệt mã MA3-14-01) Báo thức kế tiếp là lời nhắc sớm nhất có `at > now` **không giới hạn
+  cửa sổ** (không áp cửa sổ 400 ngày của §7.4): lời nhắc ở xa vẫn được đặt báo thức, nên chuỗi không bao giờ dừng
+  khi còn lời nhắc tương lai. Cài đặt tìm trên cùng tập với `reschedule` của §7.4 (quét các lần xuất hiện tới
+  `hôm nay + 900 ngày` và mọi sự kiện không lặp tới 3000-12-31); không còn lời nhắc nào thì không đặt báo thức.
 - Loại báo thức mặc định (không cần quyền đặc biệt): `setAndAllowWhileIdle(RTC_WAKEUP, t)` — không bao giờ chạy sớm
   hơn `t`; từ Android 12 hệ thống giao trong vòng một giờ nếu không có hạn chế tiết kiệm pin. Lời nhắc giỗ lúc 07:00
   đến muộn tối đa khoảng một giờ là chấp nhận được cho việc "nhắc trước".

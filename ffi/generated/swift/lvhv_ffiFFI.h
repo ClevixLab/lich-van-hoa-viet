@@ -271,6 +271,11 @@ void*_Nonnull uniffi_lvhv_ffi_fn_constructor_lvhvstore_open(RustBuffer dir, Rust
 RustBuffer uniffi_lvhv_ffi_fn_method_lvhvstore_add_photo(void*_Nonnull ptr, RustBuffer id, RustBuffer mime, uint32_t width, uint32_t height, RustBuffer bytes, RustCallStatus *_Nonnull out_status
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_ANDROID_ALARM_STEP_JSON
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_ANDROID_ALARM_STEP_JSON
+RustBuffer uniffi_lvhv_ffi_fn_method_lvhvstore_android_alarm_step_json(void*_Nonnull ptr, int64_t now_unix_s, RustBuffer last_run_unix_s, RustBuffer zone, RustCallStatus *_Nonnull out_status
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_APPLY_IMPORT
 #define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_APPLY_IMPORT
 void uniffi_lvhv_ffi_fn_method_lvhvstore_apply_import(void*_Nonnull ptr, void*_Nonnull backup, RustBuffer mode, RustCallStatus *_Nonnull out_status
@@ -301,6 +306,11 @@ void uniffi_lvhv_ffi_fn_method_lvhvstore_delete_person(void*_Nonnull ptr, RustBu
 RustBuffer uniffi_lvhv_ffi_fn_method_lvhvstore_event_types_json(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_EVENTS_IN_PERIOD_JSON
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_EVENTS_IN_PERIOD_JSON
+RustBuffer uniffi_lvhv_ffi_fn_method_lvhvstore_events_in_period_json(void*_Nonnull ptr, RustBuffer kind, RustBuffer anchor, RustBuffer filter, RustCallStatus *_Nonnull out_status
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_EVENTS_JSON
 #define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_EVENTS_JSON
 RustBuffer uniffi_lvhv_ffi_fn_method_lvhvstore_events_json(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
@@ -309,6 +319,11 @@ RustBuffer uniffi_lvhv_ffi_fn_method_lvhvstore_events_json(void*_Nonnull ptr, Ru
 #ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_EXPORT_BACKUP
 #define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_EXPORT_BACKUP
 RustBuffer uniffi_lvhv_ffi_fn_method_lvhvstore_export_backup(void*_Nonnull ptr, RustBuffer password, RustBuffer app_version, RustBuffer platform, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_LOCK_SCREEN_NAMES
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_LOCK_SCREEN_NAMES
+int8_t uniffi_lvhv_ffi_fn_method_lvhvstore_lock_screen_names(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_PERSON_JSON
@@ -331,6 +346,16 @@ RustBuffer uniffi_lvhv_ffi_fn_method_lvhvstore_photo_bytes(void*_Nonnull ptr, Ru
 void uniffi_lvhv_ffi_fn_method_lvhvstore_put_settings_json(void*_Nonnull ptr, RustBuffer json, RustCallStatus *_Nonnull out_status
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_REMINDERS_JSON
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_REMINDERS_JSON
+RustBuffer uniffi_lvhv_ffi_fn_method_lvhvstore_reminders_json(void*_Nonnull ptr, int64_t now_unix_s, RustBuffer zone, uint32_t horizon_days, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_RESCHEDULE_JSON
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_RESCHEDULE_JSON
+RustBuffer uniffi_lvhv_ffi_fn_method_lvhvstore_reschedule_json(void*_Nonnull ptr, int64_t now_unix_s, RustBuffer zone, RustBuffer pending_json, RustCallStatus *_Nonnull out_status
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_SAVE_EVENT_JSON
 #define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_SAVE_EVENT_JSON
 RustBuffer uniffi_lvhv_ffi_fn_method_lvhvstore_save_event_json(void*_Nonnull ptr, RustBuffer json, RustCallStatus *_Nonnull out_status
@@ -346,9 +371,19 @@ RustBuffer uniffi_lvhv_ffi_fn_method_lvhvstore_save_event_type_json(void*_Nonnul
 RustBuffer uniffi_lvhv_ffi_fn_method_lvhvstore_save_person_json(void*_Nonnull ptr, RustBuffer json, RustCallStatus *_Nonnull out_status
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_SET_LOCK_SCREEN_NAMES
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_SET_LOCK_SCREEN_NAMES
+void uniffi_lvhv_ffi_fn_method_lvhvstore_set_lock_screen_names(void*_Nonnull ptr, int8_t show, RustCallStatus *_Nonnull out_status
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_SETTINGS_JSON
 #define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_SETTINGS_JSON
 RustBuffer uniffi_lvhv_ffi_fn_method_lvhvstore_settings_json(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_UPCOMING_JSON
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_UPCOMING_JSON
+RustBuffer uniffi_lvhv_ffi_fn_method_lvhvstore_upcoming_json(void*_Nonnull ptr, RustBuffer today, uint32_t days, RustCallStatus *_Nonnull out_status
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_CLONE_VERIFIEDBACKUP
@@ -1058,6 +1093,12 @@ uint16_t uniffi_lvhv_ffi_checksum_method_lvhvstore_add_photo(void
     
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_ANDROID_ALARM_STEP_JSON
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_ANDROID_ALARM_STEP_JSON
+uint16_t uniffi_lvhv_ffi_checksum_method_lvhvstore_android_alarm_step_json(void
+    
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_APPLY_IMPORT
 #define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_APPLY_IMPORT
 uint16_t uniffi_lvhv_ffi_checksum_method_lvhvstore_apply_import(void
@@ -1094,6 +1135,12 @@ uint16_t uniffi_lvhv_ffi_checksum_method_lvhvstore_event_types_json(void
     
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_EVENTS_IN_PERIOD_JSON
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_EVENTS_IN_PERIOD_JSON
+uint16_t uniffi_lvhv_ffi_checksum_method_lvhvstore_events_in_period_json(void
+    
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_EVENTS_JSON
 #define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_EVENTS_JSON
 uint16_t uniffi_lvhv_ffi_checksum_method_lvhvstore_events_json(void
@@ -1103,6 +1150,12 @@ uint16_t uniffi_lvhv_ffi_checksum_method_lvhvstore_events_json(void
 #ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_EXPORT_BACKUP
 #define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_EXPORT_BACKUP
 uint16_t uniffi_lvhv_ffi_checksum_method_lvhvstore_export_backup(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_LOCK_SCREEN_NAMES
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_LOCK_SCREEN_NAMES
+uint16_t uniffi_lvhv_ffi_checksum_method_lvhvstore_lock_screen_names(void
     
 );
 #endif
@@ -1130,6 +1183,18 @@ uint16_t uniffi_lvhv_ffi_checksum_method_lvhvstore_put_settings_json(void
     
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_REMINDERS_JSON
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_REMINDERS_JSON
+uint16_t uniffi_lvhv_ffi_checksum_method_lvhvstore_reminders_json(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_RESCHEDULE_JSON
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_RESCHEDULE_JSON
+uint16_t uniffi_lvhv_ffi_checksum_method_lvhvstore_reschedule_json(void
+    
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_SAVE_EVENT_JSON
 #define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_SAVE_EVENT_JSON
 uint16_t uniffi_lvhv_ffi_checksum_method_lvhvstore_save_event_json(void
@@ -1148,9 +1213,21 @@ uint16_t uniffi_lvhv_ffi_checksum_method_lvhvstore_save_person_json(void
     
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_SET_LOCK_SCREEN_NAMES
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_SET_LOCK_SCREEN_NAMES
+uint16_t uniffi_lvhv_ffi_checksum_method_lvhvstore_set_lock_screen_names(void
+    
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_SETTINGS_JSON
 #define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_SETTINGS_JSON
 uint16_t uniffi_lvhv_ffi_checksum_method_lvhvstore_settings_json(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_UPCOMING_JSON
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_UPCOMING_JSON
+uint16_t uniffi_lvhv_ffi_checksum_method_lvhvstore_upcoming_json(void
     
 );
 #endif

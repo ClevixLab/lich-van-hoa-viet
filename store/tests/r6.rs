@@ -268,8 +268,10 @@ fn roundtrip_replace_identical() {
     // Đóng và mở lại kho (R2: đọc lại sau khi đóng/mở).
     drop(s);
     let s = Store::open(&a).unwrap();
-    assert!(s.settings().unwrap()["last_backup_at"].is_string());
+    let last = s.settings().unwrap()["last_backup_at"].clone();
+    assert!(last.is_string());
     assert_eq!(s.backup_pending_since().unwrap(), None);
+    let h_after = s.state_hash().unwrap();
     let b = tmpdir("a-dst");
     let mut t = Store::open(&b).unwrap();
     let v = open_backup(&file, "mật khẩu thử nghiệm").unwrap();
@@ -277,8 +279,16 @@ fn roundtrip_replace_identical() {
     assert_eq!(v.preview().photos, 20);
     t.apply_import(&v, ImportMode::Replace).unwrap();
     drop(t);
-    let t = Store::open(&b).unwrap();
-    // Dữ liệu giống hệt (settings.last_backup_at trong tệp = giá trị trước khi xuất).
+    let mut t = Store::open(&b).unwrap();
+    // TK-16: tệp mang `last_backup_at` = thời điểm của chính lần xuất → kho khôi phục giống hệt kho nguồn
+    // sau khi xuất (kể cả ngày sao lưu gần nhất), và = exported_at của tệp.
+    assert_eq!(t.state_hash().unwrap(), h_after);
+    assert_eq!(t.settings().unwrap()["last_backup_at"], last);
+    assert_eq!(v.document()["exported_at"], last);
+    // Ngoài `last_backup_at`, dữ liệu giống hệt dữ liệu trước khi xuất.
+    let mut st = t.settings().unwrap();
+    st["last_backup_at"] = snap1["settings"]["last_backup_at"].clone();
+    t.put_settings(&st).unwrap();
     assert_eq!(t.state_hash().unwrap(), h1);
     for (id, bytes) in &photos {
         assert_eq!(&t.photo_bytes(id).unwrap(), bytes);

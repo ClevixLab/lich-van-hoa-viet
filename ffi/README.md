@@ -55,11 +55,22 @@ lược đồ `docs/v0.2/schema/backup-v1.schema.json` (Person, Event, EventType
 | `person_summary_json(person, today)` | Tên hiển thị, Can Chi, tuổi dương/tuổi âm (02 §4.3), "Hưởng thọ … tuổi" (02 §4.2), ngày mất âm lịch |
 | `upcoming_json(dataset, today, days)` | Danh sách "Sắp tới" (02 §7.2) |
 | `period_bounds(kind, anchor)`, `period_prev`, `period_next`, `events_in_period_json(dataset, kind, anchor, filter)` | Danh sách theo kỳ (02 §7.6, R13) |
-| `reminders_json(dataset, now, zone, horizon_days, show_names)` | Lời nhắc (02 §7.1), văn bản màn hình khóa theo O-9 |
-| `reschedule_json(dataset, now, zone, pending_json, show_names)`, `sentinel_info()` | Xoay vòng 64 yêu cầu chờ cho iOS/macOS/Windows (02 §7.4) |
-| `android_alarm_step_json(dataset, now, last_run, zone, show_names)` | Một bước chuỗi báo thức Android (02 §7.3): lời nhắc cần đăng ngay + báo thức kế tiếp |
+| `reminders_json(dataset, now, zone, horizon_days, show_names = false)` | Lời nhắc (02 §7.1), văn bản màn hình khóa theo O-9 |
+| `reschedule_json(dataset, now, zone, pending_json, show_names = false)`, `sentinel_info() -> SentinelInfo {id, text}` | Xoay vòng 64 yêu cầu chờ cho iOS/macOS/Windows (02 §7.4) |
+| `android_alarm_step_json(dataset, now, last_run, zone, show_names = false)` | Một bước chuỗi báo thức Android (02 §7.3): lời nhắc cần đăng ngay + báo thức kế tiếp (không giới hạn cửa sổ) |
+| `LvhvStore::lock_screen_names()`, `set_lock_screen_names(bool)` | Tùy chọn O-9 "hiện tên trên màn hình khóa", mặc định `false`, lưu cục bộ trong kho (bảng `meta`), không vào sao lưu |
+| `LvhvStore::reminders_json(now, zone, horizon)`, `reschedule_json(now, zone, pending)`, `android_alarm_step_json(now, last_run, zone)`, `upcoming_json(today, days)`, `events_in_period_json(kind, anchor, filter)` | Như các hàm tự do nhưng đọc dữ liệu **và tùy chọn O-9** từ kho — ứng dụng native **nên dùng các hàm này** |
 | `ics_export(dataset, today, now, only_ids)` → `IcsExport {file_name, content, events, persons}` | Tệp .ics 10 năm (02 §8); `persons` cho hộp xác nhận S10 |
 | `new_uuid()` | UUID v4 (01 §1) |
+
+O-9: khi không hiện tên, phần tử lời nhắc chỉ có `occ = {entity_id, class, date, key}` (không có `name`,
+`headline`, `date_line`); **nội dung thông báo chỉ lấy từ `title`/`body`**.
+
+Kiểm dữ liệu vào: năm ngoài 1900–3000, giây Unix ngoài 1900–3000 (ví dụ truyền mili giây), độ lệch múi giờ có
+|giá trị| > 1080 phút (ví dụ truyền giây) hoặc lần chuyển giờ không tăng dần → `LvhvDataError.Invalid`.
+
+Mật khẩu sao lưu: phía Rust xóa bản sao `String` nhận qua FFI (`Zeroizing`) sau khi dùng. `VerifiedBackup` giữ bản
+rõ đã giải mã tới khi đối tượng bị hủy: Kotlin dùng trong `use { }`, Swift giải phóng ngay sau `apply_import`.
 
 Kotlin: `[bindings.kotlin] android = true` trong `uniffi.toml` để mã dọn đối tượng không dùng
 `java.lang.ref.Cleaner` (API 33) với `minSdk 26`.

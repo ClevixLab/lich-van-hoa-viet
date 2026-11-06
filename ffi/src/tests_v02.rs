@@ -259,7 +259,7 @@ fn reminders_reschedule_android_chain() {
     // reschedule: lần đầu thêm hết; lần sau với hàng đợi đã đặt → không đổi gì.
     let plan = v(&reschedule_json(R3.into(), now, tz.clone(), "[]".into(), false).unwrap());
     let keep = plan["keep"].as_array().unwrap();
-    assert!(keep.len() <= 64 && !keep.is_empty());
+    assert_eq!(keep.len(), 64);
     assert_eq!(plan["add"].as_array().unwrap().len(), keep.len());
     let pending: Vec<Value> = keep
         .iter()
@@ -280,7 +280,7 @@ fn reminders_reschedule_android_chain() {
     assert_eq!(keep.len(), 64);
     assert_eq!(keep[63]["id"], SENTINEL_ID);
     assert_eq!(keep[63]["at_unix_s"], keep[62]["at_unix_s"]);
-    assert_eq!(sentinel_info()[0], SENTINEL_ID);
+    assert_eq!(sentinel_info().id, SENTINEL_ID);
 
     // Chuỗi báo thức Android: chạy lúc 07:01 ngày 2026-07-25, lần trước 06:00 → đăng lời nhắc 07:00,
     // báo thức kế tiếp là lời nhắc sớm nhất sau đó.
@@ -299,7 +299,8 @@ fn reminders_reschedule_android_chain() {
     assert!(post.iter().all(|r| r["fire_local"] == "2026-07-25T07:00"));
     assert_eq!(step["dropped_late"], 0);
     let next = step["next_at_unix_s"].as_i64().unwrap();
-    assert!(next > unix_vn(2026, 7, 25, 7, 1));
+    // Lời nhắc kế tiếp: đúng ngày giỗ đầu 2026-07-28 07:00 (+07).
+    assert_eq!(next, unix_vn(2026, 7, 28, 7, 0));
     let all = v(&reminders_json(
         EXAMPLE.into(),
         unix_vn(2026, 7, 25, 7, 1),
@@ -318,7 +319,9 @@ fn reminders_reschedule_android_chain() {
         false,
     )
     .unwrap());
-    assert!(late["dropped_late"].as_u64().unwrap() >= 1);
+    // 2026-07-25 07:00 (trễ > 24 giờ) bị bỏ; 2026-07-28 07:00 (trễ 1 giờ) được đăng.
+    assert_eq!(late["dropped_late"], 1);
+    assert_eq!(late["post"].as_array().unwrap().len(), 1);
     assert!(late["post"]
         .as_array()
         .unwrap()
@@ -341,7 +344,7 @@ fn ics_export_example() {
     let unfolded = f.content.replace("\r\n ", "");
     assert!(unfolded.contains("SUMMARY:Giỗ đầu Ông Nguyễn Văn A\r\n"));
     assert_eq!(f.events as usize, unfolded.matches("BEGIN:VEVENT").count());
-    assert!(f.persons >= 2);
+    assert_eq!((f.persons, f.events), (3, 60));
     let only = ics_export(
         EXAMPLE.into(),
         sd(2026, 7, 1),
@@ -396,4 +399,162 @@ fn uuid_is_v4() {
     let u = new_uuid().unwrap();
     assert!(lvhv_store::validate::is_uuid_v4(&u), "{u}");
     assert_ne!(u, new_uuid().unwrap());
+}
+
+/// MA3-14-01: lời nhắc ở xa hơn 400 ngày vẫn là báo thức kế tiếp của chuỗi Android (02 §7.3).
+#[test]
+fn android_next_alarm_has_no_window() {
+    let mut doc = v(EXAMPLE);
+    doc["persons"] = json!([]);
+    doc["photos"] = json!([]);
+    let mut e = doc["events"][0].clone();
+    e["person_ids"] = json!([]);
+    e["recurring"] = json!(false);
+    e["date"] =
+        json!({"calendar":"solar","precision":"day","year":2028,"month":6,"day":1,"leap":false});
+    e["reminder"]["offsets_days"] = json!([0, 1]);
+    doc["events"] = json!([e]);
+    let now = unix_vn(2026, 5, 28, 12, 0);
+    let step = v(&android_alarm_step_json(doc.to_string(), now, None, vn(), false).unwrap());
+    assert_eq!(step["next_at_unix_s"], unix_vn(2028, 5, 31, 7, 0));
+    assert_eq!(step["next_fire_local"], "2028-05-31T07:00");
+    // Không còn lời nhắc tương lai nào → null.
+    let after = v(&android_alarm_step_json(
+        doc.to_string(),
+        unix_vn(2028, 6, 2, 0, 0),
+        None,
+        vn(),
+        false,
+    )
+    .unwrap());
+    assert_eq!(after["next_at_unix_s"], Value::Null);
+}
+
+/// O-9 / MA3-14-02, -03: tùy chọn lưu trong kho, mặc định không hiện tên; khi ẩn tên, `occ` không có tên.
+#[test]
+fn o9_lock_screen_names_from_store() {
+    let (s, dir) = tmp_store();
+    s.save_person_json(person_a().to_string()).unwrap();
+    assert!(!s.lock_screen_names().unwrap());
+    let now = unix_vn(2026, 7, 1, 0, 0);
+    let rs = s.reminders_json(now, vn(), 60).unwrap();
+    assert!(!rs.contains("Nguyễn Văn A"), "{rs}");
+    let first = &v(&rs)[0];
+    assert_eq!(first["title"], "Sắp đến ngày giỗ");
+    let keys: Vec<&String> = first["occ"].as_object().unwrap().keys().collect();
+    assert_eq!(keys, ["class", "date", "entity_id", "key"]);
+    let step = s
+        .android_alarm_step_json(unix_vn(2026, 7, 25, 7, 1), None, vn())
+        .unwrap();
+    assert!(!step.contains("Nguyễn Văn A"), "{step}");
+    let plan = s.reschedule_json(now, vn(), "[]".into()).unwrap();
+    assert!(!plan.contains("Nguyễn Văn A"));
+    s.set_lock_screen_names(true).unwrap();
+    assert!(s.lock_screen_names().unwrap());
+    assert!(s
+        .reminders_json(now, vn(), 60)
+        .unwrap()
+        .contains("Nguyễn Văn A"));
+    // Kho mở lại vẫn nhớ tùy chọn.
+    drop(s);
+    let s = LvhvStore::open(dir.to_string_lossy().into_owned()).unwrap();
+    assert!(s.lock_screen_names().unwrap());
+    // Danh sách theo kho = danh sách trên dataset_json.
+    assert_eq!(
+        s.upcoming_json(sd(2026, 7, 1), 30).unwrap(),
+        upcoming_json(s.dataset_json().unwrap(), sd(2026, 7, 1), 30).unwrap()
+    );
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+/// MA3-14-04: năm ngoài 1900–3000, độ lệch múi giờ sai đơn vị, lần chuyển không tăng, giây Unix vô lý → lỗi.
+#[test]
+fn input_domain_checks() {
+    for y in [1, 1899, 3001, 9999, -5, i32::MAX] {
+        assert!(matches!(
+            period_bounds("tuan".into(), sd(y, 1, 1)),
+            Err(LvhvDataError::Invalid(_))
+        ));
+        assert!(
+            events_in_period_json(EXAMPLE.into(), "nam".into(), sd(y, 1, 1), "tat_ca".into())
+                .is_err()
+        );
+        assert!(upcoming_json(EXAMPLE.into(), sd(y, 1, 1), 30).is_err());
+    }
+    assert!(period_bounds("tuan".into(), sd(3000, 12, 31)).is_ok());
+    let now = unix_vn(2026, 7, 1, 0, 0);
+    let secs = DeviceZone {
+        offset_min: 25_200,
+        transitions: vec![],
+    };
+    assert!(matches!(
+        reminders_json(EXAMPLE.into(), now, secs, 60, false),
+        Err(LvhvDataError::Invalid(_))
+    ));
+    let unordered = DeviceZone {
+        offset_min: 60,
+        transitions: vec![
+            ZoneTransition {
+                at_unix_s: now + 1000,
+                offset_min: 120,
+            },
+            ZoneTransition {
+                at_unix_s: now,
+                offset_min: 60,
+            },
+        ],
+    };
+    assert!(reschedule_json(EXAMPLE.into(), now, unordered, "[]".into(), false).is_err());
+    let bad_tr = DeviceZone {
+        offset_min: 60,
+        transitions: vec![ZoneTransition {
+            at_unix_s: now,
+            offset_min: 7200,
+        }],
+    };
+    assert!(reminders_json(EXAMPLE.into(), now, bad_tr, 60, false).is_err());
+    // Mili giây thay vì giây.
+    assert!(reminders_json(EXAMPLE.into(), now * 1000, vn(), 60, false).is_err());
+    assert!(android_alarm_step_json(EXAMPLE.into(), now, Some(i64::MIN), vn(), false).is_err());
+    assert!(reschedule_json(
+        EXAMPLE.into(),
+        now,
+        vn(),
+        r#"[{"id":"x","at_unix_s":9223372036854775807,"content":""}]"#.into(),
+        false
+    )
+    .is_err());
+    assert!(ics_export(EXAMPLE.into(), sd(2026, 7, 1), i64::MAX, None).is_err());
+    // Một độ lệch hợp lệ có lần chuyển giờ mùa hè.
+    let dst = DeviceZone {
+        offset_min: 60,
+        transitions: vec![ZoneTransition {
+            at_unix_s: now + 86_400,
+            offset_min: 120,
+        }],
+    };
+    assert!(reminders_json(EXAMPLE.into(), now, dst, 60, false).is_ok());
+}
+
+/// TK-16: sau khôi phục "Thay toàn bộ", ngày sao lưu gần nhất là ngày của tệp đã khôi phục.
+#[test]
+fn restore_keeps_last_backup_date() {
+    let (s, dir) = tmp_store();
+    s.save_person_json(person_a().to_string()).unwrap();
+    assert_eq!(
+        v(&s.settings_json().unwrap())["last_backup_at"],
+        Value::Null
+    );
+    let file = s
+        .export_backup("mật khẩu đúng".into(), "0.2.0".into(), "ios".into())
+        .unwrap();
+    let src_last = v(&s.settings_json().unwrap())["last_backup_at"].clone();
+    assert!(src_last.is_string());
+    let vb = open_backup(file, "mật khẩu đúng".into()).unwrap();
+    assert_eq!(json!(vb.preview().exported_at), src_last);
+    let (t, dir2) = tmp_store();
+    t.apply_import(vb, BackupImportMode::Replace).unwrap();
+    assert_eq!(v(&t.settings_json().unwrap())["last_backup_at"], src_last);
+    let _ = std::fs::remove_dir_all(dir);
+    let _ = std::fs::remove_dir_all(dir2);
 }

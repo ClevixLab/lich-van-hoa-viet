@@ -392,6 +392,23 @@ impl Store {
         self.meta_get("backup_pending_since")
     }
 
+    /// Tùy chọn "hiện tên trên màn hình khóa" (06 O-9; mặc định **không** hiện = `false`). Là tùy chọn cục bộ
+    /// của thiết bị, lưu ở bảng `meta` (khóa `lock_screen_names`), không nằm trong `AppSettings` (lược đồ v1
+    /// đóng, 01 §5) và không đi vào tệp sao lưu — như tùy chọn giao diện `lvhv.ui` của PWA.
+    pub fn lock_screen_names(&self) -> Result<bool> {
+        Ok(self.meta_get("lock_screen_names")?.as_deref() == Some("1"))
+    }
+
+    /// Ghi tùy chọn "hiện tên trên màn hình khóa" (O-9).
+    pub fn set_lock_screen_names(&mut self, show: bool) -> Result<()> {
+        self.conn.execute(
+            "INSERT INTO meta(key, value) VALUES ('lock_screen_names', ?1)
+             ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            params![if show { "1" } else { "0" }],
+        )?;
+        Ok(())
+    }
+
     /// Hook nhắc sao lưu: `true` khi nên nhắc người dùng xuất tệp sao lưu (01 §3.9).
     pub fn backup_reminder_due(&self, now: &str) -> Result<bool> {
         let s = self.settings()?;
@@ -709,10 +726,13 @@ impl Store {
     }
 
     /// Xuất tệp sao lưu mã hóa (03 §2.4). Đặt `settings.last_backup_at` và xóa trạng thái "chờ sao lưu".
-    /// `last_backup_at` trong tệp là giá trị **trước** lần xuất này.
+    /// `settings.last_backup_at` **trong tệp** là thời điểm của chính lần xuất này (= `exported_at`), để khôi
+    /// phục "Thay toàn bộ" cho đúng ngày sao lưu gần nhất (TK-16) và kho sau khi xuất ≡ kho khôi phục từ tệp.
+    /// Vector kiểm thử (`export_backup_fixed`) không đổi.
     pub fn export_backup(&mut self, password: &str, app: &AppInfo) -> Result<Vec<u8>> {
         let now = now_rfc3339();
-        let (doc, blobs) = self.snapshot_with_photos(app, &now)?;
+        let (mut doc, blobs) = self.snapshot_with_photos(app, &now)?;
+        doc["settings"]["last_backup_at"] = json!(now);
         let file = lvhv_backup::export(password, &canonical_json(&doc), &blobs)?;
         self.after_export(&now)?;
         Ok(file)

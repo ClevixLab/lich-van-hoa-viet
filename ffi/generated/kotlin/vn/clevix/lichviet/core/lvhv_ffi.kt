@@ -828,6 +828,20 @@ internal interface UniffiForeignFutureCompleteVoid : com.sun.jna.Callback {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 // For large crates we prevent `MethodTooLargeException` (see #2340)
 // N.B. the name of the extension is very misleading, since it is 
 // rather `InterfaceTooLargeException`, caused by too many methods 
@@ -917,6 +931,8 @@ fun uniffi_lvhv_ffi_checksum_func_year_can_chi(
 ): Short
 fun uniffi_lvhv_ffi_checksum_method_lvhvstore_add_photo(
 ): Short
+fun uniffi_lvhv_ffi_checksum_method_lvhvstore_android_alarm_step_json(
+): Short
 fun uniffi_lvhv_ffi_checksum_method_lvhvstore_apply_import(
 ): Short
 fun uniffi_lvhv_ffi_checksum_method_lvhvstore_backup_reminder_due(
@@ -929,9 +945,13 @@ fun uniffi_lvhv_ffi_checksum_method_lvhvstore_delete_person(
 ): Short
 fun uniffi_lvhv_ffi_checksum_method_lvhvstore_event_types_json(
 ): Short
+fun uniffi_lvhv_ffi_checksum_method_lvhvstore_events_in_period_json(
+): Short
 fun uniffi_lvhv_ffi_checksum_method_lvhvstore_events_json(
 ): Short
 fun uniffi_lvhv_ffi_checksum_method_lvhvstore_export_backup(
+): Short
+fun uniffi_lvhv_ffi_checksum_method_lvhvstore_lock_screen_names(
 ): Short
 fun uniffi_lvhv_ffi_checksum_method_lvhvstore_person_json(
 ): Short
@@ -941,13 +961,21 @@ fun uniffi_lvhv_ffi_checksum_method_lvhvstore_photo_bytes(
 ): Short
 fun uniffi_lvhv_ffi_checksum_method_lvhvstore_put_settings_json(
 ): Short
+fun uniffi_lvhv_ffi_checksum_method_lvhvstore_reminders_json(
+): Short
+fun uniffi_lvhv_ffi_checksum_method_lvhvstore_reschedule_json(
+): Short
 fun uniffi_lvhv_ffi_checksum_method_lvhvstore_save_event_json(
 ): Short
 fun uniffi_lvhv_ffi_checksum_method_lvhvstore_save_event_type_json(
 ): Short
 fun uniffi_lvhv_ffi_checksum_method_lvhvstore_save_person_json(
 ): Short
+fun uniffi_lvhv_ffi_checksum_method_lvhvstore_set_lock_screen_names(
+): Short
 fun uniffi_lvhv_ffi_checksum_method_lvhvstore_settings_json(
+): Short
+fun uniffi_lvhv_ffi_checksum_method_lvhvstore_upcoming_json(
 ): Short
 fun uniffi_lvhv_ffi_checksum_method_verifiedbackup_preview(
 ): Short
@@ -1010,6 +1038,8 @@ fun uniffi_lvhv_ffi_fn_constructor_lvhvstore_open(`dir`: RustBuffer.ByValue,unif
 ): Pointer
 fun uniffi_lvhv_ffi_fn_method_lvhvstore_add_photo(`ptr`: Pointer,`id`: RustBuffer.ByValue,`mime`: RustBuffer.ByValue,`width`: Int,`height`: Int,`bytes`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
+fun uniffi_lvhv_ffi_fn_method_lvhvstore_android_alarm_step_json(`ptr`: Pointer,`nowUnixS`: Long,`lastRunUnixS`: RustBuffer.ByValue,`zone`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
 fun uniffi_lvhv_ffi_fn_method_lvhvstore_apply_import(`ptr`: Pointer,`backup`: Pointer,`mode`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
 fun uniffi_lvhv_ffi_fn_method_lvhvstore_backup_reminder_due(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
@@ -1022,10 +1052,14 @@ fun uniffi_lvhv_ffi_fn_method_lvhvstore_delete_person(`ptr`: Pointer,`id`: RustB
 ): Unit
 fun uniffi_lvhv_ffi_fn_method_lvhvstore_event_types_json(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
+fun uniffi_lvhv_ffi_fn_method_lvhvstore_events_in_period_json(`ptr`: Pointer,`kind`: RustBuffer.ByValue,`anchor`: RustBuffer.ByValue,`filter`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
 fun uniffi_lvhv_ffi_fn_method_lvhvstore_events_json(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_lvhv_ffi_fn_method_lvhvstore_export_backup(`ptr`: Pointer,`password`: RustBuffer.ByValue,`appVersion`: RustBuffer.ByValue,`platform`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
+fun uniffi_lvhv_ffi_fn_method_lvhvstore_lock_screen_names(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+): Byte
 fun uniffi_lvhv_ffi_fn_method_lvhvstore_person_json(`ptr`: Pointer,`id`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_lvhv_ffi_fn_method_lvhvstore_persons_json(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
@@ -1034,13 +1068,21 @@ fun uniffi_lvhv_ffi_fn_method_lvhvstore_photo_bytes(`ptr`: Pointer,`id`: RustBuf
 ): RustBuffer.ByValue
 fun uniffi_lvhv_ffi_fn_method_lvhvstore_put_settings_json(`ptr`: Pointer,`json`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
+fun uniffi_lvhv_ffi_fn_method_lvhvstore_reminders_json(`ptr`: Pointer,`nowUnixS`: Long,`zone`: RustBuffer.ByValue,`horizonDays`: Int,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_lvhv_ffi_fn_method_lvhvstore_reschedule_json(`ptr`: Pointer,`nowUnixS`: Long,`zone`: RustBuffer.ByValue,`pendingJson`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
 fun uniffi_lvhv_ffi_fn_method_lvhvstore_save_event_json(`ptr`: Pointer,`json`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_lvhv_ffi_fn_method_lvhvstore_save_event_type_json(`ptr`: Pointer,`json`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_lvhv_ffi_fn_method_lvhvstore_save_person_json(`ptr`: Pointer,`json`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
+fun uniffi_lvhv_ffi_fn_method_lvhvstore_set_lock_screen_names(`ptr`: Pointer,`show`: Byte,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
 fun uniffi_lvhv_ffi_fn_method_lvhvstore_settings_json(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_lvhv_ffi_fn_method_lvhvstore_upcoming_json(`ptr`: Pointer,`today`: RustBuffer.ByValue,`days`: Int,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_lvhv_ffi_fn_clone_verifiedbackup(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
 ): Pointer
@@ -1252,7 +1294,7 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_lvhv_ffi_checksum_func_add_days() != 41064.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_lvhv_ffi_checksum_func_android_alarm_step_json() != 30391.toShort()) {
+    if (lib.uniffi_lvhv_ffi_checksum_func_android_alarm_step_json() != 45762.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_lvhv_ffi_checksum_func_build_info_json() != 56614.toShort()) {
@@ -1330,16 +1372,16 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_lvhv_ffi_checksum_func_person_summary_json() != 36375.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_lvhv_ffi_checksum_func_reminders_json() != 49335.toShort()) {
+    if (lib.uniffi_lvhv_ffi_checksum_func_reminders_json() != 836.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_lvhv_ffi_checksum_func_reschedule_json() != 17258.toShort()) {
+    if (lib.uniffi_lvhv_ffi_checksum_func_reschedule_json() != 38758.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_lvhv_ffi_checksum_func_save_death_json() != 16966.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_lvhv_ffi_checksum_func_sentinel_info() != 18477.toShort()) {
+    if (lib.uniffi_lvhv_ffi_checksum_func_sentinel_info() != 57743.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_lvhv_ffi_checksum_func_solar_to_lunar() != 39424.toShort()) {
@@ -1355,6 +1397,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_lvhv_ffi_checksum_method_lvhvstore_add_photo() != 45983.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_lvhv_ffi_checksum_method_lvhvstore_android_alarm_step_json() != 13396.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_lvhv_ffi_checksum_method_lvhvstore_apply_import() != 38554.toShort()) {
@@ -1375,10 +1420,16 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_lvhv_ffi_checksum_method_lvhvstore_event_types_json() != 18706.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_lvhv_ffi_checksum_method_lvhvstore_events_in_period_json() != 36429.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_lvhv_ffi_checksum_method_lvhvstore_events_json() != 58435.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_lvhv_ffi_checksum_method_lvhvstore_export_backup() != 56748.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_lvhv_ffi_checksum_method_lvhvstore_lock_screen_names() != 2023.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_lvhv_ffi_checksum_method_lvhvstore_person_json() != 48207.toShort()) {
@@ -1393,6 +1444,12 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_lvhv_ffi_checksum_method_lvhvstore_put_settings_json() != 14452.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_lvhv_ffi_checksum_method_lvhvstore_reminders_json() != 30582.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_lvhv_ffi_checksum_method_lvhvstore_reschedule_json() != 3105.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_lvhv_ffi_checksum_method_lvhvstore_save_event_json() != 16260.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1402,7 +1459,13 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_lvhv_ffi_checksum_method_lvhvstore_save_person_json() != 47199.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_lvhv_ffi_checksum_method_lvhvstore_set_lock_screen_names() != 9557.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_lvhv_ffi_checksum_method_lvhvstore_settings_json() != 30343.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_lvhv_ffi_checksum_method_lvhvstore_upcoming_json() != 6769.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_lvhv_ffi_checksum_method_verifiedbackup_preview() != 6973.toShort()) {
@@ -1856,6 +1919,11 @@ public interface LvhvStoreInterface {
     fun `addPhoto`(`id`: kotlin.String, `mime`: kotlin.String, `width`: kotlin.UInt, `height`: kotlin.UInt, `bytes`: kotlin.ByteArray): kotlin.String
     
     /**
+     * `android_alarm_step_json` trên dữ liệu của kho, tùy chọn O-9 của kho.
+     */
+    fun `androidAlarmStepJson`(`nowUnixS`: kotlin.Long, `lastRunUnixS`: kotlin.Long?, `zone`: DeviceZone): kotlin.String
+    
+    /**
      * Ghi tệp đã kiểm tra (Thay toàn bộ / Gộp) trong một giao dịch; lỗi → không ghi gì.
      */
     fun `applyImport`(`backup`: VerifiedBackup, `mode`: BackupImportMode)
@@ -1887,6 +1955,11 @@ public interface LvhvStoreInterface {
     fun `eventTypesJson`(): kotlin.String
     
     /**
+     * `events_in_period_json` trên dữ liệu của kho.
+     */
+    fun `eventsInPeriodJson`(`kind`: kotlin.String, `anchor`: SolarDay, `filter`: kotlin.String): kotlin.String
+    
+    /**
      * Mọi `Event` (mảng JSON, sắp theo id).
      */
     fun `eventsJson`(): kotlin.String
@@ -1896,6 +1969,12 @@ public interface LvhvStoreInterface {
      * `app_version` dạng X.Y.Z. Ứng dụng ghi byte qua hộp thoại lưu tệp của hệ điều hành.
      */
     fun `exportBackup`(`password`: kotlin.String, `appVersion`: kotlin.String, `platform`: kotlin.String): kotlin.ByteArray
+    
+    /**
+     * Tùy chọn "hiện tên trên màn hình khóa" (O-9), mặc định `false`. Lưu cục bộ trên thiết bị, không
+     * đi vào tệp sao lưu.
+     */
+    fun `lockScreenNames`(): kotlin.Boolean
     
     /**
      * Một `Person`.
@@ -1918,6 +1997,16 @@ public interface LvhvStoreInterface {
     fun `putSettingsJson`(`json`: kotlin.String)
     
     /**
+     * `reminders_json` trên dữ liệu của kho, tùy chọn O-9 của kho.
+     */
+    fun `remindersJson`(`nowUnixS`: kotlin.Long, `zone`: DeviceZone, `horizonDays`: kotlin.UInt): kotlin.String
+    
+    /**
+     * `reschedule_json` trên dữ liệu của kho, tùy chọn O-9 của kho.
+     */
+    fun `rescheduleJson`(`nowUnixS`: kotlin.Long, `zone`: DeviceZone, `pendingJson`: kotlin.String): kotlin.String
+    
+    /**
      * Lưu một `Event` (thêm hoặc sửa); gắn id/`created_at`/`updated_at`/`rev`, kiểm rồi ghi. Trả bản đã lưu.
      */
     fun `saveEventJson`(`json`: kotlin.String): kotlin.String
@@ -1935,9 +2024,19 @@ public interface LvhvStoreInterface {
     fun `savePersonJson`(`json`: kotlin.String): kotlin.String
     
     /**
+     * Đặt tùy chọn "hiện tên trên màn hình khóa" (O-9).
+     */
+    fun `setLockScreenNames`(`show`: kotlin.Boolean)
+    
+    /**
      * `AppSettings` (01 §3.9).
      */
     fun `settingsJson`(): kotlin.String
+    
+    /**
+     * `upcoming_json` trên dữ liệu của kho.
+     */
+    fun `upcomingJson`(`today`: SolarDay, `days`: kotlin.UInt): kotlin.String
     
     companion object
 }
@@ -2046,6 +2145,22 @@ open class LvhvStore: Disposable, AutoCloseable, LvhvStoreInterface
 
     
     /**
+     * `android_alarm_step_json` trên dữ liệu của kho, tùy chọn O-9 của kho.
+     */
+    @Throws(LvhvDataException::class)override fun `androidAlarmStepJson`(`nowUnixS`: kotlin.Long, `lastRunUnixS`: kotlin.Long?, `zone`: DeviceZone): kotlin.String {
+            return FfiConverterString.lift(
+    callWithPointer {
+    uniffiRustCallWithError(LvhvDataException) { _status ->
+    UniffiLib.INSTANCE.uniffi_lvhv_ffi_fn_method_lvhvstore_android_alarm_step_json(
+        it, FfiConverterLong.lower(`nowUnixS`),FfiConverterOptionalLong.lower(`lastRunUnixS`),FfiConverterTypeDeviceZone.lower(`zone`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
      * Ghi tệp đã kiểm tra (Thay toàn bộ / Gộp) trong một giao dịch; lỗi → không ghi gì.
      */
     @Throws(LvhvDataException::class)override fun `applyImport`(`backup`: VerifiedBackup, `mode`: BackupImportMode)
@@ -2140,6 +2255,22 @@ open class LvhvStore: Disposable, AutoCloseable, LvhvStoreInterface
 
     
     /**
+     * `events_in_period_json` trên dữ liệu của kho.
+     */
+    @Throws(LvhvDataException::class)override fun `eventsInPeriodJson`(`kind`: kotlin.String, `anchor`: SolarDay, `filter`: kotlin.String): kotlin.String {
+            return FfiConverterString.lift(
+    callWithPointer {
+    uniffiRustCallWithError(LvhvDataException) { _status ->
+    UniffiLib.INSTANCE.uniffi_lvhv_ffi_fn_method_lvhvstore_events_in_period_json(
+        it, FfiConverterString.lower(`kind`),FfiConverterTypeSolarDay.lower(`anchor`),FfiConverterString.lower(`filter`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
      * Mọi `Event` (mảng JSON, sắp theo id).
      */
     @Throws(LvhvDataException::class)override fun `eventsJson`(): kotlin.String {
@@ -2165,6 +2296,23 @@ open class LvhvStore: Disposable, AutoCloseable, LvhvStoreInterface
     uniffiRustCallWithError(LvhvDataException) { _status ->
     UniffiLib.INSTANCE.uniffi_lvhv_ffi_fn_method_lvhvstore_export_backup(
         it, FfiConverterString.lower(`password`),FfiConverterString.lower(`appVersion`),FfiConverterString.lower(`platform`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Tùy chọn "hiện tên trên màn hình khóa" (O-9), mặc định `false`. Lưu cục bộ trên thiết bị, không
+     * đi vào tệp sao lưu.
+     */
+    @Throws(LvhvDataException::class)override fun `lockScreenNames`(): kotlin.Boolean {
+            return FfiConverterBoolean.lift(
+    callWithPointer {
+    uniffiRustCallWithError(LvhvDataException) { _status ->
+    UniffiLib.INSTANCE.uniffi_lvhv_ffi_fn_method_lvhvstore_lock_screen_names(
+        it, _status)
 }
     }
     )
@@ -2236,6 +2384,38 @@ open class LvhvStore: Disposable, AutoCloseable, LvhvStoreInterface
 
     
     /**
+     * `reminders_json` trên dữ liệu của kho, tùy chọn O-9 của kho.
+     */
+    @Throws(LvhvDataException::class)override fun `remindersJson`(`nowUnixS`: kotlin.Long, `zone`: DeviceZone, `horizonDays`: kotlin.UInt): kotlin.String {
+            return FfiConverterString.lift(
+    callWithPointer {
+    uniffiRustCallWithError(LvhvDataException) { _status ->
+    UniffiLib.INSTANCE.uniffi_lvhv_ffi_fn_method_lvhvstore_reminders_json(
+        it, FfiConverterLong.lower(`nowUnixS`),FfiConverterTypeDeviceZone.lower(`zone`),FfiConverterUInt.lower(`horizonDays`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * `reschedule_json` trên dữ liệu của kho, tùy chọn O-9 của kho.
+     */
+    @Throws(LvhvDataException::class)override fun `rescheduleJson`(`nowUnixS`: kotlin.Long, `zone`: DeviceZone, `pendingJson`: kotlin.String): kotlin.String {
+            return FfiConverterString.lift(
+    callWithPointer {
+    uniffiRustCallWithError(LvhvDataException) { _status ->
+    UniffiLib.INSTANCE.uniffi_lvhv_ffi_fn_method_lvhvstore_reschedule_json(
+        it, FfiConverterLong.lower(`nowUnixS`),FfiConverterTypeDeviceZone.lower(`zone`),FfiConverterString.lower(`pendingJson`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
      * Lưu một `Event` (thêm hoặc sửa); gắn id/`created_at`/`updated_at`/`rev`, kiểm rồi ghi. Trả bản đã lưu.
      */
     @Throws(LvhvDataException::class)override fun `saveEventJson`(`json`: kotlin.String): kotlin.String {
@@ -2286,6 +2466,21 @@ open class LvhvStore: Disposable, AutoCloseable, LvhvStoreInterface
 
     
     /**
+     * Đặt tùy chọn "hiện tên trên màn hình khóa" (O-9).
+     */
+    @Throws(LvhvDataException::class)override fun `setLockScreenNames`(`show`: kotlin.Boolean)
+        = 
+    callWithPointer {
+    uniffiRustCallWithError(LvhvDataException) { _status ->
+    UniffiLib.INSTANCE.uniffi_lvhv_ffi_fn_method_lvhvstore_set_lock_screen_names(
+        it, FfiConverterBoolean.lower(`show`),_status)
+}
+    }
+    
+    
+
+    
+    /**
      * `AppSettings` (01 §3.9).
      */
     @Throws(LvhvDataException::class)override fun `settingsJson`(): kotlin.String {
@@ -2294,6 +2489,22 @@ open class LvhvStore: Disposable, AutoCloseable, LvhvStoreInterface
     uniffiRustCallWithError(LvhvDataException) { _status ->
     UniffiLib.INSTANCE.uniffi_lvhv_ffi_fn_method_lvhvstore_settings_json(
         it, _status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * `upcoming_json` trên dữ liệu của kho.
+     */
+    @Throws(LvhvDataException::class)override fun `upcomingJson`(`today`: SolarDay, `days`: kotlin.UInt): kotlin.String {
+            return FfiConverterString.lift(
+    callWithPointer {
+    uniffiRustCallWithError(LvhvDataException) { _status ->
+    UniffiLib.INSTANCE.uniffi_lvhv_ffi_fn_method_lvhvstore_upcoming_json(
+        it, FfiConverterTypeSolarDay.lower(`today`),FfiConverterUInt.lower(`days`),_status)
 }
     }
     )
@@ -2861,6 +3072,47 @@ public object FfiConverterTypePeriodRange: FfiConverterRustBuffer<PeriodRange> {
 
 
 /**
+ * Thông báo nhắc mở ứng dụng (02 §7.4).
+ */
+data class SentinelInfo (
+    /**
+     * `"lvhv:sentinel"`.
+     */
+    var `id`: kotlin.String, 
+    /**
+     * Nội dung thông báo.
+     */
+    var `text`: kotlin.String
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeSentinelInfo: FfiConverterRustBuffer<SentinelInfo> {
+    override fun read(buf: ByteBuffer): SentinelInfo {
+        return SentinelInfo(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: SentinelInfo) = (
+            FfiConverterString.allocationSize(value.`id`) +
+            FfiConverterString.allocationSize(value.`text`)
+    )
+
+    override fun write(value: SentinelInfo, buf: ByteBuffer) {
+            FfiConverterString.write(value.`id`, buf)
+            FfiConverterString.write(value.`text`, buf)
+    }
+}
+
+
+
+/**
  * Ngày dương lịch.
  */
 data class SolarDay (
@@ -3385,10 +3637,12 @@ public object FfiConverterSequenceTypeZoneTransition: FfiConverterRustBuffer<Lis
          * thời điểm đó; `null` = chưa có). Kết quả
          * `{"post":[R],"dropped_late":n,"next_at_unix_s":t|null,"next_fire_local":s|null}`:
          * `post` = lời nhắc có thời điểm trong `(max(last_run, now − 24 giờ), now]` (đăng ngay; trễ hơn 24 giờ
-         * thì bỏ và đếm ở `dropped_late`), `next_*` = lời nhắc sớm nhất sau `now` (đặt **một** báo thức
-         * `setAndAllowWhileIdle(RTC_WAKEUP, next_at_unix_s × 1000)`). `R` như `reminders_json`.
+         * thì bỏ và đếm ở `dropped_late`), `next_*` = lời nhắc sớm nhất sau `now`, **không giới hạn cửa sổ**
+         * (đặt **một** báo thức `setAndAllowWhileIdle(RTC_WAKEUP, next_at_unix_s × 1000)`); `null` chỉ khi không
+         * còn lời nhắc tương lai nào. `R` như `reminders_json`. `show_names` mặc định `false` (O-9); nên gọi
+         * `LvhvStore.android_alarm_step_json`.
          */
-    @Throws(LvhvDataException::class) fun `androidAlarmStepJson`(`datasetJson`: kotlin.String, `nowUnixS`: kotlin.Long, `lastRunUnixS`: kotlin.Long?, `zone`: DeviceZone, `showNames`: kotlin.Boolean): kotlin.String {
+    @Throws(LvhvDataException::class) fun `androidAlarmStepJson`(`datasetJson`: kotlin.String, `nowUnixS`: kotlin.Long, `lastRunUnixS`: kotlin.Long?, `zone`: DeviceZone, `showNames`: kotlin.Boolean = false): kotlin.String {
             return FfiConverterString.lift(
     uniffiRustCallWithError(LvhvDataException) { _status ->
     UniffiLib.INSTANCE.uniffi_lvhv_ffi_fn_func_android_alarm_step_json(
@@ -3739,10 +3993,11 @@ public object FfiConverterSequenceTypeZoneTransition: FfiConverterRustBuffer<Lis
 
         /**
          * Mọi lời nhắc (02 §7.1) có thời điểm trong `(now, now + horizon_days ngày]`, sắp theo (thời điểm, id):
-         * `[{"id","at_unix_s","fire_local","type","title","body","occ"}]`. `show_names = false` (mặc định O-9)
-         * → tiêu đề không có tên ("Sắp đến ngày giỗ" …). Tôn trọng công tắc chung và `rule.enabled`.
+         * `[{"id","at_unix_s","fire_local","type","title","body","occ"}]`. `show_names` mặc định `false` (O-9) →
+         * tiêu đề không có tên ("Sắp đến ngày giỗ" …) và `occ` rút gọn (xem `reminder_json`). Tôn trọng công tắc
+         * chung và `rule.enabled`. Ứng dụng native nên gọi `LvhvStore.reminders_json` (đọc tùy chọn O-9 từ kho).
          */
-    @Throws(LvhvDataException::class) fun `remindersJson`(`datasetJson`: kotlin.String, `nowUnixS`: kotlin.Long, `zone`: DeviceZone, `horizonDays`: kotlin.UInt, `showNames`: kotlin.Boolean): kotlin.String {
+    @Throws(LvhvDataException::class) fun `remindersJson`(`datasetJson`: kotlin.String, `nowUnixS`: kotlin.Long, `zone`: DeviceZone, `horizonDays`: kotlin.UInt, `showNames`: kotlin.Boolean = false): kotlin.String {
             return FfiConverterString.lift(
     uniffiRustCallWithError(LvhvDataException) { _status ->
     UniffiLib.INSTANCE.uniffi_lvhv_ffi_fn_func_reminders_json(
@@ -3758,10 +4013,12 @@ public object FfiConverterSequenceTypeZoneTransition: FfiConverterRustBuffer<Lis
          * điều hành trả về, `[{"id","at_unix_s","content"}]` (`content` = `title + "\n" + body` đã đặt lần trước;
          * thiếu → ""). Kết quả `{"keep":[P],"remove":[id],"add":[P],"replace":[P]}`, `P` =
          * `{"id","at_unix_s","fire_local","title","body","content"}`; ứng dụng gỡ `remove`, thêm `add`, thay
-         * `replace` (trigger theo `fire_local`, không gắn múi giờ). Còn lời nhắc không đặt được (> 64 trong cửa sổ 400 ngày, hoặc ở ngoài cửa sổ) → tối đa 63 sớm nhất + thông báo
-         * nhắc mở ứng dụng (`id = "lvhv:sentinel"`) cùng phút với cái cuối cùng đã đặt (không có cái nào: tại now + 400 ngày) — 02 §7.4, Bổ sung B3.
+         * `replace` (trigger theo `fire_local`, không gắn múi giờ). Còn lời nhắc không đặt được (> 64 trong cửa
+         * sổ 400 ngày, hoặc ở ngoài cửa sổ) → tối đa 63 sớm nhất + thông báo nhắc mở ứng dụng
+         * (`id = "lvhv:sentinel"`) cùng phút với cái cuối cùng đã đặt (không có cái nào: tại now + 400 ngày) —
+         * 02 §7.4, Bổ sung B3. `show_names` mặc định `false` (O-9); nên gọi `LvhvStore.reschedule_json`.
          */
-    @Throws(LvhvDataException::class) fun `rescheduleJson`(`datasetJson`: kotlin.String, `nowUnixS`: kotlin.Long, `zone`: DeviceZone, `pendingJson`: kotlin.String, `showNames`: kotlin.Boolean): kotlin.String {
+    @Throws(LvhvDataException::class) fun `rescheduleJson`(`datasetJson`: kotlin.String, `nowUnixS`: kotlin.Long, `zone`: DeviceZone, `pendingJson`: kotlin.String, `showNames`: kotlin.Boolean = false): kotlin.String {
             return FfiConverterString.lift(
     uniffiRustCallWithError(LvhvDataException) { _status ->
     UniffiLib.INSTANCE.uniffi_lvhv_ffi_fn_func_reschedule_json(
@@ -3787,8 +4044,8 @@ public object FfiConverterSequenceTypeZoneTransition: FfiConverterRustBuffer<Lis
 
         /**
          * Mã và nội dung của thông báo nhắc mở ứng dụng (02 §7.4).
-         */ fun `sentinelInfo`(): List<kotlin.String> {
-            return FfiConverterSequenceString.lift(
+         */ fun `sentinelInfo`(): SentinelInfo {
+            return FfiConverterTypeSentinelInfo.lift(
     uniffiRustCall() { _status ->
     UniffiLib.INSTANCE.uniffi_lvhv_ffi_fn_func_sentinel_info(
         _status)

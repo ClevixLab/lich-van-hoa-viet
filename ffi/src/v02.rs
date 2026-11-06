@@ -84,11 +84,37 @@ fn cal() -> &'static Cal {
     Cal::get(DEFAULT_METHOD)
 }
 
+/// Miền năm dương của lõi (1900–3000, L13).
+const YEAR_MIN: i32 = 1900;
+const YEAR_MAX: i32 = 3000;
+/// Giây Unix của 1900-01-01T00:00Z và 3001-01-01T00:00Z (miền hợp lý của thời điểm).
+const UNIX_MIN: i64 = -2_208_988_800;
+const UNIX_MAX: i64 = 32_535_216_000;
+/// Độ lệch múi giờ tối đa (phút, ±18 giờ — ISO 8601 / java.time).
+const OFFSET_MAX: i32 = 18 * 60;
+
 fn ymd(d: SolarDay) -> R<Ymd> {
+    if !(YEAR_MIN..=YEAR_MAX).contains(&d.y) {
+        return Err(bad(format!(
+            "Năm {} ngoài miền {YEAR_MIN}–{YEAR_MAX} của lịch.",
+            d.y
+        )));
+    }
     if d.m < 1 || d.d < 1 || !lvhv_core::jd::is_valid_solar(d.y, d.m as u32, d.d as u32) {
         return Err(bad(format!("Ngày {}/{}/{} không tồn tại.", d.d, d.m, d.y)));
     }
     Ok(Ymd::new(d.y, d.m as u32, d.d as u32))
+}
+
+/// Thời điểm (giây Unix) phải nằm trong 1900–3000; ngoài miền thường là lỗi đơn vị (mili giây…).
+fn unix_ok(s: i64, what: &str) -> R<i64> {
+    if (UNIX_MIN..UNIX_MAX).contains(&s) {
+        Ok(s)
+    } else {
+        Err(bad(format!(
+            "{what} không hợp lệ (giây Unix, trong 1900–3000): {s}."
+        )))
+    }
 }
 
 fn solar_day(d: Ymd) -> SolarDay {
@@ -135,15 +161,32 @@ pub struct DeviceZone {
     pub transitions: Vec<ZoneTransition>,
 }
 
-fn zone(z: &DeviceZone) -> Zone {
-    Zone {
+/// Kiểm và đổi múi giờ: |độ lệch| ≤ 1080 phút, lần chuyển tăng nghiêm ngặt và trong miền thời điểm.
+fn zone(z: &DeviceZone) -> R<Zone> {
+    let bad_zone = || {
+        bad("Múi giờ không hợp lệ (độ lệch tính bằng phút, |độ lệch| ≤ 1080; lần chuyển tăng dần).")
+    };
+    if z.offset_min.abs() > OFFSET_MAX {
+        return Err(bad_zone());
+    }
+    let mut prev: Option<i64> = None;
+    for t in &z.transitions {
+        if t.offset_min.abs() > OFFSET_MAX
+            || !(UNIX_MIN..UNIX_MAX).contains(&t.at_unix_s)
+            || prev.is_some_and(|p| t.at_unix_s <= p)
+        {
+            return Err(bad_zone());
+        }
+        prev = Some(t.at_unix_s);
+    }
+    Ok(Zone {
         initial: z.offset_min,
         transitions: z
             .transitions
             .iter()
             .map(|t| (min_of_unix(t.at_unix_s), t.offset_min))
             .collect(),
-    }
+    })
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -199,6 +242,7 @@ impl VerifiedBackup {
 /// hỏng hay bị sửa → `Backup("Sai mật khẩu hoặc tệp bị hỏng")`.
 #[uniffi::export]
 pub fn open_backup(file: Vec<u8>, password: String) -> R<Arc<VerifiedBackup>> {
+    let password = zeroize::Zeroizing::new(password);
     let v = lvhv_store::open_backup(&file, &password)
         .map_err(|e| LvhvDataError::Backup(e.import_message().into()))?;
     Ok(Arc::new(VerifiedBackup { inner: v }))
@@ -322,9 +366,10 @@ impl LvhvStore {
     pub fn save_event_json(&self, json: String) -> R<String> {
         let mut e = parse_json(&json)?;
         let mut st = self.lock();
-        let old = e["id"]
-            .as_str()
-            .and_then(|id| find_by_id(st.events().ok()?, id));
+        let old = match e["id"].as_str() {
+            Some(id) => find_by_id(st.events()?, id),
+            None => None,
+        };
         stamp(&mut e, old.as_ref())?;
         st.put_event(&e)?;
         let id = e["id"].as_str().unwrap_or_default().to_owned();
@@ -347,9 +392,10 @@ impl LvhvStore {
     pub fn save_event_type_json(&self, json: String) -> R<String> {
         let mut t = parse_json(&json)?;
         let mut st = self.lock();
-        let old = t["id"]
-            .as_str()
-            .and_then(|id| find_by_id(st.event_types().ok()?, id));
+        let old = match t["id"].as_str() {
+            Some(id) => find_by_id(st.event_types()?, id),
+            None => None,
+        };
         stamp(&mut t, old.as_ref())?;
         st.put_event_type(&t)?;
         let id = t["id"].as_str().unwrap_or_default().to_owned();
@@ -405,6 +451,7 @@ impl LvhvStore {
         app_version: String,
         platform: String,
     ) -> R<Vec<u8>> {
+        let password = zeroize::Zeroizing::new(password);
         Ok(self.lock().export_backup(
             &password,
             &AppInfo {
@@ -487,9 +534,19 @@ pub fn person_summary_json(person_json: String, today: SolarDay) -> R<String> {
     };
     let tuoi_duong = match (&b["solar"], living) {
         (Value::Object(s), true) => {
-            let g = |k: &str| s.get(k).and_then(Value::as_i64).unwrap_or(0);
-            let birth = Ymd::new(g("y") as i32, g("m") as u32, g("d") as u32);
-            lvhv_memorial::tuoi_duong(birth, today, feb)
+            let g = |k: &str| {
+                s.get(k)
+                    .and_then(Value::as_i64)
+                    .and_then(|x| i32::try_from(x).ok())
+                    .unwrap_or(0)
+            };
+            ymd(SolarDay {
+                y: g("y"),
+                m: g("m"),
+                d: g("d"),
+            })
+            .ok()
+            .and_then(|birth| lvhv_memorial::tuoi_duong(birth, today, feb))
         }
         _ => None,
     };
@@ -555,7 +612,11 @@ fn class_text(c: OccClass) -> &'static str {
 }
 
 fn occ_json(ds: &Dataset, o: &Occurrence) -> Value {
-    let it = period::period_item(cal(), ds, o.clone());
+    item_json(&period::period_item(cal(), ds, o.clone()))
+}
+
+fn item_json(it: &period::PeriodItem) -> Value {
+    let o = &it.occ;
     json!({
         "date": o.date.iso(),
         "lunar": it.lunar.map(|l| json!({"y": l.y, "m": l.m, "d": l.d, "leap": l.leap})),
@@ -580,11 +641,14 @@ fn occ_json(ds: &Dataset, o: &Occurrence) -> Value {
 /// "person_ids","name","key","n","label","headline","date_line"}]`. Không phụ thuộc công tắc nhắc.
 #[uniffi::export]
 pub fn upcoming_json(dataset_json: String, today: SolarDay, days: u32) -> R<String> {
-    let ds = dataset(&dataset_json)?;
-    let list: Vec<Value> = upcoming(cal(), &ds, ymd(today)?, days.min(3660))
+    upcoming_impl(&dataset(&dataset_json)?, today, days)
+}
+
+fn upcoming_impl(ds: &Dataset, today: SolarDay, days: u32) -> R<String> {
+    let list: Vec<Value> = upcoming(cal(), ds, ymd(today)?, days.min(3660))
         .iter()
         .map(|it| {
-            let mut v = occ_json(&ds, &it.occ);
+            let mut v = occ_json(ds, &it.occ);
             v["days"] = json!(it.days);
             v["days_text"] = json!(days_text(it.days));
             v
@@ -641,11 +705,14 @@ pub fn events_in_period_json(
     anchor: SolarDay,
     filter: String,
 ) -> R<String> {
-    let ds = dataset(&dataset_json)?;
-    let f = PersonFilter::parse(&filter)
+    events_in_period_impl(&dataset(&dataset_json)?, &kind, anchor, &filter)
+}
+
+fn events_in_period_impl(ds: &Dataset, kind: &str, anchor: SolarDay, filter: &str) -> R<String> {
+    let f = PersonFilter::parse(filter)
         .ok_or_else(|| bad("Bộ lọc phải là \"tat_ca\", \"da_mat\" hoặc \"dang_song\"."))?;
-    let p = period::events_in_period(cal(), &ds, kind_of(&kind)?, ymd(anchor)?, f);
-    let items: Vec<Value> = p.items.iter().map(|it| occ_json(&ds, &it.occ)).collect();
+    let p = period::events_in_period(cal(), ds, kind_of(kind)?, ymd(anchor)?, f);
+    let items: Vec<Value> = p.items.iter().map(item_json).collect();
     Ok(to_text(&json!({
         "kind": p.kind.code(),
         "anchor": p.anchor.iso(),
@@ -667,8 +734,21 @@ fn rtype_code(r: &Reminder) -> String {
     }
 }
 
+/// Một lời nhắc dạng JSON. `show_names = false` (O-9): `title`/`body` không có tên **và** `occ` chỉ gồm
+/// `entity_id`, `class`, `date`, `key` (đủ để mở đúng màn hình khi chạm), không có `name`, `headline`,
+/// `date_line`, `person_ids`, `lunar`. Nội dung thông báo chỉ lấy từ `title`/`body`.
 fn reminder_json(ds: &Dataset, r: &Reminder, show_names: bool) -> Value {
     let t = notification_text(cal(), &r.occ, r.rtype, show_names);
+    let occ = if show_names {
+        occ_json(ds, &r.occ)
+    } else {
+        json!({
+            "entity_id": r.occ.entity_id,
+            "class": r.occ.class.code(),
+            "date": r.occ.date.iso(),
+            "key": r.occ.key.text(),
+        })
+    };
     json!({
         "id": r.id,
         "at_unix_s": unix_of_min(r.at),
@@ -676,13 +756,12 @@ fn reminder_json(ds: &Dataset, r: &Reminder, show_names: bool) -> Value {
         "type": rtype_code(r),
         "title": t.title,
         "body": t.body,
-        "occ": occ_json(ds, &r.occ),
+        "occ": occ,
     })
 }
 
 /// Lời nhắc tương lai (`at > now`) trong `[now, now + horizon_days]`.
-fn future_reminders(ds: &Dataset, now_unix_s: i64, tz: &Zone, horizon_days: i64) -> Vec<Reminder> {
-    let now = min_of_unix(now_unix_s);
+fn future_reminders(ds: &Dataset, now: i64, tz: &Zone, horizon_days: i64) -> Vec<Reminder> {
     let today = Ymd::from_jdn(tz.to_local(now).div_euclid(1440));
     let to = Ymd::from_jdn(today.jdn() + horizon_days + 61);
     let hi = now + horizon_days * 1440;
@@ -692,10 +771,27 @@ fn future_reminders(ds: &Dataset, now_unix_s: i64, tz: &Zone, horizon_days: i64)
         .collect()
 }
 
+fn reminders_impl(
+    ds: &Dataset,
+    now_unix_s: i64,
+    zone: &DeviceZone,
+    horizon_days: u32,
+    show_names: bool,
+) -> R<String> {
+    let now = min_of_unix(unix_ok(now_unix_s, "now_unix_s")?);
+    let tz = self::zone(zone)?;
+    let list: Vec<Value> = future_reminders(ds, now, &tz, i64::from(horizon_days.min(3660)))
+        .iter()
+        .map(|r| reminder_json(ds, r, show_names))
+        .collect();
+    Ok(to_text(&Value::Array(list)))
+}
+
 /// Mọi lời nhắc (02 §7.1) có thời điểm trong `(now, now + horizon_days ngày]`, sắp theo (thời điểm, id):
-/// `[{"id","at_unix_s","fire_local","type","title","body","occ"}]`. `show_names = false` (mặc định O-9)
-/// → tiêu đề không có tên ("Sắp đến ngày giỗ" …). Tôn trọng công tắc chung và `rule.enabled`.
-#[uniffi::export]
+/// `[{"id","at_unix_s","fire_local","type","title","body","occ"}]`. `show_names` mặc định `false` (O-9) →
+/// tiêu đề không có tên ("Sắp đến ngày giỗ" …) và `occ` rút gọn (xem `reminder_json`). Tôn trọng công tắc
+/// chung và `rule.enabled`. Ứng dụng native nên gọi `LvhvStore.reminders_json` (đọc tùy chọn O-9 từ kho).
+#[uniffi::export(default(show_names = false))]
 pub fn reminders_json(
     dataset_json: String,
     now_unix_s: i64,
@@ -703,14 +799,13 @@ pub fn reminders_json(
     horizon_days: u32,
     show_names: bool,
 ) -> R<String> {
-    let ds = dataset(&dataset_json)?;
-    let tz = self::zone(&zone);
-    let list: Vec<Value> =
-        future_reminders(&ds, now_unix_s, &tz, i64::from(horizon_days.min(3660)))
-            .iter()
-            .map(|r| reminder_json(&ds, r, show_names))
-            .collect();
-    Ok(to_text(&Value::Array(list)))
+    reminders_impl(
+        &dataset(&dataset_json)?,
+        now_unix_s,
+        &zone,
+        horizon_days,
+        show_names,
+    )
 }
 
 fn pending_value(p: &Pending, tz: &Zone) -> Value {
@@ -728,24 +823,16 @@ fn pending_value(p: &Pending, tz: &Zone) -> Value {
     })
 }
 
-/// `reschedule(now)` (02 §7.4) cho iOS/macOS (`UNUserNotificationCenter`) và Windows
-/// (`ScheduledToastNotification`), giới hạn 64 yêu cầu chờ. `pending_json`: các yêu cầu đang chờ do hệ
-/// điều hành trả về, `[{"id","at_unix_s","content"}]` (`content` = `title + "\n" + body` đã đặt lần trước;
-/// thiếu → ""). Kết quả `{"keep":[P],"remove":[id],"add":[P],"replace":[P]}`, `P` =
-/// `{"id","at_unix_s","fire_local","title","body","content"}`; ứng dụng gỡ `remove`, thêm `add`, thay
-/// `replace` (trigger theo `fire_local`, không gắn múi giờ). Còn lời nhắc không đặt được (> 64 trong cửa sổ 400 ngày, hoặc ở ngoài cửa sổ) → tối đa 63 sớm nhất + thông báo
-/// nhắc mở ứng dụng (`id = "lvhv:sentinel"`) cùng phút với cái cuối cùng đã đặt (không có cái nào: tại now + 400 ngày) — 02 §7.4, Bổ sung B3.
-#[uniffi::export]
-pub fn reschedule_json(
-    dataset_json: String,
+fn reschedule_impl(
+    ds: &Dataset,
     now_unix_s: i64,
-    zone: DeviceZone,
-    pending_json: String,
+    zone: &DeviceZone,
+    pending_json: &str,
     show_names: bool,
 ) -> R<String> {
-    let ds = dataset(&dataset_json)?;
-    let tz = self::zone(&zone);
-    let pend_v = parse_json(&pending_json)?;
+    let now = min_of_unix(unix_ok(now_unix_s, "now_unix_s")?);
+    let tz = self::zone(zone)?;
+    let pend_v = parse_json(pending_json)?;
     let pending: Vec<Pending> = pend_v
         .as_array()
         .ok_or_else(|| bad("pending_json phải là mảng."))?
@@ -756,20 +843,21 @@ pub fn reschedule_json(
                     .as_str()
                     .ok_or_else(|| bad("pending_json: thiếu id."))?
                     .to_owned(),
-                at: min_of_unix(
+                at: min_of_unix(unix_ok(
                     x["at_unix_s"]
                         .as_i64()
                         .ok_or_else(|| bad("pending_json: thiếu at_unix_s."))?,
-                ),
+                    "pending_json.at_unix_s",
+                )?),
                 content: x["content"].as_str().unwrap_or_default().to_owned(),
             })
         })
         .collect::<R<_>>()?;
-    let desired: Vec<Pending> = reschedule_input(cal(), &ds, min_of_unix(now_unix_s), &tz)
+    let desired: Vec<Pending> = reschedule_input(cal(), ds, now, &tz)
         .iter()
         .map(|r| to_pending(cal(), r, show_names))
         .collect();
-    let plan = reschedule(min_of_unix(now_unix_s), &desired, &pending);
+    let plan = reschedule(now, &desired, &pending);
     let list = |v: &[Pending]| -> Vec<Value> { v.iter().map(|p| pending_value(p, &tz)).collect() };
     Ok(to_text(&json!({
         "keep": list(&plan.keep),
@@ -779,10 +867,92 @@ pub fn reschedule_json(
     })))
 }
 
+/// `reschedule(now)` (02 §7.4) cho iOS/macOS (`UNUserNotificationCenter`) và Windows
+/// (`ScheduledToastNotification`), giới hạn 64 yêu cầu chờ. `pending_json`: các yêu cầu đang chờ do hệ
+/// điều hành trả về, `[{"id","at_unix_s","content"}]` (`content` = `title + "\n" + body` đã đặt lần trước;
+/// thiếu → ""). Kết quả `{"keep":[P],"remove":[id],"add":[P],"replace":[P]}`, `P` =
+/// `{"id","at_unix_s","fire_local","title","body","content"}`; ứng dụng gỡ `remove`, thêm `add`, thay
+/// `replace` (trigger theo `fire_local`, không gắn múi giờ). Còn lời nhắc không đặt được (> 64 trong cửa
+/// sổ 400 ngày, hoặc ở ngoài cửa sổ) → tối đa 63 sớm nhất + thông báo nhắc mở ứng dụng
+/// (`id = "lvhv:sentinel"`) cùng phút với cái cuối cùng đã đặt (không có cái nào: tại now + 400 ngày) —
+/// 02 §7.4, Bổ sung B3. `show_names` mặc định `false` (O-9); nên gọi `LvhvStore.reschedule_json`.
+#[uniffi::export(default(show_names = false))]
+pub fn reschedule_json(
+    dataset_json: String,
+    now_unix_s: i64,
+    zone: DeviceZone,
+    pending_json: String,
+    show_names: bool,
+) -> R<String> {
+    reschedule_impl(
+        &dataset(&dataset_json)?,
+        now_unix_s,
+        &zone,
+        &pending_json,
+        show_names,
+    )
+}
+
+/// Thông báo nhắc mở ứng dụng (02 §7.4).
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct SentinelInfo {
+    /// `"lvhv:sentinel"`.
+    pub id: String,
+    /// Nội dung thông báo.
+    pub text: String,
+}
+
 /// Mã và nội dung của thông báo nhắc mở ứng dụng (02 §7.4).
 #[uniffi::export]
-pub fn sentinel_info() -> Vec<String> {
-    vec![SENTINEL_ID.to_string(), SENTINEL_TEXT.to_string()]
+pub fn sentinel_info() -> SentinelInfo {
+    SentinelInfo {
+        id: SENTINEL_ID.to_string(),
+        text: SENTINEL_TEXT.to_string(),
+    }
+}
+
+fn android_step_impl(
+    ds: &Dataset,
+    now_unix_s: i64,
+    last_run_unix_s: Option<i64>,
+    zone: &DeviceZone,
+    show_names: bool,
+) -> R<String> {
+    let now = min_of_unix(unix_ok(now_unix_s, "now_unix_s")?);
+    let last = match last_run_unix_s {
+        Some(l) => Some(min_of_unix(unix_ok(l, "last_run_unix_s")?)),
+        None => None,
+    };
+    let tz = self::zone(zone)?;
+    let late_lo = now - 24 * 60;
+    // Phần đã đến hạn: từ lần chạy trước (nếu cũ hơn 24 giờ thì từ đó để đếm phần bỏ), không quá 400 ngày.
+    let since = last
+        .unwrap_or(late_lo)
+        .min(late_lo)
+        .max(now - WINDOW_DAYS * 1440);
+    let from_day = Ymd::from_jdn(tz.to_local(since).div_euclid(1440));
+    let today = Ymd::from_jdn(tz.to_local(now).div_euclid(1440));
+    let due_to = Ymd::from_jdn(today.jdn() + 61);
+    let due = all_reminders(cal(), ds, from_day, due_to, since, &tz);
+    let lo = last.map_or(late_lo, |l| l.max(late_lo));
+    let mut post = Vec::new();
+    let mut dropped = 0u32;
+    for r in due.iter().filter(|r| r.at <= now) {
+        if r.at > lo {
+            post.push(reminder_json(ds, r, show_names));
+        } else if last.is_some_and(|l| r.at > l) {
+            dropped += 1;
+        }
+    }
+    // Báo thức kế tiếp: lời nhắc sớm nhất sau `now`, **không** giới hạn cửa sổ (MA3-14-01) — cùng tập
+    // `reschedule_input` của 02 §7.4 (quét +900 ngày cho mục lặp, sự kiện một lần tới 3000-12-31).
+    let next = reschedule_input(cal(), ds, now, &tz).into_iter().next();
+    Ok(to_text(&json!({
+        "post": post,
+        "dropped_late": dropped,
+        "next_at_unix_s": next.as_ref().map(|r| unix_of_min(r.at)),
+        "next_fire_local": next.as_ref().map(|r| fmt_local(r.at_local)),
+    })))
 }
 
 /// Một bước của chuỗi báo thức Android (02 §7.3): gọi khi báo thức chạy, khi khởi động lại, đổi giờ/múi
@@ -790,9 +960,11 @@ pub fn sentinel_info() -> Vec<String> {
 /// thời điểm đó; `null` = chưa có). Kết quả
 /// `{"post":[R],"dropped_late":n,"next_at_unix_s":t|null,"next_fire_local":s|null}`:
 /// `post` = lời nhắc có thời điểm trong `(max(last_run, now − 24 giờ), now]` (đăng ngay; trễ hơn 24 giờ
-/// thì bỏ và đếm ở `dropped_late`), `next_*` = lời nhắc sớm nhất sau `now` (đặt **một** báo thức
-/// `setAndAllowWhileIdle(RTC_WAKEUP, next_at_unix_s × 1000)`). `R` như `reminders_json`.
-#[uniffi::export]
+/// thì bỏ và đếm ở `dropped_late`), `next_*` = lời nhắc sớm nhất sau `now`, **không giới hạn cửa sổ**
+/// (đặt **một** báo thức `setAndAllowWhileIdle(RTC_WAKEUP, next_at_unix_s × 1000)`); `null` chỉ khi không
+/// còn lời nhắc tương lai nào. `R` như `reminders_json`. `show_names` mặc định `false` (O-9); nên gọi
+/// `LvhvStore.android_alarm_step_json`.
+#[uniffi::export(default(show_names = false))]
 pub fn android_alarm_step_json(
     dataset_json: String,
     now_unix_s: i64,
@@ -800,41 +972,87 @@ pub fn android_alarm_step_json(
     zone: DeviceZone,
     show_names: bool,
 ) -> R<String> {
-    let ds = dataset(&dataset_json)?;
-    let tz = self::zone(&zone);
-    let now = min_of_unix(now_unix_s);
-    let late_lo = now - 24 * 60;
-    let last = last_run_unix_s.map(min_of_unix);
-    // Từ lần chạy trước (nếu cũ hơn 24 giờ thì từ đó để đếm phần bỏ), không quá 400 ngày về trước.
-    let since = last
-        .unwrap_or(late_lo)
-        .min(late_lo)
-        .max(now - WINDOW_DAYS * 1440);
-    let from_day = Ymd::from_jdn(tz.to_local(since).div_euclid(1440));
-    let today = Ymd::from_jdn(tz.to_local(now).div_euclid(1440));
-    let to = Ymd::from_jdn(today.jdn() + WINDOW_DAYS + 61);
-    let all = all_reminders(cal(), &ds, from_day, to, since, &tz);
-    let lo = last.map_or(late_lo, |l| l.max(late_lo));
-    let mut post = Vec::new();
-    let mut dropped = 0u32;
-    let mut next: Option<&Reminder> = None;
-    for r in &all {
-        if r.at > now {
-            if next.is_none() && r.at <= now + WINDOW_DAYS * 1440 {
-                next = Some(r);
-            }
-        } else if r.at > lo {
-            post.push(reminder_json(&ds, r, show_names));
-        } else if last.is_some_and(|l| r.at > l) {
-            dropped += 1;
-        }
+    android_step_impl(
+        &dataset(&dataset_json)?,
+        now_unix_s,
+        last_run_unix_s,
+        &zone,
+        show_names,
+    )
+}
+
+/// Các hàm danh sách / nhắc đọc thẳng từ kho; tùy chọn O-9 lấy từ kho (`lock_screen_names`, mặc định
+/// không hiện tên), người gọi không truyền.
+#[uniffi::export]
+impl LvhvStore {
+    /// Tùy chọn "hiện tên trên màn hình khóa" (O-9), mặc định `false`. Lưu cục bộ trên thiết bị, không
+    /// đi vào tệp sao lưu.
+    pub fn lock_screen_names(&self) -> R<bool> {
+        Ok(self.lock().lock_screen_names()?)
     }
-    Ok(to_text(&json!({
-        "post": post,
-        "dropped_late": dropped,
-        "next_at_unix_s": next.map(|r| unix_of_min(r.at)),
-        "next_fire_local": next.map(|r| fmt_local(r.at_local)),
-    })))
+
+    /// Đặt tùy chọn "hiện tên trên màn hình khóa" (O-9).
+    pub fn set_lock_screen_names(&self, show: bool) -> R<()> {
+        Ok(self.lock().set_lock_screen_names(show)?)
+    }
+
+    /// `upcoming_json` trên dữ liệu của kho.
+    pub fn upcoming_json(&self, today: SolarDay, days: u32) -> R<String> {
+        upcoming_impl(&self.dataset()?, today, days)
+    }
+
+    /// `events_in_period_json` trên dữ liệu của kho.
+    pub fn events_in_period_json(
+        &self,
+        kind: String,
+        anchor: SolarDay,
+        filter: String,
+    ) -> R<String> {
+        events_in_period_impl(&self.dataset()?, &kind, anchor, &filter)
+    }
+
+    /// `reminders_json` trên dữ liệu của kho, tùy chọn O-9 của kho.
+    pub fn reminders_json(
+        &self,
+        now_unix_s: i64,
+        zone: DeviceZone,
+        horizon_days: u32,
+    ) -> R<String> {
+        let (ds, show) = self.dataset_and_names()?;
+        reminders_impl(&ds, now_unix_s, &zone, horizon_days, show)
+    }
+
+    /// `reschedule_json` trên dữ liệu của kho, tùy chọn O-9 của kho.
+    pub fn reschedule_json(
+        &self,
+        now_unix_s: i64,
+        zone: DeviceZone,
+        pending_json: String,
+    ) -> R<String> {
+        let (ds, show) = self.dataset_and_names()?;
+        reschedule_impl(&ds, now_unix_s, &zone, &pending_json, show)
+    }
+
+    /// `android_alarm_step_json` trên dữ liệu của kho, tùy chọn O-9 của kho.
+    pub fn android_alarm_step_json(
+        &self,
+        now_unix_s: i64,
+        last_run_unix_s: Option<i64>,
+        zone: DeviceZone,
+    ) -> R<String> {
+        let (ds, show) = self.dataset_and_names()?;
+        android_step_impl(&ds, now_unix_s, last_run_unix_s, &zone, show)
+    }
+}
+
+impl LvhvStore {
+    fn dataset(&self) -> R<Dataset> {
+        dataset(&self.dataset_json()?)
+    }
+    fn dataset_and_names(&self) -> R<(Dataset, bool)> {
+        let show = self.lock().lock_screen_names()?;
+        Ok((self.dataset()?, show))
+    }
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -865,7 +1083,7 @@ pub fn ics_export(
 ) -> R<IcsExport> {
     let ds = dataset(&dataset_json)?;
     let today = ymd(today)?;
-    let stamp = lvhv_store::rfc3339_from_unix(now_unix_s); // YYYY-MM-DDTHH:MM:SSZ
+    let stamp = lvhv_store::rfc3339_from_unix(unix_ok(now_unix_s, "now_unix_s")?); // YYYY-MM-DDTHH:MM:SSZ
     let dtstamp: String = stamp.chars().filter(|c| *c != '-' && *c != ':').collect();
     let opt = lvhv_memorial::ics::IcsOptions {
         today,

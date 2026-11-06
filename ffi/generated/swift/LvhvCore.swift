@@ -559,6 +559,11 @@ public protocol LvhvStoreProtocol: AnyObject, Sendable {
     func addPhoto(id: String, mime: String, width: UInt32, height: UInt32, bytes: Data) throws  -> String
     
     /**
+     * `android_alarm_step_json` trên dữ liệu của kho, tùy chọn O-9 của kho.
+     */
+    func androidAlarmStepJson(nowUnixS: Int64, lastRunUnixS: Int64?, zone: DeviceZone) throws  -> String
+    
+    /**
      * Ghi tệp đã kiểm tra (Thay toàn bộ / Gộp) trong một giao dịch; lỗi → không ghi gì.
      */
     func applyImport(backup: VerifiedBackup, mode: BackupImportMode) throws 
@@ -590,6 +595,11 @@ public protocol LvhvStoreProtocol: AnyObject, Sendable {
     func eventTypesJson() throws  -> String
     
     /**
+     * `events_in_period_json` trên dữ liệu của kho.
+     */
+    func eventsInPeriodJson(kind: String, anchor: SolarDay, filter: String) throws  -> String
+    
+    /**
      * Mọi `Event` (mảng JSON, sắp theo id).
      */
     func eventsJson() throws  -> String
@@ -599,6 +609,12 @@ public protocol LvhvStoreProtocol: AnyObject, Sendable {
      * `app_version` dạng X.Y.Z. Ứng dụng ghi byte qua hộp thoại lưu tệp của hệ điều hành.
      */
     func exportBackup(password: String, appVersion: String, platform: String) throws  -> Data
+    
+    /**
+     * Tùy chọn "hiện tên trên màn hình khóa" (O-9), mặc định `false`. Lưu cục bộ trên thiết bị, không
+     * đi vào tệp sao lưu.
+     */
+    func lockScreenNames() throws  -> Bool
     
     /**
      * Một `Person`.
@@ -621,6 +637,16 @@ public protocol LvhvStoreProtocol: AnyObject, Sendable {
     func putSettingsJson(json: String) throws 
     
     /**
+     * `reminders_json` trên dữ liệu của kho, tùy chọn O-9 của kho.
+     */
+    func remindersJson(nowUnixS: Int64, zone: DeviceZone, horizonDays: UInt32) throws  -> String
+    
+    /**
+     * `reschedule_json` trên dữ liệu của kho, tùy chọn O-9 của kho.
+     */
+    func rescheduleJson(nowUnixS: Int64, zone: DeviceZone, pendingJson: String) throws  -> String
+    
+    /**
      * Lưu một `Event` (thêm hoặc sửa); gắn id/`created_at`/`updated_at`/`rev`, kiểm rồi ghi. Trả bản đã lưu.
      */
     func saveEventJson(json: String) throws  -> String
@@ -638,9 +664,19 @@ public protocol LvhvStoreProtocol: AnyObject, Sendable {
     func savePersonJson(json: String) throws  -> String
     
     /**
+     * Đặt tùy chọn "hiện tên trên màn hình khóa" (O-9).
+     */
+    func setLockScreenNames(show: Bool) throws 
+    
+    /**
      * `AppSettings` (01 §3.9).
      */
     func settingsJson() throws  -> String
+    
+    /**
+     * `upcoming_json` trên dữ liệu của kho.
+     */
+    func upcomingJson(today: SolarDay, days: UInt32) throws  -> String
     
 }
 /**
@@ -726,6 +762,19 @@ open func addPhoto(id: String, mime: String, width: UInt32, height: UInt32, byte
 }
     
     /**
+     * `android_alarm_step_json` trên dữ liệu của kho, tùy chọn O-9 của kho.
+     */
+open func androidAlarmStepJson(nowUnixS: Int64, lastRunUnixS: Int64?, zone: DeviceZone)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeLvhvDataError_lift) {
+    uniffi_lvhv_ffi_fn_method_lvhvstore_android_alarm_step_json(self.uniffiClonePointer(),
+        FfiConverterInt64.lower(nowUnixS),
+        FfiConverterOptionInt64.lower(lastRunUnixS),
+        FfiConverterTypeDeviceZone_lower(zone),$0
+    )
+})
+}
+    
+    /**
      * Ghi tệp đã kiểm tra (Thay toàn bộ / Gộp) trong một giao dịch; lỗi → không ghi gì.
      */
 open func applyImport(backup: VerifiedBackup, mode: BackupImportMode)throws   {try rustCallWithError(FfiConverterTypeLvhvDataError_lift) {
@@ -788,6 +837,19 @@ open func eventTypesJson()throws  -> String  {
 }
     
     /**
+     * `events_in_period_json` trên dữ liệu của kho.
+     */
+open func eventsInPeriodJson(kind: String, anchor: SolarDay, filter: String)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeLvhvDataError_lift) {
+    uniffi_lvhv_ffi_fn_method_lvhvstore_events_in_period_json(self.uniffiClonePointer(),
+        FfiConverterString.lower(kind),
+        FfiConverterTypeSolarDay_lower(anchor),
+        FfiConverterString.lower(filter),$0
+    )
+})
+}
+    
+    /**
      * Mọi `Event` (mảng JSON, sắp theo id).
      */
 open func eventsJson()throws  -> String  {
@@ -807,6 +869,17 @@ open func exportBackup(password: String, appVersion: String, platform: String)th
         FfiConverterString.lower(password),
         FfiConverterString.lower(appVersion),
         FfiConverterString.lower(platform),$0
+    )
+})
+}
+    
+    /**
+     * Tùy chọn "hiện tên trên màn hình khóa" (O-9), mặc định `false`. Lưu cục bộ trên thiết bị, không
+     * đi vào tệp sao lưu.
+     */
+open func lockScreenNames()throws  -> Bool  {
+    return try  FfiConverterBool.lift(try rustCallWithError(FfiConverterTypeLvhvDataError_lift) {
+    uniffi_lvhv_ffi_fn_method_lvhvstore_lock_screen_names(self.uniffiClonePointer(),$0
     )
 })
 }
@@ -854,6 +927,32 @@ open func putSettingsJson(json: String)throws   {try rustCallWithError(FfiConver
 }
     
     /**
+     * `reminders_json` trên dữ liệu của kho, tùy chọn O-9 của kho.
+     */
+open func remindersJson(nowUnixS: Int64, zone: DeviceZone, horizonDays: UInt32)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeLvhvDataError_lift) {
+    uniffi_lvhv_ffi_fn_method_lvhvstore_reminders_json(self.uniffiClonePointer(),
+        FfiConverterInt64.lower(nowUnixS),
+        FfiConverterTypeDeviceZone_lower(zone),
+        FfiConverterUInt32.lower(horizonDays),$0
+    )
+})
+}
+    
+    /**
+     * `reschedule_json` trên dữ liệu của kho, tùy chọn O-9 của kho.
+     */
+open func rescheduleJson(nowUnixS: Int64, zone: DeviceZone, pendingJson: String)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeLvhvDataError_lift) {
+    uniffi_lvhv_ffi_fn_method_lvhvstore_reschedule_json(self.uniffiClonePointer(),
+        FfiConverterInt64.lower(nowUnixS),
+        FfiConverterTypeDeviceZone_lower(zone),
+        FfiConverterString.lower(pendingJson),$0
+    )
+})
+}
+    
+    /**
      * Lưu một `Event` (thêm hoặc sửa); gắn id/`created_at`/`updated_at`/`rev`, kiểm rồi ghi. Trả bản đã lưu.
      */
 open func saveEventJson(json: String)throws  -> String  {
@@ -889,11 +988,33 @@ open func savePersonJson(json: String)throws  -> String  {
 }
     
     /**
+     * Đặt tùy chọn "hiện tên trên màn hình khóa" (O-9).
+     */
+open func setLockScreenNames(show: Bool)throws   {try rustCallWithError(FfiConverterTypeLvhvDataError_lift) {
+    uniffi_lvhv_ffi_fn_method_lvhvstore_set_lock_screen_names(self.uniffiClonePointer(),
+        FfiConverterBool.lower(show),$0
+    )
+}
+}
+    
+    /**
      * `AppSettings` (01 §3.9).
      */
 open func settingsJson()throws  -> String  {
     return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeLvhvDataError_lift) {
     uniffi_lvhv_ffi_fn_method_lvhvstore_settings_json(self.uniffiClonePointer(),$0
+    )
+})
+}
+    
+    /**
+     * `upcoming_json` trên dữ liệu của kho.
+     */
+open func upcomingJson(today: SolarDay, days: UInt32)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeLvhvDataError_lift) {
+    uniffi_lvhv_ffi_fn_method_lvhvstore_upcoming_json(self.uniffiClonePointer(),
+        FfiConverterTypeSolarDay_lower(today),
+        FfiConverterUInt32.lower(days),$0
     )
 })
 }
@@ -1629,6 +1750,91 @@ public func FfiConverterTypePeriodRange_lower(_ value: PeriodRange) -> RustBuffe
 
 
 /**
+ * Thông báo nhắc mở ứng dụng (02 §7.4).
+ */
+public struct SentinelInfo {
+    /**
+     * `"lvhv:sentinel"`.
+     */
+    public var id: String
+    /**
+     * Nội dung thông báo.
+     */
+    public var text: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * `"lvhv:sentinel"`.
+         */id: String, 
+        /**
+         * Nội dung thông báo.
+         */text: String) {
+        self.id = id
+        self.text = text
+    }
+}
+
+#if compiler(>=6)
+extension SentinelInfo: Sendable {}
+#endif
+
+
+extension SentinelInfo: Equatable, Hashable {
+    public static func ==(lhs: SentinelInfo, rhs: SentinelInfo) -> Bool {
+        if lhs.id != rhs.id {
+            return false
+        }
+        if lhs.text != rhs.text {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+        hasher.combine(text)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeSentinelInfo: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SentinelInfo {
+        return
+            try SentinelInfo(
+                id: FfiConverterString.read(from: &buf), 
+                text: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: SentinelInfo, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterString.write(value.text, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSentinelInfo_lift(_ buf: RustBuffer) throws -> SentinelInfo {
+    return try FfiConverterTypeSentinelInfo.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSentinelInfo_lower(_ value: SentinelInfo) -> RustBuffer {
+    return FfiConverterTypeSentinelInfo.lower(value)
+}
+
+
+/**
  * Ngày dương lịch.
  */
 public struct SolarDay {
@@ -2309,10 +2515,12 @@ public func addDays(day: SolarDay, n: Int32)throws  -> SolarDay  {
  * thời điểm đó; `null` = chưa có). Kết quả
  * `{"post":[R],"dropped_late":n,"next_at_unix_s":t|null,"next_fire_local":s|null}`:
  * `post` = lời nhắc có thời điểm trong `(max(last_run, now − 24 giờ), now]` (đăng ngay; trễ hơn 24 giờ
- * thì bỏ và đếm ở `dropped_late`), `next_*` = lời nhắc sớm nhất sau `now` (đặt **một** báo thức
- * `setAndAllowWhileIdle(RTC_WAKEUP, next_at_unix_s × 1000)`). `R` như `reminders_json`.
+ * thì bỏ và đếm ở `dropped_late`), `next_*` = lời nhắc sớm nhất sau `now`, **không giới hạn cửa sổ**
+ * (đặt **một** báo thức `setAndAllowWhileIdle(RTC_WAKEUP, next_at_unix_s × 1000)`); `null` chỉ khi không
+ * còn lời nhắc tương lai nào. `R` như `reminders_json`. `show_names` mặc định `false` (O-9); nên gọi
+ * `LvhvStore.android_alarm_step_json`.
  */
-public func androidAlarmStepJson(datasetJson: String, nowUnixS: Int64, lastRunUnixS: Int64?, zone: DeviceZone, showNames: Bool)throws  -> String  {
+public func androidAlarmStepJson(datasetJson: String, nowUnixS: Int64, lastRunUnixS: Int64?, zone: DeviceZone, showNames: Bool = false)throws  -> String  {
     return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeLvhvDataError_lift) {
     uniffi_lvhv_ffi_fn_func_android_alarm_step_json(
         FfiConverterString.lower(datasetJson),
@@ -2613,10 +2821,11 @@ public func personSummaryJson(personJson: String, today: SolarDay)throws  -> Str
 }
 /**
  * Mọi lời nhắc (02 §7.1) có thời điểm trong `(now, now + horizon_days ngày]`, sắp theo (thời điểm, id):
- * `[{"id","at_unix_s","fire_local","type","title","body","occ"}]`. `show_names = false` (mặc định O-9)
- * → tiêu đề không có tên ("Sắp đến ngày giỗ" …). Tôn trọng công tắc chung và `rule.enabled`.
+ * `[{"id","at_unix_s","fire_local","type","title","body","occ"}]`. `show_names` mặc định `false` (O-9) →
+ * tiêu đề không có tên ("Sắp đến ngày giỗ" …) và `occ` rút gọn (xem `reminder_json`). Tôn trọng công tắc
+ * chung và `rule.enabled`. Ứng dụng native nên gọi `LvhvStore.reminders_json` (đọc tùy chọn O-9 từ kho).
  */
-public func remindersJson(datasetJson: String, nowUnixS: Int64, zone: DeviceZone, horizonDays: UInt32, showNames: Bool)throws  -> String  {
+public func remindersJson(datasetJson: String, nowUnixS: Int64, zone: DeviceZone, horizonDays: UInt32, showNames: Bool = false)throws  -> String  {
     return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeLvhvDataError_lift) {
     uniffi_lvhv_ffi_fn_func_reminders_json(
         FfiConverterString.lower(datasetJson),
@@ -2633,10 +2842,12 @@ public func remindersJson(datasetJson: String, nowUnixS: Int64, zone: DeviceZone
  * điều hành trả về, `[{"id","at_unix_s","content"}]` (`content` = `title + "\n" + body` đã đặt lần trước;
  * thiếu → ""). Kết quả `{"keep":[P],"remove":[id],"add":[P],"replace":[P]}`, `P` =
  * `{"id","at_unix_s","fire_local","title","body","content"}`; ứng dụng gỡ `remove`, thêm `add`, thay
- * `replace` (trigger theo `fire_local`, không gắn múi giờ). Còn lời nhắc không đặt được (> 64 trong cửa sổ 400 ngày, hoặc ở ngoài cửa sổ) → tối đa 63 sớm nhất + thông báo
- * nhắc mở ứng dụng (`id = "lvhv:sentinel"`) cùng phút với cái cuối cùng đã đặt (không có cái nào: tại now + 400 ngày) — 02 §7.4, Bổ sung B3.
+ * `replace` (trigger theo `fire_local`, không gắn múi giờ). Còn lời nhắc không đặt được (> 64 trong cửa
+ * sổ 400 ngày, hoặc ở ngoài cửa sổ) → tối đa 63 sớm nhất + thông báo nhắc mở ứng dụng
+ * (`id = "lvhv:sentinel"`) cùng phút với cái cuối cùng đã đặt (không có cái nào: tại now + 400 ngày) —
+ * 02 §7.4, Bổ sung B3. `show_names` mặc định `false` (O-9); nên gọi `LvhvStore.reschedule_json`.
  */
-public func rescheduleJson(datasetJson: String, nowUnixS: Int64, zone: DeviceZone, pendingJson: String, showNames: Bool)throws  -> String  {
+public func rescheduleJson(datasetJson: String, nowUnixS: Int64, zone: DeviceZone, pendingJson: String, showNames: Bool = false)throws  -> String  {
     return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeLvhvDataError_lift) {
     uniffi_lvhv_ffi_fn_func_reschedule_json(
         FfiConverterString.lower(datasetJson),
@@ -2661,8 +2872,8 @@ public func saveDeathJson(dateValueJson: String)throws  -> String  {
 /**
  * Mã và nội dung của thông báo nhắc mở ứng dụng (02 §7.4).
  */
-public func sentinelInfo() -> [String]  {
-    return try!  FfiConverterSequenceString.lift(try! rustCall() {
+public func sentinelInfo() -> SentinelInfo  {
+    return try!  FfiConverterTypeSentinelInfo_lift(try! rustCall() {
     uniffi_lvhv_ffi_fn_func_sentinel_info($0
     )
 })
@@ -2738,7 +2949,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_lvhv_ffi_checksum_func_add_days() != 41064) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_lvhv_ffi_checksum_func_android_alarm_step_json() != 30391) {
+    if (uniffi_lvhv_ffi_checksum_func_android_alarm_step_json() != 45762) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_lvhv_ffi_checksum_func_build_info_json() != 56614) {
@@ -2816,16 +3027,16 @@ private let initializationResult: InitializationResult = {
     if (uniffi_lvhv_ffi_checksum_func_person_summary_json() != 36375) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_lvhv_ffi_checksum_func_reminders_json() != 49335) {
+    if (uniffi_lvhv_ffi_checksum_func_reminders_json() != 836) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_lvhv_ffi_checksum_func_reschedule_json() != 17258) {
+    if (uniffi_lvhv_ffi_checksum_func_reschedule_json() != 38758) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_lvhv_ffi_checksum_func_save_death_json() != 16966) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_lvhv_ffi_checksum_func_sentinel_info() != 18477) {
+    if (uniffi_lvhv_ffi_checksum_func_sentinel_info() != 57743) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_lvhv_ffi_checksum_func_solar_to_lunar() != 39424) {
@@ -2841,6 +3052,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_lvhv_ffi_checksum_method_lvhvstore_add_photo() != 45983) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_lvhv_ffi_checksum_method_lvhvstore_android_alarm_step_json() != 13396) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_lvhv_ffi_checksum_method_lvhvstore_apply_import() != 38554) {
@@ -2861,10 +3075,16 @@ private let initializationResult: InitializationResult = {
     if (uniffi_lvhv_ffi_checksum_method_lvhvstore_event_types_json() != 18706) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_lvhv_ffi_checksum_method_lvhvstore_events_in_period_json() != 36429) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_lvhv_ffi_checksum_method_lvhvstore_events_json() != 58435) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_lvhv_ffi_checksum_method_lvhvstore_export_backup() != 56748) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_lvhv_ffi_checksum_method_lvhvstore_lock_screen_names() != 2023) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_lvhv_ffi_checksum_method_lvhvstore_person_json() != 48207) {
@@ -2879,6 +3099,12 @@ private let initializationResult: InitializationResult = {
     if (uniffi_lvhv_ffi_checksum_method_lvhvstore_put_settings_json() != 14452) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_lvhv_ffi_checksum_method_lvhvstore_reminders_json() != 30582) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_lvhv_ffi_checksum_method_lvhvstore_reschedule_json() != 3105) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_lvhv_ffi_checksum_method_lvhvstore_save_event_json() != 16260) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -2888,7 +3114,13 @@ private let initializationResult: InitializationResult = {
     if (uniffi_lvhv_ffi_checksum_method_lvhvstore_save_person_json() != 47199) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_lvhv_ffi_checksum_method_lvhvstore_set_lock_screen_names() != 9557) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_lvhv_ffi_checksum_method_lvhvstore_settings_json() != 30343) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_lvhv_ffi_checksum_method_lvhvstore_upcoming_json() != 6769) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_lvhv_ffi_checksum_method_verifiedbackup_preview() != 6973) {
