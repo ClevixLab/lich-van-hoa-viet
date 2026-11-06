@@ -43,3 +43,19 @@ Mỗi tiêu chí kết luận một trong: ĐẠT / KHÔNG ĐẠT / CHƯA ĐỦ 
 | S2 | Thư viện phụ thuộc của core | 0 (lõi không phụ thuộc thư viện ngoài) |
 | S3 | PWA không gọi mạng ngoài nguồn gốc của chính nó; có Content-Security-Policy chặt | Đạt |
 | S4 | PWA không lưu dữ liệu người dùng (v0.1 không có tài khoản) | Đạt |
+
+## Bổ sung A1 — mở rộng phạm vi 1900–1999 (KHÓA 2026-11-06, trước khi sửa mã)
+
+Quyết định của chủ dự án (06/11/2026): phạm vi đổi ngày mở rộng thành 1900-01-01 → 3000-12-31, theo
+**phương án lịch sử chuẩn miền Bắc**: âm lịch tính theo UTC+8 trước khi chuyển đổi, UTC+7 từ khi chuyển đổi
+(miền Bắc đổi giờ chuẩn ngày 08/8/1967; Tết Mậu Thân miền Bắc là 1968-01-29). Điểm chuyển cụ thể trong thuật
+toán phải được ghi trong docs/03 kèm bằng chứng. App ghi chú: miền Nam dùng UTC+8 đến 1975 nên một số tháng
+1968–1975 có thể khác lịch miền Nam thời đó.
+
+| Mã | Tiêu chí | Ngưỡng |
+|---|---|---|
+| L9 | Ngày Tết 1900–1999 của core so với nguồn Việt Nam đã công bố (mỗi năm ghi nguồn) | 0 sai lệch ở các năm có nguồn; năm không có nguồn → CHƯA ĐỦ BẰNG CHỨNG cho năm đó, không tự điền |
+| L10 | Ngày âm (năm, tháng, ngày, nhuận) của core so với oracle độc lập dùng cùng quy tắc múi giờ, mọi ngày 1900-01-01 → 1999-12-31, cả hai phương pháp | 0 sai lệch (cùng quy tắc như L2; mọi sai lệch được liệt kê và phân loại) |
+| L11 | Tính liên tục quanh điểm chuyển múi giờ: mọi ngày 1967-01-01 → 1969-12-31 có đúng một ngày âm; ngày âm tăng đều trong tháng, không thiếu không trùng; Tết 1968 = 1968-01-29 | Đạt cả ba |
+| L12 | L5 (khứ hồi) và L7 (TypeScript trùng từng byte với Rust) mở rộng cho 1900-01-01 → 3000-12-31, cả hai phương pháp | 0 lỗi, 0 sai lệch |
+| L13 | Kết quả 2000–3000 không đổi so với trước khi mở rộng (so với tệp chuẩn đã lưu) | Giống hệt từng byte |
