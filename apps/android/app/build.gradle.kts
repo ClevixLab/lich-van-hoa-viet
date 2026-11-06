@@ -3,6 +3,8 @@
 // Thư viện Rust (liblvhv_ffi.so) do cargo-ndk dựng vào app/rustJniLibs/<abi>/ TRƯỚC khi chạy Gradle
 // (xem apps/android/build-rust.sh). Mã Kotlin UniFFI được sinh vào app/build/generated/uniffi/
 // bởi cùng script đó; Gradle chỉ biên dịch.
+import java.time.LocalDate
+import java.time.ZoneOffset
 import java.util.Properties
 
 plugins {
@@ -38,7 +40,7 @@ val appVersionCode = versionParts[0] * 10000 + versionParts[1] * 100 + versionPa
 // Số bản dựng (CI: github.run_number) và ngày dựng (YYYY-MM-DD, giờ UTC) — chỉ để hiển thị và nhắc cập nhật.
 val appBuildNumber: String = System.getenv("LVHV_BUILD_NUMBER")?.takeIf { it.isNotBlank() } ?: "0"
 val appBuildDate: String = System.getenv("LVHV_BUILD_DATE")?.takeIf { it.isNotBlank() }
-    ?: java.time.LocalDate.now(java.time.ZoneOffset.UTC).toString()
+    ?: LocalDate.now(ZoneOffset.UTC).toString()
 if (!Regex("""^\d{4}-\d{2}-\d{2}$""").matches(appBuildDate)) throw GradleException("LVHV_BUILD_DATE phải có dạng YYYY-MM-DD")
 if (!Regex("""^\d+$""").matches(appBuildNumber)) throw GradleException("LVHV_BUILD_NUMBER phải là số")
 
