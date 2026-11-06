@@ -98,6 +98,7 @@ export async function renderBackup(root: HTMLElement, rerender: () => void): Pro
       title: "Tạo tệp sao lưu", ok: "Tạo và tải tệp", cls: "bk-dialog",
       body: [
         h("p", null, `Tệp sẽ chứa ${sn.persons.length} người, ${sn.events.length} sự kiện, ${photos} ảnh — đã mã hóa bằng mật khẩu.`),
+        ...(sn.persons.some((p) => (p.death as JsonObj | null)?.notice) ? [h("p", { class: "fine", id: "bk-notice" }, "Tệp gồm cả thông tin báo tử (người báo tin, nơi mất, lý do, ảnh giấy báo tử) — chỉ ai biết mật khẩu mới đọc được.")] : []),
         h("div", { class: "field" }, h("label", { for: "bk-pw1" }, "Mật khẩu (ít nhất 8 ký tự)"), pw1, e1),
         h("div", { class: "field" }, h("label", { for: "bk-pw2" }, "Nhập lại mật khẩu"), pw2, e2),
         h("p", { class: "notice pd-note" }, "Lưu ý: quên mật khẩu là mất dữ liệu trong tệp — không ai lấy lại được, kể cả Clevix Lab."),

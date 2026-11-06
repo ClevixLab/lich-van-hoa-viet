@@ -1,7 +1,7 @@
 // Thành phần dùng chung của mô-đun Người thân (docs/v0.2/08 §2).
 import { clear, h, svg } from "../dom";
 import { MAX_YEAR, MIN_YEAR } from "../engine";
-import { M, cal, daysBetween, dm, dmy, itemKind, lunarOf, occLabel, ownerOf, displayName, relText, today, weekdayShort, type JsonObj, type Snap, type Ymd } from "./core";
+import { M, cal, daysBetween, dm, dmy, itemKind, lunarOf, occLabel, ownerOf, displayName, relText, today, weekdayOf, weekdayShort, type JsonObj, type Snap, type Ymd } from "./core";
 
 // ---------------- biểu tượng loại (nét SVG viết tay) ----------------
 const S = 'viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"';
@@ -137,7 +137,7 @@ export function occItem(sn: Snap, o: M.Occurrence, open: ((personId: string) => 
 }
 
 // ---------------- ô nhập ngày (08 §2, R-UX-1) ----------------
-export type DateMode = "death" | "birth" | "event";
+export type DateMode = "death" | "birth" | "event" | "notice";
 export interface DateValueJ { calendar: "solar" | "lunar"; precision: "day" | "month_day" | "year"; year: number | null; month: number | null; day: number | null; leap: boolean }
 export interface DateRead { empty: boolean; value: DateValueJ | null; error: string | null }
 
@@ -171,6 +171,7 @@ export function dateInput(idp: string, legend: string, mode: DateMode, required:
   const calSel = { v: "solar" as "solar" | "lunar" };
   const calGroup = pressGroup<"solar" | "lunar">(mode === "death" ? "Nhập ngày mất theo" : "Lịch", [["solar", mode === "death" ? "Nhập theo dương lịch" : "Dương lịch"], ["lunar", mode === "death" ? "Nhập theo âm lịch" : "Âm lịch"]], "solar", (v) => { calSel.v = v; fire(); }, "pseg two");
   calGroup.id = `${idp}-cal`;
+  if (mode === "notice") calGroup.hidden = true; // ngày nhận tin: chỉ dương lịch (01 §3.2a)
   const num = (id: string, label: string, max: number) => {
     const input = h("input", { type: "text", id, inputmode: "numeric", pattern: "[0-9]*", autocomplete: "off", maxlength: String(max), class: "num" }) as HTMLInputElement;
     input.addEventListener("input", fire);
@@ -296,7 +297,7 @@ export function dateInput(idp: string, legend: string, mode: DateMode, required:
 
 /** Tóm tắt ngày dương: "Thứ Sáu, 08/08/2025". */
 export function solarLong(d: Ymd): string {
-  return `${["Chủ nhật", "Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy"][(M.ymdJdn(d) + 1) % 7]}, ${dmy(d)}`;
+  return `${["Chủ nhật", "Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy"][weekdayOf(d)]}, ${dmy(d)}`;
 }
 export { dm, dmy };
 
@@ -318,14 +319,19 @@ export function ruleInput(idp: string, title: string, rule: JsonObj | null, with
   }
   const customVals = [...offs].filter((k) => !PRESETS.some(([p]) => p === k));
   const custom = h("input", { type: "text", inputmode: "numeric", id: `${idp}-custom`, class: "num sm", maxlength: "2", value: customVals.length ? String(customVals[0]) : "" }) as HTMLInputElement;
-  const time = h("input", { type: "time", id: `${idp}-time`, value: r.time_local as string, class: "time" }) as HTMLInputElement;
+  // TK-28: hai ô số giờ:phút theo 24 giờ (ô type=time hiện SA/CH theo ngôn ngữ trình duyệt, không theo lang="vi").
+  const [h0, m0] = (r.time_local as string).split(":");
+  const hh = h("input", { type: "text", inputmode: "numeric", id: `${idp}-time`, class: "num sm", maxlength: "2", value: h0, "aria-label": "Giờ nhắc: giờ (0–23)", autocomplete: "off" }) as HTMLInputElement;
+  const mm = h("input", { type: "text", inputmode: "numeric", id: `${idp}-min`, class: "num sm", maxlength: "2", value: m0, "aria-label": "Giờ nhắc: phút (0–59)", autocomplete: "off" }) as HTMLInputElement;
+  for (const x of [hh, mm]) x.addEventListener("change", () => { if (/^\d$/.test(x.value.trim())) x.value = "0" + x.value.trim(); });
   const tt = h("input", { type: "checkbox", id: `${idp}-tt`, checked: r.tien_thuong === true }) as HTMLInputElement;
   const err = h("p", { class: "ferr", role: "alert", hidden: true });
   const body = h("div", { class: "rule-body" },
     h("p", { class: "flabel" }, "Nhắc trước"), chips,
     h("label", { class: "field inline", for: `${idp}-custom` }, h("span", null, "Tự đặt (1–60 ngày)"), custom),
-    h("label", { class: "field inline", for: `${idp}-time` }, h("span", null, "Giờ nhắc"), time),
-    withTt ? h("label", { class: "check", for: `${idp}-tt` }, tt, h("span", null, "Nhắc thêm ngày tiên thường (chiều hôm trước ngày giỗ)")) : null,
+    h("div", { class: "field inline", role: "group", "aria-labelledby": `${idp}-tl` }, h("span", { id: `${idp}-tl` }, "Giờ nhắc (24 giờ)"),
+      h("span", { class: "hm" }, hh, h("span", { "aria-hidden": "true" }, ":"), mm)),
+    withTt ? h("label", { class: "check", for: `${idp}-tt` }, tt, h("span", null, "Nhắc thêm ngày tiên thường (lễ cúng hôm trước ngày giỗ)")) : null,
     err);
   const syncEn = () => body.classList.toggle("off", !en.checked);
   en.addEventListener("change", syncEn);
@@ -341,7 +347,7 @@ export function ruleInput(idp: string, title: string, rule: JsonObj | null, with
       chips.querySelectorAll<HTMLElement>(".chip").forEach((b) => { if (b.getAttribute("aria-pressed") === "true") set.add(Number(b.dataset.k)); });
       const cv = custom.value.trim();
       err.hidden = true;
-      custom.removeAttribute("aria-invalid");
+      for (const x of [custom, hh, mm]) x.removeAttribute("aria-invalid");
       if (cv !== "") {
         const n = /^\d{1,2}$/.test(cv) ? Number(cv) : NaN;
         if (!(n >= 1 && n <= 60)) { err.textContent = "Số ngày tự đặt phải từ 1 đến 60"; err.hidden = false; custom.setAttribute("aria-invalid", "true"); return { rule: null, error: err.textContent, warn: null }; }
@@ -349,7 +355,14 @@ export function ruleInput(idp: string, title: string, rule: JsonObj | null, with
       }
       const list = [...set].sort((a, b) => a - b);
       if (list.length > 8) { err.textContent = "Tối đa 8 mốc nhắc"; err.hidden = false; return { rule: null, error: err.textContent, warn: null }; }
-      const tl = /^([01]\d|2[0-3]):[0-5]\d$/.test(time.value) ? time.value : "07:00";
+      const hv = hh.value.trim(), mv = mm.value.trim();
+      const hn = /^\d{1,2}$/.test(hv) ? Number(hv) : NaN, mn = mv === "" ? 0 : /^\d{1,2}$/.test(mv) ? Number(mv) : NaN;
+      if (!(hn >= 0 && hn <= 23 && mn >= 0 && mn <= 59)) {
+        err.textContent = "Giờ nhắc phải từ 0 đến 23 giờ, phút từ 0 đến 59"; err.hidden = false;
+        (hn >= 0 && hn <= 23 ? mm : hh).setAttribute("aria-invalid", "true");
+        return { rule: null, error: err.textContent, warn: null };
+      }
+      const tl = `${String(hn).padStart(2, "0")}:${String(mn).padStart(2, "0")}`;
       return {
         rule: { id: r.id as string, enabled: en.checked, offsets_days: list, time_local: tl, tien_thuong: withTt && tt.checked },
         error: null,
@@ -363,7 +376,7 @@ export function ruleSummary(r: JsonObj | null | undefined): string {
   if (!r || r.enabled !== true) return "Không nhắc";
   const o = (r.offsets_days as number[]).map((k) => (k === 0 ? "đúng ngày" : `${k} ngày trước`));
   const s = o.length ? `${o.join(", ")}, lúc ${r.time_local as string}` : "chưa chọn mốc nhắc";
-  return s.charAt(0).toUpperCase() + s.slice(1) + (r.tien_thuong ? " · có nhắc tiên thường" : "");
+  return s.charAt(0).toUpperCase() + s.slice(1) + (r.tien_thuong ? " · có nhắc ngày tiên thường (hôm trước ngày giỗ)" : "");
 }
 
 /** Liên kết quay lại (TK-21): chữ theo đích — "‹ Về danh sách hồ sơ" hoặc "‹ Về hồ sơ". */

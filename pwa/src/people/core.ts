@@ -2,6 +2,7 @@
 // tsport (memorial*), không viết lại thuật toán ở giao diện (08 §8.1). Mô-đun này chỉ được nạp lười.
 import * as M from "../../../tsport/src/memorial.ts";
 import { DEFAULT_METHOD } from "../gen/content";
+import { weekday as coreWeekday } from "../../../tsport/src/jd.ts";
 import { WEEKDAY, WEEKDAY_SHORT } from "../format";
 import { openStore, type Store, type JsonObj } from "../store/index";
 
@@ -29,21 +30,43 @@ export interface Snap {
   settings: JsonObj;
   ds: M.Dataset;
   byId: Map<string, JsonObj>;
+  /** id các hồ sơ đã mất (B4). */
+  dead: Set<string>;
 }
 
 /** Ảnh chụp toàn kho + bộ dữ liệu của lõi (01 §5 → memorial_model.parseDataset). */
 export async function snap(): Promise<Snap> {
   const s = await store();
   const [persons, events, types, settings] = await Promise.all([s.persons(), s.events(), s.eventTypes(), s.settings()]);
-  const ds = M.parseDataset(JSON.stringify({ settings, persons, events, event_types: types }));
-  return { persons, events, types, settings, ds, byId: new Map(persons.map((p) => [p.id as string, p])) };
+  // Bổ sung B4 (04, quyết định của chủ dự án): với người đã mất chỉ nhắc ngày giỗ (và tiên thường nếu bật). Lõi đã
+  // không sinh sinh nhật cho hồ sơ đã mất; ở đây bỏ thêm mọi sự kiện gắn với ÍT NHẤT MỘT người đã mất khỏi bộ dữ liệu
+  // dùng để tính lần xuất hiện, lời nhắc, danh sách theo kỳ và tệp .ics. `events` (dữ liệu thật) giữ nguyên để hiện
+  // trên trang hồ sơ và vào sao lưu. Bỏ đoạn này khi lõi có quy tắc B4 (cùng lúc thay bộ chuyển — MA3-15-01).
+  const dead = new Set(persons.filter((p) => p.kind === "deceased").map((p) => p.id as string));
+  const active = events.filter((e) => !isDeadEvent(e, dead));
+  // R-PRIV-2 (01 §3.2a): thông tin báo tử không bao giờ vào lõi tính lần xuất hiện / lời nhắc / .ics.
+  const forCore = persons.map((p) => {
+    const d = p.death as JsonObj | null;
+    if (!d || !("notice" in d)) return p;
+    const { notice: _n, ...rest } = d;
+    void _n;
+    return { ...p, death: rest };
+  });
+  const ds = M.parseDataset(JSON.stringify({ settings, persons: forCore, events: active, event_types: types }));
+  return { persons, events, types, settings, ds, dead, byId: new Map(persons.map((p) => [p.id as string, p])) };
+}
+
+/** B4 mục 2: sự kiện gắn với ít nhất một người đã mất thì không sinh lần xuất hiện. */
+export function isDeadEvent(e: JsonObj, dead: Set<string>): boolean {
+  return ((e.person_ids as string[]) ?? []).some((id) => dead.has(id));
 }
 
 // ---------------- định dạng ----------------
 const p2 = (n: number) => String(n).padStart(2, "0");
 export const dmy = (d: Ymd) => `${p2(d.d)}/${p2(d.m)}/${d.y}`;
 export const dm = (d: Ymd) => `${p2(d.d)}/${p2(d.m)}`;
-export const weekdayOf = (d: Ymd) => (M.ymdJdn(d) + 1) % 7;
+/** Thứ trong tuần (0 = Chủ nhật) — dùng hàm của lõi (MA3-15-08), không tự tính. */
+export const weekdayOf = (d: Ymd) => coreWeekday(M.ymdJdn(d));
 export const weekdayName = (d: Ymd) => WEEKDAY[weekdayOf(d)];
 export const weekdayShort = (d: Ymd) => WEEKDAY_SHORT[weekdayOf(d)];
 export const daysBetween = (a: Ymd, b: Ymd) => M.ymdJdn(b) - M.ymdJdn(a);
@@ -87,7 +110,7 @@ export function occLabel(o: M.Occurrence): string {
       return M.labelText(o.gio_label ?? "gio", o.n);
     case "tien_thuong": {
       const g = o.gio_label === "gio_dau" ? "giỗ đầu" : o.gio_label === "gio_het" ? "giỗ hết" : "giỗ";
-      return `Tiên thường (hôm trước ${g})`;
+      return `Tiên thường — lễ cúng hôm trước ${g}`;
     }
     case "sinh_nhat": return o.n !== null ? `Sinh nhật thứ ${o.n}` : "Sinh nhật";
     case "sinh_nhat_am": return o.n !== null ? `Sinh nhật âm lịch (tuổi âm ${o.n + 1})` : "Sinh nhật âm lịch";
@@ -101,6 +124,30 @@ export function ownerOf(sn: Snap, o: M.Occurrence): JsonObj | null {
   const ev = sn.events.find((e) => e.id === o.entity_id);
   const pid = (ev?.person_ids as string[] | undefined)?.[0];
   return pid ? sn.byId.get(pid) ?? null : null;
+}
+
+// ---------------- cách gọi thường ngày (quyết định của chủ dự án 07/11: không dùng từ Hán-Việt cổ như "Hiển khảo") ----------------
+/** Quan hệ gợi ý cho người đã mất — từ thường ngày (PHONG-TUC.md §1): cụ/kỵ (miền Bắc), cố/sơ (miền Nam). */
+export const RELATIONS_DECEASED = ["Bố", "Mẹ", "Ông nội", "Bà nội", "Ông ngoại", "Bà ngoại", "Cụ ông", "Cụ bà", "Kỵ ông", "Kỵ bà",
+  "Ông cố", "Bà cố", "Ông sơ", "Bà sơ", "Bác", "Chú", "Thím", "Cô", "Dì", "Cậu", "Mợ", "Anh", "Chị", "Em", "Chồng", "Vợ", "Con"];
+/** Quan hệ gợi ý cho người đang sống. */
+export const RELATIONS_LIVING = ["Bố", "Mẹ", "Ông nội", "Bà nội", "Ông ngoại", "Bà ngoại", "Bác", "Chú", "Thím", "Cô", "Dì", "Cậu", "Mợ",
+  "Anh", "Chị", "Em", "Chồng", "Vợ", "Con trai", "Con gái", "Cháu"];
+/** Cách gọi (danh xưng) gợi ý — chữ thường, đứng trước họ tên ("ông Nguyễn Văn A"). */
+export const DANH_XUNG = ["cụ", "kỵ", "ông", "bà", "bác", "chú", "thím", "cô", "dì", "cậu", "mợ", "anh", "chị", "em", "bố", "mẹ", "cha", "má", "ba"];
+
+/** Chữ quan hệ trên bia: lấy từ ô "Quan hệ" (bỏ phần trong ngoặc), viết hoa chữ đầu — "ông nội (bên nội)" → "Ông nội". */
+export function biaFromRelation(quanHe: string): string {
+  const t = quanHe.replace(/\([^)]*\)/g, "").replace(/\s+/g, " ").trim();
+  return t ? t.charAt(0).toUpperCase() + t.slice(1) : "";
+}
+/**
+ * Dòng trên tên ở bia: chỉ theo ô "Quan hệ" (yêu cầu 07/11 06:00 — bỏ hẳn "dòng đầu bia" riêng). Trường
+ * `memorial.bia_tieu_de` của 01 vẫn được giữ nguyên khi lưu/sao lưu nhưng không hiển thị, không sửa trên giao diện.
+ * Quan hệ trống → không có dòng này.
+ */
+export function biaHeading(p: JsonObj): string {
+  return biaFromRelation((p.quan_he as string) ?? "");
 }
 
 export function tuoiText(t: JsonObj | null | undefined): string | null {

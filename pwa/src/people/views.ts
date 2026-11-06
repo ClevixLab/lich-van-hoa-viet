@@ -1,4 +1,5 @@
 // Trang: Sắp tới (08 §3.1), Theo kỳ (§3.2), Hồ sơ (§3.3), Hồ sơ một người (§3.6), thẻ nhắc (§5.5).
+import { noticeBlock } from "./notice";
 import { clear, h, svg } from "../dom";
 import {
   M, addDays, cal, daysBetween, displayName, dm, dmy, lunarText, relText, snap, store, today, tuoiText,
@@ -137,6 +138,12 @@ export async function renderUpcoming(root: HTMLElement, nav: Nav, openIcs: () =>
 const KIND_OPTS: [PeriodKind, string][] = [["tuan", "Tuần"], ["thang", "Tháng"], ["quy", "Quý"], ["nam", "Năm"]];
 const FILTER_OPTS: [PeriodFilter, string][] = [["tat_ca", "Tất cả"], ["da_mat", "Người đã mất"], ["dang_song", "Người đang sống"]];
 const ROMAN = ["I", "II", "III", "IV"];
+/** Câu giải thích bộ lọc (Bổ sung B4 mục 3). */
+const FILTER_NOTE: Record<PeriodFilter, string> = {
+  tat_ca: "",
+  da_mat: "Chỉ có ngày giỗ (và tiên thường nếu bật nhắc). Không nhắc sinh nhật và sự kiện của người đã mất.",
+  dang_song: "Sinh nhật và sự kiện của người đang sống.",
+};
 const pstate = { kind: "thang" as PeriodKind, anchor: null as Ymd | null, filter: "tat_ca" as PeriodFilter };
 
 export function periodTitle(kind: PeriodKind, from: Ymd, to: Ymd): string {
@@ -157,9 +164,11 @@ export async function renderPeriod(root: HTMLElement, nav: Nav): Promise<void> {
   const title = h("h2", { class: "ptitle", id: "period-title", tabindex: "-1" });
   const todayBtn = h("button", { type: "button", class: "todaybtn sm", id: "period-today", onclick: () => { pstate.anchor = t; draw(); title.focus(); } }, "Hôm nay");
   const curNote = h("p", { class: "pcur", id: "period-current" }, "Đang xem kỳ có hôm nay");
+  const filterNote = h("p", { class: "fine pfilter-note", id: "period-filter-note" });
   const draw = () => {
     const r = eventsInPeriod(cal(), sn.ds, pstate.kind, pstate.anchor!, pstate.filter);
     title.textContent = periodTitle(pstate.kind, r.from, r.to);
+    filterNote.textContent = FILTER_NOTE[pstate.filter]; filterNote.hidden = !FILTER_NOTE[pstate.filter];
     count.textContent = `${r.items.length} mục`;
     const b = periodBounds(pstate.kind, t);
     // TK-23: không để nút "Hôm nay" bị tắt (trông như hỏng) — khi đang xem kỳ hiện tại thì thay bằng một dòng chữ.
@@ -181,7 +190,7 @@ export async function renderPeriod(root: HTMLElement, nav: Nav): Promise<void> {
   root.append(h("section", { class: "panel period" },
     h("div", { class: "pctl" },
       pressGroup("Loại kỳ", KIND_OPTS, pstate.kind, (v) => { pstate.kind = v; draw(); }, "pseg four"),
-      pressGroup("Lọc", FILTER_OPTS, pstate.filter, (v) => { pstate.filter = v; draw(); }, "pseg three")),
+      pressGroup("Lọc", FILTER_OPTS, pstate.filter, (v) => { pstate.filter = v; draw(); }, "pseg three"), filterNote),
     h("div", { class: "pnav" },
       h("button", { type: "button", class: "iconbtn", id: "period-prev", "aria-label": "Kỳ trước", onclick: () => { pstate.anchor = periodPrev(pstate.kind, pstate.anchor!); draw(); } }, "‹"),
       h("div", { class: "pnav-mid", "aria-live": "polite" }, title, count),
@@ -295,6 +304,8 @@ export async function renderPerson(root: HTMLElement, id: string, nav: Nav): Pro
         }
       } }, "Xóa")))))
     : h("p", { class: "empty-hint" }, "Chưa có sự kiện nào.");
+  // B4: với người đã mất chỉ nhắc ngày giỗ — sinh nhật và sự kiện vẫn lưu, vẫn hiện, nhưng không nhắc.
+  const b4Note = dead ? h("p", { class: "fine b4-note", id: "b4-note" }, "Không nhắc sinh nhật và sự kiện của người đã mất — chỉ nhắc ngày giỗ. Thông tin vẫn được lưu và sao lưu.") : null;
 
   const rem = p.reminders as JsonObj;
   const remBox = h("dl", { class: "facts pfacts" },
@@ -319,16 +330,19 @@ export async function renderPerson(root: HTMLElement, id: string, nav: Nav): Pro
       h("div", { class: "phead-t" }, h1, p.quan_he ? h("p", { class: "phead-rel" }, p.quan_he as string) : null,
         h("div", { class: "phead-acts" },
           dead ? h("a", { class: "btnlink main", href: `#/nguoi-than/tuong-niem/${id}`, id: "open-memorial" }, "Tưởng niệm") : null,
-          h("a", { class: "btnlink", href: `#/nguoi-than/sua/${id}`, id: "edit-person" }, "Sửa")))),
+          h("a", { class: "btnlink", href: `#/nguoi-than/sua/${id}`, id: "edit-person" }, "Sửa"),
+          !dead ? h("a", { class: "btnlink", href: `#/nguoi-than/bao-tu/${id}`, id: "convert-person" }, "Cập nhật: đã mất") : null))),
     h("div", { class: "pcols" },
       // TK-08: "Lần tới" ngay dưới đầu trang (trước "Thông tin"); mục chỉ để xem, không phải nút.
       h("div", { class: "pcol-main" },
         h("section", { class: "panel", id: "next-box" }, h("h2", null, "Lần tới"),
           nextList.length ? h("div", { class: "plist" }, ...nextList.map((o) => occItem(sn, o, null, t))) : h("p", { class: "empty-hint" }, "Chưa có ngày nào trong năm tới.")),
-        h("section", { class: "panel" }, h("h2", null, "Thông tin"), facts)),
+        h("section", { class: "panel" }, h("h2", null, "Thông tin"), facts),
+        noticeBlock(p)),
       h("div", { class: "pcol-side" },
         h("section", { class: "panel", id: "event-box" },
-          h("div", { class: "plhead" }, h("h2", null, "Sự kiện"), h("a", { class: "btnlink sm", href: `#/nguoi-than/su-kien/${id}/moi`, id: "add-event" }, "+ Thêm sự kiện")), evList),
+          h("div", { class: "plhead" }, h("h2", null, "Sự kiện"), h("a", { class: "btnlink sm", href: `#/nguoi-than/su-kien/${id}/moi`, id: "add-event" }, "+ Thêm sự kiện")), evList,
+          b4Note),
         h("section", { class: "panel" }, h("h2", null, "Nhắc"), remBox),
         h("div", { class: "delrow" }, del))));
   h1.focus();

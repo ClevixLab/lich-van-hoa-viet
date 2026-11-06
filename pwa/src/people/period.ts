@@ -11,6 +11,7 @@
 // Không sửa tsport/ ở đây — tsport thuộc vai lõi.
 // ============================================================================================================
 import * as M from "../../../tsport/src/memorial.ts";
+import { weekday } from "../../../tsport/src/jd.ts";
 
 export type PeriodKind = "tuan" | "thang" | "quy" | "nam";
 export type PeriodFilter = "tat_ca" | "da_mat" | "dang_song";
@@ -24,7 +25,7 @@ const dim = (y: number, m: number) => new Date(Date.UTC(y, m, 0)).getUTCDate();
 export function periodBounds(kind: PeriodKind, anchor: Ymd): { from: Ymd; to: Ymd } {
   if (kind === "tuan") {
     const j = M.ymdJdn(anchor);
-    const wd = (j + 1) % 7; // 0 = Chủ nhật (như jd.weekday của lõi)
+    const wd = weekday(j); // 0 = Chủ nhật (hàm của lõi, MA3-15-08)
     const mon = j - ((wd + 6) % 7);
     return { from: M.ymdFromJdn(mon), to: M.ymdFromJdn(mon + 6) };
   }
@@ -46,23 +47,14 @@ export function periodNext(kind: PeriodKind, anchor: Ymd): Ymd {
 }
 
 /**
- * Lọc bộ dữ liệu: hồ sơ theo `kind`; sự kiện theo hồ sơ ĐẦU TIÊN trong `person_ids` (giao diện chỉ tạo sự kiện một
- * người); sự kiện không còn người nào thuộc "đang sống" — để "đã mất" ∪ "đang sống" = "tất cả", không trùng.
- * Quy ước này phải được đối chiếu với hàm của vai lõi khi thay.
+ * Bộ lọc theo Bổ sung B4 mục 3 (04): "Người đã mất" = giỗ và tiên thường; "Người đang sống" = mọi lần xuất hiện còn
+ * lại. Bộ dữ liệu vào đã bỏ sự kiện gắn người đã mất (core.ts `snap`), nên "đã mất" ∪ "đang sống" = "tất cả", không trùng.
  */
-function filterDataset(ds: M.Dataset, filter: PeriodFilter): M.Dataset {
-  if (filter === "tat_ca") return ds;
-  const want: M.PersonKind = filter === "da_mat" ? "deceased" : "living";
-  const kindOf = new Map(ds.persons.map((p) => [p.id, p.kind] as const));
-  return {
-    ...ds,
-    persons: ds.persons.filter((p) => p.kind === want),
-    events: ds.events.filter((e) => (kindOf.get(e.person_ids[0] ?? "") ?? "living") === want),
-  };
-}
+const isDeadClass = (o: M.Occurrence) => o.class === "gio" || o.class === "tien_thuong";
 
 /** R13: mọi lần xuất hiện (giỗ, tiên thường nếu bật, sinh nhật dương/âm, sự kiện) có ngày dương trong kỳ, thứ tự 02 §7.2. */
 export function eventsInPeriod(cal: M.Cal, ds: M.Dataset, kind: PeriodKind, anchor: Ymd, filter: PeriodFilter): PeriodResult {
   const { from, to } = periodBounds(kind, anchor);
-  return { from, to, items: M.occurrencesWithTt(cal, filterDataset(ds, filter), from, to) };
+  const all = M.occurrencesWithTt(cal, ds, from, to);
+  return { from, to, items: filter === "tat_ca" ? all : all.filter((o) => isDeadClass(o) === (filter === "da_mat")) };
 }

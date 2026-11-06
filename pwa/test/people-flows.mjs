@@ -106,11 +106,11 @@ export async function runPeople({ browser, BASE, ORIGIN, ROOT, SHOTS, check, met
     check((await text(".photo-acts .ferr")) === "Ảnh quá lớn (20000 × 20000 điểm ảnh) — hãy chọn ảnh nhỏ hơn", "MA3-15-07: ảnh 20 000 × 20 000 điểm ảnh bị từ chối trước khi giải mã");
     await page.setInputFiles("#pf-file", { name: "chan-dung.jpg", mimeType: "image/jpeg", buffer: withExif });
     await page.waitForSelector(".pf-photo[data-drawn]");
-    await page.click(".pform details.more > summary");
-    const biaHint = await text("#pf-bia-hint");
-    check(biaHint.includes("“Tổ khảo” (ông)"), `TK-24: quan hệ "ông nội" → gợi ý dòng đầu bia "Tổ khảo" (${biaHint})`);
-    await page.click(".chip.sugg.best");
-    check((await page.inputValue("#pf-bia")) === "Tổ khảo", "TK-24: chọn gợi ý → ô dòng đầu bia = \"Tổ khảo\" (sửa được)");
+    await page.click("#pf-mem > summary");
+    check(await page.locator("#pf-bia, #pf-bia-hint").count() === 0, "Yêu cầu 07/11: không còn ô \"dòng đầu bia\" riêng trên biểu mẫu");
+    const qhOpts = await page.$$eval("#pf-qh-list option", (os) => os.map((o) => o.value));
+    check(["Bố", "Mẹ", "Ông nội", "Bà ngoại", "Cụ ông", "Kỵ bà", "Chú", "Thím"].every((x) => qhOpts.includes(x)) && !qhOpts.some((x) => /Hiển|khảo|tỷ|Tằng/.test(x)),
+      `Ô Quan hệ gợi ý từ thường ngày (${qhOpts.length} mục), không có từ Hán-Việt cổ`);
     await page.fill("#pf-loi", "Con cháu muôn đời ghi nhớ công ơn ông.");
     await shot("form-deceased-360");
     await page.click(".form-acts .primary");
@@ -167,10 +167,22 @@ export async function runPeople({ browser, BASE, ORIGIN, ROOT, SHOTS, check, met
     const res3 = await text("#pf-birth-res");
     check(res3.includes("Âm lịch: 24/12 năm Kỷ Tỵ (1989)") && res3.includes("Hôm nay 36 tuổi (tuổi âm 38)"), `L3: sinh 20/01/1990 → Kỷ Tỵ (1989), 36 tuổi (tuổi âm 38) (${res3})`);
     await page.check("#pf-snam");
+    // TK-29: mặc định "giống sinh nhật dương lịch" → khối riêng ẩn.
+    check(await page.isChecked("#pf-snam-same") && await page.locator("#pf-rsna").isHidden(), "TK-29: bật sinh nhật âm → mặc định nhắc giống sinh nhật dương, khối riêng ẩn");
+    // TK-28: giờ nhắc là hai ô số 24 giờ; 25 giờ → lỗi; 18:5 → lưu "18:05".
+    check(await page.locator('#pf-rsn input[type="time"]').count() === 0, "TK-28: không dùng ô type=time (SA/CH theo trình duyệt)");
+    await page.fill("#pf-rsn-time", "25");
+    await page.click(".form-acts .primary");
+    await page.waitForSelector("#pf-rsn .ferr:not([hidden])");
+    check((await text("#pf-rsn .ferr")) === "Giờ nhắc phải từ 0 đến 23 giờ, phút từ 0 đến 59" && (await page.getAttribute("#pf-rsn-time", "aria-invalid")) === "true", "TK-28: giờ 25 → lỗi dưới khối nhắc, ô giờ được đánh dấu");
+    await page.fill("#pf-rsn-time", "18"); await page.fill("#pf-rsn-min", "5");
     await shot("form-living-360");
     await page.click(".form-acts .primary");
     await page.waitForSelector("#person-name");
     const idC = /nguoi\/([0-9a-f-]+)/.exec(page.url())[1];
+    const remC = await store(`async (s) => (await s.person("${idC}")).reminders`);
+    check(remC.sinh_nhat.time_local === "18:05" && remC.sinh_nhat_am.time_local === "18:05" && JSON.stringify(remC.sinh_nhat_am.offsets_days) === JSON.stringify(remC.sinh_nhat.offsets_days) && remC.sinh_nhat_am.id !== remC.sinh_nhat.id,
+      `TK-28/29: lưu giờ "18:05"; sinh nhật âm chép cài đặt sinh nhật dương, id riêng (${JSON.stringify(remC.sinh_nhat_am)})`);
     check((await text("#next-box")).includes("Sinh nhật âm lịch") || (await text("#next-box")).includes("Sinh nhật thứ 37"), "L3: hồ sơ có \"Lần tới\" sinh nhật");
     await page.click("#add-event");
     await page.waitForSelector("#ef-type");
@@ -191,6 +203,21 @@ export async function runPeople({ browser, BASE, ORIGIN, ROOT, SHOTS, check, met
     await page.waitForSelector("#event-box .evrow >> nth=1");
     await shot("person-living-360");
 
+    // ---------- Bổ sung B4: với người đã mất chỉ nhắc ngày giỗ ----------
+    // (1) Sự kiện của người đã mất: biểu mẫu không có khối nhắc, có câu giải thích; vẫn lưu và hiện trên hồ sơ.
+    await go(`#/nguoi-than/su-kien/${idA}/moi`, "#ef-type");
+    check(await page.locator("#ef-rule").count() === 0 && (await text("#ef-b4")).startsWith("Không nhắc sự kiện của người đã mất"), "B4: sự kiện của người đã mất — không có khối nhắc, có câu giải thích");
+    await page.selectOption("#ef-type", "6f1c2a1e-0b6e-4c55-9a51-0d1f2b7c0002");
+    await page.fill("#ef-date-d", "20"); await page.fill("#ef-date-m", "7"); await page.fill("#ef-date-y", "1965");
+    await shot("form-event-deceased-360");
+    await page.click(".form-acts .primary");
+    await page.waitForSelector("#event-box .evrow");
+    check((await text("#event-box")).includes("Ngày cưới · 20/07/1965 · hằng năm") && (await text("#b4-note")).startsWith("Không nhắc sinh nhật và sự kiện của người đã mất"),
+      "B4: hồ sơ người đã mất vẫn hiện sự kiện, có câu \"Không nhắc sinh nhật và sự kiện của người đã mất\"");
+    await shot("person-deceased-b4-360");
+    // (2) Sự kiện gắn [người đã mất, người đang sống] (dữ liệu từ sao lưu nền tảng khác): không sinh lần xuất hiện.
+    await store(`async (s) => { const e = (await s.events()).find((x) => x.person_ids[0] === "${idC}" && !x.recurring); await s.putEvent({ ...e, id: crypto.randomUUID(), tieu_de: "Họp mặt chung", person_ids: ["${idA}", "${idC}"], rev: 1 }); }`);
+
     // ---------- L5: Theo kỳ (R13) ----------
     const ds = M.parseDataset(await store(`async (s) => JSON.stringify({ settings: await s.settings(), persons: await s.persons(), events: await s.events(), event_types: await s.eventTypes() })`));
     const ymd = (s) => ({ y: +s.slice(0, 4), m: +s.slice(5, 7), d: +s.slice(8, 10) });
@@ -204,11 +231,13 @@ export async function runPeople({ browser, BASE, ORIGIN, ROOT, SHOTS, check, met
       return [D(Date.UTC(a.y, 0, 1)), D(Date.UTC(a.y, 11, 31))];
     };
     const kindOf = new Map(ds.persons.map((p) => [p.id, p.kind]));
+    // Bổ sung B4 (04), viết lại độc lập trong kiểm thử: bỏ sự kiện gắn ít nhất một người đã mất; "đã mất" = giỗ + tiên thường.
+    const dsB4 = { ...ds, events: ds.events.filter((e) => !e.person_ids.some((id) => kindOf.get(id) === "deceased")) };
+    check(dsB4.events.length === ds.events.length - 2, `B4: ${ds.events.length - dsB4.events.length} sự kiện gắn người đã mất bị loại khỏi tập mong đợi (Ngày cưới của ông, Họp mặt chung)`);
     const expected = (kind, anchor, filter) => {
       const [from, to] = bounds(kind, anchor);
-      const want = filter === "da_mat" ? "deceased" : "living";
-      const d2 = filter === "tat_ca" ? ds : { ...ds, persons: ds.persons.filter((p) => p.kind === want), events: ds.events.filter((e) => (kindOf.get(e.person_ids[0]) ?? "living") === want) };
-      return M.occurrencesWithTt(cal, d2, from, to).map((o) => `${o.class}@${isoOf(o.date)}`);
+      const dead = (o) => o.class === "gio" || o.class === "tien_thuong";
+      return M.occurrencesWithTt(cal, dsB4, from, to).filter((o) => filter === "tat_ca" || dead(o) === (filter === "da_mat")).map((o) => `${o.class}@${isoOf(o.date)}`);
     };
     const shown = () => page.$$eval("#period-list .pitem", (els) => els.map((e) => `${e.dataset.class}@${e.dataset.date}`));
     await go("#/nguoi-than/theo-ky", "#period-title");
@@ -257,6 +286,13 @@ export async function runPeople({ browser, BASE, ORIGIN, ROOT, SHOTS, check, met
     const wantMonths = [...new Set(expected("nam", t0, "tat_ca").map((x) => x.split("@")[1].slice(0, 7)))].map((ym) => `Tháng ${+ym.slice(5, 7)}/${ym.slice(0, 4)}`);
     const gotMonths = await page.$$eval("#period-list .pmonth", (els) => els.map((e) => e.textContent));
     check(JSON.stringify(gotMonths) === JSON.stringify(wantMonths), `R-UX-2: danh sách năm có đúng các nhóm tháng (${gotMonths.join(", ")})`);
+    const yearTitles = await page.$$eval("#period-list .pitem .pi-l1", (els) => els.map((e) => e.textContent));
+    check(!yearTitles.some((x) => /Họp mặt chung|Ngày cưới · .*Nguyễn Văn A/.test(x)), `B4: năm 2026 không có sự kiện gắn người đã mất (${yearTitles.length} mục)`);
+    await page.click('.pseg.three button[data-v="da_mat"]');
+    check((await text("#period-filter-note")).startsWith("Chỉ có ngày giỗ") && (await page.$$eval("#period-list .pitem", (els) => els.every((e) => e.dataset.class === "gio" || e.dataset.class === "tien_thuong"))),
+      "B4: bộ lọc \"Người đã mất\" chỉ có giỗ/tiên thường, có câu giải thích");
+    await shot("period-deceased-filter-360");
+    await page.click('.pseg.three button[data-v="tat_ca"]');
     // R13 (c) trên GIAO DIỆN: "Người đã mất" ∪ "Người đang sống" = "Tất cả", không trùng mục (đo trên danh sách hiển thị).
     const uiAll = await shown();
     await page.click('.pseg.three button[data-v="da_mat"]'); const uiDead = await shown();
@@ -277,7 +313,7 @@ export async function runPeople({ browser, BASE, ORIGIN, ROOT, SHOTS, check, met
     // ---------- L6: Sắp tới, L7: thẻ nhắc ----------
     await go("#/nguoi-than", "#upcoming-list");
     const up = await page.$$eval("#upcoming-list .pitem", (els) => els.map((e) => `${e.dataset.class}@${e.dataset.date}`));
-    const upExp = M.upcoming(cal, ds, t0, 30).map((u) => `${u.occ.class}@${isoOf(u.occ.date)}`);
+    const upExp = M.upcoming(cal, dsB4, t0, 30).map((u) => `${u.occ.class}@${isoOf(u.occ.date)}`);
     check(JSON.stringify(up) === JSON.stringify(upExp), `L6: "Sắp tới" 30 ngày khớp upcoming() của lõi (${up.length} mục)`);
     check((await text("#upcoming-list")).includes("Còn 3 ngày"), "L6: mục ghi \"Còn 3 ngày\"");
     check((await text(".remind")).includes("Còn 3 ngày: Giỗ đầu Ông Nguyễn Văn A"), "L7: thẻ nhắc trong trang Sắp tới");
@@ -307,7 +343,8 @@ export async function runPeople({ browser, BASE, ORIGIN, ROOT, SHOTS, check, met
     await page.click("#open-memorial");
     await page.waitForSelector(".bia-name");
     const bia = (await page.locator(".bia").textContent()).replace(/\s+/g, " ");
-    check(bia.includes("Tổ khảo") && bia.includes("Nguyễn Văn A") && !bia.includes("Ông Nguyễn") && bia.includes("Canh Thìn 1940 — Ất Tỵ 2025") && bia.includes("Hưởng thọ 86 tuổi"), `L11: bia có dòng đầu "Tổ khảo", tên (không lặp danh xưng), năm Can Chi, hưởng thọ (${bia})`);
+    const biaTop = await text(".bia-top");
+    check(biaTop === "Ông nội" && bia.includes("Nguyễn Văn A") && !bia.includes("Ông Nguyễn") && !/Hiển|khảo|Tổ tỷ/.test(bia) && bia.includes("Canh Thìn 1940 — Ất Tỵ 2025") && bia.includes("Hưởng thọ 86 tuổi"), `L11: bia ghi quan hệ "${biaTop}" (từ ô Quan hệ "ông nội (bên nội)"), tên không lặp cách gọi, năm Can Chi, hưởng thọ (${bia})`);
     check(await page.locator(".incense .stick").count() === 3, "L11: ba nén hương");
     check(await page.locator("audio, video").count() === 0, "R8 (e): không có audio/video");
     check(!(await page.title()).includes("Nguyễn"), "O-9: tiêu đề tab tưởng niệm không có tên người");
@@ -326,6 +363,7 @@ export async function runPeople({ browser, BASE, ORIGIN, ROOT, SHOTS, check, met
     const [dl] = await Promise.all([page.waitForEvent("download"), page.click('.ics-dialog .dbtn.main')]);
     const ics = readFileSync(await dl.path(), "utf8");
     check(dl.suggestedFilename() === `LichVanHoaViet-ngay-gio-${TODAY}.ics` && ics.startsWith("BEGIN:VCALENDAR\r\n") && ics.includes("SUMMARY:Giỗ đầu Ông Nguyễn Văn A") && !ics.includes("RRULE"), `L8: tải ${dl.suggestedFilename()} (RFC 5545, không RRULE)`);
+    check(!ics.includes("Họp mặt chung") && !/SUMMARY:Ngày cưới[^\r]*Nguyễn Văn A/.test(ics), "B4: tệp .ics không có sự kiện gắn người đã mất");
 
     // ---------- L13: xóa (Hủy rồi đồng ý) ----------
     await go(`#/nguoi-than/nguoi/${idB}`, "#del-person");
@@ -396,14 +434,14 @@ export async function runPeople({ browser, BASE, ORIGIN, ROOT, SHOTS, check, met
     await page.fill("#bk-ipw", "nhà có cây bàng");
     await page.click("#bk-open");
     await page.waitForSelector(".imp-dialog[open]", { timeout: 120000 });
-    check((await text(".imp-dialog")).includes("Tệp xuất ngày 25/07/2026 từ ứng dụng web: 3 người, 2 sự kiện, 1 ảnh."), `L10: xem trước tệp (${(await text(".imp-dialog")).split("\n")[1]})`);
+    check((await text(".imp-dialog")).includes("Tệp xuất ngày 25/07/2026 từ ứng dụng web: 3 người, 4 sự kiện, 1 ảnh."), `L10: xem trước tệp (${(await text(".imp-dialog")).split("\n")[1]})`);
     await shot("import-dialog-360", false);
     await page.check("#bk-mode-replace");
     await page.click(".imp-dialog .dbtn.main");
     await page.waitForSelector('.pdialog[open] .dbtn.danger');
     await page.click('.pdialog[open] .dbtn.danger');
     await page.keyboard.press("Escape"); // MA3-15-03: đang khôi phục → Esc không đóng hộp; kết quả vẫn được báo
-    await page.waitForSelector('.toast:has-text("Đã khôi phục: 3 người, 2 sự kiện.")', { timeout: 60000 });
+    await page.waitForSelector('.toast:has-text("Đã khôi phục: 3 người, 4 sự kiện.")', { timeout: 60000 });
     const h2 = await store(`async (s) => s.stateHash()`);
     check(h1 === h2, "L9/L10: xuất → xóa một hồ sơ → nhập \"Thay toàn bộ\" → dữ liệu giống hệt (stateHash)");
     check((await text(".toast")).startsWith("Đã khôi phục: 3 người") && await page.locator(".pdialog[open]").count() === 0, "MA3-15-03: nhấn Esc trong lúc khôi phục — hộp không bị hủy giữa chừng, có thông báo \"Đã khôi phục\", không còn hộp mở");
@@ -475,6 +513,183 @@ export async function runPeople({ browser, BASE, ORIGIN, ROOT, SHOTS, check, met
     const raf = await page.evaluate(() => window.__raf);
     check(anim === "smokeRise" && stopped && raf === 0, `R8: khói CSS chạy khi mở (${anim}), "Dừng khói" dừng ngay, 0 lần requestAnimationFrame (${raf})`);
     await page.emulateMedia({ reducedMotion: "reduce" });
+
+    // ---------- TK-35 (phần còn lại) ----------
+    // (a) Tên rất dài trên bia: chữ nhỏ lại (lớp .long), không tràn khung.
+    const idD = await store(`async (s) => (await s.persons()).find((p) => p.ho_ten === "Lê Văn D").id`);
+    await go(`#/nguoi-than/sua/${idD}`, "#pf-ten");
+    await page.fill("#pf-ten", "Nguyễn Thị Hoàng Bích Ngọc Phương Thảo Diễm Kiều");
+    await page.click(".form-acts .primary");
+    await page.waitForSelector("#person-name");
+    await go(`#/nguoi-than/tuong-niem/${idD}`, ".bia-name");
+    const longM = await layout();
+    check(await page.locator(".bia-name.long").count() === 1 && layoutOk(longM) && (await page.locator(".bia-top").count()) === 0,
+      `TK-35: tên dài trên bia → chữ nhỏ lại, không tràn (${layoutTxt(longM)}); quan hệ trống → không có dòng trên tên`);
+    await shot("memorial-longname-360");
+    // (b) Nhắc sao lưu đến hạn: thay đổi chưa sao lưu từ 70 ngày trước → khung "Sao lưu ngay".
+    const pend = await store(`async (s) => s.backupPendingSince()`);
+    const setPend = (v) => store(`async (s) => new Promise((ok) => { const tx = s.db.transaction("meta", "readwrite"); tx.objectStore("meta").put(${JSON.stringify(v)}, "backup_pending_since"); tx.oncomplete = () => ok(true); })`);
+    await setPend("2026-05-16T02:00:00Z");
+    await go("#/nguoi-than", "#upcoming-list");
+    const nag = await page.locator("#nag-backup").count() ? await text("#nag-backup") : "";
+    const nagDays = await store(`async (s) => (await s.settings()).backup_nag_days`);
+    check(nag.includes(`đã thay đổi hơn ${nagDays} ngày mà chưa sao lưu`) && await page.locator('#nag-backup a[href="#/nguoi-than/sao-luu"]').count() === 1, `TK-35: thay đổi chưa sao lưu 70 ngày → nhắc sao lưu có "Sao lưu ngay" (${nag.replace(/\n/g, " ")})`);
+    await shot("backup-nag-360");
+    if (pend) await setPend(pend);
+    // (c) Hơn 3 lời nhắc hôm nay: 3 thẻ + "… và n lời nhắc khác"; trên Tờ lịch: 1 thẻ + "Còn n lời nhắc khác hôm nay — Xem".
+    for (const nm of ["Phạm Văn E", "Phạm Thị G", "Phạm Văn H", "Phạm Thị K"]) {
+      await go("#/nguoi-than/them/dang-song", "#pf-ten");
+      await page.fill("#pf-ten", nm);
+      await page.fill("#pf-birth-d", "25"); await page.fill("#pf-birth-m", "7"); await page.fill("#pf-birth-y", "2000");
+      await page.click(".form-acts .primary");
+      await page.waitForSelector("#person-name");
+    }
+    await go("#/nguoi-than", "#upcoming-list");
+    const nCards = await page.locator(".people-body .remind .rcard").count();
+    const moreUp = await page.locator(".people-body .remind .rc-more").count() ? await text(".people-body .remind .rc-more") : "";
+    const nMore = Number((/và (\d+) lời nhắc khác/.exec(moreUp) ?? [])[1] ?? 0);
+    check(nCards === 3 && nMore >= 1, `TK-35: ${3 + nMore} lời nhắc hôm nay → 3 thẻ + "${moreUp}"`);
+    await shot("reminders-many-360");
+    await page.goto(BASE + "#/ngay");
+    await page.reload(); // thẻ nhắc trên Tờ lịch được dựng một lần khi mở ứng dụng
+    await page.waitForSelector(".remind-host .rcard", { timeout: 15000 });
+    const moreSheet = await text(".remind-host .rc-more");
+    check(await page.locator(".remind-host .rcard").count() === 1 && moreSheet === `Còn ${nMore + 2} lời nhắc khác hôm nay — Xem`, `TK-35: Tờ lịch → 1 thẻ + "${moreSheet}"`);
+    // TK-31 (b): ở 1280 px, thẻ nhắc thẳng cột trái với tờ lịch.
+    await page.setViewportSize({ width: 1280, height: 800 });
+    const al = await page.evaluate(() => { const c = document.querySelector(".remind-host .rcard").getBoundingClientRect(), s = document.querySelector(".daylayout > *").getBoundingClientRect(); return [Math.round(c.left), Math.round(s.left), Math.round(c.width), Math.round(s.width)]; });
+    check(Math.abs(al[0] - al[1]) <= 1 && Math.abs(al[2] - al[3]) <= 1, `TK-31 (b): 1280 px — thẻ nhắc trái ${al[0]} / tờ lịch ${al[1]}, rộng ${al[2]} / ${al[3]}`);
+    await shot("sheet-reminders-many-1280", false);
+    await page.setViewportSize({ width: 360, height: 780 });
+    for (const nm of ["Phạm Văn E", "Phạm Thị G", "Phạm Văn H", "Phạm Thị K"]) await store(`async (s) => { const p = (await s.persons()).find((x) => x.ho_ten === "${nm}"); await s.deletePerson(p.id); }`);
+    // (d) Lỗi kho: kho trên máy có phiên bản mới hơn ứng dụng → câu báo, lịch vẫn dùng được.
+    const ctx3 = await browser.newContext({ viewport: { width: 360, height: 780 }, locale: "vi-VN", timezoneId: "Asia/Ho_Chi_Minh" });
+    const p3 = await ctx3.newPage();
+    await p3.goto(BASE + "#/ngay");
+    await p3.waitForSelector(".tabbar");
+    await p3.evaluate(() => new Promise((ok) => { const r = indexedDB.open("lvhv", 99); r.onupgradeneeded = () => r.result.createObjectStore("x"); r.onsuccess = () => { r.result.close(); ok(); }; }));
+    await p3.goto(BASE + "#/nguoi-than");
+    await p3.reload();
+    await p3.waitForSelector(".people-body .warn", { timeout: 15000 });
+    const se = await p3.locator(".people-body .warn").innerText();
+    check(se.startsWith("Không mở được dữ liệu trên máy") && se.includes("Lịch vẫn dùng được bình thường"), `TK-35: kho phiên bản mới hơn → "${se}"`);
+    await p3.screenshot({ path: join(SHOTS, "v02-store-error-360.png"), fullPage: true }); shots.push("v02-store-error-360.png");
+    await p3.click('.tab[data-r="ngay"]');
+    await p3.waitForSelector(".daylayout");
+    check(await p3.locator(".daylayout").count() === 1, "TK-35: sau lỗi kho, Tờ lịch vẫn mở được");
+    await ctx3.close();
+
+    // ---------- YC-2026-05 / US-M-07: "Cập nhật: đã mất" + thông tin báo tử (01 §3.2a, R-PRIV-2) ----------
+    await page.emulateMedia({ colorScheme: "light", reducedMotion: "reduce" });
+    await go("#/nguoi-than/them/dang-song", "#pf-ten");
+    await page.fill("#pf-ten", "Đỗ Văn M"); await page.fill("#pf-qh", "Bác");
+    await page.fill("#pf-birth-d", "1"); await page.fill("#pf-birth-m", "8"); await page.fill("#pf-birth-y", "1950");
+    await page.click(".form-acts .primary");
+    await page.waitForSelector("#person-name");
+    const idM = /nguoi\/([0-9a-f-]+)/.exec(page.url())[1];
+    await page.click("#add-event");
+    await page.waitForSelector("#ef-type");
+    await page.selectOption("#ef-type", "6f1c2a1e-0b6e-4c55-9a51-0d1f2b7c0002");
+    await page.fill("#ef-date-d", "30"); await page.fill("#ef-date-m", "7"); await page.fill("#ef-date-y", "1975");
+    await page.click(".form-acts .primary");
+    await page.waitForSelector("#event-box .evrow");
+    const mItems = async (sel) => page.$$eval(`${sel} .pitem`, (els) => els.filter((e) => e.querySelector(".pi-l1")?.textContent.includes("Đỗ Văn M")).map((e) => e.dataset.class));
+    await go("#/nguoi-than", "#upcoming-list");
+    const beforeUp = await mItems("#upcoming-list");
+    check(beforeUp.includes("sinh_nhat") && beforeUp.some((c) => c.startsWith("su_kien")), `US-M-07: trước khi cập nhật, "Sắp tới" có sinh nhật và sự kiện của Đỗ Văn M (${beforeUp.join(", ")})`);
+    const createdM = await store(`async (s) => (await s.person("${idM}")).created_at`);
+    await go(`#/nguoi-than/nguoi/${idM}`, "#convert-person");
+    check((await text("#convert-person")) === "Cập nhật: đã mất", "US-M-07: hồ sơ người đang sống có nút \"Cập nhật: đã mất\"");
+    await page.click("#convert-person");
+    await page.waitForSelector("#cf-death");
+    check(await page.locator("#nf[open]").count() === 1, "US-M-07: khối \"Thông tin báo tử (không bắt buộc)\" mở sẵn trong biểu mẫu cập nhật");
+    await page.click('#cf-death-cal button[data-v="lunar"]');
+    await page.fill("#cf-death-d", "12"); await page.fill("#cf-death-m", "6"); await page.fill("#cf-death-y", "2024");
+    const cvRes = await text("#cf-death-res");
+    check(cvRes.startsWith("Dương lịch:"), `US-M-07: ngày mất âm 12/6/2024 → kết quả đổi lịch (${cvRes})`);
+    const SEN = { by: "SENTINEL-BAOTIN-7731", place: "SENTINEL-NOIMAT-7731", reason: "SENTINEL-LYDO-7731", note: "SENTINEL-GHICHU-7731" };
+    await page.fill("#nf-by", SEN.by); await page.fill("#nf-place", SEN.place); await page.fill("#nf-reason", SEN.reason); await page.fill("#nf-note", SEN.note);
+    await page.fill("#nf-date-d", "18"); await page.fill("#nf-date-m", "7"); await page.fill("#nf-date-y", "2024");
+    await page.setInputFiles("#nf-file", { name: "giay-bao-tu.jpg", mimeType: "image/jpeg", buffer: withExif });
+    await page.waitForSelector(".cert-item canvas[data-drawn]");
+    const cvLay = await layout();
+    check(layoutOk(cvLay), `US-M-07: biểu mẫu cập nhật không tràn ở 360 px (${layoutTxt(cvLay)})`);
+    await shot("convert-form-360");
+    await page.click(".form-acts .primary");
+    await page.waitForSelector(".cv-dialog[open]");
+    const cvTxt = (await text(".cv-dialog")).replace(/\s+/g, " ");
+    check(cvTxt.includes("Sẽ không còn nhắc sinh nhật và sự kiện của Đỗ Văn M.") && cvTxt.includes("Bắt đầu nhắc ngày giỗ hằng năm vào 12/6 âm lịch") && cvTxt.includes("Họ tên, ảnh, ngày sinh và sự kiện vẫn được giữ"),
+      `US-M-07: hộp xác nhận liệt kê thay đổi (${cvTxt.slice(0, 220)})`);
+    await shot("convert-confirm-360", false);
+    await page.click(".cv-dialog .dbtn.main");
+    await page.waitForSelector("#person-name");
+    const recM = await store(`async (s) => { const p = await s.person("${idM}"); const n = p.death.notice; const ph = new Uint8Array(await s.photoBytes(n.certificate_photo_ids[0])); let i = 2, app1 = false; while (i + 4 < ph.length && ph[i] === 0xff && ph[i+1] !== 0xda) { if (ph[i+1] === 0xe1 || ph[i+1] === 0xed) app1 = true; i += 2 + ((ph[i+2] << 8) | ph[i+3]); } return { id: p.id, kind: p.kind, created: p.created_at, rev: p.rev, birth: p.birth && p.birth.input.year, sn: p.reminders.sinh_nhat, gio: !!p.reminders.gio, n, app1, evs: (await s.events()).filter((e) => e.person_ids.includes(p.id)).length }; }`);
+    check(recM.id === idM && page.url().endsWith(`/nguoi/${idM}`) && recM.kind === "deceased" && recM.created === createdM && recM.rev === 2 && recM.birth === 1950 && recM.sn === null && recM.gio && recM.evs === 1,
+      `US-M-07: CÙNG hồ sơ (id giữ nguyên, rev 2) chuyển sang đã mất; giữ ngày sinh và sự kiện; nhắc giỗ bật, không còn nhắc sinh nhật (${JSON.stringify({ kind: recM.kind, rev: recM.rev, evs: recM.evs })})`);
+    check(recM.n.reported_by === SEN.by && recM.n.place === SEN.place && recM.n.reason === SEN.reason && recM.n.note === SEN.note && recM.n.notice_date.day === 18 && recM.n.certificate_photo_ids.length === 1,
+      "01 §3.2a: lưu death.notice đủ trường, đúng tên trường");
+    check(recM.app1 === false, "S9: ảnh giấy báo tử đã mã hóa lại, không còn EXIF/GPS (APP1/APP13)");
+    // Tài liệu sao lưu có notice qua được kiểm tra; trỏ tới ảnh không có → V3; notice có chuỗi rỗng → V1.
+    const vdoc = await page.evaluate(`(async () => { const S = await window.__lvhv.storage.loadStore(); const s = await S.openStore(); try {
+      const doc = await s.snapshot({ version: "0.1.4", platform: "pwa" }, "2026-07-25T02:00:00Z");
+      const r = []; const tryV = (d) => { try { S.validate.document(JSON.parse(JSON.stringify(d))); return "OK"; } catch (e) { return (e.code || "?") + " " + (e.path || ""); } };
+      r.push(tryV(doc));
+      const m = doc.persons.find((p) => p.id === "${idM}");
+      const bad1 = JSON.parse(JSON.stringify(doc)); bad1.persons.find((p) => p.id === "${idM}").death.notice.certificate_photo_ids = ["0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e6f"]; r.push(tryV(bad1));
+      const bad2 = JSON.parse(JSON.stringify(doc)); bad2.persons.find((p) => p.id === "${idM}").death.notice.place = ""; r.push(tryV(bad2));
+      r.push(String(doc.photos.some((ph) => ph.id === m.death.notice.certificate_photo_ids[0])));
+      return r; } finally { s.close(); } })()`);
+    check(vdoc[0] === "OK" && vdoc[1].startsWith("V3") && vdoc[2].startsWith("V1") && vdoc[3] === "true", `01 §3.2a: tài liệu sao lưu có notice hợp lệ, ảnh giấy báo tử có trong photos; ảnh không tồn tại → V3; chuỗi rỗng → V1 (${vdoc.join(" | ")})`);
+    const nb = page.locator("#notice-box");
+    check(await nb.count() === 1 && await page.locator("#notice-box[open]").count() === 0, "Trang hồ sơ: khối \"Thông tin báo tử\" thu gọn");
+    await page.click("#notice-box > summary");
+    await page.waitForSelector("#notice-box .cert-thumb[data-drawn]");
+    const nbTxt = await text("#notice-box");
+    check(nbTxt.includes(SEN.reason) && nbTxt.includes("18/07/2024"), "Trang hồ sơ: mở khối thì thấy lý do, ngày nhận tin, ảnh giấy báo tử");
+    await shot("person-notice-360");
+    // B4 sau khi chuyển: sinh nhật và sự kiện của M không còn trong Sắp tới / Theo kỳ; giỗ hôm nay có thẻ nhắc.
+    await page.goto(BASE + "#/nguoi-than"); await page.reload();
+    await page.waitForSelector("#upcoming-list");
+    const afterUp = await mItems("#upcoming-list");
+    check(!afterUp.includes("sinh_nhat") && !afterUp.some((c) => c.startsWith("su_kien")) && afterUp.includes("gio"), `US-M-07 + B4: sau khi cập nhật, "Sắp tới" chỉ còn giỗ của Đỗ Văn M (${afterUp.join(", ")})`);
+    const cards = await page.locator(".people-body .remind").innerText();
+    check(cards.includes("Đỗ Văn M") && !cards.includes("SENTINEL"), "R-PRIV-2: thẻ nhắc giỗ hôm nay của Đỗ Văn M không có chữ nào của thông tin báo tử");
+    await go("#/nguoi-than/theo-ky", "#period-title");
+    await page.click('.pseg.four button[data-v="nam"]');
+    const yearM = await mItems("#period-list");
+    check(!yearM.includes("sinh_nhat") && !yearM.some((c) => c.startsWith("su_kien")) && yearM.includes("gio"), `US-M-07 + B4: Theo kỳ năm 2026 chỉ có giỗ của Đỗ Văn M (${yearM.join(", ")})`);
+    await page.click('.pseg.four button[data-v="thang"]');
+    await go(`#/nguoi-than/tuong-niem/${idM}`, ".bia-name");
+    const memHtml = await page.evaluate(() => document.documentElement.outerHTML + document.title + location.href);
+    check(!memHtml.includes("SENTINEL") && (await text(".bia-top")) === "Bác", "R-PRIV-2: màn hình tưởng niệm (DOM, tiêu đề, URL) không có thông tin báo tử");
+    await go("#/nguoi-than/sao-luu", "#ics-open");
+    await page.click("#ics-open");
+    await page.waitForSelector(".ics-dialog[open]");
+    const icsDlg = await text(".ics-dialog");
+    const [dl2] = await Promise.all([page.waitForEvent("download"), page.click('.ics-dialog .dbtn.main')]);
+    const ics2 = readFileSync(await dl2.path(), "utf8");
+    check(ics2.includes("Đỗ Văn M") && !ics2.includes("SENTINEL") && !icsDlg.includes("SENTINEL") && !dl2.suggestedFilename().includes("SENTINEL"), "R-PRIV-2: tệp .ics (nội dung, xem trước, tên tệp) không có thông tin báo tử");
+    await page.click("#bk-export");
+    await page.waitForSelector(".bk-dialog[open]");
+    check((await text("#bk-notice")).startsWith("Tệp gồm cả thông tin báo tử"), "R-PRIV-2: hộp tạo tệp sao lưu nói rõ tệp gồm cả thông tin báo tử");
+    await shot("backup-notice-dialog-360", false);
+    await page.click(".bk-dialog .dbtn:not(.main)");
+    // Người đã mất thêm mới: khối báo tử thu gọn.
+    await go("#/nguoi-than/them/da-mat", "#pf-ten");
+    check(await page.locator("#nf").count() === 1 && await page.locator("#nf[open]").count() === 0, "YC-2026-05: biểu mẫu người đã mất mới có khối \"Thông tin báo tử\", thu gọn");
+    // Ảnh chụp màn hình mới ở 1280 px và giao diện tối.
+    for (const [w, hgt, theme] of [[1280, 800, "light"], [360, 780, "dark"], [1280, 800, "dark"]]) {
+      await page.setViewportSize({ width: w, height: hgt });
+      await page.emulateMedia({ colorScheme: theme });
+      await go(`#/nguoi-than/bao-tu/${idC}`, "#cf-death");
+      await page.click("#nf > summary").catch(() => {});
+      await shot(`convert-form-${w}-${theme}`);
+      await go(`#/nguoi-than/nguoi/${idM}`, "#notice-box");
+      await page.click("#notice-box > summary");
+      await shot(`person-notice-${w}-${theme}`);
+    }
+    await page.setViewportSize({ width: 360, height: 780 });
+    await page.emulateMedia({ colorScheme: "light" });
 
     const realErrors = errors.filter((e) => !/Failed to load resource/.test(e));
     check(realErrors.length === 0, `Người thân: không có lỗi console (${realErrors.join(" | ") || "0"})`);

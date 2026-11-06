@@ -141,22 +141,24 @@ export class Store {
    * Ghi một Person (đã đủ trường dẫn xuất — derive.buildPerson) và, nếu có, ảnh mới của người đó, trong
    * **một** giao dịch (01 §4.1). Lần lưu hồ sơ đầu tiên gọi requestPersistentStorage().
    */
-  async putPerson(p: JsonObj, newPhoto?: NewPhoto): Promise<void> {
+  async putPerson(p: JsonObj, newPhoto?: NewPhoto, extraPhotos: NewPhoto[] = []): Promise<void> {
     try { V.person(p, "/person"); } catch (e) { throw vErr(e); }
-    let photoRec: { id: string; meta: JsonObj; blob: Blob } | null = null;
-    if (newPhoto) {
-      const meta: JsonObj = { bytes: newPhoto.bytes.length, created_at: nowRfc3339(), height: newPhoto.height, id: newPhoto.id, mime: newPhoto.mime, sha256: await sha256Hex(newPhoto.bytes), stripped: true, width: newPhoto.width };
+    // `extraPhotos`: ảnh giấy báo tử mới (01 §3.2a), ghi cùng giao dịch với hồ sơ.
+    const recs: { id: string; meta: JsonObj; blob: Blob }[] = [];
+    for (const np of newPhoto ? [newPhoto, ...extraPhotos] : extraPhotos) {
+      const meta: JsonObj = { bytes: np.bytes.length, created_at: nowRfc3339(), height: np.height, id: np.id, mime: np.mime, sha256: await sha256Hex(np.bytes), stripped: true, width: np.width };
       try { V.photo(meta, "/photo"); } catch (e) { throw vErr(e); }
-      photoRec = { id: newPhoto.id, meta, blob: new Blob([newPhoto.bytes as Uint8Array<ArrayBuffer>], { type: newPhoto.mime }) };
+      recs.push({ id: np.id, meta, blob: new Blob([np.bytes as Uint8Array<ArrayBuffer>], { type: np.mime }) });
     }
     const first = (await this.persons()).length === 0;
     const tx = this.tx(["persons", "photos", "meta"], "readwrite");
     const fin = done(tx);
-    if (photoRec) tx.objectStore("photos").put(photoRec);
-    const pid = p.photo_id;
-    if (typeof pid === "string" && pid !== photoRec?.id) {
+    for (const r of recs) tx.objectStore("photos").put(r);
+    const fresh = new Set(recs.map((r) => r.id));
+    for (const pid of [p.photo_id, ...V.certificateIds(p)]) {
+      if (typeof pid !== "string" || fresh.has(pid)) continue;
       const r = tx.objectStore("photos").getKey(pid);
-      r.onsuccess = () => { if (r.result === undefined) { tx.abort(); } };
+      r.onsuccess = () => { if (r.result === undefined) { try { tx.abort(); } catch { /* đã hủy */ } } };
     }
     tx.objectStore("persons").put(p);
     Store.markChanged(tx, nowRfc3339());
@@ -203,6 +205,7 @@ export class Store {
     const now = nowRfc3339();
     const p = await this.person(id);
     const others = (await this.persons()).filter((x) => x.id !== id && x.photo_id === p.photo_id && p.photo_id !== null);
+    const certs = V.certificateIds(p); // ảnh giấy báo tử thuộc riêng hồ sơ này (01 §3.2a) — xóa cùng hồ sơ
     const evs = await this.eventsOf(id);
     const tx = this.tx(["persons", "events", "photos", "meta"], "readwrite");
     const fin = done(tx);
@@ -211,6 +214,7 @@ export class Store {
     }
     tx.objectStore("persons").delete(id);
     if (typeof p.photo_id === "string" && others.length === 0) tx.objectStore("photos").delete(p.photo_id);
+    for (const c of certs) tx.objectStore("photos").delete(c);
     Store.markChanged(tx, now);
     await fin;
   }

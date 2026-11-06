@@ -80,16 +80,18 @@ export async function processPhoto(file: Blob): Promise<Processed> {
 }
 
 /** Vẽ ảnh (cắt vừa khung, giữ tỷ lệ) lên canvas. */
-export async function drawPhoto(canvas: HTMLCanvasElement, bytes: Uint8Array, mime = "image/jpeg"): Promise<void> {
+export async function drawPhoto(canvas: HTMLCanvasElement, bytes: Uint8Array, mime = "image/jpeg", contain = false): Promise<void> {
   const bmp = await createImageBitmap(new Blob([bytes as Uint8Array<ArrayBuffer>], { type: mime }));
   const dpr = Math.min(2, window.devicePixelRatio || 1);
   const cw = canvas.clientWidth || Number(canvas.getAttribute("width")) || 160;
   const ch = canvas.clientHeight || Number(canvas.getAttribute("height")) || 200;
   canvas.width = Math.round(cw * dpr); canvas.height = Math.round(ch * dpr);
   const ctx = canvas.getContext("2d")!;
-  const s = Math.max(canvas.width / bmp.width, canvas.height / bmp.height);
+  // `contain`: giấy tờ (giấy báo tử) — thấy cả tờ, không cắt.
+  const s = (contain ? Math.min : Math.max)(canvas.width / bmp.width, canvas.height / bmp.height);
   const dw = bmp.width * s, dh = bmp.height * s;
-  ctx.drawImage(bmp, (canvas.width - dw) / 2, (canvas.height - dh) / 3, dw, dh);
+  if (contain) ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(bmp, (canvas.width - dw) / 2, contain ? (canvas.height - dh) / 2 : (canvas.height - dh) / 3, dw, dh);
   bmp.close();
   canvas.dataset.drawn = "1";
 }

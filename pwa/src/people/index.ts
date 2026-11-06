@@ -3,6 +3,7 @@ import { clear, h } from "../dom";
 import { renderBackup, openIcsDialog } from "./backup";
 import { snap } from "./core";
 import { renderEventForm, renderPersonForm, type Nav } from "./forms";
+import { renderConvertForm } from "./notice";
 import { disposeMemorial, renderMemorial } from "./memorial";
 import { setToastHost } from "./ui";
 import { reminderCards, renderList, renderPeriod, renderPerson, renderUpcoming } from "./views";
@@ -42,6 +43,7 @@ export async function renderPeople(root: HTMLElement, sub: string, nav: Nav): Pr
     root.append(toastHost, body);
     if (top === "them") await renderPersonForm(body, parts[1] === "dang-song" ? "living" : "deceased", null, nav);
     else if (top === "sua" && parts[1]) await renderPersonForm(body, null, parts[1], nav);
+    else if (top === "bao-tu" && parts[1]) await renderConvertForm(body, parts[1], nav);
     else if (top === "nguoi" && parts[1]) { await renderPerson(body, parts[1], nav); markUsed(body.querySelector("#person-name") ? 1 : 0); }
     else if (top === "su-kien" && parts[1]) await renderEventForm(body, parts[1], parts[2] && parts[2] !== "moi" ? parts[2] : null, nav);
     else if (top === "tuong-niem" && parts[1]) { root.classList.add("is-memorial"); await renderMemorial(body, parts[1]); }

@@ -653,7 +653,9 @@ input.num { font-size: 1.35rem; font-weight: 700; text-align: center; font-varia
 .tin { min-height: 48px; border: 1px solid var(--rule); border-radius: 10px; background: var(--paper); padding: .5rem .7rem; font: inherit; font-size: 1rem; color: var(--ink); width: 100%; font-weight: 400; }
 textarea.tin { min-height: 5.5rem; resize: vertical; line-height: 1.45; }
 input.num.sm { width: 4.6rem; min-height: 46px; font-size: 1.1rem; }
-input.time { width: auto; min-width: 8rem; min-height: 46px; border: 1px solid var(--rule); border-radius: 10px; background: var(--paper); padding: 0 .6rem; font-size: 1rem; color: var(--ink); }
+.qh-note { margin: -.4rem 0 .6rem; }
+.check.sub { margin-left: 2.1rem; }
+.hm { display: inline-flex; align-items: center; gap: .3rem; font-size: 1.1rem; }
 .ferr { color: var(--red-ink); font-weight: 600; font-size: .9rem; }
 .dres { color: var(--gold); font-family: var(--serif); font-weight: 600; font-size: 1.05rem; }
 .dres:empty { display: none; }
@@ -699,6 +701,10 @@ input.time { width: auto; min-width: 8rem; min-height: 46px; border: 1px solid v
 .rc-acts { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .55rem; }
 .rc-acts .btnlink, .rc-acts .btn2 { min-height: 42px; font-size: .9rem; }
 body[data-route="ngay"] .remind-host .remind { max-width: 520px; margin: 0 auto 1rem; }
+/* TK-31 (b): ở màn rộng, thẻ nhắc thẳng cột với tờ lịch (cột 520 px bên trái của khung 520 + 36 + 380 px). */
+@media (min-width: 960px) {
+  body[data-route="ngay"] .remind-host .remind { max-width: 936px; grid-template-columns: minmax(0, 520px); }
+}
 
 /* Hộp thoại */
 .pdialog { width: min(480px, calc(100vw - 24px)); padding: 1.1rem 1.1rem 1rem; }
@@ -750,7 +756,7 @@ body[data-route="ngay"] .remind-host .remind { max-width: 520px; margin: 0 auto 
   background: linear-gradient(180deg, #3a312e, var(--stone) 40%, #1f1a18); border-radius: 48% 48% 10px 10px / 28% 28% 10px 10px;
   border: 2px solid #8a6a32; box-shadow: inset 0 0 0 6px #241e1c, inset 0 0 0 7px #6e5226, 0 14px 30px rgba(0,0,0,.5);
 }
-.bia-top { font-family: var(--serif); text-transform: uppercase; letter-spacing: .18em; font-size: .85rem; color: var(--brass); margin-bottom: .4rem; }
+.bia-top { font-family: var(--serif); letter-spacing: .06em; font-size: 1rem; color: var(--brass); margin-bottom: .4rem; }
 .bia-name { font-family: var(--serif); font-size: 1.55rem; font-weight: 700; color: #f6dfa6; line-height: 1.25; overflow-wrap: break-word; outline: none; }
 .bia-hieu { font-family: var(--serif); font-style: italic; color: #d9c49a; margin-top: .25rem; }
 .bia-years { font-family: var(--serif); color: var(--brass); margin-top: .7rem; font-size: 1rem; }
@@ -807,6 +813,8 @@ h1[tabindex="-1"]:focus { outline: none; }
 }
 :root[data-size="3"] .pi-side { grid-column: 2; }
 .bia-name { font-size: 1.4rem; }
+/* TK-35: tên rất dài (> 28 ký tự) — chữ nhỏ lại, xuống dòng giữa từ, không tràn bia. */
+.bia-name.long { font-size: 1.15rem; line-height: 1.3; }
 .altar { margin-top: 6.2rem; }
 .incense { height: 104px; }
 /* Ô chọn tệp và mọi ô nhập trong mô-đun không được rộng hơn khung (phông dự phòng của máy khác có thể rộng hơn). */
@@ -868,12 +876,10 @@ details[open] .sum-hint { display: none; }
 .page.wide .pform { margin-left: auto; margin-right: auto; }
 .period { max-width: 760px; margin-left: auto; margin-right: auto; }
 /* Gợi ý dòng đầu bia (TK-24) */
-.bia-sugg { display: grid; gap: .4rem; }
-.bia-sugg .fine { margin: 0; }
 .chip.sugg { font-weight: 600; padding: 0 .75rem; }
 .chip.sugg small { font-weight: 400; color: inherit; opacity: .85; }
 .chip.sugg.best { border-color: var(--gold); box-shadow: 0 0 0 2px var(--gold-tint); }
-.more .field + .field, .more .bia-sugg { margin-top: .2rem; }
+.more .field + .field { margin-top: .2rem; }
 /* TK-25 */
 .mem-tools { display: flex; justify-content: center; margin-top: -.3rem; }
 .mem-tools .btn2 { background: rgba(0,0,0,.25); color: #f3e6d0; border-color: rgba(232, 198, 122, .5); }
@@ -889,3 +895,15 @@ details[open] .sum-hint { display: none; }
 .more > *:not(summary) { margin-top: .9rem; }
 .more > summary + * { margin-top: .4rem; }
 .people-body:has(> .pform) { max-width: 680px; margin-left: auto; margin-right: auto; }
+
+/* Thông tin báo tử (01 §3.2a, 08 §3.11) */
+.cert-list { display: flex; flex-wrap: wrap; gap: .75rem; margin: .4rem 0 .6rem; }
+.cert-item { display: grid; gap: .4rem; justify-items: start; }
+.cert-thumb { width: 120px; height: 160px; border: 1px solid var(--rule); border-radius: 8px; background: var(--paper); }
+.notice-box > summary { cursor: pointer; list-style: none; display: flex; align-items: center; min-height: 44px; }
+.notice-box > summary::-webkit-details-marker { display: none; }
+.notice-box > summary h2 { margin: 0; }
+.notice-box > summary::after { content: "▾"; margin-left: auto; color: var(--ink-2); }
+.notice-box[open] > summary::after { content: "▴"; }
+.cv-intro { margin: 0 0 1rem; }
+.cv-list { margin: 0; padding-left: 1.2rem; display: grid; gap: .4rem; }

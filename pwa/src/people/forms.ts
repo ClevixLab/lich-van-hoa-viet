@@ -1,17 +1,17 @@
 // Biểu mẫu: thêm/sửa người đã mất (08 §3.4), người đang sống (08 §3.5), sự kiện (08 §3.7).
 import { append, clear, h } from "../dom";
 import { buildPerson, validate } from "../store/index";
-import { M, cal, clean, cpLen, displayName, lunarText, nowTs, snap, store, today, tuoiText, uuid, type JsonObj, type Ymd } from "./core";
+import { DANH_XUNG, M, RELATIONS_DECEASED, RELATIONS_LIVING, cal, clean, cpLen, displayName, lunarText, nowTs, snap, store, today, tuoiText, uuid, type JsonObj, type Ymd } from "./core";
 import { drawPhoto, processPhoto, type Processed } from "./photo";
+import { deleteCertPhotos, noticeSection } from "./notice";
 import { backLink, confirmDialog, dateInput, pressGroup, ruleInput, solarLong, toast, type DateInput, type DateValueJ } from "./ui";
 
 export interface Nav { go(hash: string, replace?: boolean): void }
 
-const DANH_XUNG = ["cụ", "kị", "ông", "bà", "bác", "chú", "thím", "cô", "dì", "cậu", "mợ", "anh", "chị", "em", "bố", "mẹ", "cha", "má", "ba"];
 
-interface TextF { el: HTMLElement; input: HTMLInputElement | HTMLTextAreaElement; read(): { v: string; err: string | null }; showErr(m: string | null): void }
+export interface TextF { el: HTMLElement; input: HTMLInputElement | HTMLTextAreaElement; read(): { v: string; err: string | null }; showErr(m: string | null): void }
 
-function textField(id: string, label: string, value: string, max: number, o: { required?: boolean; multiline?: boolean; list?: string; hint?: string; what?: string } = {}): TextF {
+export function textField(id: string, label: string, value: string, max: number, o: { required?: boolean; multiline?: boolean; list?: string; hint?: string; what?: string } = {}): TextF {
   const input = o.multiline
     ? h("textarea", { id, rows: "3", class: "tin" })
     : h("input", { type: "text", id, class: "tin", autocomplete: "off", list: o.list ?? null, placeholder: o.hint ?? null });
@@ -35,9 +35,9 @@ function textField(id: string, label: string, value: string, max: number, o: { r
   return { el, input, showErr, read };
 }
 
-interface Issue { msg: string; focus: () => void }
+export interface Issue { msg: string; focus: () => void }
 /** Khung tóm tắt lỗi. `show(list, false)`: cập nhật khi người dùng sửa (không chuyển tiêu điểm); rỗng thì ẩn. */
-function errSummary(): { el: HTMLElement; show(list: Issue[], focus?: boolean): void; visible(): boolean } {
+export function errSummary(): { el: HTMLElement; show(list: Issue[], focus?: boolean): void; visible(): boolean } {
   const el = h("div", { class: "errsum", role: "alert", tabindex: "-1", hidden: true });
   return {
     el,
@@ -55,7 +55,7 @@ function errSummary(): { el: HTMLElement; show(list: Issue[], focus?: boolean): 
 const after = (a: Ymd, b: Ymd) => M.cmpYmd(a, b) > 0;
 
 /** Kết quả trực tiếp của ngày mất (02 §1): giá trị sẽ lưu. Trả [chữ, lỗi]. */
-function deathPreview(v: DateValueJ): { text: string | null; err: string | null; lunarYear: number | null } {
+export function deathPreview(v: DateValueJ): { text: string | null; err: string | null; lunarYear: number | null } {
   let r;
   try { r = M.convertDeath(cal(), v as M.DateValue); } catch (e) { return { text: null, err: (e as Error).message, lunarYear: null }; }
   const [lunar, solar] = r;
@@ -87,43 +87,6 @@ function birthPreview(v: DateValueJ, living: boolean): { text: string | null; er
   return { text: s, err: null, b };
 }
 
-// ---------------- dòng đầu bia (TK-24; nguồn: content/memorial/PHONG-TUC.md) ----------------
-/** Cách gọi trên bia/văn khấn theo quan hệ — chỉ những cách gọi đã kiểm được nguồn (PHONG-TUC.md §1). */
-export const BIA_TERMS: [string, string, RegExp][] = [
-  ["Hiển khảo", "cha đã khuất", /(^|\s)(bố|cha|ba|thầy|tía)(\s|$)/i],
-  ["Hiển tỷ", "mẹ đã khuất", /(^|\s)(mẹ|má|u|bầm|mạ)(\s|$)/i],
-  ["Tổ khảo", "ông", /(^|\s)ông(\s|$)/i],
-  ["Tổ tỷ", "bà", /(^|\s)bà(\s|$)/i],
-  ["Tằng tổ khảo", "cụ ông", /(^|\s)(cụ ông|cố ông)(\s|$)/i],
-  ["Tằng tổ tỷ", "cụ bà", /(^|\s)(cụ bà|cố bà)(\s|$)/i],
-];
-
-function biaSuggestions(f: TextF, sources: (HTMLInputElement | HTMLTextAreaElement)[], onPick: () => void): HTMLElement {
-  const relation = () => sources.map((x) => x.value).join(" ");
-  const hint = h("p", { class: "fine", id: "pf-bia-hint", "aria-live": "polite" });
-  const chips = h("div", { class: "chips", role: "group", "aria-label": "Gợi ý dòng đầu bia" },
-    ...BIA_TERMS.map(([t, mean]) => h("button", { type: "button", class: "chip sugg", "data-term": t, onclick: () => {
-      f.input.value = t; f.showErr(null); onPick(); sync();
-    } }, h("b", null, t), h("small", null, ` · ${mean}`))));
-  const sync = () => {
-    const rel = relation().normalize("NFC").toLowerCase().trim();
-    // Lấy từ chỉ quan hệ xuất hiện SỚM NHẤT ("bà ngoại bên mẹ" → bà, không phải mẹ); cùng vị trí thì cụm dài hơn
-    // ("cụ ông" trước "ông").
-    let hit: (typeof BIA_TERMS)[number] | undefined, at = Infinity;
-    for (const t of BIA_TERMS) {
-      const m = t[2].exec(rel);
-      if (!m) continue;
-      const i = m.index + m[1].length;
-      if (i < at || (i === at && hit && t[0].length > hit[0].length)) { hit = t; at = i; }
-    }
-    chips.querySelectorAll<HTMLElement>(".sugg").forEach((b) => b.classList.toggle("best", !!hit && b.dataset.term === hit[0]));
-    hint.textContent = hit ? `Gợi ý theo quan hệ: “${hit[0]}” (${hit[1]}). Bạn có thể sửa tùy theo cách gọi của gia đình.` : "Chọn một gợi ý hoặc tự ghi theo cách gọi của gia đình.";
-  };
-  sources.forEach((x) => x.addEventListener("input", sync));
-  sync();
-  return h("div", { class: "bia-sugg" }, hint, chips);
-}
-
 // ======================================================================================================
 export async function renderPersonForm(root: HTMLElement, kindIn: "deceased" | "living" | null, id: string | null, nav: Nav): Promise<void> {
   const sn = await snap();
@@ -140,10 +103,11 @@ export async function renderPersonForm(root: HTMLElement, kindIn: "deceased" | "
   let dirty = false;
 
   const dl = h("datalist", { id: "pf-dx-list" }, ...DANH_XUNG.map((x) => h("option", { value: x })));
-  const fDx = textField("pf-dx", "Danh xưng", (old?.danh_xung as string) ?? "", 40, { list: "pf-dx-list", hint: "ví dụ: ông, bà, bác, cô" });
+  const fDx = textField("pf-dx", "Cách gọi (đứng trước tên)", (old?.danh_xung as string) ?? "", 40, { list: "pf-dx-list", hint: "ví dụ: ông, bà, bác, cô", what: "Cách gọi" });
   const fTen = textField("pf-ten", "Họ và tên", (old?.ho_ten as string) ?? "", 120, { required: true, what: "Họ tên" });
   const fHieu = textField("pf-hieu", "Tên hiệu / pháp danh", (old?.ten_hieu as string) ?? "", 120, { what: "Tên hiệu" });
-  const fQh = textField("pf-qh", "Quan hệ", (old?.quan_he as string) ?? "", 120, { hint: dead ? "ví dụ: ông nội, bà ngoại bên mẹ" : "ví dụ: con trai, em gái" });
+  const fQh = textField("pf-qh", "Quan hệ với bạn", (old?.quan_he as string) ?? "", 120, { list: "pf-qh-list", hint: dead ? "ví dụ: Ông nội, Bà ngoại, Bố" : "ví dụ: Con trai, Em gái", what: "Quan hệ" });
+  const qhList = h("datalist", { id: "pf-qh-list" }, ...(dead ? RELATIONS_DECEASED : RELATIONS_LIVING).map((x) => h("option", { value: x })));
   const fNote = textField("pf-note", "Ghi chú", (old?.ghi_chu as string) ?? "", 2000, { multiline: true });
 
   // ---- ngày mất ----
@@ -203,11 +167,20 @@ export async function renderPersonForm(root: HTMLElement, kindIn: "deceased" | "
   const rGio = dead ? ruleInput("pf-rgio", "Nhắc ngày giỗ", (reminders.gio as JsonObj | null) ?? null, true, sn.settings) : null;
   const rSn = !dead ? ruleInput("pf-rsn", "Nhắc sinh nhật", (reminders.sinh_nhat as JsonObj | null) ?? null, false, sn.settings) : null;
   const rSnAm = !dead ? ruleInput("pf-rsna", "Nhắc sinh nhật âm lịch", (reminders.sinh_nhat_am as JsonObj | null) ?? null, false, sn.settings) : null;
+  // TK-29 (08 §12e, chờ chủ dự án xác nhận): mặc định nhắc sinh nhật âm lịch GIỐNG sinh nhật dương lịch — khi lưu,
+  // chép cài đặt của quy tắc `sinh_nhat` sang `sinh_nhat_am` (giữ `id` riêng của nó). Không đổi mô hình dữ liệu 01.
+  const sameRule = (a: JsonObj | null | undefined, b: JsonObj | null | undefined) => !a || !b
+    || (a.enabled === b.enabled && a.time_local === b.time_local && JSON.stringify(a.offsets_days) === JSON.stringify(b.offsets_days));
+  const snAmSame = h("input", { type: "checkbox", id: "pf-snam-same", checked: sameRule(reminders.sinh_nhat_am as JsonObj | null, reminders.sinh_nhat as JsonObj | null) }) as HTMLInputElement;
+  const snAmSameWrap = h("label", { class: "check sub", for: "pf-snam-same" }, snAmSame, h("span", null, "Nhắc sinh nhật âm lịch giống nhắc sinh nhật dương lịch"));
+  const snAmId = ((reminders.sinh_nhat_am as JsonObj | null)?.id as string) ?? crypto.randomUUID();
+
+  // ---- thông tin báo tử (01 §3.2a) — chỉ người đã mất; thu gọn khi thêm mới ----
+  const oldNotice = ((old?.death as JsonObj | null)?.notice as JsonObj | null | undefined) ?? null;
+  const notice = dead ? noticeSection(oldNotice, false, () => { dirty = true; }) : null;
 
   // ---- tưởng niệm ----
   let gioHet = String(mem.gio_het_nam ?? 2);
-  const fBia = textField("pf-bia", "Dòng đầu bia", (mem.bia_tieu_de as string) ?? "", 60, { hint: "để trống nếu không cần" });
-  const biaSuggest = biaSuggestions(fBia, [fDx.input, fQh.input], () => { dirty = true; });
   const fLoi = textField("pf-loi", "Lời tưởng niệm", (mem.loi_tuong_niem as string) ?? "", 2000, { multiline: true });
   const nguongIn = h("input", { type: "text", inputmode: "numeric", id: "pf-nguong", class: "num sm", maxlength: "3", value: String(mem.huong_duong_duoi ?? 60) }) as HTMLInputElement;
   const nguongErr = h("p", { class: "ferr", role: "alert", hidden: true });
@@ -229,7 +202,8 @@ export async function renderPersonForm(root: HTMLElement, kindIn: "deceased" | "
       snAm.disabled = !full;
       snAmNote.textContent = full ? "" : " (cần biết đủ ngày sinh)";
       if (!full) snAm.checked = false;
-      rSnAm!.el.hidden = !snAm.checked;
+      snAmSameWrap.hidden = !snAm.checked;
+      rSnAm!.el.hidden = !snAm.checked || snAmSame.checked;
       febWrap.hidden = !(br.value && br.value.calendar === "solar" && br.value.month === 2 && br.value.day === 29);
     }
     if (death) {
@@ -274,6 +248,7 @@ export async function renderPersonForm(root: HTMLElement, kindIn: "deceased" | "
   birth.set(((old?.birth as JsonObj | null)?.input as unknown as DateValueJ) ?? null);
   birth.onChange(() => { dirty = true; refresh(); });
   snAm.addEventListener("change", () => refresh());
+  snAmSame.addEventListener("change", () => { dirty = true; refresh(); });
 
   // ---- kiểm toàn biểu mẫu (dùng khi Lưu, và khi đang có khung tóm tắt lỗi thì sau mỗi lần sửa — TK-03) ----
   function collect(show: boolean) {
@@ -281,7 +256,8 @@ export async function renderPersonForm(root: HTMLElement, kindIn: "deceased" | "
     const tf = (f: TextF) => { const r = f.read(); if (show) f.showErr(r.err); if (r.err) issues.push({ msg: r.err, focus: () => f.input.focus() }); return r.v; };
     const danh_xung = tf(fDx), ho_ten = tf(fTen), ten_hieu = dead ? tf(fHieu) : "", quan_he = tf(fQh), ghi_chu = tf(fNote);
     const noi_sinh = tf(fNoiSinh), noi_an_tang = dead ? tf(fAnTang) : "";
-    const bia = dead ? tf(fBia) : "", loi = dead ? tf(fLoi) : "";
+    // bia_tieu_de (01) không còn trên giao diện: giữ nguyên giá trị đang lưu để sao lưu/khôi phục không mất dữ liệu.
+    const bia = dead ? ((mem.bia_tieu_de as string) ?? "") : "", loi = dead ? tf(fLoi) : "";
     const st = refresh();
     const br = birth.read();
     if (st.birthErr) { if (show) birth.setResult(st.birthErr, true); issues.push({ msg: `Ngày sinh: ${st.birthErr}`, focus: () => birth.focus() }); }
@@ -294,9 +270,10 @@ export async function renderPersonForm(root: HTMLElement, kindIn: "deceased" | "
       if (st.ageErr) issues.push({ msg: st.ageErr, focus: () => ageIn.focus() });
       if (nguong() === null) issues.push({ msg: "Ngưỡng hưởng dương phải từ 1 đến 150", focus: () => nguongIn.focus() });
     }
-    const rules = [rGio, rSn, snAm.checked ? rSnAm : null].filter(Boolean).map((r) => r!.read());
+    const nc = notice ? notice.collect(show, issues) : null;
+    const rules = [rGio, rSn, snAm.checked && !snAmSame.checked ? rSnAm : null].filter(Boolean).map((r) => r!.read());
     rules.forEach((r) => { if (r.error) issues.push({ msg: r.error, focus: () => {} }); });
-    return { issues, danh_xung, ho_ten, ten_hieu, quan_he, ghi_chu, noi_sinh, noi_an_tang, bia, loi, br, dv, rules };
+    return { issues, danh_xung, ho_ten, ten_hieu, quan_he, ghi_chu, noi_sinh, noi_an_tang, bia, loi, br, dv, rules, nc };
   }
 
   // ---- lưu ----
@@ -304,7 +281,7 @@ export async function renderPersonForm(root: HTMLElement, kindIn: "deceased" | "
     const c = collect(true);
     sum.show(c.issues);
     if (c.issues.length) return;
-    const { danh_xung, ho_ten, ten_hieu, quan_he, ghi_chu, noi_sinh, noi_an_tang, bia, loi, br, dv, rules } = c;
+    const { danh_xung, ho_ten, ten_hieu, quan_he, ghi_chu, noi_sinh, noi_an_tang, bia, loi, br, dv, rules, nc } = c;
 
     const now = nowTs();
     const pid = old ? (old.id as string) : uuid();
@@ -314,10 +291,11 @@ export async function renderPersonForm(root: HTMLElement, kindIn: "deceased" | "
     const base: JsonObj = {
       id: pid, kind, danh_xung, ho_ten, ten_hieu, quan_he,
       birth: br.value ? { input: br.value as unknown as JsonObj, noi_sinh } : null,
-      death: dead ? { input: dv as unknown as JsonObj, ...(manual !== null ? { tuoi: { value: manual, label: manual < (nguong() ?? 60) ? "huong_duong" : "huong_tho", manual: true, approx: false } } : {}) } : null,
+      death: dead ? { input: dv as unknown as JsonObj, ...(nc?.notice ? { notice: nc.notice } : {}), ...(manual !== null ? { tuoi: { value: manual, label: manual < (nguong() ?? 60) ? "huong_duong" : "huong_tho", manual: true, approx: false } } : {}) } : null,
       noi_an_tang, photo_id: photoId,
       memorial: dead ? { tray_style: mem.tray_style ?? "truyen_thong", incense: mem.tray_style === "cong_giao" ? false : (mem.incense ?? true), bia_tieu_de: bia, loi_tuong_niem: loi, gio_het_nam: Number(gioHet), huong_duong_duoi: nguong() ?? 60 } : null,
-      reminders: dead ? { gio: rules[0].rule, sinh_nhat: null, sinh_nhat_am: null } : { gio: null, sinh_nhat: rules[0].rule, sinh_nhat_am: snAm.checked ? rules[1].rule : ((reminders.sinh_nhat_am as JsonObj | null) ?? null) },
+      reminders: dead ? { gio: rules[0].rule, sinh_nhat: null, sinh_nhat_am: null } : { gio: null, sinh_nhat: rules[0].rule, sinh_nhat_am: !snAm.checked ? ((reminders.sinh_nhat_am as JsonObj | null) ?? null)
+        : snAmSame.checked ? { ...(rules[0].rule as JsonObj), id: snAmId, tien_thuong: false } : rules[1].rule },
       sinh_nhat_am: !dead && snAm.checked,
       feb29_rule: dead ? ((old?.feb29_rule as string) ?? "feb28") : feb,
       ghi_chu,
@@ -330,8 +308,9 @@ export async function renderPersonForm(root: HTMLElement, kindIn: "deceased" | "
     try { p = buildPerson(base); validate.person(p, "/person"); }
     catch (e) { sum.show([{ msg: `Chưa lưu được: ${(e as Error).message}`, focus: () => fTen.input.focus() }]); return; }
     try {
-      await s.putPerson(p, newPhoto);
+      await s.putPerson(p, newPhoto, nc?.newPhotos ?? []);
       if (photo.oldId && photo.oldId !== photoId) await deletePhotoIfUnused(photo.oldId);
+      await deleteCertPhotos(nc?.removed ?? []);
     } catch (e) { sum.show([{ msg: `Chưa lưu được: ${(e as Error).message}. Dữ liệu đang nhập vẫn còn trên màn hình.`, focus: () => fTen.input.focus() }]); return; }
     dirty = false;
     toast("Đã lưu hồ sơ.");
@@ -344,19 +323,20 @@ export async function renderPersonForm(root: HTMLElement, kindIn: "deceased" | "
   append(form, [
     sum.el,
     h("fieldset", { class: "pfs" }, h("legend", null, dead ? "Người đã mất" : "Người thân"),
-      fDx.el, dl, fTen.el, dead ? fHieu.el : null, fQh.el, fNote.el),
+      fDx.el, dl, fTen.el, dead ? fHieu.el : null, fQh.el, qhList, dead ? h("p", { class: "fine qh-note" }, "Trang tưởng niệm ghi quan hệ này phía trên tên, ví dụ “Ông nội”, “Mẹ”. Để trống thì chỉ ghi tên.") : null, fNote.el),
     death ? death.el : null,
-    h("fieldset", { class: "pfs" }, h("legend", null, "Ngày sinh và nơi sinh"), birth.el, fNoiSinh.el, !dead ? febWrap : null, !dead ? snAmWrap : null),
+    h("fieldset", { class: "pfs" }, h("legend", null, "Ngày sinh và nơi sinh"), birth.el, fNoiSinh.el, !dead ? febWrap : null, !dead ? snAmWrap : null, !dead ? snAmSameWrap : null),
     dead ? h("fieldset", { class: "pfs" }, h("legend", null, "Nơi an táng và ảnh"), fAnTang.el,
       h("div", { class: "photo-row" }, canvas, h("div", { class: "photo-acts" }, file, pickLbl, rmBtn, photoErr,
         h("p", { class: "fine" }, "Ảnh chỉ lưu trong ứng dụng trên máy này, đã bỏ thông tin vị trí và máy chụp.")))) : null,
+    notice?.el ?? null,
     rGio?.el ?? null, rSn?.el ?? null, rSnAm?.el ?? null,
-    dead ? h("details", { class: "pfs more", open: !!old && ((mem.bia_tieu_de as string) !== "" || (mem.loi_tuong_niem as string) !== "") },
-      h("summary", null, "Tưởng niệm (giỗ hết, dòng đầu bia, lời tưởng niệm)"),
-      h("div", { class: "field" }, h("p", { class: "flabel" }, "Giỗ hết vào"),
-        pressGroup("Giỗ hết vào", [["2", "Năm thứ 2 sau năm mất"], ["3", "Năm thứ 3"]], gioHet, (v) => { gioHet = v; dirty = true; }, "pseg two")),
-      fBia.el, biaSuggest, fLoi.el,
-      h("label", { class: "field inline", for: "pf-nguong" }, h("span", null, "Tuổi dưới bao nhiêu thì ghi “hưởng dương”"), nguongIn), nguongErr) : null,
+    dead ? h("details", { class: "pfs more", id: "pf-mem", open: !!old && (mem.loi_tuong_niem as string) !== "" },
+      h("summary", null, "Tưởng niệm (giỗ hết, lời tưởng niệm)"),
+      h("div", { class: "field" }, h("p", { class: "flabel" }, "Giỗ hết (giỗ lần cuối của thời gian để tang) vào"),
+        pressGroup("Giỗ hết vào", [["2", "Năm thứ 2 sau năm mất"], ["3", "Năm thứ 3 sau năm mất"]], gioHet, (v) => { gioHet = v; dirty = true; }, "pseg two")),
+      fLoi.el,
+      h("label", { class: "field inline", for: "pf-nguong" }, h("span", null, "Mất trước tuổi này thì bia ghi “hưởng dương” (mất sớm) thay cho “hưởng thọ”"), nguongIn), nguongErr) : null,
     h("div", { class: "form-acts" },
       h("button", { type: "button", class: "btn2", onclick: async () => {
         if (!dirty || await confirmDialog({ title: "Bỏ các thay đổi chưa lưu?", body: ["Những gì vừa nhập sẽ không được lưu."], ok: "Bỏ thay đổi", cancel: "Tiếp tục sửa", focusCancel: true })) {
@@ -402,6 +382,9 @@ export async function renderEventForm(root: HTMLElement, personId: string, event
   const rec = h("input", { type: "checkbox", id: "ef-rec", checked: old ? old.recurring === true : types[0].default_recurring === true }) as HTMLInputElement;
   const rule = ruleInput("ef-rule", "Nhắc sự kiện này", (old?.reminder as JsonObj | null) ?? null, false, sn.settings);
   if (old && old.reminder === null) (rule.el.querySelector("#ef-rule-on") as HTMLInputElement).checked = false;
+  // Bổ sung B4: sự kiện gắn với người đã mất không được nhắc — không hiện khối nhắc; quy tắc đang lưu (nếu có) giữ nguyên.
+  const deadEv = ((old?.person_ids as string[]) ?? [personId]).some((id) => sn.dead.has(id));
+  const b4Note = h("p", { class: "notice", id: "ef-b4" }, "Không nhắc sự kiện của người đã mất — với người đã mất, ứng dụng chỉ nhắc ngày giỗ. Sự kiện vẫn được lưu và hiện trên hồ sơ.");
   const syncType = () => {
     fNewType.el.hidden = sel.value !== "__new";
     if (!old) { const t = types.find((x) => x.id === sel.value); if (t) rec.checked = t.default_recurring === true; }
@@ -431,7 +414,7 @@ export async function renderEventForm(root: HTMLElement, personId: string, event
     const dr = date.read();
     if (dr.error) { if (show) date.setResult(dr.error, true); issues.push({ msg: `Ngày: ${dr.error}`, focus: () => date.focus() }); }
     if (dr.value?.precision === "month_day" && !rec.checked) issues.push({ msg: "Sự kiện không rõ năm phải lặp hằng năm", focus: () => rec.focus() });
-    const rr = rule.read();
+    const rr = deadEv ? { rule: (old?.reminder as JsonObj | null) ?? null, error: null, warn: null } : rule.read();
     if (rr.error) issues.push({ msg: rr.error, focus: () => {} });
     return { issues, tieu_de, ghi_chu, newName, dr, rr };
   }
@@ -452,7 +435,7 @@ export async function renderEventForm(root: HTMLElement, personId: string, event
       }
       const ev: JsonObj = {
         id: (old?.id as string) ?? uuid(), type_id: typeId, tieu_de, date: dr.value as unknown as JsonObj, recurring: rec.checked,
-        person_ids: (old?.person_ids as string[]) ?? [personId], ghi_chu, reminder: rr.rule && rr.rule.enabled ? rr.rule : null,
+        person_ids: (old?.person_ids as string[]) ?? [personId], ghi_chu, reminder: deadEv ? rr.rule : rr.rule && rr.rule.enabled ? rr.rule : null,
         created_at: (old?.created_at as string) ?? now, updated_at: now, rev: old ? (old.rev as number) + 1 : 1,
       };
       await s.putEvent(ev);
@@ -470,7 +453,7 @@ export async function renderEventForm(root: HTMLElement, personId: string, event
     h("fieldset", { class: "pfs" }, h("legend", null, "Sự kiện"),
       h("div", { class: "field" }, h("label", { for: "ef-type" }, "Loại *"), sel), fNewType.el, fTitle.el, fNote.el),
     date.el,
-    rule.el,
+    deadEv ? b4Note : rule.el,
     h("div", { class: "form-acts" },
       // TK-09: cùng hộp xác nhận như biểu mẫu người khi đã sửa.
       h("button", { type: "button", class: "btn2", onclick: async () => {

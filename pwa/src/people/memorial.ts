@@ -3,7 +3,7 @@
 // Khói (R8): chỉ CSS @keyframes, KHÔNG requestAnimationFrame. Chạy khi trang hiển thị, tự dừng sau 2 phút (tính thời
 // gian hiển thị), dừng ngay khi tab ẩn hoặc rời trang; prefers-reduced-motion → khói tĩnh từ đầu.
 import { h, svg } from "../dom";
-import { M, addDays, cal, daysBetween, displayName, lunarText, snap, store, today, tuoiText, type JsonObj } from "./core";
+import { M, addDays, biaHeading, cal, daysBetween, displayName, lunarText, snap, store, today, tuoiText, type JsonObj } from "./core";
 import { drawPhoto } from "./photo";
 import { backLink } from "./ui";
 
@@ -62,6 +62,7 @@ export async function renderMemorial(root: HTMLElement, id: string): Promise<voi
   const lunar = d.lunar as JsonObj;
   const t = today();
   const catholic = mem.tray_style === "cong_giao";
+  const heading = biaHeading(p);
   const incense = !catholic && mem.incense !== false;
 
   // Dòng ngày
@@ -95,9 +96,9 @@ export async function renderMemorial(root: HTMLElement, id: string): Promise<voi
     h("div", { class: "mem-tools" }, toggle),
     frame,
     h("div", { class: "bia", role: "group", "aria-label": "Bia tưởng niệm" },
-      mem.bia_tieu_de ? h("p", { class: "bia-top" }, mem.bia_tieu_de as string) : null,
-      // TK-24: khi có dòng đầu bia (Hiển khảo, Tổ tỷ…) thì không lặp danh xưng ("Ông", "Bà").
-      h("h1", { class: "bia-name", tabindex: "-1" }, mem.bia_tieu_de ? (p.ho_ten as string) : displayName(p)),
+      heading ? h("p", { class: "bia-top" }, heading) : null,
+      // Dòng trên tên = Quan hệ bằng từ thường ngày ("Ông nội", "Mẹ") — khi có thì không lặp cách gọi trước tên.
+      h("h1", { class: `bia-name${(heading ? (p.ho_ten as string) : displayName(p)).length > 28 ? " long" : ""}`, tabindex: "-1" }, heading ? (p.ho_ten as string) : displayName(p)),
       p.ten_hieu ? h("p", { class: "bia-hieu" }, p.ten_hieu as string) : null,
       h("p", { class: "bia-years" }, ...years),
       age ? h("p", { class: "bia-age" }, age) : null),
