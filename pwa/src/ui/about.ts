@@ -2,18 +2,51 @@
 import { IS_MOCK, MAX_YEAR, METHOD, MIN_YEAR } from "../engine";
 import { TZ_NOTE } from "./convert";
 import {
-  APP_VERSION, CADAO, CADAO_ATTRIBUTION, CADAO_IS_MOCK, RULE_SOURCES, RULE_SOURCES_INTRO, RULE_SOURCES_LIMITS,
+  APP_VERSION, BUILD_DATE, BUILD_ID, CADAO, CADAO_ATTRIBUTION, CADAO_IS_MOCK, RULE_SOURCES, RULE_SOURCES_INTRO, RULE_SOURCES_LIMITS,
 } from "../gen/content";
-import { clear, h } from "../dom";
+import { append, clear, h } from "../dom";
+import { applyUpdate, checkForUpdate, type CheckResult } from "../update";
 
 /** Ghi chú nguồn ngắn, hiện cạnh phần xem ngày. */
 export const NGOCHAP_NOTE = "Theo Ngọc Hạp Thông Thư; tham khảo";
 export const RULES_HREF = "#/nguon-quy-tac";
 
-const METHOD_LABEL: Record<string, string> = {
-  hnd: "thuật toán Hồ Ngọc Đức (phổ biến trong các lịch Việt)",
-  precise: "mô hình thiên văn chính xác hơn (Meeus đầy đủ)",
+/** Câu mô tả phương pháp âm lịch đang dùng (hằng sinh lúc build, giống mặc định của lõi Rust). */
+const METHOD_TEXT: Record<string, string> = {
+  precise: "Ngày âm lịch tính theo mô hình thiên văn chính xác (Meeus): thời điểm trăng mới và vị trí Mặt Trời được tính đầy đủ, rồi quy ra ngày theo múi giờ của từng giai đoạn nêu trên. Thuật toán Hồ Ngọc Đức, phổ biến trong nhiều lịch Việt, vẫn được giữ trong ứng dụng để đối chiếu; hai cách cho cùng kết quả ở gần như mọi ngày.",
+  hnd: "Ngày âm lịch tính theo thuật toán Hồ Ngọc Đức (phổ biến trong các lịch Việt), quy ra ngày theo múi giờ của từng giai đoạn nêu trên.",
 };
+
+/** Khối "Phiên bản đang dùng" + nút "Kiểm tra cập nhật". */
+function versionPanel(): HTMLElement {
+  const out = h("div", { class: "upd-out", role: "status", "aria-live": "polite" });
+  const btn = h("button", { type: "button", class: "todaybtn", id: "check-update" }, "Kiểm tra cập nhật");
+  const show = (r: CheckResult) => {
+    clear(out);
+    if (r.status === "latest") out.append(h("p", null, "Bạn đang dùng phiên bản mới nhất."));
+    else if (r.status === "offline") out.append(h("p", { class: "warn" }, "Không kiểm tra được (đang ngoại tuyến)."));
+    else {
+      const go = h("button", { type: "button", class: "todaybtn", id: "apply-update", onclick: () => {
+        go.setAttribute("disabled", ""); go.textContent = "Đang cập nhật…"; void applyUpdate();
+      } }, "Cập nhật ngay");
+      append(out, [
+        h("p", { class: "upd-new" }, r.version ? `Có phiên bản mới ${r.version}` : "Có bản cập nhật mới của ứng dụng"),
+        r.notes.length ? h("ul", { class: "plain dots upd-notes" }, ...r.notes.map((t) => h("li", null, t))) : null,
+        go]);
+    }
+  };
+  btn.addEventListener("click", async () => {
+    btn.setAttribute("disabled", "");
+    clear(out);
+    out.append(h("p", null, "Đang kiểm tra…"));
+    try { show(await checkForUpdate()); } finally { btn.removeAttribute("disabled"); }
+  });
+  return h("section", { class: "panel prose", id: "phien-ban" },
+    h("h2", null, "Phiên bản"),
+    h("p", { class: "cur-ver" }, `Phiên bản đang dùng: ${APP_VERSION} (bản dựng ${BUILD_ID}, ngày ${BUILD_DATE})`),
+    h("p", null, btn),
+    out);
+}
 
 export function renderAbout(root: HTMLElement): void {
   clear(root);
@@ -26,11 +59,12 @@ export function renderAbout(root: HTMLElement): void {
           h("img", { src: "icons/clevix-logo-72.png", srcset: "icons/clevix-logo-72.png 1x, icons/clevix-logo-144.png 2x", alt: "Logo Clevix", width: "37", height: "24", class: "by-logo" }),
           "Clevix Lab"),
         h("p", { class: "ver" }, `Phiên bản ${APP_VERSION} (thử nghiệm nội bộ)`))),
+    versionPanel(),
     h("section", { class: "panel prose" },
       h("h2", null, "Về ứng dụng"),
       h("p", null, `Lịch âm dương Việt Nam từ năm ${MIN_YEAR} đến năm ${MAX_YEAR}: ngày âm, Can Chi, tiết khí, giờ hoàng đạo, chọn ngày tốt, và một câu ca dao, tục ngữ cho mỗi ngày. Từ năm 1968, âm lịch tính theo múi giờ UTC+7 (giờ Hà Nội).`),
       h("p", { class: "tz-note" }, TZ_NOTE),
-      h("p", null, `Ngày âm lịch tính theo ${METHOD_LABEL[METHOD] ?? METHOD}.`),
+      h("p", { class: "method-note" }, METHOD_TEXT[METHOD] ?? `Ngày âm lịch tính theo phương pháp ${METHOD}.`),
       h("p", null, "Phần xem ngày (sao tốt, sao xấu, việc nên làm và nên tránh, trực, hoàng đạo, hắc đạo) được biên soạn theo quan niệm truyền thống trong sách Ngọc Hạp Thông Thư. Đây là nét văn hóa dân gian, chỉ có giá trị tham khảo; những quyết định quan trọng xin cân nhắc thêm hoàn cảnh thực tế. Điểm số là quy ước của ứng dụng, không có trong sách."),
       h("p", null, h("a", { href: RULES_HREF, class: "textlink" }, "Nguồn quy tắc xem ngày")),
       IS_MOCK ? h("p", { class: "warn" }, "Bản này đang dùng dữ liệu lịch giả lập (MOCK) để thử giao diện. Phần xem ngày chưa phải kết quả chính thức.") : null),

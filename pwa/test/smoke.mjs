@@ -1,9 +1,13 @@
 // Kiểm thử khói (e2e) cho PWA: phục vụ dist/ trên localhost (có gzip), mở Chromium headless,
 // chụp ảnh 360x780 và 1280x800, kiểm tra lỗi console, service worker, chạy offline lần hai,
 // đo heap JS và dung lượng truyền (gzip). Kết quả: test/metrics.json, ảnh: test/shots/.
+// Mục 1b mô phỏng cập nhật: phục vụ bản A (VERSION), rồi đổi sang bản B dựng vào thư mục tạm với
+// LVHV_VERSION=<A + 1 bản vá> và kiểm tra thanh nhắc, nút "Cập nhật ngay", chân trang sau khi tải lại.
 // Chạy: npm run build && node test/smoke.mjs
+import { execFileSync } from "node:child_process";
 import { createServer } from "node:http";
-import { readFileSync, existsSync, statSync, mkdirSync, writeFileSync, readdirSync } from "node:fs";
+import { readFileSync, existsSync, statSync, mkdirSync, mkdtempSync, rmSync, writeFileSync, readdirSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { gzipSync } from "node:zlib";
 import { dirname, extname, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -20,14 +24,15 @@ const COMPRESS = new Set([".html", ".js", ".css", ".svg", ".webmanifest", ".txt"
 
 let bytesSent = 0;
 let online = true;
+let serveDir = DIST; // mục 1b đổi sang bản B để mô phỏng phát hành bản mới
 const served = [];
 const server = createServer((req, res) => {
   const url = new URL(req.url, "http://x");
   let p = normalize(decodeURIComponent(url.pathname)).replace(/^([/\\])+/, "");
   if (!p || p.endsWith("/")) p += "index.html";
-  const f = join(DIST, p);
+  const f = join(serveDir, p);
   if (!online) { req.socket.destroy(); return; }
-  if (!f.startsWith(DIST) || !existsSync(f) || statSync(f).isDirectory()) { res.writeHead(404); res.end("not found"); return; }
+  if (!f.startsWith(serveDir) || !existsSync(f) || statSync(f).isDirectory()) { res.writeHead(404); res.end("not found"); return; }
   let body = readFileSync(f);
   const ext = extname(f);
   const headers = { "content-type": TYPES[ext] ?? "application/octet-stream", "cache-control": "no-cache" };
@@ -359,6 +364,96 @@ async function newCtx(vp, opts = {}) {
   };
   await ctx.close();
 }
+
+// ---------- 1b. Phiên bản và cập nhật (bản A → bản B), ngoại tuyến ----------
+const VERSION_A = readFileSync(join(ROOT, "..", "VERSION"), "utf8").trim();
+const VERSION_B = VERSION_A.replace(/(\d+)$/, (x) => String(+x + 1));
+const TMP_B = mkdtempSync(join(tmpdir(), "lvhv-update-"));
+const DIST_B = join(TMP_B, "dist");
+{
+  check(JSON.parse(readFileSync(join(DIST, "version.json"), "utf8")).version === VERSION_A, `dist/version.json = VERSION (${VERSION_A})`);
+  const vjA = JSON.parse(readFileSync(join(DIST, "version.json"), "utf8"));
+  check(Array.isArray(vjA.notes) && vjA.notes.length > 0 && /^\d{4}-\d{2}-\d{2}$/.test(vjA.date) && vjA.build.length >= 7, `version.json có build, date, notes (${vjA.build}, ${vjA.date}, ${vjA.notes.length} ghi chú)`);
+  check(!readFileSync(join(DIST, "sw.js"), "utf8").includes('"./version.json"]') && !/PRECACHE = \[[^\]]*version\.json/.test(readFileSync(join(DIST, "sw.js"), "utf8")), "version.json không nằm trong precache");
+  execFileSync(process.execPath, [join(ROOT, "build.mjs")], { cwd: ROOT, env: { ...process.env, LVHV_VERSION: VERSION_B, LVHV_OUT_DIR: DIST_B }, stdio: "ignore" });
+  check(JSON.parse(readFileSync(join(DIST_B, "version.json"), "utf8")).version === VERSION_B, `bản B dựng với LVHV_VERSION=${VERSION_B}`);
+
+  serveDir = DIST;
+  const { ctx, page, errors, external } = await newCtx({ width: 360, height: 780 }, { touch: true, dpr: 2 });
+  await page.goto(BASE + DAY, { waitUntil: "load" });
+  await page.waitForSelector(".sheet");
+  await page.evaluate(async () => { await navigator.serviceWorker.ready; });
+  await page.waitForFunction(() => !!navigator.serviceWorker.controller);
+  await page.waitForTimeout(300);
+  check((await page.innerText(".foot")).includes(`Bản quyền © 2026 của Clevix Lab, version ${VERSION_A}`), `chân trang: "version ${VERSION_A}"`);
+  check(await page.locator(".update-bar").isHidden(), "bản A, máy chủ cũng A → không có thanh cập nhật");
+
+  await page.click('.sizes button[data-v="3"]'); // A++
+  await page.goto(BASE + "#/gioi-thieu");
+  await page.waitForSelector("#check-update");
+  const cur = await page.innerText(".cur-ver");
+  check(cur.startsWith(`Phiên bản đang dùng: ${VERSION_A} (bản dựng ${vjA.build}, ngày ${vjA.date})`), `Giới thiệu: "${cur}"`);
+  check((await page.innerText("main")).includes("mô hình thiên văn chính xác (Meeus)") && (await page.innerText("main")).includes("Hồ Ngọc Đức"), "Giới thiệu mô tả phương pháp Meeus, giữ HND để đối chiếu");
+  await page.click("#check-update");
+  await page.waitForFunction(() => /phiên bản mới nhất|ngoại tuyến|Có phiên bản/.test(document.querySelector(".upd-out")?.textContent ?? ""));
+  check((await page.innerText(".upd-out")) === "Bạn đang dùng phiên bản mới nhất.", `Kiểm tra cập nhật (cùng bản) → "Bạn đang dùng phiên bản mới nhất." (${await page.innerText(".upd-out")})`);
+
+  // Ngoại tuyến
+  online = false;
+  await ctx.setOffline(true);
+  await page.click("#check-update");
+  await page.waitForFunction(() => /ngoại tuyến|mới nhất|Có phiên bản/.test(document.querySelector(".upd-out")?.textContent ?? ""));
+  check((await page.innerText(".upd-out")) === "Không kiểm tra được (đang ngoại tuyến).", `Kiểm tra cập nhật khi mất mạng → thông báo ngoại tuyến (${await page.innerText(".upd-out")})`);
+  await ctx.setOffline(false);
+  online = true;
+
+  // Phát hành bản B
+  serveDir = DIST_B;
+  await page.click("#check-update");
+  await page.waitForSelector(".update-bar:not([hidden])", { timeout: 15000 });
+  const bar = await page.innerText(".update-bar");
+  check(bar.includes(`Đã có phiên bản mới ${VERSION_B}.`) && bar.includes("Cập nhật ngay") && bar.includes("Để sau"), `thanh cập nhật: "${bar.replace(/\n/g, " ")}"`);
+  check((await page.innerText(".upd-out")).includes(`Có phiên bản mới ${VERSION_B}`) && await page.locator("#apply-update").count() === 1, "Giới thiệu: có phiên bản mới + nút Cập nhật ngay");
+  check(await page.locator(".update-bar").getAttribute("role") === "status", "thanh cập nhật role=status");
+  await page.locator(".update-bar .ubtn").first().focus();
+  check(await page.evaluate(() => document.activeElement?.textContent === "Cập nhật ngay"), "nút Cập nhật ngay nhận focus bàn phím");
+  const ovBar = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+  check(ovBar <= 0, `A++ 360 px: thanh cập nhật không tràn ngang (${ovBar}px)`);
+  await page.screenshot({ path: join(SHOTS, "phone-360-xl-update.png") });
+
+  // Tự nhắc khi mở lại ứng dụng (bản B đang chờ, trang vẫn chạy bản A)
+  await page.goto(BASE + DAY);
+  await page.reload({ waitUntil: "load" });
+  await page.waitForSelector(".update-bar:not([hidden])", { timeout: 15000 });
+  check((await page.innerText(".update-bar")).includes(VERSION_B), "mở lại ứng dụng → tự nhắc có phiên bản mới (không cần bấm)");
+  check((await page.innerText(".foot")).includes(`version ${VERSION_A}`), `trước khi đồng ý vẫn chạy bản ${VERSION_A} (RS-08)`);
+  await page.click(".update-bar .ubtn:not(.primary)");
+  check(await page.locator(".update-bar").isHidden(), "Để sau → ẩn thanh");
+
+  // Cập nhật ngay → kích hoạt SW mới, tải lại một lần
+  await page.goto(BASE + "#/gioi-thieu");
+  await page.waitForSelector("#check-update");
+  await page.click("#check-update");
+  await page.waitForSelector(".update-bar:not([hidden])", { timeout: 15000 });
+  await page.click(".update-bar .ubtn.primary");
+  await page.waitForFunction((v) => document.querySelector(".foot")?.textContent?.includes(`version ${v}`), VERSION_B, { timeout: 30000 });
+  check((await page.innerText(".foot")).includes(`Bản quyền © 2026 của Clevix Lab, version ${VERSION_B}`), `sau Cập nhật ngay → chân trang "version ${VERSION_B}"`);
+  await page.waitForTimeout(500);
+  check(await page.locator(".update-bar").isHidden(), "sau cập nhật không còn thanh nhắc");
+  if (await page.locator("#check-update").count() === 0) { await page.goto(BASE + "#/gioi-thieu"); await page.waitForSelector("#check-update"); }
+  await page.click("#check-update");
+  await page.waitForFunction(() => /phiên bản mới nhất|ngoại tuyến|Có phiên bản/.test(document.querySelector(".upd-out")?.textContent ?? ""));
+  check((await page.innerText(".upd-out")) === "Bạn đang dùng phiên bản mới nhất.", "bản B: Kiểm tra cập nhật → mới nhất");
+  const st = await page.evaluate(() => ({ ls: Object.keys(localStorage), ss: Object.keys(sessionStorage), cookie: document.cookie }));
+  check(st.ls.every((k) => k === "lvhv.ui") && st.ss.length === 0 && st.cookie === "", `cập nhật không ghi dữ liệu xuống máy (S4) (${JSON.stringify(st)})`);
+  const realErrors = errors.filter((e) => !/net::ERR_INTERNET_DISCONNECTED|net::ERR_FAILED|Failed to load resource|FetchEvent|network error/.test(e));
+  check(realErrors.length === 0, `cập nhật: không có lỗi console (${realErrors.join(" | ") || "0"})`);
+  check(external.length === 0, `cập nhật: không gọi mạng ngoài (${external.length})`);
+  metrics.update_simulation = { from: VERSION_A, to: VERSION_B, banner: bar.replace(/\n/g, " "), pass: !failures.length };
+  await ctx.close();
+  serveDir = DIST;
+}
+rmSync(TMP_B, { recursive: true, force: true });
 
 // ---------- 2. Điện thoại, chữ A++ và giao diện tối ----------
 {

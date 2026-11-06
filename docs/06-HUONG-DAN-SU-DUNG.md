@@ -38,8 +38,23 @@ Không muốn cài cũng được: chỉ cần mở trang trong trình duyệt l
 **Gỡ cài đặt:** gỡ như mọi ứng dụng (nhấn giữ biểu tượng → Gỡ). Trên máy tính, mở ứng dụng → menu **⋮** →
 **Gỡ cài đặt**.
 
-**Cập nhật:** khi có bản mới, ứng dụng hiện dòng "Có bản mới của ứng dụng." kèm nút **Tải lại**. Bấm nút
-này để dùng bản mới.
+**Cập nhật:** xem mục 4 "Xem phiên bản và cập nhật".
+
+### Ứng dụng cài từ cửa hàng hoặc tệp cài (Android, iPhone/iPad, Mac, Windows)
+
+Các bản ứng dụng riêng cho từng hệ điều hành đang thử nghiệm; khi phát hành sẽ có trên cửa hàng ứng dụng
+hoặc ở trang tải về https://clevixlab.github.io/lich-van-hoa-viet/ .
+
+- **Xem phiên bản đang dùng:** mở mục **Giới thiệu**. Dòng "Phiên bản đang dùng: 0.1.1 (bản dựng …)"
+  cho biết số phiên bản; cuối trang có dòng "Bản quyền © 2026 của Clevix Lab, version …".
+- **Cập nhật:** trong **Giới thiệu**, bấm **Kiểm tra cập nhật / Cập nhật**. Ứng dụng không tự kết nối
+  mạng để bảo vệ quyền riêng tư, nên nút này mở cửa hàng ứng dụng (Google Play trên Android) hoặc trang
+  tải về trong trình duyệt. Ở đó, nếu có bản mới hơn số phiên bản của bạn, bấm **Cập nhật** hoặc tải bản
+  mới về cài đè.
+- **Nhắc cập nhật:** khi bản đang dùng đã phát hành hơn 2 tháng, đầu màn hình Tờ lịch hiện một thẻ nhắc.
+  Bấm **Kiểm tra cập nhật** để mở cửa hàng/trang tải về, hoặc **Để sau** để ẩn thẻ trong 30 ngày. Thẻ
+  không chặn việc dùng lịch. Nếu cửa hàng không có bản mới hơn thì bạn đang dùng bản mới nhất.
+- Cài từ Google Play: Play cũng tự cập nhật ứng dụng nếu bạn bật tự động cập nhật trong Google Play.
 
 ## 2. Các màn hình
 
@@ -74,22 +89,42 @@ Ngày sinh chỉ dùng trong lúc tính và **không được lưu**.
 - **Dương lịch sang âm lịch:** chọn ngày dương, ứng dụng cho ngày âm và Can Chi.
 - **Âm lịch sang dương lịch:** nhập năm âm, chọn tháng, ngày. Đánh dấu **Tháng nhuận** nếu là tháng nhuận.
 - Bấm **Mở tờ lịch ngày này** để xem chi tiết.
-- Phạm vi: năm 2000 đến năm 3000.
+- Phạm vi: năm 1900 đến năm 3000.
 
 ### Giới thiệu
-Ở đây có thông tin về ứng dụng, quyền riêng tư, nguồn quy tắc xem ngày, nguồn ca dao (ghi công theo giấy
-phép CC BY-SA 4.0) và phông chữ.
+Ở đây có số phiên bản và nút kiểm tra cập nhật, thông tin về ứng dụng (cách tính ngày âm), quyền riêng tư,
+nguồn quy tắc xem ngày, nguồn ca dao (ghi công theo giấy phép CC BY-SA 4.0) và phông chữ.
 
 ## 3. Cần biết
 
 - **Phần xem ngày** (sao, trực, hoàng đạo, nên/kỵ, điểm) theo quan niệm truyền thống trong *Ngọc Hạp Thông
   Thư*. Đây là nét văn hóa dân gian, **chỉ để tham khảo**. Điểm số là quy ước của ứng dụng, không có trong
   sách.
-- Lịch tính theo giờ Việt Nam (UTC+7). Rất hiếm khi trăng mới hoặc tiết khí rơi sát nửa đêm (trong vài
+- Ngày âm lịch tính theo mô hình thiên văn chính xác (Meeus); thuật toán Hồ Ngọc Đức được giữ để đối chiếu.
+  Từ 1968 lịch tính theo giờ Việt Nam (UTC+7); trước đó theo quy ước lịch sử (xem mục Giới thiệu). Rất hiếm khi trăng mới hoặc tiết khí rơi sát nửa đêm (trong vài
   phút). Khi đó các lịch khác nhau có thể lệch nhau một ngày. Trong thế kỷ 21 có vài trường hợp như vậy
   (ví dụ tháng 12/2072, 11/2077); xem báo cáo kiểm định.
 - **Quyền riêng tư:** ứng dụng không thu thập hay gửi dữ liệu nào. Máy chỉ ghi nhớ cỡ chữ và chế độ
   sáng/tối bạn chọn. Máy chủ lưu trang có thể ghi nhật ký truy cập thông thường như mọi trang web.
 - **Pin và dung lượng:** ứng dụng chiếm khoảng 1 MB trên máy và không chạy ngầm khi bạn không mở nó.
+
+## 4. Xem phiên bản và cập nhật
+
+- **Xem phiên bản:** số phiên bản ghi ở cuối mỗi trang ("Bản quyền © 2026 của Clevix Lab, version 0.1.1").
+  Trong mục **Giới thiệu**, dòng "Phiên bản đang dùng" cho biết thêm mã bản dựng và ngày dựng — khi góp ý,
+  bạn chép dòng này để Clevix Lab biết bạn dùng bản nào.
+- **Tự nhắc:** khi bạn mở ứng dụng (lúc có mạng), ứng dụng tự xem có phiên bản mới không. Nếu có, đầu màn
+  hình hiện dòng "Đã có phiên bản mới X.Y.Z." với hai nút:
+  - **Cập nhật ngay:** ứng dụng tải lại một lần và chuyển sang phiên bản mới. Không mất gì: cỡ chữ và giao
+    diện sáng/tối vẫn giữ.
+  - **Để sau:** ẩn dòng nhắc; bạn vẫn dùng bản cũ bình thường. Ứng dụng sẽ nhắc lại sau (nhiều nhất 6 giờ
+    một lần), hoặc tự dùng bản mới khi bạn đóng hẳn ứng dụng rồi mở lại.
+- **Tự kiểm tra:** vào **Giới thiệu** → bấm **Kiểm tra cập nhật**. Kết quả là một trong ba dòng:
+  "Bạn đang dùng phiên bản mới nhất."; "Có phiên bản mới X.Y.Z" kèm danh sách điểm mới và nút **Cập nhật
+  ngay**; hoặc "Không kiểm tra được (đang ngoại tuyến)." — khi đó hãy bật mạng rồi bấm lại.
+- Việc kiểm tra chỉ đọc một tệp nhỏ trên trang của ứng dụng; không gửi thông tin gì của bạn đi.
+- **Nếu đang dùng bản 0.1** (bản đầu tiên): bản này chưa có các nút trên. Khi có bản mới, cuối màn hình hiện
+  dòng "Có bản mới của ứng dụng." kèm nút **Tải lại** — bấm để lên bản mới. Không bấm thì bản mới được dùng
+  khi bạn đóng hẳn ứng dụng rồi mở lại.
 
 Góp ý: khanh@clevix.vn — Clevix Lab (Clevix LLC).

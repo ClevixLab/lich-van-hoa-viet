@@ -7,7 +7,7 @@
 // Gọi tsport trực tiếp bằng tên (A-4) để `tsc` bắt lỗi đổi tên/kiểu; không dò tên hàm lúc chạy.
 //
 // Phương pháp âm lịch: hằng DEFAULT_METHOD sinh lúc build (gen/content.ts), sao chép từ hằng
-// `DEFAULT_METHOD` của lõi Rust (core/src/lunar.rs) — hiện là "hnd". Đổi phương pháp chỉ cần đổi
+// `DEFAULT_METHOD` của lõi Rust (core/src/lunar.rs) — hiện là "precise" (bổ sung A3). Đổi phương pháp chỉ cần đổi
 // hằng của lõi (hoặc biến môi trường LVHV_METHOD khi build); không đổi ở đây.
 //
 // Lỗi: hàm lõi ném `LvhvError` (RangeError có `code`) cho ngày ngoài 1900–3000 hoặc không hợp lệ —

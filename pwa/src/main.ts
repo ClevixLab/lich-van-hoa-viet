@@ -9,6 +9,8 @@ import { renderConvert } from "./ui/convert";
 import { renderGoodDays } from "./ui/gooddays";
 import { renderMonth } from "./ui/month";
 import { renderDayNav, renderSheet } from "./ui/sheet";
+import { APP_VERSION } from "./gen/content";
+import { applyUpdate, attachRegistration, autoCheck, onUpdateResult } from "./update";
 import type { SolarDate } from "./types";
 
 type Route = "ngay" | "chon-ngay" | "doi-ngay" | "gioi-thieu" | "nguon-quy-tac";
@@ -67,12 +69,15 @@ const main = h("main", { id: "main", class: "main", tabindex: "-1" });
 const footer = h("footer", { class: "foot" },
   h("span", { class: "foot-brand" },
     h("img", { src: "icons/clevix-logo-72.png", srcset: "icons/clevix-logo-72.png 1x, icons/clevix-logo-144.png 2x, icons/clevix-logo-216.png 3x", alt: "Logo Clevix", width: "67", height: "44", class: "foot-logo" }),
-    h("span", null, "Bản quyền © 2026 của Clevix Lab, version 0.1")),
+    h("span", { class: "foot-ver" }, `Bản quyền © 2026 của Clevix Lab, version ${APP_VERSION}`)),
   IS_MOCK ? h("span", { class: "mock", title: "Dữ liệu lịch đang là bản giả lập để thử giao diện" }, "MOCK — dữ liệu giả lập") : null);
 
 const dialog = h("dialog", { class: "mdialog", "aria-label": "Chọn ngày trên bảng tháng" });
 
-app.append(topbar, tabbar, main, footer, dialog);
+/** Thanh báo cập nhật DUY NHẤT (ở đầu trang, không che nội dung, không chặn thao tác). */
+const updateBar = h("div", { class: "update-bar", role: "status", "aria-live": "polite", hidden: true });
+
+app.append(updateBar, topbar, tabbar, main, footer, dialog);
 
 function cycleTheme(): void {
   const order: Theme[] = ["auto", "light", "dark"];
@@ -296,34 +301,26 @@ try {
 }
 armMidnight();
 
-/** RS-08: có bản mới đang chờ → hỏi người dùng; đồng ý thì kích hoạt rồi tải lại một lần. */
-const hadController = "serviceWorker" in navigator && !!navigator.serviceWorker.controller;
-function watchUpdates(reg: ServiceWorkerRegistration): void {
-  const offer = (w: ServiceWorker) => {
-    if (document.querySelector(".update-bar")) return;
-    const bar = h("div", { class: "update-bar", role: "status" },
-      h("span", null, "Có bản mới của ứng dụng."),
-      h("button", { type: "button", class: "linkbtn", onclick: () => w.postMessage("skipWaiting") }, "Tải lại"));
-    document.body.append(bar);
-  };
-  if (reg.waiting && navigator.serviceWorker.controller) offer(reg.waiting);
-  reg.addEventListener("updatefound", () => {
-    const w = reg.installing;
-    w?.addEventListener("statechange", () => {
-      if (w.state === "installed" && navigator.serviceWorker.controller) offer(w);
-    });
-  });
-  let reloaded = false;
-  navigator.serviceWorker.addEventListener("controllerchange", () => {
-    // Lần cài đầu, clients.claim() cũng phát controllerchange — chỉ tải lại khi thay bản cũ.
-    if (reloaded || !hadController) return;
-    reloaded = true;
-    location.reload();
-  });
-}
+// ---------- Phiên bản và cập nhật (update.ts) ----------
+// "Để sau" chỉ ẩn thanh; lần kiểm tra kế tiếp (tự động, tối đa 6 giờ một lần) sẽ nhắc lại.
+onUpdateResult((r) => {
+  if (r.status !== "new") return;
+  clear(updateBar);
+  const now = h("button", { type: "button", class: "ubtn primary", onclick: () => {
+    now.setAttribute("disabled", ""); now.textContent = "Đang cập nhật…"; void applyUpdate();
+  } }, "Cập nhật ngay");
+  const later = h("button", { type: "button", class: "ubtn", onclick: () => { updateBar.hidden = true; } }, "Để sau");
+  updateBar.append(
+    h("span", { class: "update-msg" }, r.version ? `Đã có phiên bản mới ${r.version}.` : "Đã có bản cập nhật mới của ứng dụng."),
+    h("span", { class: "update-acts" }, now, later));
+  updateBar.hidden = false;
+});
 
 if ("serviceWorker" in navigator && location.protocol !== "file:") {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("sw.js", { scope: "./" }).then(watchUpdates).catch((e) => console.warn("Không đăng ký được chế độ ngoại tuyến:", e));
+    navigator.serviceWorker.register("sw.js", { scope: "./" })
+      .then((reg) => { attachRegistration(reg); autoCheck(); })
+      .catch((e) => console.warn("Không đăng ký được chế độ ngoại tuyến:", e));
   });
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") autoCheck(); });
 }

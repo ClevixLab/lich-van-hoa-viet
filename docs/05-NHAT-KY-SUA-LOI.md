@@ -234,3 +234,50 @@ Quy tắc và bằng chứng: docs/03 §16.1, §16.3–16.5.
 | Dữ liệu kiểm định | Sinh lại `core/out/{,precise/}{lunar,tet,newmoons}_1900_1999.csv`, `dayinfo_1900_3000.jsonl.gz`; độ lệch trong `newmoons` ghi đến giây (`+07:45:40`) | — |
 | L12, L13 | `check-parity.sh` ĐẠT: dayinfo 402 132 dòng × 2, Tết 1 101 × 2, gooddays 4 470 × 2, 0 sai lệch; 2000–3000 giống hệt từng byte tệp chuẩn; khứ hồi 1900–3000: 402 132 ngày × 2, 0 lỗi | — |
 | PWA | Ghi chú: "Trước năm 1929, âm lịch tính theo giờ địa phương Bắc Kinh; 1929–1967 theo múi giờ UTC+8; từ 1968 theo UTC+7 (chuẩn miền Bắc). …" (Đổi ngày, Giới thiệu); smoke thêm 03/02/1916 → 1/1 Bính Thìn: 95 kiểm tra ĐẠT; P3 346,4 KB, P4 2,43 MB | `pwa/test/smoke.mjs`, `pwa/test/metrics.json` |
+
+## I. Bổ sung A3 (mặc định Precise) và cập nhật phiên bản PWA (2026-11-06)
+
+### I.1 Phương pháp mặc định → `Precise`
+
+| Hạng mục | Thay đổi | Bằng chứng |
+|---|---|---|
+| Lõi | `core/src/lunar.rs`: `DEFAULT_METHOD = Method::Precise`; `lvhv-dump` ghi "mặc định: precise" | `fixtures.rs::default_method_is_precise` |
+| tsport | `tsport/src/lunar.ts`: `DEFAULT_METHOD = "precise"` | `pwa/build.mjs` dừng nếu khác lõi Rust (giữ nguyên kiểm tra) |
+| Test HND | Các test riêng của HND gọi tường minh `Method::Hnd`: `fixtures.rs::roundtrip_2000_3000` (khứ hồi HND), `roundtrip_2000_2100` (cả mặc định và HND), `tet_known` (thêm cột HND), `methods.rs::precise_fixture_2026_11_05` (L8 cho cả hai) | `cargo test --workspace --release`: mọi test ĐẠT |
+| Parity, L12, L13 | `scripts/check-parity.sh` (cả hai phương pháp 1900–3000): dayinfo 402 132 dòng × 2, Tết 1 101 × 2, gooddays 4 470 × 2, **0 sai lệch**; L13 hnd và precise **giống hệt từng byte** tệp chuẩn (tệp chuẩn tách theo phương pháp nên không đổi); 1 phút 27 giây | — |
+| Test dài | `cargo test --release --workspace -- --ignored`: roundtrip 2000–3000 (HND), precise roundtrip, tự nhất quán (Precise 0; HND đúng 6 năm đã khóa), N3 cả dải, §2a, L12 khứ hồi 1900–3000 — ĐẠT | — |
+| PWA | Đọc phương pháp từ lõi Rust lúc build (`metrics.json` `"method": "precise"`); Giới thiệu: "Ngày âm lịch tính theo mô hình thiên văn chính xác (Meeus)… Thuật toán Hồ Ngọc Đức… vẫn được giữ… để đối chiếu" | smoke |
+| CI | `ci.yml` sinh dữ liệu đối chiếu 1900–3000 (trước đây chỉ 2000–3000 nên `tsport/test/compare.mjs` báo MISSING, CI đỏ từ commit 94fbf17) | — |
+
+Hai phương pháp khác ngày âm ở 178 ngày trong 1900–2100 (1917-03-23→05-20, 1922-06-25→08-22,
+2072-12-09→2073-01-07, 2077-11-15→12-14; so `lvhv-dump lunar-csv` của hai phương pháp). docs/03 §15.7.
+
+### I.2 Hiện phiên bản và nhắc cập nhật (PWA)
+
+| Hạng mục | Thay đổi |
+|---|---|
+| Nguồn số phiên bản | `pwa/build.mjs` đọc tệp `VERSION` ở gốc kho (bỏ hằng "0.1"); `LVHV_VERSION` chỉ dùng khi kiểm thử. Mã bản dựng = mã commit git rút gọn (thêm `-dirty` nếu nguồn PWA có sửa chưa commit), không có git thì băm nội dung nguồn; ngày dựng theo UTC |
+| `dist/version.json` | `{"version","build","date","notes"}`; `notes` = các dòng "- …" dưới `## [X.Y.Z]` của `CHANGELOG.md` (thiếu mục của phiên bản đang dựng → build thất bại). **Không** nằm trong precache |
+| Service worker | `version.json`: chỉ qua mạng, `cache: "no-store"`, mất mạng → lỗi (trang báo "đang ngoại tuyến"); tệp khác giữ cache-first. Nhận thông điệp `"skipWaiting"` (bản 0.1) và `SKIP_WAITING` (bản mới). Vẫn không tự `skipWaiting()` (RS-08) |
+| Giao diện | Chân trang "Bản quyền © 2026 của Clevix Lab, version X.Y.Z" (số thật). Giới thiệu → mục **Phiên bản**: "Phiên bản đang dùng: X.Y.Z (bản dựng …, ngày …)", nút **Kiểm tra cập nhật** (Đang kiểm tra… / Bạn đang dùng phiên bản mới nhất. / Có phiên bản mới X.Y.Z + ghi chú + **Cập nhật ngay** / Không kiểm tra được (đang ngoại tuyến).) |
+| Tự nhắc | Lúc mở ứng dụng và khi trang hiện lại, tối đa 6 giờ một lần (mốc chỉ trong bộ nhớ của trang — S4), kiểm tra im lặng; có bản mới → **một** thanh ở đầu trang "Đã có phiên bản mới X.Y.Z. [Cập nhật ngay] [Để sau]" (thay thanh "Có bản mới — Tải lại" cũ). `role="status"`, nút bấm được bằng bàn phím, không tràn ngang ở 360 px với A++ |
+| Cập nhật ngay | `registration.update()` nếu chưa có bản chờ → chờ cài xong → `postMessage({type:"SKIP_WAITING"})` → tải lại một lần khi `controllerchange` |
+| Kiểm thử | `pwa/test/smoke.mjs` mục 1b: bản A (VERSION) → bản B (`LVHV_VERSION` = A + 1 bản vá, dựng vào thư mục tạm qua `LVHV_OUT_DIR`); kiểm thanh nhắc chứa số bản B, tự nhắc khi mở lại, "Để sau", "Cập nhật ngay" → chân trang hiện bản B; ngoại tuyến → thông báo ngoại tuyến |
+
+### I.3 Người đang dùng bản 0.1 (bản đang chạy trên GitHub Pages) sẽ thấy gì
+
+Đã kiểm bằng mô phỏng: dựng lại bản 0.1 từ commit ed08f16 (tên cache `lvhv-v0.1-4eae0158fe`, trùng bản đang
+chạy), mở trong Chromium, rồi máy chủ đổi sang bản 0.1.1.
+
+- Service worker 0.1 không tự `skipWaiting()`; khi kích hoạt nó gọi `clients.claim()` và xóa cache `lvhv-*`
+  cũ. Trình duyệt tự kiểm `sw.js` mỗi lần mở trang (máy chủ trả `sw.js` khác → cài bản mới ở trạng thái chờ).
+- **Lần mở đầu sau khi phát hành:** ứng dụng vẫn hiện bản 0.1 (tờ lịch theo phương pháp HND), và hiện thanh
+  cũ ở **cuối** màn hình: "Có bản mới của ứng dụng." + nút **Tải lại**. Bấm **Tải lại** → bản mới kích hoạt
+  (service worker mới nhận thông điệp cũ `"skipWaiting"`), trang tải lại một lần → chân trang
+  "version 0.1.1". Đã kiểm: ĐẠT.
+- **Không bấm:** khi đóng hẳn mọi cửa sổ/thẻ của ứng dụng rồi mở lại, bản 0.1.1 tự được dùng. Đã kiểm: ĐẠT.
+- Bản 0.1 không có nút Kiểm tra cập nhật hay thanh ở đầu trang; từ 0.1.1 trở đi mới có (thanh ở đầu trang,
+  có số phiên bản).
+- Khi kiểm tra `sw.js`, trình duyệt bỏ qua bộ nhớ đệm HTTP của chính nó (mặc định `updateViaCache: "imports"`).
+  Bộ nhớ đệm phía máy chủ/CDN của GitHub Pages có thể làm chậm vài phút sau khi phát hành (chưa đo được từ
+  sandbox vì proxy chặn truy cập trang).

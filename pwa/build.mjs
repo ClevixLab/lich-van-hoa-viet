@@ -6,6 +6,7 @@
 // liệu giả (C-10). Chỉ khi chạy `node build.mjs --mock` mới được dùng lõi giả lập/câu mẫu cho phần
 // còn thiếu; giao diện khi đó có nhãn MOCK và bản build KHÔNG được phát hành.
 import { build } from "esbuild";
+import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync, copyFileSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
@@ -13,9 +14,12 @@ import { fileURLToPath } from "node:url";
 
 const ROOT = dirname(fileURLToPath(import.meta.url));
 const REPO = resolve(ROOT, "..");
-const DIST = join(ROOT, "dist");
-const GEN = join(ROOT, "src", "gen");
-const VERSION = "0.1";
+// LVHV_OUT_DIR: dựng vào thư mục khác (kiểm thử cập nhật trong test/smoke.mjs). Khi đó nội dung sinh ra
+// cũng ghi ra thư mục riêng (<out>.gen/), không đụng src/gen/ của bản dựng chính.
+const DIST = process.env.LVHV_OUT_DIR ? resolve(process.env.LVHV_OUT_DIR) : join(ROOT, "dist");
+const GEN = process.env.LVHV_OUT_DIR ? DIST + ".gen" : join(ROOT, "src", "gen");
+const VERSION_FILE = join(REPO, "VERSION");
+const CHANGELOG = join(REPO, "CHANGELOG.md");
 
 const TSPORT = join(REPO, "tsport", "src", "index.ts");
 const CADAO_JSON = join(REPO, "content", "cadao", "cadao.json");
@@ -126,6 +130,60 @@ const rulesSrc = requireOrMock(NGOCHAP_SOURCES, "danh mục nguồn Ngọc Hạp
 const engineSource = requireOrMock(TSPORT, "lõi tsport") ? "tsport" : "mock";
 const { method, rust: rustMethod } = defaultMethod();
 
+// ---------- Phiên bản: VERSION (nguồn duy nhất) + mã bản dựng + ngày dựng + ghi chú từ CHANGELOG.md ----------
+const SEMVER = /^(\d+)\.(\d+)\.(\d+)$/;
+function appVersion() {
+  const env = process.env.LVHV_VERSION;
+  const v = (env ?? readFileSync(VERSION_FILE, "utf8")).trim();
+  if (!SEMVER.test(v)) fail(`${env ? "LVHV_VERSION" : "VERSION"} không đúng dạng X.Y.Z: "${v}"`);
+  return { version: v, overridden: !!env && env.trim() !== readFileSync(VERSION_FILE, "utf8").trim() };
+}
+
+/** Ghi chú phát hành của một phiên bản: các dòng "- …" dưới tiêu đề "## [X.Y.Z]" của CHANGELOG.md. */
+function releaseNotes(md, v) {
+  const lines = md.split(/\r?\n/);
+  const start = lines.findIndex((l) => new RegExp(`^##\\s+\\[?${v.replace(/\./g, "\\.")}\\]?(\\s|$)`).test(l));
+  if (start < 0) return null;
+  const notes = [];
+  for (const l of lines.slice(start + 1)) {
+    if (/^##\s/.test(l)) break;
+    const m = /^\s*[-*]\s+(.*)$/.exec(l);
+    if (m) notes.push(mdClean(m[1]));
+    else if (/^\s{2,}\S/.test(l) && notes.length) notes[notes.length - 1] += " " + mdClean(l.trim());
+  }
+  return notes;
+}
+
+function sh(cmd, args) {
+  try { return execFileSync(cmd, args, { cwd: REPO, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim(); } catch { return ""; }
+}
+
+/** Mã bản dựng: mã commit git rút gọn (thêm "-dirty" nếu nguồn của PWA có sửa chưa commit); không có git →
+ *  băm nội dung nguồn (12 ký tự đầu của sha256). */
+function buildId() {
+  const sha = sh("git", ["rev-parse", "--short=7", "HEAD"]);
+  if (/^[0-9a-f]{7,}$/.test(sha)) {
+    const dirty = sh("git", ["status", "--porcelain", "--", "pwa/src", "pwa/build.mjs", "pwa/public", "tsport/src", "content", "VERSION", "CHANGELOG.md"]);
+    return dirty ? `${sha}-dirty` : sha;
+  }
+  const hh = createHash("sha256");
+  const walk = (d) => readdirSync(d).sort().forEach((n) => { const p = join(d, n); if (statSync(p).isDirectory()) { if (n !== "gen") walk(p); } else hh.update(relative(REPO, p)).update(readFileSync(p)); });
+  for (const d of [join(ROOT, "src"), join(ROOT, "public"), join(REPO, "tsport", "src"), join(REPO, "content")]) if (existsSync(d)) walk(d);
+  for (const f of [VERSION_FILE, CHANGELOG]) if (existsSync(f)) hh.update(readFileSync(f));
+  return hh.digest("hex").slice(0, 12);
+}
+
+const { version: VERSION, overridden: versionOverridden } = appVersion();
+const BUILD_ID = buildId();
+const BUILD_DATE = new Date().toISOString().slice(0, 10);
+const changelog = existsSync(CHANGELOG) ? readFileSync(CHANGELOG, "utf8") : fail("thiếu CHANGELOG.md ở gốc kho");
+let NOTES = releaseNotes(changelog, VERSION);
+if (!NOTES) {
+  if (!versionOverridden) fail(`CHANGELOG.md không có mục "## [${VERSION}]"`);
+  log(`CẢNH BÁO: CHANGELOG.md không có mục ${VERSION} (LVHV_VERSION) — version.json không có ghi chú`);
+  NOTES = [];
+}
+
 mkdirSync(GEN, { recursive: true });
 writeFileSync(join(GEN, "content.ts"),
   `// TỆP SINH TỰ ĐỘNG bởi build.mjs — không sửa tay.\n` +
@@ -135,7 +193,10 @@ writeFileSync(join(GEN, "content.ts"),
   `export const DEFAULT_METHOD: Method = ${JSON.stringify(method)};\n` +
   `export const CADAO_IS_MOCK = ${cadaoMock};\n` +
   `export const SOURCES_IS_MOCK = ${sourcesMock};\n` +
+  `/** Từ tệp VERSION ở gốc kho (hoặc LVHV_VERSION khi kiểm thử). */\n` +
   `export const APP_VERSION = ${JSON.stringify(VERSION)};\n` +
+  `export const BUILD_ID = ${JSON.stringify(BUILD_ID)};\n` +
+  `export const BUILD_DATE = ${JSON.stringify(BUILD_DATE)};\n` +
   `/** content/cadao/cadao.json, sắp theo "order" (CADAO[i].order === i). */\n` +
   `export const CADAO: Cadao[] = ${JSON.stringify(cadao)};\n` +
   `/** content/cadao/SOURCES.md §C — nội dung ghi công bắt buộc. */\n` +
@@ -143,6 +204,7 @@ writeFileSync(join(GEN, "content.ts"),
   `export const RULE_SOURCES_INTRO = ${JSON.stringify(rulesSrc.intro)};\n` +
   `export const RULE_SOURCES: RuleSource[] = ${JSON.stringify(rulesSrc.rows)};\n` +
   `export const RULE_SOURCES_LIMITS: string[] = ${JSON.stringify(rulesSrc.limits)};\n`);
+log(`phiên bản ${VERSION}${versionOverridden ? " (LVHV_VERSION)" : ""}, bản dựng ${BUILD_ID}, ngày ${BUILD_DATE}`);
 log(`lõi: ${engineSource}; phương pháp: ${method}${method !== rustMethod ? ` (LVHV_METHOD, lõi Rust: ${rustMethod})` : ""}; ca dao: ${cadao.length} câu${cadaoMock ? " (mock)" : ""}; nguồn Ngọc Hạp: ${rulesSrc.rows.length} dòng`);
 
 // ---------- 2. Bundle ----------
@@ -153,6 +215,8 @@ const engineAlias = {
   name: "engine-impl",
   setup(b) {
     b.onResolve({ filter: /^#engine-impl$/ }, () => ({ path: engineSource === "tsport" ? TSPORT : join(ROOT, "src", "engine.mock.ts") }));
+    // Nội dung sinh ra: src/gen/content.ts, hoặc <out>.gen/content.ts khi có LVHV_OUT_DIR.
+    b.onResolve({ filter: /(^|\/)gen\/content$/ }, () => ({ path: join(GEN, "content.ts") }));
   },
 };
 
@@ -217,6 +281,11 @@ writeFileSync(join(DIST, "index.html"), html);
 // GitHub Pages: tắt Jekyll để giữ nguyên tên tệp.
 writeFileSync(join(DIST, ".nojekyll"), "");
 
+// version.json: trang đọc tệp này (luôn qua mạng, không qua cache) để biết có phiên bản mới hay không.
+// KHÔNG nằm trong danh sách precache của service worker.
+const VERSION_JSON = "version.json";
+writeFileSync(join(DIST, VERSION_JSON), JSON.stringify({ version: VERSION, build: BUILD_ID, date: BUILD_DATE, notes: NOTES }, null, 2) + "\n");
+
 // ---------- 4. Service worker ----------
 function listFiles(dir, base = dir) {
   return readdirSync(dir).flatMap((n) => {
@@ -224,16 +293,17 @@ function listFiles(dir, base = dir) {
     return statSync(p).isDirectory() ? listFiles(p, base) : [relative(base, p).split("\\").join("/")];
   });
 }
-const precache = ["./", ...listFiles(DIST).filter((f) => f !== ".nojekyll").map((f) => "./" + f)].sort();
+const precache = ["./", ...listFiles(DIST).filter((f) => f !== ".nojekyll" && f !== VERSION_JSON).map((f) => "./" + f)].sort();
 const hash = createHash("sha256");
 for (const f of precache) if (f !== "./") hash.update(f).update(readFileSync(join(DIST, f.slice(2))));
 const cacheName = `lvhv-v${VERSION}-${hash.digest("hex").slice(0, 10)}`;
 const sw = readFileSync(join(ROOT, "src", "sw.js"), "utf8")
   .replace("%CACHE_NAME%", cacheName)
-  .replace("%PRECACHE%", JSON.stringify(precache));
+  .replace("%PRECACHE%", JSON.stringify(precache))
+  .replace("%VERSION_JSON%", JSON.stringify("./" + VERSION_JSON));
 writeFileSync(join(DIST, "sw.js"), sw);
 
 // ---------- 5. Tóm tắt ----------
 let total = 0;
 for (const f of listFiles(DIST)) total += statSync(join(DIST, f)).size;
-log(`xong → dist/ (${listFiles(DIST).length} tệp, ${(total / 1024).toFixed(1)} KB chưa nén), cache ${cacheName}`);
+log(`xong → ${relative(ROOT, DIST) || "."}/ (${listFiles(DIST).length} tệp, ${(total / 1024).toFixed(1)} KB chưa nén), cache ${cacheName}`);

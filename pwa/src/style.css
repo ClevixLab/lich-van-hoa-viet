@@ -508,8 +508,6 @@ input.num { font-size: 1.35rem; font-weight: 700; text-align: center; font-varia
 }
 
 /* RS-08: thông báo có bản mới */
-.update-bar { position: fixed; left: 16px; right: 16px; bottom: calc(76px + env(safe-area-inset-bottom, 0px)); z-index: 50; display: flex; align-items: center; justify-content: space-between; gap: .8rem; padding: .7rem 1rem; border-radius: 12px; background: var(--ink, #222); color: var(--paper, #fff); box-shadow: var(--shadow); font-size: .95rem; }
-.update-bar .linkbtn { color: inherit; font-weight: 700; min-height: 44px; }
 
 /* Logo Clevix trước tên nhà phát hành */
 .foot-brand { display: inline-flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: .3rem .6rem; }
@@ -517,3 +515,22 @@ input.num { font-size: 1.35rem; font-weight: 700; text-align: center; font-varia
 .foot-logo { height: 44px; width: auto; flex: none; }
 .foot .mock { font-size: .78rem; }
 .by-logo { height: 24px; width: auto; flex: none; }
+
+/* Thanh báo cập nhật (một thanh duy nhất, ở đầu trang, không che nội dung) */
+.update-bar {
+  position: sticky; top: 0; z-index: 60; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  gap: .3rem .8rem; padding: calc(.5rem + env(safe-area-inset-top, 0px)) 16px .5rem; background: var(--red-deep); color: #fff;
+  font-size: .95rem; line-height: 1.35; box-shadow: var(--shadow);
+}
+.update-bar .update-msg { font-weight: 700; min-width: 0; overflow-wrap: anywhere; }
+.update-bar .update-acts { display: flex; flex-wrap: wrap; gap: .4rem; }
+.update-bar .ubtn {
+  min-height: 44px; padding: 0 1rem; border-radius: 999px; border: 1.5px solid #fff; background: transparent; color: #fff;
+  font: inherit; font-weight: 700;
+}
+.update-bar .ubtn.primary { background: #fff; color: var(--red-deep); }
+.update-bar .ubtn:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+.update-bar .ubtn:disabled { opacity: .7; cursor: default; }
+#phien-ban .todaybtn { margin-top: .2rem; }
+#phien-ban .upd-new { font-weight: 700; color: var(--red-ink); }
+#phien-ban .upd-notes { margin: .4rem 0 .8rem; }
