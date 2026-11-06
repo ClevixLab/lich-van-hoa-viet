@@ -21,7 +21,8 @@ pad = 6
 box = (max(xs.min() - pad, 0), max(ys.min() - pad, 0), min(xs.max() + pad, w), min(ys.max() + pad, h))
 img = Image.fromarray(rgba, "RGBA").crop(box)
 print("bg", bg.round(1), "box", box, "size", img.size)
-for hh in (72, 144):  # 24px và 48px hiển thị ở mật độ 3x
+for hh in (72, 144, 216):  # 24px và 48px hiển thị ở mật độ 3x
     r = img.resize((round(img.width * hh / img.height), hh), Image.LANCZOS)
+    r = r.quantize(colors=64, method=Image.Quantize.FASTOCTREE, dither=Image.Dither.NONE)
     r.save(f"{out}/clevix-logo-{hh}.png", optimize=True)
     print(hh, r.size)

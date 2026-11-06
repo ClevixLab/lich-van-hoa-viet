@@ -66,8 +66,8 @@ const topbar = h("header", { class: "topbar" },
 const main = h("main", { id: "main", class: "main", tabindex: "-1" });
 const footer = h("footer", { class: "foot" },
   h("span", { class: "foot-brand" },
-    h("img", { src: "icons/clevix-logo-72.png", srcset: "icons/clevix-logo-72.png 1x, icons/clevix-logo-144.png 2x", alt: "Logo Clevix", width: "34", height: "22", class: "foot-logo" }),
-    "Clevix Lab · bản 0.1 thử nghiệm"),
+    h("img", { src: "icons/clevix-logo-72.png", srcset: "icons/clevix-logo-72.png 1x, icons/clevix-logo-144.png 2x, icons/clevix-logo-216.png 3x", alt: "Logo Clevix", width: "67", height: "44", class: "foot-logo" }),
+    h("span", null, "Bản quyền © 2026 của Clevix Lab, version 0.1")),
   IS_MOCK ? h("span", { class: "mock", title: "Dữ liệu lịch đang là bản giả lập để thử giao diện" }, "MOCK — dữ liệu giả lập") : null);
 
 const dialog = h("dialog", { class: "mdialog", "aria-label": "Chọn ngày trên bảng tháng" });
