@@ -534,3 +534,9 @@ input.num { font-size: 1.35rem; font-weight: 700; text-align: center; font-varia
 #phien-ban .todaybtn { margin-top: .2rem; }
 #phien-ban .upd-new { font-weight: 700; color: var(--red-ink); }
 #phien-ban .upd-notes { margin: .4rem 0 .8rem; }
+
+/* Dòng bản quyền: chữ serif của app, ký hiệu © nhỏ và nhẹ hơn chữ, phiên bản ở dòng dưới */
+.foot-ver { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.2; text-align: left; }
+.foot-copy { font-family: var(--serif); font-weight: 600; letter-spacing: .01em; color: var(--ink); }
+.foot-c { font-weight: 400; font-size: .82em; margin-right: .02em; position: relative; top: -.04em; color: var(--ink-2); }
+.foot-v { font-size: .62em; letter-spacing: .04em; color: var(--ink-3); margin-top: .15rem; }
