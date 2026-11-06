@@ -202,3 +202,33 @@ trước khi nộp kết quả (như vai A4 ở v0.1).
 
 Phát hành 0.2.0 cần G1–G4. Tiêu chí CHƯA ĐỦ BẰNG CHỨNG không chặn bản thử nghiệm nội bộ nếu chủ dự án ghi chấp nhận
 rủi ro trong biên bản; nó chặn bản phát hành công khai trên cửa hàng.
+
+## Bổ sung B2 — quyết định ngày 2026-11-07
+
+Chủ dự án giao cho điều phối viên chọn phương án tối ưu cho các mục còn mở (07/11/2026, "Em thấy cái gì tối ưu nhất
+thì anh sẽ quyết làm theo hướng đó"). Các mục 1–3 được quyết **sau khi đã thấy kết quả** kiểm định, ghi rõ ở đây.
+Mục 4 là yêu cầu mới, đăng ký **trước khi viết mã**.
+
+1. **R12 (SAU KHI THẤY KẾT QUẢ).** Lần chạy trước KHÔNG ĐẠT bất biến I3, vì lời nhắc thứ 63 và thứ 64 có thể rơi cùng
+   một phút. Nếu thông báo nhắc mở ứng dụng đặt ở phút sau cái thứ 63, thì cái thứ 64 cùng phút với cái thứ 63 bị bỏ
+   mà không có thông báo nhắc đứng trước nó. Sửa 02 §7.4: `sentinel.at := keep[CAP-2].at` (cùng phút với cái thứ 63,
+   xếp sau nó theo id), không phải `+ 1 phút`. Mệnh đề và ngưỡng của R12 giữ nguyên; chạy lại cả ba kịch bản × ba cỡ.
+2. **Năm điểm đặc tả còn trống mà đợt 1 đã tự chọn (SAU KHI THẤY KẾT QUẢ)** được chấp nhận đúng như đã cài, và ghi
+   vào 02: nhãn "Sắp đến sự kiện"; tiêu đề .ics "Tiên thường — …"; sự kiện dương lặp hằng năm vào 29/02 rơi vào 28/02
+   ở năm không nhuận; tuổi trên 150 bị từ chối khi nhập; nhắc "đúng lúc" ghi `TRIGGER:PT0S` trong .ics.
+3. **R1 với phương pháp Jpl (SAU KHI THẤY KẾT QUẢ).** R1 lần trước KHÔNG ĐẠT (2 932 sai lệch, đều trong ba đoạn Sóc sát
+   nửa đêm 2242/2962/2988 của `Precise` so với bên kiểm định dùng PyEphem). Từ bản 0.1.4 lịch mặc định là `Jpl`
+   (docs/02 Bổ sung A4), và bên kiểm định độc lập đã có lịch tự lập từ DE441 khớp lõi 402 132/402 132 ngày (L15).
+   R1 được chạy lại với `Jpl`, đối chiếu với lịch DE441 của bên kiểm định, giữ nguyên ngưỡng 0 sai lệch và không có
+   ngoại lệ sát nửa đêm. Kết quả `Precise` lần trước được giữ nguyên trong báo cáo, không xóa.
+4. **R13 — danh sách sự kiện theo kỳ (yêu cầu mới, KHÓA trước khi viết mã).** Chủ dự án yêu cầu xem danh sách sự kiện
+   của người đã mất và người đang sống theo tuần, tháng, quý, năm.
+
+### R13 — Danh sách sự kiện theo tuần / tháng / quý / năm
+
+| Mục | Nội dung |
+|---|---|
+| Mệnh đề | `events_in_period(dữ liệu, kỳ, ngày neo, bộ lọc)` trả **mọi** lần xuất hiện như 02 §7.2: giỗ, tiên thường nếu bật, sinh nhật dương, sinh nhật âm, sự kiện. Lấy những lần có ngày dương nằm trong kỳ chứa ngày neo. **Kỳ:** tuần từ Thứ Hai đến Chủ nhật; tháng dương; quý dương (tháng 1–3, 4–6, 7–9, 10–12); năm dương. **Bộ lọc:** tất cả / người đã mất (hồ sơ có ngày mất) / người đang sống (hồ sơ không có ngày mất); sự kiện theo trạng thái của hồ sơ chứa nó. **Thứ tự:** như §7.2. Mỗi mục có ngày dương, ngày âm, loại, hồ sơ, nhãn (giỗ đầu, giỗ hết, tiên thường, tuổi…). Không phụ thuộc công tắc nhắc |
+| Dữ liệu | Bộ hồ sơ của R3; mọi tuần, tháng, quý và năm có ngày neo trong 2026-01-01 → 2036-12-31; cả ba bộ lọc; phương pháp mặc định (`Jpl`) |
+| Ngưỡng | (a) 0 sai lệch so với bộ tham chiếu do bên kiểm định độc lập tự cài từ mệnh đề này; (b) Rust ≡ TypeScript từng byte; (c) nhất quán: hợp các tuần (cắt theo ranh giới) = tháng, hợp 3 tháng = quý, hợp 4 quý = năm, "đã mất" ∪ "đang sống" = "tất cả", không trùng mục; (d) ngày đầu và ngày cuối của mỗi kỳ đều được tính |
+| Kết luận | ĐẠT / KHÔNG ĐẠT / CHƯA ĐỦ BẰNG CHỨNG |
