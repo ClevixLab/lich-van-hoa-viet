@@ -84,3 +84,28 @@ cài quy tắc từ bằng chứng lịch sử, không đọc mã lõi. Việc c
    nguồn tuân thủ quy ước lịch sử đã chọn (lịch tính theo giờ Bắc Kinh trước 1929 / UTC+8 đến 1967). Biên bản phải
    liệt kê từng năm, ngày của mỗi nguồn và ghi rõ nguồn khác lệch bao nhiêu ngày. Đây là cách chấm được quyết định
    sau khi thấy kết quả; ngưỡng "0 sai lệch" giữ nguyên với các năm mà các nguồn thống nhất.
+
+## Bổ sung A4 — phương pháp JPL DE441 (KHÓA 2026-11-07, SAU KHI ĐÃ THẤY KẾT QUẢ, trước khi viết mã)
+
+Ghi rõ: đề xuất này được đưa ra **sau khi** các báo cáo kiểm định cho thấy những ngày lệch còn lại giữa lõi (`Precise`)
+và bên kiểm định đều do Sóc hoặc Trung khí rơi cách nửa đêm dưới 30 phút (L4, L6, v0.2-R1). Quyết định của chủ dự án
+(07/11/2026): chuyển sang phương pháp chính xác nhất hiện có.
+
+1. **Phương pháp mới `Jpl`.** Thời điểm Sóc (kinh độ hoàng đạo biểu kiến địa tâm của Mặt Trăng trừ của Mặt Trời = 0)
+   và 24 tiết khí (kinh độ hoàng đạo biểu kiến địa tâm của Mặt Trời là bội số của 15°) tính từ lịch thiên văn
+   **JPL DE441**, theo thang TT, cho 1899-10-01 → 3001-03-31; lưu thành bảng nhúng trong lõi. Quy trình tạo bảng và
+   cách quy đổi (tuế sai, chương động, quang sai, thời gian ánh sáng) ghi trong docs/03.
+2. **ΔT** (TT − UT): theo Morrison, Stephenson, Hohenkerk & Zawilski (2016, bổ sung 2020/2021), gồm số liệu đo trong
+   phạm vi bảng của các tác giả, nối liên tục với parabol dài hạn của cùng các tác giả cho thời gian sau đó. Nguồn và
+   hệ số cụ thể ghi trong docs/03. Sau khoảng năm 2050, ΔT thật không dự báo được chính xác; app tiếp tục ghi chú
+   điều này.
+3. Quy tắc múi giờ (A1, A2) và quy tắc lập lịch (docs/01 §2) giữ nguyên. `Precise` và `Hnd` giữ trong mã để đối chiếu.
+4. `Jpl` chỉ thành mặc định khi L14–L17 dưới đây ĐẠT và L12, P1, P3 vẫn ĐẠT. Tiêu chí L13 (2000–3000 không đổi) không
+   áp dụng cho `Jpl`, vì đổi phương pháp tất yếu đổi một số ngày sát nửa đêm. L16 thay cho L13 với `Jpl`.
+
+| Mã | Tiêu chí | Ngưỡng |
+|---|---|---|
+| L14 | Thời điểm (TT) của mọi Sóc và mọi tiết khí trong bảng, so với bên kiểm định độc lập tự tính từ DE441 bằng phần mềm và mã quy đổi riêng, không đọc lõi hay bảng của lõi | Chênh ≤ 2 giây với mọi sự kiện |
+| L15 | Ngày âm (năm, tháng, ngày, nhuận), Can Chi ngày/tháng/năm và ngày bắt đầu tiết khí của lõi (`Jpl`), so với lịch bên kiểm định tự lập từ thời điểm của chính họ, cùng ΔT và quy tắc múi giờ, mọi ngày 1900-01-01 → 3000-12-31 | 0 sai lệch. Sự kiện mà một trong hai bên đặt cách nửa đêm dưới 2 giây được liệt kê riêng là "không phân định được" và không tính |
+| L16 | Liệt kê MỌI ngày mà `Jpl` khác `Precise` (tệp chuẩn của L13), 1900–3000; mỗi đoạn ghi sự kiện gây khác, thời điểm theo hai phương pháp và khoảng cách đến nửa đêm | Mọi đoạn phải do một sự kiện mà hai phương pháp đặt khác ngày; đoạn "nguyên nhân khác" = KHÔNG ĐẠT |
+| L17 | L9 (Tết 1900–1999) và đối chiếu bảng lịch 1900–1999 do Hồ Ngọc Đức công bố, chạy lại với `Jpl` | Không kém `Precise`: L9 giữ ngưỡng và cách chấm của A3; khớp 1237/1237 tháng, hoặc mọi tháng lệch được giải thích bằng sự kiện sát nửa đêm |
