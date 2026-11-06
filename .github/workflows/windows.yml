@@ -23,6 +23,8 @@ env:
 
 jobs:
   build:
+    permissions:
+      contents: write   # cần để đăng GitHub Releases khi đẩy thẻ v*
     runs-on: windows-2022
     timeout-minutes: 60
     env:
@@ -131,3 +133,28 @@ jobs:
             apps/windows/dist/*.msi
             ${{ runner.temp }}/mem.txt
           retention-days: 30
+
+      # Chỉ khi đẩy thẻ phiên bản (v*): tạo bản phát hành (pre-release) trên GitHub và đính kèm .msi/.zip.
+      - name: Đăng lên GitHub Releases
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = "${{ github.ref_name }}"
+          $repo = "${{ github.repository }}"
+          $notes = @"
+          Bản thử nghiệm Lịch và Văn hóa Việt $tag cho Windows 10/11 (64-bit).
+
+          - **LichViet-*-x64.msi**: bộ cài, bấm đúp để cài.
+          - **LichViet-*-x64.zip**: bản chạy không cần cài, giải nén rồi mở LichViet.exe.
+
+          Bản này **chưa được ký số**, nên Windows có thể hiện "Windows protected your PC". Bấm **More info → Run anyway** để chạy.
+          Ứng dụng không kết nối mạng và không thu thập dữ liệu. Thay đổi: xem CHANGELOG.md.
+          "@
+          $notes = ($notes -split "`n" | ForEach-Object { $_ -replace '^\s{10}', '' }) -join "`n"
+          Set-Content -Path release-notes.md -Value $notes -Encoding utf8
+          gh release view $tag -R $repo *> $null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create $tag -R $repo --prerelease --title "Lịch và Văn hóa Việt $tag" --notes-file release-notes.md
+          }
+          gh release upload $tag -R $repo --clobber (Get-ChildItem apps/windows/dist/*.msi).FullName (Get-ChildItem apps/windows/dist/*.zip).FullName
