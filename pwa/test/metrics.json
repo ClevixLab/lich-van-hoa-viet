@@ -1,26 +1,26 @@
 {
-  "date": "2026-11-06T06:59:53.263Z",
+  "date": "2026-11-06T07:05:00.351Z",
   "machine": "linux x64, Node v22.23.4, Chromium 153.0.8010.12",
   "viewports": {
     "360x780": {
-      "first_load_transfer_gzip_bytes": 360014,
+      "first_load_transfer_gzip_bytes": 359997,
       "first_load_transfer_gzip_kb": 351.6,
-      "first_load_cdp_encoded_bytes": 156436,
+      "first_load_cdp_encoded_bytes": 156428,
       "first_load_files_page_and_sw_precache": 26,
-      "js_heap_used_bytes": 2574120,
+      "js_heap_used_bytes": 2574112,
       "js_heap_used_mb": 2.45,
-      "js_heap_total_mb": 3.37,
-      "render_ms_max": 4,
-      "render_ms_median": 1.4,
+      "js_heap_total_mb": 3.12,
+      "render_ms_max": 2.2,
+      "render_ms_median": 1.1,
       "service_worker_active": true,
       "offline_second_visit": true,
       "console_errors": [],
       "external_requests": []
     },
     "1280x800": {
-      "first_load_transfer_gzip_bytes": 355782,
+      "first_load_transfer_gzip_bytes": 355765,
       "first_load_transfer_gzip_kb": 347.4,
-      "js_heap_used_bytes": 2539280,
+      "js_heap_used_bytes": 2539272,
       "js_heap_used_mb": 2.42,
       "console_errors": [],
       "external_requests": []
@@ -55,8 +55,8 @@
   },
   "dist": {
     "files": 18,
-    "raw_bytes": 607613,
-    "gzip_bytes_all_files": 203313
+    "raw_bytes": 607601,
+    "gzip_bytes_all_files": 203302
   },
   "engine": "tsport",
   "method": "precise",
