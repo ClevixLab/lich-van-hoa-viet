@@ -13,7 +13,9 @@ Lan xuat hien (Occ):
   key      "Y" (nam am: gio, tien_thuong, sinh_nhat_am, su_kien_am_lap; nam duong: sinh_nhat, su_kien_duong_lap)
            hoac "once"
   n        so lan (gio: Y - nam am mat; sinh nhat: Y - nam goc; su kien lap: Y - nam goc) hoac None
-  label    gio | gio_dau | gio_het (gio), tien_thuong, "" (con lai)
+  label    gio | gio_dau | gio_het (gio, va tien_thuong: nhan cua gio hom sau), "" (con lai)
+           [SUA SAU DOI CHIEU R11, 2026-11-07: truoc do tien_thuong ghi label "tien_thuong"; A.3 khong dinh nghia,
+            02 §7.6 ghi ro "nhan cua gio hom sau" -> theo §7.6]
   lunar    (y, m, d, leap) cua ngay duong `date` theo lich DE441
   name     ten de sap (ho_ten cua Person; Event: tieu_de, rong thi ten loai)
   rule     ReminderRule (dict) hoac None
@@ -100,7 +102,7 @@ class Gen:
                                    name=name, rule=rule, status="deceased", person=p))
                 t = a["solar"] - dt.timedelta(days=1)
                 if tt and d0 <= t <= d1:
-                    out.append(Occ(date=t, cls="tien_thuong", entity=pid, key=key, n=a["n"], label="tien_thuong",
+                    out.append(Occ(date=t, cls="tien_thuong", entity=pid, key=key, n=a["n"], label=a["label"],
                                    name=name, rule=rule, status="deceased", person=p))
             return self._fill(out)
         bd = self.birth(p)
