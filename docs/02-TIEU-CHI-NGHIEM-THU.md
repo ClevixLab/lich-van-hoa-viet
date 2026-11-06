@@ -59,3 +59,17 @@ toán phải được ghi trong docs/03 kèm bằng chứng. App ghi chú: miề
 | L11 | Tính liên tục quanh điểm chuyển múi giờ: mọi ngày 1967-01-01 → 1969-12-31 có đúng một ngày âm; ngày âm tăng đều trong tháng, không thiếu không trùng; Tết 1968 = 1968-01-29 | Đạt cả ba |
 | L12 | L5 (khứ hồi) và L7 (TypeScript trùng từng byte với Rust) mở rộng cho 1900-01-01 → 3000-12-31, cả hai phương pháp | 0 lỗi, 0 sai lệch |
 | L13 | Kết quả 2000–3000 không đổi so với trước khi mở rộng (so với tệp chuẩn đã lưu) | Giống hệt từng byte |
+
+## Bổ sung A2 — quy tắc múi giờ trước 1929 (2026-11-06, SAU KHI ĐÃ THẤY KẾT QUẢ)
+
+Ghi rõ: thay đổi này được đề xuất **sau khi** kiểm định L9 lần 1 cho kết quả KHÔNG ĐẠT (Tết 1916 lệch mọi nguồn
+Việt Nam; 4 tháng 1906–1920 lệch bảng lịch 1900–1999 do Hồ Ngọc Đức công bố). Lý do chấp nhận: có bằng chứng lịch
+sử độc lập với kết quả — trước năm 1929 lịch Trung Hoa (lịch triều Nguyễn theo cùng phép tính) dùng giờ địa phương
+Bắc Kinh; bảng lịch Đài Thiên văn Hồng Kông năm 1916 xác nhận. Quyết định của chủ dự án (06/11/2026):
+
+- Trước 1929-01-01: giờ địa phương Bắc Kinh (UT+7:45:40, kinh độ 116°25′ Đ).
+- 1929-01-01 → 1967-12-31: UTC+8. Từ 1968-01-01: UTC+7 (như A1).
+
+Tiêu chí L9, L10, L11, L12, L13 giữ nguyên ngưỡng; phải chạy lại toàn bộ với quy tắc mới. Bên kiểm định độc lập tự
+cài quy tắc từ bằng chứng lịch sử, không đọc mã lõi. Việc chấm L9 khi các nguồn Việt Nam mâu thuẫn nhau (1903, 1925,
+1935, 1965) CHƯA được chủ dự án quyết định: báo cáo phải nêu kết quả theo từng nguồn, không tự chọn nguồn.
