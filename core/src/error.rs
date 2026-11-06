@@ -1,41 +1,42 @@
 //! Miền hỗ trợ (phạm vi ngày) và kiểu lỗi của API công khai.
 //!
-//! **Miền công khai** (hợp đồng §2, tiêu chí L2–L7): ngày dương 2000-01-01 … 3000-12-31
+//! **Miền công khai** (hợp đồng §2, tiêu chí L2–L7, bổ sung A1 L9–L13): ngày dương
+//! 1900-01-01 … 3000-12-31
 //! (JDN `MIN_JDN..=MAX_JDN`). Mọi hàm công khai nhận ngày dương / JDN / năm âm sẽ trả lỗi
 //! (`Err(DateError::OutOfRange{..})` hoặc `None`) thay vì treo, panic hay trả kết quả vô nghĩa
 //! khi đầu vào nằm ngoài miền này.
 //!
-//! **Miền nội bộ**: bảng tháng (`YearTable`) được lập cho "tuế" `yy ∈ 1900..=3101`, đủ để các
-//! năm âm ở hai đầu miền công khai (ví dụ tháng 11–12 âm của năm 1999, tháng 11–12 âm của năm
-//! 3000 kéo sang tháng 1/3001) và để đổi **ngày sinh** từ 1900 (xem `lunar_year_of_birth`).
+//! **Miền nội bộ**: bảng tháng (`YearTable`) được lập cho "tuế" `yy ∈ 1899..=3101`, đủ để các
+//! năm âm ở hai đầu miền công khai (năm âm 1899 chứa 1900-01-01; tháng 11–12 âm của năm 3000
+//! kéo sang tháng 1/3001).
 //!
-//! **Ngày sinh**: `lunar_year_of_birth` nhận ngày dương 1900-01-01 … 3000-12-31. Phần 1900–1999
-//! **chưa** được kiểm định độc lập (oracle chỉ chạy 2000–3000); sai số có thể có chỉ ảnh hưởng
-//! những ngày sinh sát Tết (năm âm có thể lệch 1 nếu ngày Sóc tháng Giêng tính lệch).
+//! **Múi giờ**: trước 1968-01-01 âm lịch tính theo UTC+8 (quy ước lịch miền Bắc), từ đó UTC+7
+//! (`astro::local_day_of`, docs/03 §16). **Ngày sinh**: `lunar_year_of_birth` cùng miền
+//! 1900-01-01 … 3000-12-31.
 
 use std::fmt;
 
 /// Năm dương nhỏ nhất của miền công khai.
-pub const MIN_YEAR: i32 = 2000;
+pub const MIN_YEAR: i32 = 1900;
 /// Năm dương lớn nhất của miền công khai.
 pub const MAX_YEAR: i32 = 3000;
-/// JDN của 2000-01-01.
-pub const MIN_JDN: i64 = 2451545;
+/// JDN của 1900-01-01.
+pub const MIN_JDN: i64 = 2415021;
 /// JDN của 3000-12-31.
 pub const MAX_JDN: i64 = 2817152;
-/// Năm âm nhỏ nhất chấp nhận được ở `lunar_to_solar`: tháng 11–12 âm năm 1999 rơi vào
-/// tháng 1–2/2000 (kết quả vẫn phải nằm trong miền công khai, nếu không trả `None`).
+/// Năm âm nhỏ nhất chấp nhận được ở `lunar_to_solar`: 1900-01-01 thuộc tháng 12 âm năm 1899
+/// (kết quả vẫn phải nằm trong miền công khai, nếu không trả `None`).
 pub const MIN_LUNAR_YEAR: i32 = MIN_YEAR - 1;
 /// Năm âm lớn nhất chấp nhận được ở `lunar_to_solar`.
 pub const MAX_LUNAR_YEAR: i32 = MAX_YEAR;
-/// Năm dương nhỏ nhất của ngày sinh (`lunar_year_of_birth`).
-pub const BIRTH_MIN_YEAR: i32 = 1900;
+/// Năm dương nhỏ nhất của ngày sinh (`lunar_year_of_birth`) — bằng `MIN_YEAR`.
+pub const BIRTH_MIN_YEAR: i32 = MIN_YEAR;
 /// Khoảng tối đa của `find_good_days`: `to − from ≤ MAX_SPAN_DAYS` (tức tối đa 367 ngày tính
 /// cả hai đầu) — cùng quy ước với PWA và lớp `ffi`.
 pub const MAX_SPAN_DAYS: i64 = 366;
 
 /// Tuế nhỏ nhất/lớn nhất mà `YearTable::new` chấp nhận (miền nội bộ).
-pub(crate) const INTERNAL_MIN_YY: i32 = 1900;
+pub(crate) const INTERNAL_MIN_YY: i32 = 1899;
 pub(crate) const INTERNAL_MAX_YY: i32 = 3101;
 
 /// Lỗi của API công khai (thông điệp tiếng Việt qua `Display`).
@@ -57,7 +58,7 @@ pub enum DateError {
 }
 
 impl DateError {
-    /// Lỗi ngoài miền công khai 2000–3000.
+    /// Lỗi ngoài miền công khai 1900–3000.
     pub const OUT_OF_RANGE: DateError = DateError::OutOfRange {
         min: MIN_YEAR,
         max: MAX_YEAR,

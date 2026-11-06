@@ -1,7 +1,7 @@
 //! Công cụ xuất dữ liệu đối chiếu của lvhv-core.
 #![forbid(unsafe_code)]
 
-use lvhv_core::astro::TZ;
+use lvhv_core::astro::{tz_of_instant, TZ_SWITCH_JDN};
 use lvhv_core::jd::{date_from_jdn, fmt_date, jd_to_datetime, jdn_from_date};
 use lvhv_core::lunar::new_moons_between;
 use lvhv_core::{
@@ -23,7 +23,9 @@ const USAGE: &str = "Cách dùng: lvhv-dump [--method hnd|precise] LỆNH ...  (
         (JSONL; \"all\" = mọi việc; khoảng dài hơn 366 ngày được chia khúc 366 ngày,
          mỗi khúc sắp riêng; BIRTH_LUNAR_YEAR là năm ÂM lịch của ngày sinh)
   lvhv-dump bench
-Ngày/năm hợp lệ: 2000-01-01 … 3000-12-31.";
+Ngày/năm hợp lệ: 1900-01-01 … 3000-12-31.
+Giờ trong `terms`/`newmoons` là giờ lịch: +08:00 trước 1968-01-01, +07:00 từ đó (docs/03 §16);
+khi khoảng năm bắt đầu trước 1968, tên cột là `*_local` thay cho `*_utc7`.";
 
 fn parse_date(s: &str) -> Result<i64, String> {
     let p: Vec<&str> = s.split('-').collect();
@@ -50,10 +52,15 @@ fn parse_year(s: &str) -> Result<i32, String> {
     Ok(y)
 }
 
+/// Thời điểm theo giờ lịch (múi giờ theo `astro::tz_of_instant`), kèm độ lệch đã dùng.
 fn fmt_dt(jd_ut: f64) -> String {
-    match jd_to_datetime(jd_ut, TZ) {
+    let tz = tz_of_instant(jd_ut);
+    match jd_to_datetime(jd_ut, tz) {
         Some((y, m, d, hh, mi, ss)) => {
-            format!("{y:04}-{m:02}-{d:02}T{hh:02}:{mi:02}:{ss:02}+07:00")
+            format!(
+                "{y:04}-{m:02}-{d:02}T{hh:02}:{mi:02}:{ss:02}+{:02}:00",
+                tz as i32
+            )
         }
         None => "NaN".to_string(),
     }
@@ -152,7 +159,11 @@ fn tet_csv(out: &mut impl Write, mt: Method, a: i32, b: i32) -> io::Result<()> {
 }
 
 fn terms_csv(out: &mut impl Write, a: i32, b: i32) -> io::Result<()> {
-    writeln!(out, "year,term_name,date_utc7,datetime_utc7")?;
+    if jdn_from_date(a, 1, 1) < TZ_SWITCH_JDN {
+        writeln!(out, "year,term_name,date_local,datetime_local")?;
+    } else {
+        writeln!(out, "year,term_name,date_utc7,datetime_utc7")?;
+    }
     for y in a..=b {
         for t in solar_terms_of_year(y).map_err(core_err)? {
             let (yy, mm, dd) = date_from_jdn(t.local_jdn());
@@ -170,8 +181,12 @@ fn terms_csv(out: &mut impl Write, a: i32, b: i32) -> io::Result<()> {
 }
 
 fn newmoons_csv(out: &mut impl Write, mt: Method, a: i32, b: i32) -> io::Result<()> {
-    writeln!(out, "k,datetime_utc7")?;
     let start = jdn_from_date(a, 1, 1);
+    if start < TZ_SWITCH_JDN {
+        writeln!(out, "k,datetime_local")?;
+    } else {
+        writeln!(out, "k,datetime_utc7")?;
+    }
     let end = jdn_from_date(b, 12, 31);
     for nm in new_moons_between(mt, start, end).map_err(core_err)? {
         writeln!(out, "{},{}", nm.k, fmt_dt(nm.jd_ut))?;

@@ -38,7 +38,7 @@ const BAD_YEARS: [i32; 12] = [
     -1,
     0,
     1,
-    1999,
+    1899,
     3001,
     35_650,
     1_000_000,
@@ -67,8 +67,8 @@ fn solar_years_out_of_range_are_errors() {
             let r = within("lunar_to_solar", move || {
                 lunar_to_solar_with(method, y, 1, 1, false)
             });
-            // 1999 là năm âm hợp lệ cho tháng 11–12 (rơi vào 2000), nhưng tháng Giêng 1999 thì
-            // rơi vào 1999 → ngoài miền → None.
+            // 1899 là năm âm hợp lệ cho tháng 12 (chứa 1900-01-01), nhưng tháng Giêng 1899 thì
+            // rơi vào 1899 → ngoài miền → None.
             assert_eq!(r, None, "lunar_to_solar({y},1,1) {method:?}");
         }
         let r = within("solar_terms_of_year", move || {
@@ -117,24 +117,33 @@ fn jdn_extremes_are_errors() {
 #[test]
 fn edges_of_domain_work() {
     for method in [Method::Hnd, Method::Precise] {
-        let a = solar_to_lunar_with(method, 2000, 1, 1).unwrap();
-        assert_eq!((a.year, a.month, a.day), (1999, 11, 25));
+        // 1900-01-01 là mùng 1 tháng 12 năm âm 1899 (Sóc 1900-01-01 21:51 UTC+8; bảng TK20
+        // của Hồ Ngọc Đức cũng cho Tết 1900 = 1900-01-31, tức tháng 12/1899 dài 30 ngày).
+        let a = solar_to_lunar_with(method, 1900, 1, 1).unwrap();
+        assert_eq!((a.year, a.month, a.day, a.leap), (1899, 12, 1, false));
         let b = solar_to_lunar_with(method, 3000, 12, 31).unwrap();
         assert!(b.year == 3000 && b.month >= 11, "{b:?}");
-        // Năm âm 1999 tháng 11–12 (nằm trong 2000) đổi ngược được.
+        // Năm âm 1899 tháng 12 (nằm trong 1900) đổi ngược được.
         let s = lunar_to_solar_with(method, a.year, a.month, a.day, a.leap).unwrap();
-        assert_eq!((s.year, s.month, s.day), (2000, 1, 1));
+        assert_eq!((s.year, s.month, s.day), (1900, 1, 1));
         let s = lunar_to_solar_with(method, b.year, b.month, b.day, b.leap).unwrap();
         assert_eq!((s.year, s.month, s.day), (3000, 12, 31));
-        // Tháng 11 âm 1999 có ngày trước 2000-01-01 → None (kết quả ngoài miền).
-        assert_eq!(lunar_to_solar_with(method, 1999, 11, 1, false), None);
-        // Tết 2000 và 3000 trong miền.
-        assert!(tet_with(method, 2000).is_ok() && tet_with(method, 3000).is_ok());
+        // Tháng 11 âm 1899 nằm trước 1900-01-01 → None (kết quả ngoài miền).
+        assert_eq!(lunar_to_solar_with(method, 1899, 11, 1, false), None);
+        assert_eq!(lunar_to_solar_with(method, 1899, 11, 30, false), None);
+        // Tết 1900 và 3000 trong miền; Tết 1899 ngoài miền.
+        assert!(tet_with(method, 1900).is_ok() && tet_with(method, 3000).is_ok());
+        assert_eq!(tet_with(method, 1899), Err(OOR));
+        // Ranh giới cũ 2000 vẫn liền mạch: 2000-01-01 = 25/11/1999.
+        let c = solar_to_lunar_with(method, 2000, 1, 1).unwrap();
+        assert_eq!((c.year, c.month, c.day), (1999, 11, 25));
+        assert!(day_info_with(method, 1900, 1, 1).is_ok());
         assert!(day_info_with(method, 2000, 1, 1).is_ok());
         assert!(day_info_with(method, 3000, 12, 31).is_ok());
     }
     let ts = solar_terms_of_year(3000).unwrap();
     assert_eq!(ts.len(), 24);
+    assert_eq!(solar_terms_of_year(1900).unwrap().len(), 24);
 }
 
 #[test]
@@ -226,9 +235,9 @@ fn find_good_days_range_rules() {
         find_good_days("cuoi_hoi", sd(2026, 3, 1), sd(2026, 2, 1), None),
         Err(DateError::InvertedRange)
     );
-    // Quá dài (RS-13): 2000–3000 trước đây mất 92 s.
+    // Quá dài (RS-13): 1900–3000.
     let r = within("fgd long", || {
-        find_good_days("cuoi_hoi", sd(2000, 1, 1), sd(3000, 12, 31), None)
+        find_good_days("cuoi_hoi", sd(1900, 1, 1), sd(3000, 12, 31), None)
     });
     assert_eq!(
         r,
@@ -260,9 +269,11 @@ fn find_good_days_range_rules() {
     );
     // Ngoài miền ở một đầu.
     assert_eq!(
-        find_good_days("cuoi_hoi", sd(1999, 12, 31), sd(2000, 1, 5), None),
+        find_good_days("cuoi_hoi", sd(1899, 12, 31), sd(1900, 1, 5), None),
         Err(OOR)
     );
+    assert!(find_good_days("cuoi_hoi", sd(1900, 1, 1), sd(1900, 3, 31), None).is_ok());
+    assert!(find_good_days("cuoi_hoi", sd(1967, 12, 1), sd(1968, 2, 29), Some(1940)).is_ok());
     assert_eq!(
         find_good_days("cuoi_hoi", sd(3000, 12, 31), sd(3001, 1, 1), None),
         Err(OOR)
@@ -280,7 +291,7 @@ fn find_good_days_range_rules() {
 
 #[test]
 fn year_table_internal_domain() {
-    for yy in [i32::MIN, 0, 1899, 3102, i32::MAX] {
+    for yy in [i32::MIN, 0, 1898, 3102, i32::MAX] {
         assert!(YearTable::new(Method::Hnd, yy).is_err(), "{yy}");
         assert!(YearTable::new(Method::Precise, yy).is_err(), "{yy}");
     }
@@ -308,7 +319,7 @@ fn birth_lunar_year_before_tet() {
     };
     assert_eq!(cc(1975), "Ất Mão");
     assert_eq!(cc(1976), "Bính Thìn");
-    // Miền ngày sinh 1900–3000.
+    // Miền ngày sinh 1900–3000 (= miền công khai).
     assert!(lunar_year_of_birth(1900, 1, 1).is_ok());
     assert_eq!(lunar_year_of_birth(1900, 1, 1), Ok(1899));
     assert_eq!(
@@ -358,7 +369,7 @@ fn error_messages_and_codes() {
     assert_eq!(OOR.code(), "OutOfRange");
     assert_eq!(
         OOR.to_string(),
-        "ngoài phạm vi hỗ trợ (năm 2000 đến năm 3000)"
+        "ngoài phạm vi hỗ trợ (năm 1900 đến năm 3000)"
     );
     let e = solar_to_lunar(2026, 2, 30).unwrap_err();
     assert_eq!(e.code(), "InvalidDate");

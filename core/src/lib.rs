@@ -1,12 +1,13 @@
 //! # lvhv-core — Lõi lịch âm Việt Nam (Lịch và Văn hóa Việt)
 //!
 //! Không phụ thuộc thư viện ngoài (chỉ crate nội bộ `lvhv-ngochap`), không dùng `unsafe`.
-//! Múi giờ UTC+7 cố định. Đặc tả thuật toán: `docs/03-DAC-TA-THUAT-TOAN.md`.
+//! Múi giờ lịch: UTC+7 từ 1968-01-01, UTC+8 trước đó (quy ước lịch miền Bắc; `astro::local_day_of`).
+//! Đặc tả thuật toán: `docs/03-DAC-TA-THUAT-TOAN.md` (§16 cho điểm chuyển múi giờ).
 //!
-//! **Miền hỗ trợ** (xem `error`): ngày dương 2000-01-01 … 3000-12-31. Mọi hàm công khai trả
+//! **Miền hỗ trợ** (xem `error`): ngày dương 1900-01-01 … 3000-12-31. Mọi hàm công khai trả
 //! `Result<_, DateError>` hoặc `Option` cho đầu vào không hợp lệ hoặc ngoài miền — không treo,
-//! không panic, không trả kết quả vô nghĩa (RS-01/RS-02/RS-03). Riêng `lunar_year_of_birth`
-//! nhận ngày sinh từ 1900.
+//! không panic, không trả kết quả vô nghĩa (RS-01/RS-02/RS-03). `lunar_year_of_birth` dùng
+//! cùng miền.
 #![forbid(unsafe_code)]
 
 pub mod astro;
@@ -37,7 +38,8 @@ pub use lunar::{
 pub use terms::{solar_terms_of_year, SolarTerm, TERM_NAMES};
 
 /// Ngày Tết Nguyên đán (mùng 1 tháng 1 âm, không nhuận) của năm âm `ly`.
-/// `Err(OutOfRange)` nếu `ly` ngoài 2000–3000 (Tết của năm âm 2000…3000 đều nằm trong miền).
+/// `Err(OutOfRange)` nếu `ly` ngoài 1900–3000 (Tết của năm âm 1900…3000 đều nằm trong miền;
+/// Tết năm âm 1899 rơi vào 1899 nên ngoài miền).
 pub fn tet(ly: i32) -> Result<SolarDate, DateError> {
     tet_with(DEFAULT_METHOD, ly)
 }

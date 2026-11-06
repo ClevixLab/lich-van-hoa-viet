@@ -41,7 +41,7 @@ pub fn jdn_from_date(y: i32, m: u32, d: u32) -> i64 {
         - 32045
 }
 
-/// Ngày Gregory từ JDN. Đúng (khứ hồi) cho JDN trong khoảng năm 1990–3010 đã kiểm, và về
+/// Ngày Gregory từ JDN. Đúng (khứ hồi) cho JDN trong khoảng năm 1890–3010 đã kiểm, và về
 /// hình thức cho mọi năm vừa `i32`; năm ngoài `i32` bị cắt — chỉ gọi với JDN đã kiểm miền.
 pub fn date_from_jdn(jdn: i64) -> (i32, u32, u32) {
     let a = jdn + 32044;
@@ -63,7 +63,7 @@ pub fn weekday(jdn: i64) -> u32 {
 
 /// Thời điểm (JD thực, UT) → (năm, tháng, ngày, giờ, phút, giây) theo múi giờ `tz_hours`.
 /// Giây được làm tròn đến giây gần nhất. `None` nếu đầu vào không hữu hạn (NaN/∞, C-8) hoặc
-/// ngày kết quả ngoài miền công khai 2000–3000.
+/// ngày kết quả ngoài miền công khai 1900–3000.
 pub fn jd_to_datetime(jd_ut: f64, tz_hours: f64) -> Option<(i32, u32, u32, u32, u32, u32)> {
     if !jd_ut.is_finite() || !tz_hours.is_finite() {
         return None;
@@ -125,7 +125,7 @@ mod tests {
 
     #[test]
     fn roundtrip_range() {
-        for j in jdn_from_date(1990, 1, 1)..jdn_from_date(3010, 1, 1) {
+        for j in jdn_from_date(1890, 1, 1)..jdn_from_date(3010, 1, 1) {
             let (y, m, d) = date_from_jdn(j);
             assert!(is_valid_solar(y, m, d));
             assert_eq!(jdn_from_date(y, m, d), j);

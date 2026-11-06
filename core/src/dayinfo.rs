@@ -42,7 +42,7 @@ pub struct DayCtx {
     pub nap_am: u32,
 }
 
-/// Tính `DayCtx` từ JDN (phương pháp mặc định). `Err(OutOfRange)` nếu JDN ngoài 2000–3000.
+/// Tính `DayCtx` từ JDN (phương pháp mặc định). `Err(OutOfRange)` nếu JDN ngoài 1900–3000.
 pub fn day_ctx_jdn(jdn: i64) -> Result<DayCtx, DateError> {
     day_ctx_jdn_with(DEFAULT_METHOD, jdn)
 }
@@ -82,7 +82,7 @@ pub fn day_ctx_jdn_with(method: Method, jdn: i64) -> Result<DayCtx, DateError> {
 }
 
 /// Tính `DayCtx` cho ngày dương. `Err(InvalidDate)` nếu ngày không tồn tại, `Err(OutOfRange)`
-/// nếu ngoài 2000–3000.
+/// nếu ngoài 1900–3000.
 pub fn day_ctx(y: i32, m: u32, d: u32) -> Result<DayCtx, DateError> {
     day_ctx_with(DEFAULT_METHOD, y, m, d)
 }
@@ -137,7 +137,7 @@ pub struct DayInfo {
 }
 
 /// Tính `DayInfo` cho ngày dương. `Err(InvalidDate)` nếu ngày không tồn tại (30/2, tháng 13,
-/// 29/2 năm không nhuận…), `Err(OutOfRange)` nếu ngoài 2000-01-01 … 3000-12-31.
+/// 29/2 năm không nhuận…), `Err(OutOfRange)` nếu ngoài 1900-01-01 … 3000-12-31.
 pub fn day_info(y: i32, m: u32, d: u32) -> Result<DayInfo, DateError> {
     day_info_with(DEFAULT_METHOD, y, m, d)
 }

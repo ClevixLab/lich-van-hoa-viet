@@ -3,7 +3,8 @@
 //! Chỉ số tiết khí `i` (0..23) ứng với kinh độ biểu kiến của Mặt Trời `15·i` độ,
 //! bắt đầu từ Xuân Phân (0°).
 
-use crate::astro::{apparent_sun_longitude_ut, solve_sun_longitude, TZ};
+pub use crate::astro::local_midnight_ut;
+use crate::astro::{apparent_sun_longitude_ut, local_day_of, solve_sun_longitude};
 use crate::error::{DateError, MAX_YEAR, MIN_YEAR};
 use crate::jd::jdn_from_date;
 
@@ -35,13 +36,8 @@ pub const TERM_NAMES: [&str; 24] = [
     "Kinh Trập",
 ];
 
-/// JD (UT) của 00:00 giờ Việt Nam đầu ngày `jdn`.
-pub fn local_midnight_ut(jdn: i64) -> f64 {
-    jdn as f64 - 0.5 - TZ / 24.0
-}
-
 /// Chỉ số tiết khí (0..23) của ngày `jdn`: tiết khí mới nhất có thời điểm bắt đầu
-/// trước 00:00 (UTC+7) của ngày hôm sau, tức là rơi vào ngày này hoặc trước đó.
+/// trước 00:00 (giờ lịch: UTC+7, trước 1968 là UTC+8) của ngày hôm sau, tức là rơi vào ngày này hoặc trước đó.
 pub fn term_index_of_day(jdn: i64) -> usize {
     let l = apparent_sun_longitude_ut(local_midnight_ut(jdn + 1));
     // `% 24` (không `.min(23)`): kinh độ làm tròn thành đúng 360.0 thuộc tiết 0 (C-7).
@@ -69,14 +65,14 @@ impl SolarTerm {
     pub fn name(&self) -> &'static str {
         TERM_NAMES[self.index]
     }
-    /// JDN của ngày (UTC+7) chứa thời điểm bắt đầu.
+    /// JDN của ngày (giờ lịch, `astro::local_day_of`) chứa thời điểm bắt đầu.
     pub fn local_jdn(&self) -> i64 {
-        (self.jd_ut + 0.5 + TZ / 24.0).floor() as i64
+        local_day_of(self.jd_ut)
     }
 }
 
 /// 24 tiết khí có thời điểm bắt đầu (theo UTC+7) trong năm dương `year`, theo thứ tự thời gian.
-/// `Err(OutOfRange)` nếu `year` ngoài 2000–3000 (trước đây `year + 1` tràn với `i32::MAX`, RS-04);
+/// `Err(OutOfRange)` nếu `year` ngoài 1900–3000 (trước đây `year + 1` tràn với `i32::MAX`, RS-04);
 /// `Err(Computation)` nếu bộ giải không ra đủ 24 tiết khí hữu hạn.
 pub fn solar_terms_of_year(year: i32) -> Result<Vec<SolarTerm>, DateError> {
     if !(MIN_YEAR..=MAX_YEAR).contains(&year) {
@@ -126,14 +122,14 @@ mod tests {
 
     #[test]
     fn terms_out_of_range() {
-        for y in [i32::MIN, -1, 0, 1999, 3001, i32::MAX] {
+        for y in [i32::MIN, -1, 0, 1899, 3001, i32::MAX] {
             assert_eq!(solar_terms_of_year(y), Err(DateError::OUT_OF_RANGE), "{y}");
         }
     }
 
     #[test]
     fn terms_consistent_with_day_rule() {
-        for y in [2000, 2026, 2100, 2500, 3000] {
+        for y in [1900, 1967, 1968, 2000, 2026, 2100, 2500, 3000] {
             let ts = solar_terms_of_year(y).unwrap();
             assert_eq!(ts.len(), 24, "năm {y}");
             for t in ts {

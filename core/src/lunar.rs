@@ -1,10 +1,10 @@
-//! Âm lịch Việt Nam (UTC+7). Hai phương pháp chọn được: `Method::Hnd` (Hồ Ngọc Đức, mặc định)
+//! Âm lịch Việt Nam (UTC+7; trước 1968-01-01 là UTC+8 — `astro::local_day_of`, docs/03 §16). Hai phương pháp chọn được: `Method::Hnd` (Hồ Ngọc Đức, mặc định)
 //! và `Method::Precise` (Meeus ch.49 đầy đủ + ΔT Espenak–Meeus; Trung khí theo cùng mô hình
 //! Mặt Trời biểu kiến dùng để hiển thị tiết khí).
 
 use crate::astro::{
-    apparent_sun_longitude_ut, hnd_new_moon, hnd_new_moon_day, hnd_sun_sector, precise_new_moon_ut,
-    TZ,
+    apparent_sun_longitude_ut, hnd_new_moon, hnd_new_moon_day, hnd_sun_sector, local_day_of,
+    local_midnight_ut, precise_new_moon_ut,
 };
 use crate::error::{
     check_jdn, checked_jdn, jdn_in_range, DateError, BIRTH_MIN_YEAR, INTERNAL_MAX_YY,
@@ -28,11 +28,11 @@ pub enum Method {
 /// chủ dự án quyết định có đổi hay không.
 pub const DEFAULT_METHOD: Method = Method::Hnd;
 
-/// Ngày (JDN, UTC+7) chứa Sóc thứ k theo phương pháp (nội bộ, không kiểm miền).
+/// Ngày (JDN, giờ lịch) chứa Sóc thứ k theo phương pháp (nội bộ, không kiểm miền).
 pub(crate) fn new_moon_day(method: Method, k: i64) -> i64 {
     match method {
         Method::Hnd => hnd_new_moon_day(k),
-        Method::Precise => (precise_new_moon_ut(k) + 0.5 + TZ / 24.0).floor() as i64,
+        Method::Precise => local_day_of(precise_new_moon_ut(k)),
     }
 }
 
@@ -44,12 +44,12 @@ pub(crate) fn new_moon_ut_with(method: Method, k: i64) -> f64 {
     }
 }
 
-/// Cung 30° (0..11) của Mặt Trời lúc 00:00 UTC+7 ngày `jdn` theo phương pháp (nội bộ).
+/// Cung 30° (0..11) của Mặt Trời lúc 00:00 giờ lịch ngày `jdn` theo phương pháp (nội bộ).
 pub(crate) fn sun_sector(method: Method, jdn: i64) -> i32 {
     match method {
         Method::Hnd => hnd_sun_sector(jdn),
         Method::Precise => {
-            let l = apparent_sun_longitude_ut(jdn as f64 - 0.5 - TZ / 24.0);
+            let l = apparent_sun_longitude_ut(local_midnight_ut(jdn));
             // `rem_euclid` (không `clamp`): kinh độ làm tròn thành đúng 360.0 thuộc cung 0 (C-6).
             ((l / 30.0).floor() as i32).rem_euclid(12)
         }
@@ -230,12 +230,12 @@ impl YearTable {
 }
 
 /// Đổi JDN sang ngày âm (phương pháp mặc định). `Err(OutOfRange)` nếu JDN ngoài
-/// 2000-01-01 … 3000-12-31.
+/// 1900-01-01 … 3000-12-31.
 pub fn jdn_to_lunar(jdn: i64) -> Result<LunarDate, DateError> {
     jdn_to_lunar_with(DEFAULT_METHOD, jdn)
 }
 
-/// Đổi JDN sang ngày âm theo phương pháp chỉ định (miền công khai 2000–3000).
+/// Đổi JDN sang ngày âm theo phương pháp chỉ định (miền công khai 1900–3000).
 pub fn jdn_to_lunar_with(method: Method, jdn: i64) -> Result<LunarDate, DateError> {
     check_jdn(jdn)?;
     jdn_to_lunar_internal(method, jdn)
@@ -268,7 +268,7 @@ fn jdn_to_lunar_internal(method: Method, jdn: i64) -> Result<LunarDate, DateErro
 
 /// Dương lịch → âm lịch (phương pháp mặc định).
 ///
-/// `Err(InvalidDate)` nếu ngày dương không tồn tại; `Err(OutOfRange)` nếu ngoài 2000–3000.
+/// `Err(InvalidDate)` nếu ngày dương không tồn tại; `Err(OutOfRange)` nếu ngoài 1900–3000.
 pub fn solar_to_lunar(y: i32, m: u32, d: u32) -> Result<LunarDate, DateError> {
     solar_to_lunar_with(DEFAULT_METHOD, y, m, d)
 }
@@ -281,8 +281,7 @@ pub fn solar_to_lunar_with(method: Method, y: i32, m: u32, d: u32) -> Result<Lun
 /// Năm âm lịch của một **ngày sinh** dương lịch (phương pháp mặc định) — dùng để tính tuổi
 /// Can Chi (`birth_lunar_year` của `find_good_days`). Người sinh trước Tết thuộc năm âm trước.
 ///
-/// Miền: 1900-01-01 … 3000-12-31 (rộng hơn miền công khai để nhận ngày sinh thế kỷ 20).
-/// Phần 1900–1999 chưa kiểm định độc lập (xem `error.rs`). `Err(InvalidDate)` nếu ngày không
+/// Miền: 1900-01-01 … 3000-12-31 (trùng miền công khai). `Err(InvalidDate)` nếu ngày không
 /// tồn tại, `Err(OutOfRange { min: 1900, max: 3000 })` nếu ngoài miền.
 pub fn lunar_year_of_birth(y: i32, m: u32, d: u32) -> Result<i32, DateError> {
     lunar_year_of_birth_with(DEFAULT_METHOD, y, m, d)
@@ -295,7 +294,7 @@ pub fn lunar_year_of_birth_with(method: Method, y: i32, m: u32, d: u32) -> Resul
 }
 
 /// Âm lịch → JDN (phương pháp mặc định). `None` nếu ngày âm không tồn tại, năm âm ngoài
-/// 1999–3000, hoặc kết quả nằm ngoài miền công khai 2000-01-01 … 3000-12-31.
+/// 1899–3000, hoặc kết quả nằm ngoài miền công khai 1900-01-01 … 3000-12-31.
 pub fn lunar_to_jdn(ly: i32, lm: u32, ld: u32, leap: bool) -> Option<i64> {
     lunar_to_jdn_with(DEFAULT_METHOD, ly, lm, ld, leap)
 }
@@ -350,11 +349,11 @@ pub struct NewMoon {
     pub k: i64,
     /// Thời điểm (JD, UT).
     pub jd_ut: f64,
-    /// JDN của ngày (UTC+7) chứa Sóc.
+    /// JDN của ngày (giờ lịch) chứa Sóc.
     pub local_jdn: i64,
 }
 
-/// Mọi lần Sóc có ngày (UTC+7) trong `[from_jdn, to_jdn]` — công cụ chẩn đoán (`lvhv-dump
+/// Mọi lần Sóc có ngày (giờ lịch) trong `[from_jdn, to_jdn]` — công cụ chẩn đoán (`lvhv-dump
 /// newmoons`). `Err(OutOfRange)` nếu một đầu nằm ngoài miền công khai, `Err(InvertedRange)` nếu
 /// `from_jdn > to_jdn`.
 pub fn new_moons_between(

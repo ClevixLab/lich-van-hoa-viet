@@ -94,7 +94,7 @@ impl GoodDay {
 }
 
 /// Đánh giá một ngày (JDN) cho việc; trả `GoodDay` kể cả khi `allowed = false`.
-/// `Err(OutOfRange)` nếu JDN ngoài 2000–3000; `Err(UnknownActivity)` nếu mã việc không tồn tại.
+/// `Err(OutOfRange)` nếu JDN ngoài 1900–3000; `Err(UnknownActivity)` nếu mã việc không tồn tại.
 pub fn evaluate_day_for(
     method: Method,
     jdn: i64,
@@ -145,7 +145,7 @@ pub fn evaluate_day_for(
 ///
 /// Lỗi (một kiểu, một cách báo — A-1):
 /// - `InvalidDate` — `from`/`to` không tồn tại;
-/// - `OutOfRange` — `from`/`to` ngoài 2000-01-01 … 3000-12-31;
+/// - `OutOfRange` — `from`/`to` ngoài 1900-01-01 … 3000-12-31;
 /// - `InvertedRange` — `from > to`;
 /// - `RangeTooLong` — `to − from > MAX_SPAN_DAYS` (366, tức tối đa 367 ngày kể cả hai đầu);
 /// - `UnknownActivity` — mã việc không có trong `activities()`.

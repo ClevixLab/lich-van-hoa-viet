@@ -12,8 +12,51 @@
 use std::f64::consts::PI;
 
 const DR: f64 = PI / 180.0;
-/// Múi giờ lịch Việt Nam (giờ).
+/// Múi giờ lịch Việt Nam hiện hành (giờ) — áp dụng cho mọi thời điểm từ 1968-01-01 00:00
+/// (giờ UTC+8 cũ) trở đi, tức toàn bộ 1968–3000. Trước đó dùng `TZ_BEFORE_SWITCH` (xem
+/// `local_day_of`, docs/03 §16).
 pub const TZ: f64 = 7.0;
+/// Múi giờ dùng tính âm lịch trước điểm chuyển (quy ước lịch miền Bắc trước 1968).
+pub const TZ_BEFORE_SWITCH: f64 = 8.0;
+/// JDN của 1968-01-01 — ngày đầu tiên tính theo UTC+7 (docs/03 §16).
+pub const TZ_SWITCH_JDN: i64 = 2439857;
+
+/// Múi giờ (giờ) của **ngày** `jdn`: dùng cho thời điểm 00:00 đầu ngày (Trung khí, tiết khí).
+pub fn tz_of_day(jdn: i64) -> f64 {
+    if jdn < TZ_SWITCH_JDN {
+        TZ_BEFORE_SWITCH
+    } else {
+        TZ
+    }
+}
+
+/// JD (UT) của 00:00 giờ lịch đầu ngày `jdn` (UTC+8 trước 1968-01-01, UTC+7 từ đó).
+pub fn local_midnight_ut(jdn: i64) -> f64 {
+    jdn as f64 - 0.5 - tz_of_day(jdn) / 24.0
+}
+
+/// Ngày lịch (JDN) chứa thời điểm `jd_ut` (UT). Quy tắc chuyển (docs/03 §16): thời điểm trước
+/// 1968-01-01 00:00 UTC+8 (= 1967-12-31 16:00 UT) đổi sang ngày theo UTC+8; từ đó theo UTC+7.
+/// Hàm không giảm theo `jd_ut` (thời điểm trong một giờ ngay sau điểm chuyển vẫn thuộc ngày
+/// 1967-12-31 — ngày này dài 25 giờ), nên Sóc liên tiếp luôn cho ngày tăng dần.
+/// Với mọi thời điểm từ 1968 trở đi, biểu thức giống hệt từng bit bản UTC+7 cố định trước đây.
+pub fn local_day_of(jd_ut: f64) -> i64 {
+    let d8 = (jd_ut + 0.5 + TZ_BEFORE_SWITCH / 24.0).floor() as i64;
+    if d8 < TZ_SWITCH_JDN {
+        d8
+    } else {
+        (jd_ut + 0.5 + TZ / 24.0).floor() as i64
+    }
+}
+
+/// Múi giờ (giờ) dùng để đổi thời điểm `jd_ut` sang giờ lịch (cùng quy tắc `local_day_of`).
+pub fn tz_of_instant(jd_ut: f64) -> f64 {
+    if ((jd_ut + 0.5 + TZ_BEFORE_SWITCH / 24.0).floor() as i64) < TZ_SWITCH_JDN {
+        TZ_BEFORE_SWITCH
+    } else {
+        TZ
+    }
+}
 
 // ---------------------------------------------------------------------------
 // Thuật toán Hồ Ngọc Đức
@@ -48,7 +91,7 @@ pub fn hnd_new_moon(k: i64) -> f64 {
 
 /// Ngày (JDN) theo giờ địa phương chứa Sóc thứ k.
 pub fn hnd_new_moon_day(k: i64) -> i64 {
-    (hnd_new_moon(k) + 0.5 + TZ / 24.0).floor() as i64
+    local_day_of(hnd_new_moon(k))
 }
 
 /// Kinh độ Mặt Trời (radian, [0, 2π)) theo Hồ Ngọc Đức: kinh độ thật, không chương động,
@@ -66,7 +109,7 @@ pub fn hnd_sun_longitude(jd: f64) -> f64 {
 
 /// Cung 30° (0..11) của Mặt Trời lúc 00:00 giờ địa phương của ngày `jdn` — dùng để xét Trung khí.
 pub fn hnd_sun_sector(jdn: i64) -> i32 {
-    let l = hnd_sun_longitude(jdn as f64 - 0.5 - TZ / 24.0);
+    let l = hnd_sun_longitude(local_midnight_ut(jdn));
     ((l / PI * 6.0).floor() as i32).clamp(0, 11)
 }
 
@@ -78,10 +121,27 @@ pub fn hnd_sun_sector(jdn: i64) -> i32 {
 /// (hàng chục phút vào năm 3000).
 pub fn delta_t_seconds(year: f64) -> f64 {
     let y = year;
-    if y < 1986.0 {
+    if y < 1860.0 {
         // Ngoài phạm vi dùng của dự án; parabol dài hạn
         let u = (y - 1820.0) / 100.0;
         -20.0 + 32.0 * u * u
+    } else if y < 1900.0 {
+        // Espenak–Meeus 1860–1900 (chỉ dùng ở đầu miền: Sóc/tiết khí cuối 1899).
+        let t = y - 1860.0;
+        7.62 + 0.5737 * t - 0.251754 * t * t + 0.01680668 * t.powi(3) - 0.0004473624 * t.powi(4)
+            + t.powi(5) / 233174.0
+    } else if y < 1920.0 {
+        let t = y - 1900.0;
+        -2.79 + 1.494119 * t - 0.0598939 * t * t + 0.0061966 * t.powi(3) - 0.000197 * t.powi(4)
+    } else if y < 1941.0 {
+        let t = y - 1920.0;
+        21.20 + 0.84493 * t - 0.076100 * t * t + 0.0020936 * t.powi(3)
+    } else if y < 1961.0 {
+        let t = y - 1950.0;
+        29.07 + 0.407 * t - t * t / 233.0 + t.powi(3) / 2547.0
+    } else if y < 1986.0 {
+        let t = y - 1975.0;
+        45.45 + 1.067 * t - t * t / 260.0 - t.powi(3) / 718.0
     } else if y < 2005.0 {
         let t = y - 2000.0;
         63.86 + 0.3345 * t - 0.060374 * t * t

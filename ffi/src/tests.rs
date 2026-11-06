@@ -126,7 +126,7 @@ fn invalid_and_out_of_range_dates_are_errors_not_panics() {
         Err(LvhvError::InvalidDate(_))
     ));
     assert!(matches!(
-        day_info_json(1999, 12, 31),
+        day_info_json(1899, 12, 31),
         Err(LvhvError::OutOfRange(_))
     ));
     assert!(matches!(
@@ -147,7 +147,7 @@ fn invalid_and_out_of_range_dates_are_errors_not_panics() {
     ));
     assert_eq!(lunar_to_solar(2026, 13, 1, false), None);
     assert_eq!(lunar_to_solar(2026, 1, 31, false), None);
-    assert_eq!(lunar_to_solar(1999, 1, 1, false), None);
+    assert_eq!(lunar_to_solar(1899, 1, 1, false), None);
 }
 
 #[test]
@@ -227,7 +227,7 @@ fn rating_thresholds_match_pwa() {
 #[test]
 fn build_info_is_json() {
     let v: serde_json::Value = serde_json::from_str(&build_info_json()).unwrap();
-    assert_eq!(v["min_year"], 2000);
+    assert_eq!(v["min_year"], 1900);
 }
 
 mod ngochap {

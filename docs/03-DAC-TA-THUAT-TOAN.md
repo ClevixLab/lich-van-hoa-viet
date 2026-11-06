@@ -5,7 +5,8 @@ Mã nguồn: `core/src/` (`jd.rs`, `astro.rs`, `lunar.rs`, `terms.rs`, `canchi.r
 
 ## 0. Quy ước chung
 
-- Múi giờ: UTC+7 cố định cho mọi năm 2000–3000 (`astro::TZ = 7`).
+- Múi giờ: UTC+7 (`astro::TZ = 7`) cho mọi thời điểm từ 1968-01-01 00:00 UTC+8; trước đó UTC+8
+  (quy ước lịch miền Bắc, §16). Miền hỗ trợ 1900-01-01 → 3000-12-31.
 - Ngày mới bắt đầu lúc 00:00 UTC+7. Một sự kiện thiên văn tại thời điểm JD (UT) thuộc ngày
   JDN = ⌊JD + 0,5 + 7/24⌋.
 - Lịch dương: Gregory đón trước (proleptic). JDN theo công thức số nguyên chuẩn
@@ -86,7 +87,7 @@ Khác với §2 (dành cho âm lịch theo hợp đồng), ở đây dùng mô h
   L3 7, L4 3, L5 1), hiệu chỉnh về FK5 (−0,09033″), chương động theo kinh độ Δψ (4 số hạng,
   Meeus ch.22, sai số ~0,5″), quang sai −20,4898″/R.
 - Thời gian: VSOP87 cần TT; đổi UT → TT bằng ΔT theo đa thức Espenak–Meeus (NASA 2006),
-  xem §11.
+  xem §11 (từ bổ sung A1 có thêm các khoảng 1860–1986, §16.1).
 - Giải phương trình λ(t) = 15·i bằng Newton với đạo hàm số (bước 0,01 ngày), dừng khi bước
   < 1e-8 ngày.
 - Tiết khí của một ngày (hợp đồng §3) = tiết khí mới nhất bắt đầu trước 00:00 UTC+7 ngày hôm
@@ -337,6 +338,136 @@ Ngày âm (năm, tháng, ngày, nhuận) khác nhau:
   nhất quán nội bộ thì đổi `DEFAULT_METHOD` sang `Precise`; nếu ưu tiên khớp lịch HND phổ biến
   thì giữ `Hnd` và ghi 6 năm vi phạm thành sai lệch đã biết. Cả hai lựa chọn đều không làm L6 ĐẠT.
 
+## 16. Phạm vi 1900–1999 và điểm chuyển múi giờ (bổ sung A1, 2026-11-06)
+
+Quyết định của chủ dự án: phạm vi 1900-01-01 → 3000-12-31 theo **quy ước lịch miền Bắc**: âm lịch tính
+theo UTC+8 trước khi chuyển, UTC+7 từ khi chuyển. Tiêu chí khóa trước: docs/02 "Bổ sung A1" (L9–L13).
+
+### 16.1 Quy tắc đã chọn
+
+> **Thời điểm (Sóc, Trung khí, tiết khí) trước 1968-01-01 00:00 giờ UTC+8 (= 1967-12-31 16:00 UT) đổi
+> sang ngày theo UTC+8; từ thời điểm đó trở đi theo UTC+7. "00:00 đầu ngày" dùng để xét Trung khí/tiết
+> khí là 00:00 UTC+8 với các ngày trước 1968-01-01 và 00:00 UTC+7 từ 1968-01-01.**
+
+Mã: `core/src/astro.rs` — `TZ = 7`, `TZ_BEFORE_SWITCH = 8`, `TZ_SWITCH_JDN = 2439857` (1968-01-01),
+`local_day_of(jd_ut)`, `local_midnight_ut(jdn)`, `tz_of_day`, `tz_of_instant`. Đây là **hàm múi giờ
+duy nhất**, dùng chung cho cả `Method::Hnd` và `Method::Precise` (Sóc: `hnd_new_moon_day`,
+`lunar::new_moon_day`; Trung khí: `hnd_sun_sector`, `lunar::sun_sector`; tiết khí:
+`terms::term_index_of_day`, `SolarTerm::local_jdn`). tsport: `tsport/src/astro.ts` cùng tên (camelCase).
+
+Hệ quả:
+- Ngày dương 1967-12-31 "dài 25 giờ" theo giờ lịch (16:00 UT → 17:00 UT ngày 1/1 đều thuộc ngày
+  31/12). `local_day_of` **không giảm** theo thời gian, nên các Sóc liên tiếp luôn cho ngày tăng dần:
+  không thể có ngày âm bị thiếu hay trùng (L11). Không có Sóc hay Trung khí nào rơi vào giờ đó.
+- Với mọi thời điểm ≥ 1968-01-01 00:00 UTC+8, biểu thức `⌊jd + 0,5 + 7/24⌋` giống hệt từng bit bản UTC+7
+  cố định trước đây → kết quả 2000–3000 **không đổi một byte** (L13, §16.5).
+- ΔT của Precise cho 1860–1986 lấy theo các đa thức Espenak–Meeus (NASA) cho từng khoảng (trước đây chỉ
+  dùng parabol dài hạn dưới 1986 — không ảnh hưởng 2000–3000 vì nhánh ≥ 1986 giữ nguyên).
+- Miền nội bộ `YearTable`: tuế 1899–3101 (1900-01-01 là mùng 1 tháng Chạp năm âm 1899). `MIN_YEAR = 1900`,
+  `MIN_JDN = 2415021`, `MIN_LUNAR_YEAR = 1899`; `BIRTH_MIN_YEAR = MIN_YEAR`.
+
+### 16.2 Vì sao chọn mốc 1968-01-01 00:00 UTC+8 (không phải 08/8/1967, cũng không phải "theo tháng 11")
+
+Sóc quanh điểm chuyển (HND; Precise lệch < 2 phút):
+
+| k | UTC+8 | UTC+7 | Ngày khác? |
+|---|---|---|---|
+| 835 | 1967-07-08 01:00 | 1967-07-08 00:00 | không |
+| 836 | 1967-08-06 10:48 | 09:48 | không |
+| 837–839 | 1967-09-04 … 1967-11-02 | | không |
+| **840** | **1967-12-02 00:10** | **1967-12-01 23:10** | **có** |
+| 841 | 1967-12-31 11:39 | 10:39 | không |
+| **842** | **1968-01-30 00:31** | **1968-01-29 23:31** | **có** (Tết Mậu Thân) |
+
+Ba ứng viên:
+1. **Đổi ngay ngày 08/8/1967 (ngày nghị định):** k = 840 tính theo UTC+7 → tháng 11 âm Đinh Mùi bắt đầu
+   1967-12-01. **Bảng âm lịch 1900–1999 do chính Hồ Ngọc Đức công bố** (mảng `TK20` trong mã nguồn
+   `amlich` của tác giả, © 2004 Hồ Ngọc Đức, bản phân phối lại `jquery-amlich` trên GitHub) ghi tháng 11
+   Đinh Mùi bắt đầu **1967-12-02**, tức Sóc k = 840 tính theo UTC+8. Ứng viên này trái với bảng công bố.
+2. **"Múi giờ của tuế = múi giờ lúc tháng 11 bắt đầu":** tháng 11 của tuế 1968 bắt đầu tháng 12/1967 (trước
+   chuyển đổi về mặt sự kiện k = 840 theo bảng) → cả tuế 1968 theo UTC+8 → Tết 1968 = 1968-01-30 (giống
+   miền Nam). **Trái với yêu cầu (a)** Tết miền Bắc 1968 = 1968-01-29.
+3. **Mốc 1968-01-01 00:00 UTC+8 (đã chọn):** k = 840 theo UTC+8 (2/12/1967, khớp bảng TK20), k = 842 theo
+   UTC+7 (29/01/1968, khớp Tết miền Bắc). Giữa hai mốc chỉ có Sóc k = 841 (31/12/1967 11:39, cùng ngày ở
+   cả hai múi), Đông chí 1967-12-22 21:16 UTC+8 (cùng ngày) và Tiểu Hàn 1968-01-06 — không sự kiện nào nằm
+   gần nửa đêm, nên mọi mốc trong khoảng 1967-12-03 … 1968-01-29 cho cùng kết quả; chọn 1968-01-01 vì
+   (i) trùng mốc "UTC+7 từ 1968" mà nhiều nguồn ghi (§16.3), (ii) là ranh giới ngày tròn, dễ kiểm.
+   Liên tục (L11): đảm bảo bởi tính đơn điệu của `local_day_of` (§16.1) và test `l11_continuity_1967_1969`.
+
+### 16.3 Bằng chứng (truy cập 2026-11-06)
+
+| Nguồn | Nội dung liên quan |
+|---|---|
+| Wikipedia (en) "Vietnamese calendar", dẫn Aslaksen, *The Mathematics of the Chinese Calendar*, tr. 29–30 | "On 8 August 1967, the North Vietnamese government issued a decree to change Vietnamese standard time from UTC+8 to UTC+7"; "North and South Vietnam celebrated Tết 1968 on different days"; Tết 1985 = 21/01/1985 |
+| Danh sách thư tz (IANA), A. Treindl, 19/5/2011 | "North Vietnam went from UTC+8 to UTC+7 on August 8, 1967"; miền Nam giữ UTC+8 đến sau chiến tranh; chênh lệch làm Tết 1968 khác ngày |
+| sad-pony-mathematician.blogspot.com, "An Off-by-one Error in the Tet Offensive (1968)", 4/2/2019 | Sóc 1968-01-29 16:31 UT → 23:31 giờ miền Bắc (Tết 29/01), 00:31 ngày 30 giờ miền Nam (Tết 30/01) |
+| thuviengdpt.info, "Âm lịch Việt Nam qua các thời kỳ lịch sử" (Quang Mai, "theo tài liệu của Hồ Ngọc Đức", dựa trên Hoàng Xuân Hãn *Lịch và lịch Việt Nam*) | 1813–1945: lịch Hiệp Kỷ theo phép Thời Hiến nhà Thanh, "không có sự khác biệt giữa lịch Việt Nam và lịch Trung Hoa"; 1946–1954 theo Vạn niên thư Trung Quốc; miền Bắc "múi giờ thứ 8 tới năm 1967 và múi giờ thứ 7 từ 1968"; ghi chú: "từ 8/8/1967 trở đi dùng múi giờ thứ 7"; miền Nam múi 8; từ 1976 cả nước múi 7 |
+| RFA (Gia Minh, 7/2/2007), phỏng vấn Lê Thành Lân (Viện KH&CN VN) và Trịnh Tiến Điều (Ủy ban Lịch) | "Việc tính lịch là từ năm 67 rồi"; "Bắt đầu từ 68 chúng ta ăn tết khác Trung Quốc một ngày"; cuối 68 đầu 69 cũng chênh một ngày |
+| Nhân Dân 29/6/2006, "Chung quanh thông tin về ngày âm lịch khác nhau trên một số loại lịch" (Hà Hồng) | Tết Mậu Thân 1968 và Kỷ Dậu 1969 của Việt Nam sớm hơn Trung Quốc một ngày; lịch Việt tính theo múi 7 |
+| Đài Thiên văn Hồng Kông (hko.gov.hk), lịch năm 1954, 1969, 1916 | Tháng Giêng bắt đầu 1954-02-03, 1969-02-17, 1916-02-03 (lịch Trung Quốc) |
+| Mã nguồn `amlich` của Hồ Ngọc Đức (© 2004), mảng `TK20` (1900–1999) | Bảng ngày đầu tháng âm; giải mã và so với lõi ở §16.4 |
+| Lịch Trung Quốc (ytliu0.github.io/ChineseCalendar; hằng `UTC_OFFSET_PRE_1929` của crate `calendrical_calculations`) | Trước 1929 lịch Trung Quốc tính theo giờ địa phương Bắc Kinh (UT+1397/180 h ≈ UT+7:46); từ 1929 theo 120°E (UT+8) |
+
+**Mâu thuẫn nguồn về ngày chuyển:** nghị định 08/8/1967 (Wikipedia, tz) so với "từ 1968" (thuviengdpt,
+RFA, trang "Time in Vietnam" ghi "confirmed official UTC+07:00 from 1 January 1968"). Với lịch âm, hai cách
+chỉ khác nhau ở tháng 11 Đinh Mùi (k = 840); bảng công bố của Hồ Ngọc Đức theo cách thứ hai. **Chưa tìm
+được bản in lịch miền Bắc năm 1967–1968** (tờ lịch Nhà xuất bản/Nha Khí tượng năm đó) để xác nhận trực
+tiếp tháng 11 Đinh Mùi bắt đầu 01/12 hay 02/12/1967 — ghi là CHƯA ĐỦ BẰNG CHỨNG cho riêng tháng đó;
+lựa chọn dựa trên bảng của Hồ Ngọc Đức.
+
+### 16.4 Đối chiếu với bảng TK20 của Hồ Ngọc Đức (1236 tháng âm 1900–1999)
+
+Đã giải mã `TK20` (ngày Tết + độ dài 12 tháng + tháng nhuận mỗi năm) và so ngày đầu từng tháng (năm,
+tháng, nhuận) với `core/out/{,precise/}lunar_1900_1999.csv`:
+
+| Quy tắc thử | Tháng lệch so với TK20 |
+|---|---|
+| UTC+7 cho mọi năm | 27 (toàn trước 1968, ví dụ 11/1967, 1/1965, 9/1964 …) |
+| UTC+8 cho mọi năm | 25 (toàn từ 1968, gồm Tết 1968, Tết 1969, năm 1984–1985 …) |
+| **Quy tắc §16.1 (đã chọn), Hnd và Precise** | **4**: 4/1906, 10/1914, 1/1916, 10/1920 |
+| Quy tắc §16.1 nhưng Sóc trước 1929 theo giờ Bắc Kinh (UT+7:46) | 0 |
+
+Bốn tháng lệch đều có Sóc **sát nửa đêm UTC+8** (00:02–00:08, tức 23:48–23:54 giờ Bắc Kinh địa phương):
+1906-04-24 00:06, 1914-11-18 00:02, 1916-02-04 00:05, 1920-11-11 00:05 (UTC+8). Lõi đặt mùng 1 vào
+ngày sau, TK20 vào ngày trước. Ca quan trọng nhất là **Tết Bính Thìn 1916**: lõi 1916-02-04, TK20 và
+lịch Trung Quốc (HKO 1916) 1916-02-03 — khóa trong test `known_limitation_1916`. Phần còn lại của 100
+năm (1232 tháng, 99/100 ngày Tết) trùng TK20; Hnd và Precise trùng nhau mọi ngày 1900–1999.
+
+### 16.5 Giới hạn và vấn đề mở
+
+1. **1900–1928 (vấn đề mở, cần chủ dự án quyết):** các nguồn cho thấy lịch Hiệp Kỷ/Thời Hiến thời đó
+   theo lịch nhà Thanh/Trung Hoa, mà lịch Trung Hoa trước 1929 tính theo giờ địa phương Bắc Kinh
+   (≈ UT+7:46), không phải 120°E. Bảng TK20 của Hồ Ngọc Đức khớp hoàn toàn với giả thuyết này (0 tháng
+   lệch). Có nguồn (Wikipedia, dòng Hiệp Kỷ 1841–1954) nói lịch Nguyễn bắt đầu khác lịch Thời Hiến "do
+   khác kinh độ" — gợi ý kinh tuyến Huế (≈ 107°35′E, UT+7:10) — nhưng không nêu năm/tháng cụ thể; trong
+   khi nguồn khác nói "không có sự khác biệt". **Không tìm được** bản in Hiệp Kỷ lịch 1900–1945 để đối
+   chiếu. Lõi theo quyết định chủ dự án: UTC+8 cho mọi ngày trước 1968; hệ quả đã biết: 4 tháng 1906,
+   1914, 1916 (Tết), 1920 có thể sớm/muộn 1 ngày so với lịch thời đó. Nếu muốn khớp TK20: thêm một
+   đoạn "trước 1929 dùng UT+1397/180 h" vào `local_day_of` (đổi một hàm, cả hai phương pháp).
+2. **1943–1945:** thuviengdpt ghi giờ hành chính GMT+8 từ 01/01/1943 và GMT+9 (giờ Tokyo) từ 1945; quy
+   ước lịch của lõi không theo giờ hành chính từng giai đoạn, chỉ theo quy ước lịch (UTC+8).
+3. **Miền Nam 1968–1975:** miền Nam tính theo UTC+8; lõi theo miền Bắc. Các tháng khác nhau (ví dụ Tết
+   1968, Tết 1969, tháng 11/1974, 3/1975…) là chủ đích, ghi chú trong app (Đổi ngày, Giới thiệu).
+4. **Tiết khí hiển thị trước 1968** tính theo giờ UTC+8 (cùng hàm múi giờ), nên ngày giao tiết và trực
+   thống nhất với âm lịch của cùng giai đoạn.
+5. Kiểm định độc lập 1900–1999 (L10) do bên kiểm định thực hiện; tệp dữ liệu cho bên đó: §16.6.
+
+### 16.6 Kết quả kiểm tra (2026-11-06, sandbox 2 vCPU)
+
+| Tiêu chí | Kết quả | Bằng chứng |
+|---|---|---|
+| L11 liên tục 1967–1969 + Tết 1968 = 29/01 | ĐẠT (cả hai phương pháp) | `core/tests/range1900.rs::l11_continuity_1967_1969`, `switch_constants` |
+| L12 khứ hồi 1900–3000 | ĐẠT, 402 132 ngày × 2 phương pháp, 0 lỗi | `range1900.rs::l12_roundtrip_1900_3000` (`--ignored`, release) |
+| L12 TS ↔ Rust 1900–3000 | ĐẠT, 402 132 dòng × 2, 0 sai lệch; Tết 1101 năm × 2, 0 sai lệch | `scripts/check-parity.sh` |
+| L13 2000–3000 không đổi | ĐẠT, giống hệt từng byte (hnd, precise) | `check-parity.sh` bước 5; so `core/out/baseline-2000-3000/*.jsonl.gz` |
+| L9 Tết có nguồn | 1954, 1968, 1969, 1985: khớp. 1916: KHÔNG khớp TK20/lịch Trung Quốc (§16.4, quy ước) | `range1900.rs::tet_20th_century_published`, `known_limitation_1916` |
+| L10 | Chờ bên kiểm định độc lập | — |
+
+Tệp cho bên kiểm định: `core/out/lunar_1900_1999.csv`, `tet_1900_1999.csv`, `newmoons_1900_1999.csv`
+(cột `datetime_local` ghi kèm độ lệch đã dùng, ví dụ `1967-12-02T00:10:30+08:00`,
+`1968-01-29T23:31:10+07:00`), `dayinfo_1900_3000.jsonl.gz`, và bản `core/out/precise/…` tương ứng.
+`lvhv-dump terms` cho năm < 1968 xuất cột `date_local,datetime_local` (độ lệch theo từng dòng).
+
 ## 14. Tài liệu tham khảo
 
 - Jean Meeus, *Astronomical Algorithms*, 2nd ed., Willmann-Bell, 1998 — ch.7 (ngày Julian),
@@ -344,6 +475,7 @@ Ngày âm (năm, tháng, ngày, nhuận) khác nhau:
   gọn).
 - Hồ Ngọc Đức, "Thuật toán tính âm lịch" (bài viết và mã nguồn công bố trực tuyến).
 - F. Espenak, J. Meeus, "Polynomial Expressions for Delta T", NASA Eclipse Web Site (2006).
+- Nguồn cho phạm vi 1900–1999 và điểm chuyển múi giờ: §16.3.
 - Trang lịch công khai dùng đối chiếu điểm (2026-11-05/07/08): ngaydep.com, xemlicham.com,
   baohatinh.vn, chogia.vn (truy cập 2026-11-06). Các trang này mâu thuẫn nhau ở Trực/tú/giờ
   của 2026-11-07; lựa chọn theo trang nhất quán với quy tắc hợp đồng, xem §7–§10.
