@@ -35,7 +35,8 @@ class UpdatePolicyTest {
 
     @Test
     fun textsMatchPwaWording() {
-        assertEquals("Bản quyền © 2026 của Clevix Lab, version 0.1.1", UpdatePolicy.copyright("0.1.1"))
+        assertEquals("©\u00a02026 Clevix Lab", UpdatePolicy.COPYRIGHT)
+        assertEquals("Phiên bản 0.1.2", UpdatePolicy.versionLine("0.1.2"))
         assertEquals("Phiên bản đang dùng: 0.1.1 (bản dựng 42)", UpdatePolicy.runningVersion("0.1.1", "42"))
         assertEquals("market://details?id=vn.clevix.lichviet", UpdatePolicy.MARKET_URL)
     }

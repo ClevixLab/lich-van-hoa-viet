@@ -671,7 +671,9 @@ fn main() -> Result<(), slint::PlatformError> {
         g.set_today_text(sv(format!("Hôm nay (giờ Việt Nam): {}.", t.dmy())));
         g.set_version(sv(update::VERSION));
         g.set_running_version(sv(update::running_version()));
-        g.set_copyright(sv(update::copyright()));
+        g.set_copyright_sign(sv(update::COPYRIGHT_SIGN));
+        g.set_copyright_holder(sv(update::COPYRIGHT_HOLDER));
+        g.set_version_line(sv(update::version_line()));
         let today_days =
             update::parse_days(&format!("{:04}-{:02}-{:02}", t.y, t.m, t.d)).unwrap_or(0);
         g.set_remind(update::should_remind(

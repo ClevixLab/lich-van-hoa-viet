@@ -21,7 +21,13 @@ object UpdatePolicy {
     const val EXPLAIN = "Ứng dụng không tự kết nối mạng để bảo vệ quyền riêng tư. Bấm nút để mở cửa hàng ứng dụng hoặc trang tải về và cập nhật lên phiên bản mới nhất."
     const val REMINDER = "Phiên bản này đã phát hành hơn 2 tháng. Hãy kiểm tra cập nhật để có dữ liệu và tính năng mới nhất."
 
-    fun copyright(version: String): String = "Bản quyền © 2026 của Clevix Lab, version $version"
+    /** Dòng bản quyền (dòng 1 chân trang Giới thiệu); ký hiệu © được vẽ nhỏ và nhẹ hơn chữ. */
+    const val COPYRIGHT_SIGN = "©"
+    const val COPYRIGHT_HOLDER = "\u00a02026 Clevix Lab"
+    const val COPYRIGHT = COPYRIGHT_SIGN + COPYRIGHT_HOLDER
+
+    /** Dòng 2 chân trang Giới thiệu: số phiên bản, chữ nhỏ và nhạt. */
+    fun versionLine(version: String): String = "Phiên bản $version"
 
     fun runningVersion(version: String, build: String): String = "Phiên bản đang dùng: $version (bản dựng $build)"
 

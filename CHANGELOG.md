@@ -14,6 +14,10 @@ và các dòng dưới đây được viết lại thành ghi chú cho người 
 - Màn hình tưởng niệm ngày giỗ: bia, ảnh, mâm lễ, ba nén hương.
 - Dữ liệu chỉ lưu trên máy; sao lưu ra tệp có mật khẩu.
 
+## [0.1.2] — 2026-11-06
+
+- Dòng bản quyền gọn và chuyên nghiệp hơn: © 2026 Clevix Lab · Phiên bản 0.1.2; áp dụng cho bản web và ứng dụng.
+
 ## [0.1.1] — 2026-11-06
 
 - Mở rộng phạm vi lịch: từ năm 1900 đến năm 3000.

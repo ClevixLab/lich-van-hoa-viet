@@ -1,6 +1,6 @@
 [package]
 name = "lvhv-windows"
-version = "0.1.1" # PHẢI bằng tệp VERSION ở gốc kho — build.rs dừng dựng nếu khác
+version = "0.1.2" # PHẢI bằng tệp VERSION ở gốc kho — build.rs dừng dựng nếu khác
 edition = "2021"
 description = "Lịch và Văn hóa Việt — ứng dụng Windows (Slint), Clevix Lab"
 license = "MIT"

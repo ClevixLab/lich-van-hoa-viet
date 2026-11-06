@@ -45,8 +45,8 @@ Không muốn cài cũng được: chỉ cần mở trang trong trình duyệt l
 Các bản ứng dụng riêng cho từng hệ điều hành đang thử nghiệm; khi phát hành sẽ có trên cửa hàng ứng dụng
 hoặc ở trang tải về https://clevixlab.github.io/lich-van-hoa-viet/ .
 
-- **Xem phiên bản đang dùng:** mở mục **Giới thiệu**. Dòng "Phiên bản đang dùng: 0.1.1 (bản dựng …)"
-  cho biết số phiên bản; cuối trang có dòng "Bản quyền © 2026 của Clevix Lab, version …".
+- **Xem phiên bản đang dùng:** mở mục **Giới thiệu**. Dòng "Phiên bản đang dùng: 0.1.2 (bản dựng …)"
+  cho biết số phiên bản; cuối trang có hai dòng "© 2026 Clevix Lab" và "Phiên bản …".
 - **Cập nhật:** trong **Giới thiệu**, bấm **Kiểm tra cập nhật / Cập nhật**. Ứng dụng không tự kết nối
   mạng để bảo vệ quyền riêng tư, nên nút này mở cửa hàng ứng dụng (Google Play trên Android) hoặc trang
   tải về trong trình duyệt. Ở đó, nếu có bản mới hơn số phiên bản của bạn, bấm **Cập nhật** hoặc tải bản
@@ -110,7 +110,7 @@ nguồn quy tắc xem ngày, nguồn ca dao (ghi công theo giấy phép CC BY-S
 
 ## 4. Xem phiên bản và cập nhật
 
-- **Xem phiên bản:** số phiên bản ghi ở cuối mỗi trang ("Bản quyền © 2026 của Clevix Lab, version 0.1.1").
+- **Xem phiên bản:** số phiên bản ghi ở cuối mỗi trang ("© 2026 Clevix Lab", dòng dưới "Phiên bản 0.1.2").
   Trong mục **Giới thiệu**, dòng "Phiên bản đang dùng" cho biết thêm mã bản dựng và ngày dựng — khi góp ý,
   bạn chép dòng này để Clevix Lab biết bạn dùng bản nào.
 - **Tự nhắc:** khi bạn mở ứng dụng (lúc có mạng), ứng dụng tự xem có phiên bản mới không. Nếu có, đầu màn

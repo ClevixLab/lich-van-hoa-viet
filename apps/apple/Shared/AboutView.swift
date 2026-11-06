@@ -58,9 +58,20 @@ struct AboutView: View {
                         H2("Phông chữ")
                         P("Phông chữ tiêu đề là bản rút gọn cho chữ Việt của phông Lora (The Lora Project Authors), cấp phép SIL Open Font License 1.1 (tệp OFL.txt trong gói ứng dụng); bản rút gọn mang tên \"LVHV Serif\" theo điều kiện giấy phép.")
                     }
-                    Text(AppUpdate.copyright).sans(12).foregroundStyle(C.ink3)
-                        .frame(maxWidth: .infinity, alignment: .center)
-                        .padding(.vertical, 8)
+                    // Dòng bản quyền hai dòng (giống bản web): "© 2026 Clevix Lab" chữ serif, © nhỏ 0,82× và
+                    // nhẹ hơn; dưới là "Phiên bản X.Y.Z" nhỏ, nhạt.
+                    VStack(spacing: 2) {
+                        HStack(alignment: .firstTextBaseline, spacing: 0) {
+                            Text(AppUpdate.copyrightSign).serif(14 * 0.82).foregroundStyle(C.ink2)
+                            Text(AppUpdate.copyrightHolder).serif(14, .semibold).foregroundStyle(C.ink)
+                        }
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel(AppUpdate.copyright)
+                        Text(AppUpdate.versionLine).kerning(0.4).sans(11).foregroundStyle(C.ink3)
+                    }
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.vertical, 8)
                 }
                 .padding(16)
                 .frame(maxWidth: 720)

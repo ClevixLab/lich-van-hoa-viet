@@ -385,7 +385,7 @@ const DIST_B = join(TMP_B, "dist");
   await page.evaluate(async () => { await navigator.serviceWorker.ready; });
   await page.waitForFunction(() => !!navigator.serviceWorker.controller);
   await page.waitForTimeout(300);
-  check((await page.innerText(".foot")).includes(`Bản quyền © 2026 của Clevix Lab, version ${VERSION_A}`), `chân trang: "version ${VERSION_A}"`);
+  check(((t) => t.includes(`© 2026 Clevix Lab`) && t.includes(`Phiên bản ${VERSION_A}`))((await page.innerText(".foot")).replace(/\u00a0/g, " ")), `chân trang: "© 2026 Clevix Lab / Phiên bản ${VERSION_A}"`);
   check(await page.locator(".update-bar").isHidden(), "bản A, máy chủ cũng A → không có thanh cập nhật");
 
   await page.click('.sizes button[data-v="3"]'); // A++
@@ -426,7 +426,7 @@ const DIST_B = join(TMP_B, "dist");
   await page.reload({ waitUntil: "load" });
   await page.waitForSelector(".update-bar:not([hidden])", { timeout: 15000 });
   check((await page.innerText(".update-bar")).includes(VERSION_B), "mở lại ứng dụng → tự nhắc có phiên bản mới (không cần bấm)");
-  check((await page.innerText(".foot")).includes(`version ${VERSION_A}`), `trước khi đồng ý vẫn chạy bản ${VERSION_A} (RS-08)`);
+  check((await page.innerText(".foot")).includes(`Phiên bản ${VERSION_A}`), `trước khi đồng ý vẫn chạy bản ${VERSION_A} (RS-08)`);
   await page.click(".update-bar .ubtn:not(.primary)");
   check(await page.locator(".update-bar").isHidden(), "Để sau → ẩn thanh");
 
@@ -436,8 +436,8 @@ const DIST_B = join(TMP_B, "dist");
   await page.click("#check-update");
   await page.waitForSelector(".update-bar:not([hidden])", { timeout: 15000 });
   await page.click(".update-bar .ubtn.primary");
-  await page.waitForFunction((v) => document.querySelector(".foot")?.textContent?.includes(`version ${v}`), VERSION_B, { timeout: 30000 });
-  check((await page.innerText(".foot")).includes(`Bản quyền © 2026 của Clevix Lab, version ${VERSION_B}`), `sau Cập nhật ngay → chân trang "version ${VERSION_B}"`);
+  await page.waitForFunction((v) => document.querySelector(".foot")?.textContent?.includes(`Phiên bản ${v}`), VERSION_B, { timeout: 30000 });
+  check(((t) => t.includes(`© 2026 Clevix Lab`) && t.includes(`Phiên bản ${VERSION_B}`))((await page.innerText(".foot")).replace(/\u00a0/g, " ")), `sau Cập nhật ngay → chân trang "Phiên bản ${VERSION_B}"`);
   await page.waitForTimeout(500);
   check(await page.locator(".update-bar").isHidden(), "sau cập nhật không còn thanh nhắc");
   if (await page.locator("#check-update").count() === 0) { await page.goto(BASE + "#/gioi-thieu"); await page.waitForSelector("#check-update"); }
