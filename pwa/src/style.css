@@ -497,3 +497,8 @@ input[type="date"], input[type="number"], select {
 /* RS-08: thông báo có bản mới */
 .update-bar { position: fixed; left: 16px; right: 16px; bottom: calc(76px + env(safe-area-inset-bottom, 0px)); z-index: 50; display: flex; align-items: center; justify-content: space-between; gap: .8rem; padding: .7rem 1rem; border-radius: 12px; background: var(--ink, #222); color: var(--paper, #fff); box-shadow: var(--shadow); font-size: .95rem; }
 .update-bar .linkbtn { color: inherit; font-weight: 700; min-height: 44px; }
+
+/* Logo Clevix trước tên nhà phát hành */
+.foot-brand, .about-head .by { display: inline-flex; align-items: center; gap: .4rem; }
+.foot-logo { height: 22px; width: auto; flex: none; }
+.by-logo { height: 24px; width: auto; flex: none; }
