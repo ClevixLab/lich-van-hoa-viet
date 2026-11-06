@@ -338,18 +338,29 @@ Ngày âm (năm, tháng, ngày, nhuận) khác nhau:
   nhất quán nội bộ thì đổi `DEFAULT_METHOD` sang `Precise`; nếu ưu tiên khớp lịch HND phổ biến
   thì giữ `Hnd` và ghi 6 năm vi phạm thành sai lệch đã biết. Cả hai lựa chọn đều không làm L6 ĐẠT.
 
-## 16. Phạm vi 1900–1999 và điểm chuyển múi giờ (bổ sung A1, 2026-11-06)
+## 16. Phạm vi 1900–1999 và điểm chuyển múi giờ (bổ sung A1 + A2, 2026-11-06)
 
-Quyết định của chủ dự án: phạm vi 1900-01-01 → 3000-12-31 theo **quy ước lịch miền Bắc**: âm lịch tính
-theo UTC+8 trước khi chuyển, UTC+7 từ khi chuyển. Tiêu chí khóa trước: docs/02 "Bổ sung A1" (L9–L13).
+Quyết định của chủ dự án: phạm vi 1900-01-01 → 3000-12-31 theo **quy ước lịch miền Bắc**. Tiêu chí khóa
+trước: docs/02 "Bổ sung A1" (L9–L13). **Bổ sung A2** (docs/02, ghi rõ là quyết định SAU khi thấy kết quả
+L9 lần 1, có bằng chứng lịch sử độc lập): trước 1929 dùng giờ địa phương Bắc Kinh.
 
-### 16.1 Quy tắc đã chọn
+### 16.1 Quy tắc đã chọn (A2)
 
-> **Thời điểm (Sóc, Trung khí, tiết khí) trước 1968-01-01 00:00 giờ UTC+8 (= 1967-12-31 16:00 UT) đổi
-> sang ngày theo UTC+8; từ thời điểm đó trở đi theo UTC+7. "00:00 đầu ngày" dùng để xét Trung khí/tiết
-> khí là 00:00 UTC+8 với các ngày trước 1968-01-01 và 00:00 UTC+7 từ 1968-01-01.**
+> **Ba giai đoạn, mỗi điểm chuyển tính theo múi giờ CŨ:**
+> 1. Thời điểm (Sóc, Trung khí, tiết khí) trước **1929-01-01 00:00 giờ địa phương Bắc Kinh**
+>    (= 1928-12-31 16:14:20 UT) → ngày theo **UT+7:45:40** (giờ trung bình kinh tuyến 116°25′ Đ).
+> 2. Từ đó đến trước **1968-01-01 00:00 UTC+8** (= 1967-12-31 16:00 UT) → ngày theo **UTC+8**.
+> 3. Từ đó trở đi → ngày theo **UTC+7**.
+>
+> "00:00 đầu ngày" dùng để xét Trung khí/tiết khí là thời điểm bắt đầu ngày theo đúng quy tắc trên:
+> giờ Bắc Kinh cho các ngày đến hết 1929-01-01, UTC+8 cho 1929-01-02 … 1967-12-31, UTC+7 từ 1968-01-01.
 
-Mã: `core/src/astro.rs` — `TZ = 7`, `TZ_BEFORE_SWITCH = 8`, `TZ_SWITCH_JDN = 2439857` (1968-01-01),
+Độ dài ngày ở điểm chuyển (giờ lịch): **1928-12-31 dài đúng 24 giờ**; 1929-01-01 dài 23 giờ 45 phút
+40 giây (00:14:20 → 24:00 UTC+8); 1967-12-31 dài 25 giờ. `local_day_of` không giảm theo thời gian nên
+không ngày âm nào mất hay lặp (test `switch_constants`, `continuity_around_1929`, `l11_continuity_1967_1969`).
+
+Mã: `core/src/astro.rs` — `TZ = 7`, `TZ_BEFORE_SWITCH = 8`, `TZ_BEIJING = 27940/3600`,
+`TZ_1929_JDN = 2425613` (1929-01-01), `TZ_SWITCH_JDN = 2439857` (1968-01-01),
 `local_day_of(jd_ut)`, `local_midnight_ut(jdn)`, `tz_of_day`, `tz_of_instant`. Đây là **hàm múi giờ
 duy nhất**, dùng chung cho cả `Method::Hnd` và `Method::Precise` (Sóc: `hnd_new_moon_day`,
 `lunar::new_moon_day`; Trung khí: `hnd_sun_sector`, `lunar::sun_sector`; tiết khí:
@@ -405,7 +416,9 @@ Ba ứng viên:
 | RFA (Gia Minh, 7/2/2007), phỏng vấn Lê Thành Lân (Viện KH&CN VN) và Trịnh Tiến Điều (Ủy ban Lịch) | "Việc tính lịch là từ năm 67 rồi"; "Bắt đầu từ 68 chúng ta ăn tết khác Trung Quốc một ngày"; cuối 68 đầu 69 cũng chênh một ngày |
 | Nhân Dân 29/6/2006, "Chung quanh thông tin về ngày âm lịch khác nhau trên một số loại lịch" (Hà Hồng) | Tết Mậu Thân 1968 và Kỷ Dậu 1969 của Việt Nam sớm hơn Trung Quốc một ngày; lịch Việt tính theo múi 7 |
 | Đài Thiên văn Hồng Kông (hko.gov.hk), lịch năm 1954, 1969, 1916 | Tháng Giêng bắt đầu 1954-02-03, 1969-02-17, 1916-02-03 (lịch Trung Quốc) |
-| Mã nguồn `amlich` của Hồ Ngọc Đức (© 2004), mảng `TK20` (1900–1999) | Bảng ngày đầu tháng âm; giải mã và so với lõi ở §16.4 |
+| Mã nguồn `amlich` của Hồ Ngọc Đức (© 2004), mảng `TK20` (1900–1999) | Bảng ngày đầu tháng âm; giải mã và so với lõi ở §16.4; nhúng nguyên văn trong `core/tests/range1900.rs` |
+| ytliu0.github.io/ChineseCalendar/computation.html ("Calendar Calculation") | Thời Thanh tính theo kinh tuyến Bắc Kinh và giờ mặt trời thật; "after 1913 … Beijing's mean solar time (UT+7:46)"; "After 1928, times were calculated for the meridians of 120°E (UT+8)" |
+| Đài Thiên văn Hồng Kông, lịch năm 1916 (hko.gov.hk …/1916e.pdf) | Tháng Giêng Bính Thìn bắt đầu 1916-02-03 — chỉ khớp khi Sóc 1916-02-03 23:51 giờ Bắc Kinh (00:05 UTC+8 ngày 4) tính theo giờ Bắc Kinh |
 | Lịch Trung Quốc (ytliu0.github.io/ChineseCalendar; hằng `UTC_OFFSET_PRE_1929` của crate `calendrical_calculations`) | Trước 1929 lịch Trung Quốc tính theo giờ địa phương Bắc Kinh (UT+1397/180 h ≈ UT+7:46); từ 1929 theo 120°E (UT+8) |
 
 **Mâu thuẫn nguồn về ngày chuyển:** nghị định 08/8/1967 (Wikipedia, tz) so với "từ 1968" (thuviengdpt,
@@ -415,40 +428,40 @@ chỉ khác nhau ở tháng 11 Đinh Mùi (k = 840); bảng công bố của H�
 tiếp tháng 11 Đinh Mùi bắt đầu 01/12 hay 02/12/1967 — ghi là CHƯA ĐỦ BẰNG CHỨNG cho riêng tháng đó;
 lựa chọn dựa trên bảng của Hồ Ngọc Đức.
 
-### 16.4 Đối chiếu với bảng TK20 của Hồ Ngọc Đức (1236 tháng âm 1900–1999)
+### 16.4 Đối chiếu với bảng TK20 của Hồ Ngọc Đức (1237 tháng âm của năm âm 1900–1999)
 
-Đã giải mã `TK20` (ngày Tết + độ dài 12 tháng + tháng nhuận mỗi năm) và so ngày đầu từng tháng (năm,
-tháng, nhuận) với `core/out/{,precise/}lunar_1900_1999.csv`:
+Đã giải mã `TK20` (ngày Tết + độ dài 12 tháng + tháng nhuận mỗi năm; 1237 tháng = 1236 tháng bắt đầu
+trong 1900–1999 + tháng Chạp năm âm 1999) và so ngày đầu từng tháng (năm, tháng, nhuận):
 
 | Quy tắc thử | Tháng lệch so với TK20 |
 |---|---|
-| UTC+7 cho mọi năm | 27 (toàn trước 1968, ví dụ 11/1967, 1/1965, 9/1964 …) |
-| UTC+8 cho mọi năm | 25 (toàn từ 1968, gồm Tết 1968, Tết 1969, năm 1984–1985 …) |
-| **Quy tắc §16.1 (đã chọn), Hnd và Precise** | **4**: 4/1906, 10/1914, 1/1916, 10/1920 |
-| Quy tắc §16.1 nhưng Sóc trước 1929 theo giờ Bắc Kinh (UT+7:46) | 0 |
+| UTC+7 cho mọi năm | 27 (toàn trước 1968) |
+| UTC+8 cho mọi năm | 25 (toàn từ 1968, gồm Tết 1968, Tết 1969, 1984–1985 …) |
+| A1 (UTC+8 trước 1968, UTC+7 từ 1968) | 4: 4/1906, 10/1914, 1/1916 (Tết), 10/1920 — Sóc 00:02–00:08 UTC+8 |
+| **A2 (đã chọn), Precise** | **0 — trùng cả 1237/1237 tháng** |
+| **A2 (đã chọn), Hnd** | **4 — trùng 1233/1237**: tháng 2 nhuận/3 năm 1917, tháng 5 nhuận/6 năm 1922 |
 
-Bốn tháng lệch đều có Sóc **sát nửa đêm UTC+8** (00:02–00:08, tức 23:48–23:54 giờ Bắc Kinh địa phương):
-1906-04-24 00:06, 1914-11-18 00:02, 1916-02-04 00:05, 1920-11-11 00:05 (UTC+8). Lõi đặt mùng 1 vào
-ngày sau, TK20 vào ngày trước. Ca quan trọng nhất là **Tết Bính Thìn 1916**: lõi 1916-02-04, TK20 và
-lịch Trung Quốc (HKO 1916) 1916-02-03 — khóa trong test `known_limitation_1916`. Phần còn lại của 100
-năm (1232 tháng, 99/100 ngày Tết) trùng TK20; Hnd và Precise trùng nhau mọi ngày 1900–1999.
+Bốn tháng còn lệch của Hnd chỉ là **vị trí tháng nhuận** (ngày đầu tháng trùng TK20): Trung khí sát nửa
+đêm giờ Bắc Kinh — Cốc Vũ 1917-04-21 00:03:11 và Đại Thử 1922-07-24 00:05:30 (mô hình chính xác §6) —
+nhưng kinh độ rút gọn của HND (§2) lớn hơn kinh độ biểu kiến +20″ (1917) và +37″ (1922) lúc nửa đêm
+đó (≈ 8 và 15 phút thời gian), nên đặt hai Trung khí này sang trước nửa đêm, nên HND thấy tháng khác "không có Trung khí" và chọn tháng nhuận khác. Đây là
+giới hạn của mô hình Mặt Trời HND (cùng loại với 6 năm §15.4), không phải của quy tắc múi giờ. Test
+`tk20_month_starts_1900_1999` khóa: Precise 0 lệch; Hnd đúng 4 tháng trên. Tết 1900–1999 của cả hai phương
+pháp trùng TK20 cả 100 năm, gồm **Tết 1916 = 1916-02-03** (test `tet_1916_beijing_time`).
 
 ### 16.5 Giới hạn và vấn đề mở
 
-1. **1900–1928 (vấn đề mở, cần chủ dự án quyết):** các nguồn cho thấy lịch Hiệp Kỷ/Thời Hiến thời đó
-   theo lịch nhà Thanh/Trung Hoa, mà lịch Trung Hoa trước 1929 tính theo giờ địa phương Bắc Kinh
-   (≈ UT+7:46), không phải 120°E. Bảng TK20 của Hồ Ngọc Đức khớp hoàn toàn với giả thuyết này (0 tháng
-   lệch). Có nguồn (Wikipedia, dòng Hiệp Kỷ 1841–1954) nói lịch Nguyễn bắt đầu khác lịch Thời Hiến "do
-   khác kinh độ" — gợi ý kinh tuyến Huế (≈ 107°35′E, UT+7:10) — nhưng không nêu năm/tháng cụ thể; trong
-   khi nguồn khác nói "không có sự khác biệt". **Không tìm được** bản in Hiệp Kỷ lịch 1900–1945 để đối
-   chiếu. Lõi theo quyết định chủ dự án: UTC+8 cho mọi ngày trước 1968; hệ quả đã biết: 4 tháng 1906,
-   1914, 1916 (Tết), 1920 có thể sớm/muộn 1 ngày so với lịch thời đó. Nếu muốn khớp TK20: thêm một
-   đoạn "trước 1929 dùng UT+1397/180 h" vào `local_day_of` (đổi một hàm, cả hai phương pháp).
+1. **1900–1928 — ĐÃ QUYẾT (A2):** giờ địa phương Bắc Kinh. Lịch Trung Hoa 1913–1928 dùng giờ trung
+   bình Bắc Kinh; thời Thanh (1900–1911) dùng **giờ mặt trời thật** Bắc Kinh (ytliu0) — lõi dùng giờ
+   trung bình cho cả 1900–1928 (chênh lệch phương trình thời gian tới ±16 phút có thể đổi ngày của một
+   sự kiện rất sát nửa đêm; trong 1900–1912 không tháng nào lệch TK20 ở Precise). Gợi ý "kinh tuyến Huế"
+   (Wikipedia, dòng Hiệp Kỷ 1841–1954) chưa có bằng chứng cụ thể; không tìm được bản in Hiệp Kỷ lịch
+   1900–1945.
 2. **1943–1945:** thuviengdpt ghi giờ hành chính GMT+8 từ 01/01/1943 và GMT+9 (giờ Tokyo) từ 1945; quy
    ước lịch của lõi không theo giờ hành chính từng giai đoạn, chỉ theo quy ước lịch (UTC+8).
 3. **Miền Nam 1968–1975:** miền Nam tính theo UTC+8; lõi theo miền Bắc. Các tháng khác nhau (ví dụ Tết
    1968, Tết 1969, tháng 11/1974, 3/1975…) là chủ đích, ghi chú trong app (Đổi ngày, Giới thiệu).
-4. **Tiết khí hiển thị trước 1968** tính theo giờ UTC+8 (cùng hàm múi giờ), nên ngày giao tiết và trực
+4. **Tiết khí hiển thị trước 1968** tính theo giờ lịch của giai đoạn (Bắc Kinh / UTC+8, cùng hàm múi giờ), nên ngày giao tiết và trực
    thống nhất với âm lịch của cùng giai đoạn.
 5. Kiểm định độc lập 1900–1999 (L10) do bên kiểm định thực hiện; tệp dữ liệu cho bên đó: §16.6.
 
@@ -457,14 +470,16 @@ năm (1232 tháng, 99/100 ngày Tết) trùng TK20; Hnd và Precise trùng nhau 
 | Tiêu chí | Kết quả | Bằng chứng |
 |---|---|---|
 | L11 liên tục 1967–1969 + Tết 1968 = 29/01 | ĐẠT (cả hai phương pháp) | `core/tests/range1900.rs::l11_continuity_1967_1969`, `switch_constants` |
+| Liên tục quanh 1929-01-01 (1928–1930) | ĐẠT (cả hai phương pháp) | `range1900.rs::continuity_around_1929`, `switch_constants` |
+| TK20 1900–1999 | Precise 1237/1237; Hnd 1233/1237 (vị trí tháng nhuận 1917, 1922) | `range1900.rs::tk20_month_starts_1900_1999` |
 | L12 khứ hồi 1900–3000 | ĐẠT, 402 132 ngày × 2 phương pháp, 0 lỗi | `range1900.rs::l12_roundtrip_1900_3000` (`--ignored`, release) |
 | L12 TS ↔ Rust 1900–3000 | ĐẠT, 402 132 dòng × 2, 0 sai lệch; Tết 1101 năm × 2, 0 sai lệch | `scripts/check-parity.sh` |
 | L13 2000–3000 không đổi | ĐẠT, giống hệt từng byte (hnd, precise) | `check-parity.sh` bước 5; so `core/out/baseline-2000-3000/*.jsonl.gz` |
-| L9 Tết có nguồn | 1954, 1968, 1969, 1985: khớp. 1916: KHÔNG khớp TK20/lịch Trung Quốc (§16.4, quy ước) | `range1900.rs::tet_20th_century_published`, `known_limitation_1916` |
+| L9 Tết có nguồn | 1916, 1954, 1968, 1969, 1985: khớp (L9 đầy đủ do bên kiểm định chấm) | `range1900.rs::tet_20th_century_published`, `tet_1916_beijing_time` |
 | L10 | Chờ bên kiểm định độc lập | — |
 
 Tệp cho bên kiểm định: `core/out/lunar_1900_1999.csv`, `tet_1900_1999.csv`, `newmoons_1900_1999.csv`
-(cột `datetime_local` ghi kèm độ lệch đã dùng, ví dụ `1967-12-02T00:10:30+08:00`,
+(cột `datetime_local` ghi kèm độ lệch đã dùng, ví dụ `1916-02-03T23:51:…+07:45:40`, `1967-12-02T00:10:30+08:00`,
 `1968-01-29T23:31:10+07:00`), `dayinfo_1900_3000.jsonl.gz`, và bản `core/out/precise/…` tương ứng.
 `lvhv-dump terms` cho năm < 1968 xuất cột `date_local,datetime_local` (độ lệch theo từng dòng).
 

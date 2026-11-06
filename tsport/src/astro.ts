@@ -6,14 +6,18 @@ const PI = Math.PI;
 const DR = PI / 180.0;
 /** Vietnam calendar time zone (hours) from 1968-01-01 onward (Rust astro::TZ). */
 export const TZ = 7.0;
-/** Calendar time zone before the switch (North Vietnam convention before 1968). */
+/** Calendar time zone 1929-01-01 → 1967-12-31 (North Vietnam convention before 1968). */
 export const TZ_BEFORE_SWITCH = 8.0;
+/** Beijing local mean time (116°25′E), UT+7:45:40, before 1929-01-01 (Rust TZ_BEIJING). */
+export const TZ_BEIJING = 27940.0 / 3600.0;
+/** JDN of 1929-01-01 — first day in UTC+8. */
+export const TZ_1929_JDN = 2425613;
 /** JDN of 1968-01-01 — first day computed in UTC+7 (docs/03 §16). */
 export const TZ_SWITCH_JDN = 2439857;
 
-/** Time zone (hours) of day `jdn` (used for 00:00 at the start of the day). */
+/** Time zone (hours) of 00:00 at the start of day `jdn` (Rust astro::tz_of_day). */
 export function tzOfDay(jdn: number): number {
-  return jdn < TZ_SWITCH_JDN ? TZ_BEFORE_SWITCH : TZ;
+  return jdn <= TZ_1929_JDN ? TZ_BEIJING : jdn < TZ_SWITCH_JDN ? TZ_BEFORE_SWITCH : TZ;
 }
 
 /** JD (UT) of calendar 00:00 at the start of day `jdn`. */
@@ -23,12 +27,15 @@ export function localMidnightUt(jdn: number): number {
 
 /** Calendar day (JDN) containing instant `jdUt` (Rust astro::local_day_of). */
 export function localDayOf(jdUt: number): number {
+  const dbj = Math.floor(jdUt + 0.5 + TZ_BEIJING / 24.0);
+  if (dbj < TZ_1929_JDN) return dbj;
   const d8 = Math.floor(jdUt + 0.5 + TZ_BEFORE_SWITCH / 24.0);
   return d8 < TZ_SWITCH_JDN ? d8 : Math.floor(jdUt + 0.5 + TZ / 24.0);
 }
 
 /** Time zone (hours) used to show instant `jdUt` in calendar time (Rust astro::tz_of_instant). */
 export function tzOfInstant(jdUt: number): number {
+  if (Math.floor(jdUt + 0.5 + TZ_BEIJING / 24.0) < TZ_1929_JDN) return TZ_BEIJING;
   return Math.floor(jdUt + 0.5 + TZ_BEFORE_SWITCH / 24.0) < TZ_SWITCH_JDN ? TZ_BEFORE_SWITCH : TZ;
 }
 

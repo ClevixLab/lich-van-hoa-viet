@@ -13,34 +13,51 @@ use std::f64::consts::PI;
 
 const DR: f64 = PI / 180.0;
 /// Múi giờ lịch Việt Nam hiện hành (giờ) — áp dụng cho mọi thời điểm từ 1968-01-01 00:00
-/// (giờ UTC+8 cũ) trở đi, tức toàn bộ 1968–3000. Trước đó dùng `TZ_BEFORE_SWITCH` (xem
-/// `local_day_of`, docs/03 §16).
+/// (giờ UTC+8 cũ) trở đi, tức toàn bộ 1968–3000. Trước đó xem `local_day_of`, docs/03 §16.
 pub const TZ: f64 = 7.0;
-/// Múi giờ dùng tính âm lịch trước điểm chuyển (quy ước lịch miền Bắc trước 1968).
+/// Múi giờ dùng tính âm lịch 1929-01-01 → 1967-12-31 (quy ước lịch miền Bắc trước 1968).
 pub const TZ_BEFORE_SWITCH: f64 = 8.0;
+/// Giờ địa phương trung bình Bắc Kinh (kinh độ 116°25′ Đ): UT+7:45:40 = 27 940 s, dùng trước
+/// 1929-01-01 (lịch Trung Hoa / Hiệp Kỷ trước khi Trung Quốc dùng kinh tuyến 120° Đ).
+pub const TZ_BEIJING: f64 = 27940.0 / 3600.0;
+/// JDN của 1929-01-01 — ngày đầu tiên tính theo UTC+8 (docs/03 §16).
+pub const TZ_1929_JDN: i64 = 2425613;
 /// JDN của 1968-01-01 — ngày đầu tiên tính theo UTC+7 (docs/03 §16).
 pub const TZ_SWITCH_JDN: i64 = 2439857;
 
-/// Múi giờ (giờ) của **ngày** `jdn`: dùng cho thời điểm 00:00 đầu ngày (Trung khí, tiết khí).
+/// Múi giờ (giờ) của **đầu ngày** `jdn`: 00:00 đầu ngày dùng để xét Trung khí, tiết khí.
+/// Bằng đúng thời điểm bắt đầu ngày theo `local_day_of`: ngày 1929-01-01 bắt đầu lúc 00:00 giờ
+/// Bắc Kinh (= 00:14:20 UTC+8, điểm chuyển), nên `jdn ≤ 1929-01-01` dùng giờ Bắc Kinh.
 pub fn tz_of_day(jdn: i64) -> f64 {
-    if jdn < TZ_SWITCH_JDN {
+    if jdn <= TZ_1929_JDN {
+        TZ_BEIJING
+    } else if jdn < TZ_SWITCH_JDN {
         TZ_BEFORE_SWITCH
     } else {
         TZ
     }
 }
 
-/// JD (UT) của 00:00 giờ lịch đầu ngày `jdn` (UTC+8 trước 1968-01-01, UTC+7 từ đó).
+/// JD (UT) của 00:00 giờ lịch đầu ngày `jdn` (xem `tz_of_day`).
 pub fn local_midnight_ut(jdn: i64) -> f64 {
     jdn as f64 - 0.5 - tz_of_day(jdn) / 24.0
 }
 
-/// Ngày lịch (JDN) chứa thời điểm `jd_ut` (UT). Quy tắc chuyển (docs/03 §16): thời điểm trước
-/// 1968-01-01 00:00 UTC+8 (= 1967-12-31 16:00 UT) đổi sang ngày theo UTC+8; từ đó theo UTC+7.
-/// Hàm không giảm theo `jd_ut` (thời điểm trong một giờ ngay sau điểm chuyển vẫn thuộc ngày
-/// 1967-12-31 — ngày này dài 25 giờ), nên Sóc liên tiếp luôn cho ngày tăng dần.
-/// Với mọi thời điểm từ 1968 trở đi, biểu thức giống hệt từng bit bản UTC+7 cố định trước đây.
+/// Ngày lịch (JDN) chứa thời điểm `jd_ut` (UT). Quy tắc (docs/03 §16):
+/// - thời điểm trước 1929-01-01 00:00 giờ Bắc Kinh (= 1928-12-31 16:14:20 UT) → ngày theo
+///   UT+7:45:40;
+/// - từ đó đến trước 1968-01-01 00:00 UTC+8 (= 1967-12-31 16:00 UT) → ngày theo UTC+8;
+/// - từ đó trở đi → ngày theo UTC+7.
+///
+/// Mỗi điểm chuyển được tính trong múi giờ CŨ. Hàm không giảm theo `jd_ut`: ngày 1928-12-31 dài
+/// đúng 24 giờ, ngày 1929-01-01 dài 23 giờ 45 phút 40 giây (bắt đầu 00:14:20 UTC+8); ngày
+/// 1967-12-31 dài 25 giờ. Không ngày nào bị mất hay lặp. Với mọi thời điểm từ 1968 trở đi, biểu
+/// thức cuối giống hệt từng bit bản UTC+7 cố định trước đây.
 pub fn local_day_of(jd_ut: f64) -> i64 {
+    let dbj = (jd_ut + 0.5 + TZ_BEIJING / 24.0).floor() as i64;
+    if dbj < TZ_1929_JDN {
+        return dbj;
+    }
     let d8 = (jd_ut + 0.5 + TZ_BEFORE_SWITCH / 24.0).floor() as i64;
     if d8 < TZ_SWITCH_JDN {
         d8
@@ -51,7 +68,9 @@ pub fn local_day_of(jd_ut: f64) -> i64 {
 
 /// Múi giờ (giờ) dùng để đổi thời điểm `jd_ut` sang giờ lịch (cùng quy tắc `local_day_of`).
 pub fn tz_of_instant(jd_ut: f64) -> f64 {
-    if ((jd_ut + 0.5 + TZ_BEFORE_SWITCH / 24.0).floor() as i64) < TZ_SWITCH_JDN {
+    if ((jd_ut + 0.5 + TZ_BEIJING / 24.0).floor() as i64) < TZ_1929_JDN {
+        TZ_BEIJING
+    } else if ((jd_ut + 0.5 + TZ_BEFORE_SWITCH / 24.0).floor() as i64) < TZ_SWITCH_JDN {
         TZ_BEFORE_SWITCH
     } else {
         TZ

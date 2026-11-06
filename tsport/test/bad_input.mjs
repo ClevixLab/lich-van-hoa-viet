@@ -89,6 +89,7 @@ await expectVal(`L.lunarToSolar(1899, 11, 1, false)`, null); // kết quả trư
 await expectVal(`[L.solarToLunar(2000,1,1).y, L.solarToLunar(2000,1,1).m, L.solarToLunar(2000,1,1).d]`, [1999, 11, 25]);
 await expectVal(`[L.solarToLunar(1900,1,1).y, L.solarToLunar(1900,1,1).m, L.solarToLunar(1900,1,1).d]`, [1899, 12, 1]);
 await expectVal(`[L.tet(1968).y, L.tet(1968).m, L.tet(1968).d]`, [1968, 1, 29]);
+await expectVal(`[L.tet(1916).y, L.tet(1916).m, L.tet(1916).d]`, [1916, 2, 3]);
 await expectVal(`L.dayInfo(3000, 12, 31).solar.jdn`, 2817152);
 // findGoodDays range rules (RS-13)
 await expectErr(`L.findGoodDays("cuoi_hoi", {y:2026,m:3,d:1}, {y:2026,m:2,d:1})`, "InvertedRange");

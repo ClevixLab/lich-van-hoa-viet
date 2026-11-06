@@ -24,7 +24,8 @@ const USAGE: &str = "Cách dùng: lvhv-dump [--method hnd|precise] LỆNH ...  (
          mỗi khúc sắp riêng; BIRTH_LUNAR_YEAR là năm ÂM lịch của ngày sinh)
   lvhv-dump bench
 Ngày/năm hợp lệ: 1900-01-01 … 3000-12-31.
-Giờ trong `terms`/`newmoons` là giờ lịch: +08:00 trước 1968-01-01, +07:00 từ đó (docs/03 §16);
+Giờ trong `terms`/`newmoons` là giờ lịch: +07:45:40 (Bắc Kinh) trước 1929, +08:00 1929–1967,
++07:00 từ 1968-01-01 (docs/03 §16);
 khi khoảng năm bắt đầu trước 1968, tên cột là `*_local` thay cho `*_utc7`.";
 
 fn parse_date(s: &str) -> Result<i64, String> {
@@ -57,10 +58,15 @@ fn fmt_dt(jd_ut: f64) -> String {
     let tz = tz_of_instant(jd_ut);
     match jd_to_datetime(jd_ut, tz) {
         Some((y, m, d, hh, mi, ss)) => {
-            format!(
-                "{y:04}-{m:02}-{d:02}T{hh:02}:{mi:02}:{ss:02}+{:02}:00",
-                tz as i32
-            )
+            // Độ lệch đúng đến giây: +07:45:40 (giờ Bắc Kinh), +08:00, +07:00.
+            let off = (tz * 3600.0).round() as i64;
+            let (oh, om, os) = (off / 3600, off % 3600 / 60, off % 60);
+            let off = if os == 0 {
+                format!("+{oh:02}:{om:02}")
+            } else {
+                format!("+{oh:02}:{om:02}:{os:02}")
+            };
+            format!("{y:04}-{m:02}-{d:02}T{hh:02}:{mi:02}:{ss:02}{off}")
         }
         None => "NaN".to_string(),
     }
