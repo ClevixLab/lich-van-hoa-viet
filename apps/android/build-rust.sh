@@ -31,13 +31,24 @@ cargo ndk --platform 26 \
   -o "$APP/rustJniLibs" \
   build -p lvhv-ffi --lib "${PFLAG[@]}"
 
-# 2) Mã Kotlin UniFFI sinh từ chính thư viện vừa dựng (chế độ --library, đọc metadata trong .so).
+# 2) Mã Kotlin UniFFI (chế độ --library, đọc metadata UNIFFI_META_* trong bảng ký hiệu).
+# KHÔNG đọc từ .so Android: cargo-ndk strip thư viện nên mất metadata, uniffi-bindgen khi đó không
+# sinh tệp nào mà vẫn thoát 0 (lỗi CI lần đầu). Dùng thư viện host (chưa strip) dựng từ cùng mã nguồn
+# và cùng profile — giống ci.yml — nên checksum API khớp với .so Android.
+cargo build -p lvhv-ffi --lib "${PFLAG[@]}"
 cargo build -p lvhv-ffi --features bindgen-cli --bin uniffi-bindgen
+HOSTLIB="$ROOT/target/$PROFILE/liblvhv_ffi.so"
+[[ "$(uname -s)" == "Darwin" ]] && HOSTLIB="$ROOT/target/$PROFILE/liblvhv_ffi.dylib"
 OUT="$APP/build/generated/uniffi/kotlin"
 rm -rf "$OUT"
 mkdir -p "$OUT"
 "$ROOT/target/debug/uniffi-bindgen" generate \
-  --library "$APP/rustJniLibs/arm64-v8a/liblvhv_ffi.so" \
+  --library "$HOSTLIB" \
   --language kotlin --out-dir "$OUT" --config "$ROOT/ffi/uniffi.toml" --no-format
+KT="$OUT/vn/clevix/lichviet/core/lvhv_ffi.kt"
+if [[ ! -s "$KT" ]]; then
+  echo "Lỗi: uniffi-bindgen không sinh $KT (thư viện $HOSTLIB không có metadata UniFFI?)." >&2
+  exit 1
+fi
 
 echo "Xong: $(find "$APP/rustJniLibs" -name liblvhv_ffi.so | wc -l) thư viện .so; mã Kotlin ở $OUT"

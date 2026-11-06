@@ -13,8 +13,9 @@ permissions:
   contents: read
 
 concurrency:
-  group: windows-${{ github.ref }}
-  cancel-in-progress: true
+  group: windows-${{ github.ref }}-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
+  # Chỉ hủy run cũ của PR; mỗi commit trên main/thẻ đều được dựng trọn (push dồn dập không làm mất kết quả).
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   CARGO_TERM_COLOR: always
