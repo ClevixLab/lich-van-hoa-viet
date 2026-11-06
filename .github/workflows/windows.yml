@@ -1,0 +1,104 @@
+# Windows: dựng LichViet.exe (Rust + Slint 1.8.0, toolchain MSVC), gói .zip và .msi (WiX 3.14 qua
+# cargo-wix 0.3.9). Ký mã (Authenticode) chỉ chạy khi có secret LVHV_WIN_CERT_PFX_BASE64.
+name: windows
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_WIX_VERSION: "0.3.9"
+
+jobs:
+  build:
+    runs-on: windows-2022
+    timeout-minutes: 60
+    env:
+      HAS_CERT: ${{ secrets.LVHV_WIN_CERT_PFX_BASE64 != '' }}
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/windows -> target
+          key: windows
+
+      - name: Kiểm thử (cargo test)
+        working-directory: apps/windows
+        run: cargo test
+
+      - name: Dựng release
+        working-directory: apps/windows
+        run: cargo build --release
+
+      - name: Đo bộ nhớ khi chạy (khởi động 8 giây, đọc Working Set)
+        working-directory: apps/windows
+        continue-on-error: true
+        run: |
+          $p = Start-Process -FilePath target\release\LichViet.exe -PassThru
+          Start-Sleep -Seconds 8
+          $p.Refresh()
+          "Working set: {0:N1} MB; Private: {1:N1} MB" -f ($p.WorkingSet64/1MB), ($p.PrivateMemorySize64/1MB) | Tee-Object -FilePath $env:RUNNER_TEMP\mem.txt
+          Stop-Process -Id $p.Id -Force
+
+      - name: Ký mã (nếu có chứng chỉ)
+        if: ${{ env.HAS_CERT == 'true' }}
+        env:
+          PFX_B64: ${{ secrets.LVHV_WIN_CERT_PFX_BASE64 }}
+          PFX_PW: ${{ secrets.LVHV_WIN_CERT_PASSWORD }}
+        working-directory: apps/windows
+        run: |
+          $pfx = Join-Path $env:RUNNER_TEMP 'cert.pfx'
+          [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:PFX_B64))
+          $signtool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin\*\x64\signtool.exe" | Sort-Object FullName | Select-Object -Last 1
+          & $signtool.FullName sign /fd SHA256 /td SHA256 /tr http://timestamp.digicert.com /f $pfx /p $env:PFX_PW target\release\LichViet.exe
+          Remove-Item $pfx -Force
+
+      - name: Gói .zip
+        working-directory: apps/windows
+        run: |
+          $v = (Select-String -Path Cargo.toml -Pattern '^version\s*=\s*"([^"]+)"' | Select-Object -First 1).Matches[0].Groups[1].Value
+          "VERSION=$v" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          New-Item -ItemType Directory -Force dist | Out-Null
+          $stage = "dist\LichViet-$v-x64"
+          New-Item -ItemType Directory -Force $stage | Out-Null
+          Copy-Item target\release\LichViet.exe $stage
+          Copy-Item ui\fonts\OFL.txt $stage
+          Compress-Archive -Path "$stage\*" -DestinationPath "dist\LichViet-$v-x64.zip" -Force
+
+      - name: Cài cargo-wix ${{ env.CARGO_WIX_VERSION }}
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-wix@${{ env.CARGO_WIX_VERSION }}
+
+      - name: Gói .msi (WiX 3.14)
+        working-directory: apps/windows
+        run: |
+          # windows-2022 có sẵn WiX 3.14 (biến WIX). Nếu thiếu thì cài qua Chocolatey.
+          if (-not $env:WIX) { choco install wixtoolset --version 3.14.1 -y --no-progress; $env:WIX = 'C:\Program Files (x86)\WiX Toolset v3.14\' }
+          cargo wix --no-build --nocapture --output "dist\LichViet-$env:VERSION-x64.msi"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-x64
+          path: |
+            apps/windows/dist/*.zip
+            apps/windows/dist/*.msi
+            ${{ runner.temp }}/mem.txt
+          retention-days: 30

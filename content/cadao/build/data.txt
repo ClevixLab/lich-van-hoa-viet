@@ -1,0 +1,441 @@
+# type|theme|source keys|text   (cd = ca dao, tn = tục ngữ, th = thành ngữ; " / " separates verse lines)
+## HIẾU THẢO
+cd|hieu_thao|V_HIEUTHAO,L_QH3,T_CHAME|Công cha như núi Thái Sơn / Nghĩa mẹ như nước trong nguồn chảy ra / Một lòng thờ mẹ kính cha / Cho tròn chữ hiếu mới là đạo con
+cd|hieu_thao|V_HIEUTHAO|Nuôi con mới biết sự tình / Thầm thương cha mẹ nuôi mình khi xưa
+cd|hieu_thao|V_HIEUTHAO,T_CHAME|Mẹ già ở túp lều tranh / Sớm thăm tối viếng mới đành dạ con
+cd|hieu_thao|V_HIEUTHAO,T_CHAME|Đói lòng ăn đọt chà là / Để cơm nuôi mẹ, mẹ già yếu răng
+cd|hieu_thao|V_BIETON,V_COM,T_CHAME|Đói lòng ăn trái ổi non / Nhịn cơm nuôi mẹ cho tròn đạo con
+cd|hieu_thao|V_HIEUTHAO,T_CHAME|Công cha nặng lắm ai ơi / Nghĩa mẹ bằng trời chín tháng cưu mang
+cd|hieu_thao|V_HIEUTHAO,T_CHAME|Công cha đức mẹ cao dày / Cưu mang trứng nước những ngày ngây thơ
+cd|hieu_thao|V_HIEUTHAO,T_CHAME|Lên non mới biết non cao / Nuôi con mới biết công lao mẫu từ
+cd|hieu_thao|V_HIEUTHAO,T_CHAME|Tu đâu cho bằng tu nhà / Thờ cha kính mẹ mới là chân tu
+cd|hieu_thao|L_QUEHUONG,T_CHAME|Chiều chiều ra đứng ngõ sau / Trông về quê mẹ ruột đau chín chiều
+cd|hieu_thao|V_HIEUTHAO,T_CHAME|Vẳng nghe chim vịt kêu chiều / Bâng khuâng nhớ mẹ chín chiều ruột đau
+cd|hieu_thao|T_CHAME|Ngó lên nuộc lạt mái nhà / Bao nhiêu nuộc lạt nhớ ông bà bấy nhiêu
+cd|hieu_thao|L_QH3|Con người có tổ có tông / Như cây có cội, như sông có nguồn
+cd|hieu_thao|V_HIEUTHAO|Thờ cha mẹ ở hết lòng / Ấy là chữ hiếu dạy trong luân thường
+cd|hieu_thao|V_HIEUTHAO|Cây có gốc mới nở ngành xanh ngọn / Nước có nguồn mới bể rộng sông sâu
+cd|hieu_thao|V_HIEUTHAO,L_QH3|Khôn ngoan nhờ đức cha ông / Làm nên phải nhớ tổ tông phụng thờ
+cd|hieu_thao|WSC,V_GIAODUC,T_CHAME|Cá không ăn muối cá ươn / Con cãi cha mẹ trăm đường con hư
+cd|hieu_thao|T_CHAME|Nuôi con chẳng quản chi thân / Chỗ ướt mẹ nằm, chỗ ráo con lăn
+tn|hieu_thao|T_CHAME|Mẹ nuôi con bằng trời bằng bể, con nuôi mẹ con kể từng ngày
+tn|hieu_thao|V_HIEUTHAO,T_CHAME,V_775|Con không chê cha mẹ khó, chó không chê chủ nhà nghèo
+tn|hieu_thao|WQTH,V_775|Chim có tổ, người có tông
+tn|hieu_thao|V_775|Có nuôi con mới biết lòng cha mẹ
+tn|hieu_thao|V_GIAODUC,V_775|Con khó có lòng
+th|hieu_thao|WQTH|Ơn cha nghĩa mẹ
+## GIA ĐÌNH
+cd|gia_dinh|WQXH,V_DAODUC,V_ANHEM|Anh em như thể tay chân / Rách lành đùm bọc, dở hay đỡ đần
+cd|gia_dinh|WQXH,WQTH,V_ANHEM|Khôn ngoan đối đáp người ngoài / Gà cùng một mẹ chớ hoài đá nhau
+cd|gia_dinh|V_ANHEM|Anh em trên kính dưới nhường / Là nhà có phúc mọi đường yên vui
+cd|gia_dinh|V_ANHEM|Anh em nào phải người xa / Cùng chung bác mẹ, một nhà cùng thân / Yêu nhau như thể tay chân / Anh em hòa thuận hai thân vui vầy
+cd|gia_dinh|V_GIANDI,V_COM,V_ANUONG,V_TIETKIEM|Râu tôm nấu với ruột bầu / Chồng chan vợ húp gật đầu khen ngon
+cd|gia_dinh|V_COM,V_ANUONG,V_SEN|Thương chồng nấu cháo le le / Nấu canh bông bí, nấu chè hạt sen
+cd|gia_dinh|V_DAODUC|Cây xanh thì lá cũng xanh / Cha mẹ hiền lành để đức cho con
+cd|gia_dinh|V_DAODUC|Mừng cây rồi lại mừng cành / Cây đức lắm chồi, người đức lắm con
+cd|gia_dinh|V_DAODUC|Thà rằng ăn bát cơm rau / Còn hơn cá thịt nói nhau nặng lời
+cd|gia_dinh|VANVN|Trên đồng cạn, dưới đồng sâu / Chồng cày, vợ cấy, con trâu đi bừa
+cd|gia_dinh|V_ANUONG|Tay bưng đĩa muối chấm gừng / Gừng cay muối mặn xin đừng quên nhau
+tn|gia_dinh|WQTH,V_ANHEM,ENWQ|Một giọt máu đào hơn ao nước lã
+tn|gia_dinh|WQTH,V_DAODUC,V_ANHEM,V_775|Chị ngã em nâng
+tn|gia_dinh|V_DAODUC,V_ANHEM,V_GIAODUC|Anh em thuận hòa là nhà có phúc
+tn|gia_dinh|V_ANHEM,V_775|Anh em hạt máu sẻ đôi
+tn|gia_dinh|WQTH,V_ANHEM,V_775|Máu chảy ruột mềm
+tn|gia_dinh|L_DOANKET,V_775|Thuận vợ thuận chồng, tát biển Đông cũng cạn
+tn|gia_dinh|V_GIAODUC,T_CHAME,V_775|Con có cha như nhà có nóc
+tn|gia_dinh|T_CHAME,V_GIAODUC,V_775|Mẹ dạy thì con khéo, cha dạy thì con khôn
+tn|gia_dinh|WQTH,V_TONSU,V_775|Con hơn cha là nhà có phúc
+tn|gia_dinh|V_775|Trẻ cậy cha, già cậy con
+tn|gia_dinh|V_GIAODUC,V_775,T_CHAME|Con cái khôn ngoan vẻ vang cha mẹ
+tn|gia_dinh|V_775|Con có mẹ như măng ấp bẹ
+tn|gia_dinh|V_GIAODUC,V_775,T_CHAME|Trẻ lên ba cả nhà học nói
+tn|gia_dinh|WQTH,V_DAODUC,V_MOITRUONG,V_775|Nhà sạch thì mát, bát sạch ngon cơm
+tn|gia_dinh|V_775|Tre già măng mọc
+tn|gia_dinh|V_775|Có an cư mới lạc nghiệp
+th|gia_dinh|WSC|Của chồng công vợ
+th|gia_dinh|V_COM|Cơm lành canh ngọt
+th|gia_dinh|WQTH|No cơm ấm cật
+## BIẾT ƠN
+tn|biet_on|WQTH,V_DAODUC,L_QH3,T_CHAME|Uống nước nhớ nguồn
+tn|biet_on|WQTH,V_BIETON,V_775|Ăn quả nhớ kẻ trồng cây
+tn|biet_on|WQTH,L_QH3|Ăn khoai nhớ kẻ cho dây mà trồng
+tn|biet_on|V_COM,V_775|Ăn bát cơm dẻo, nhớ nẻo đường đi
+tn|biet_on|V_775,WSC|Cây có cội, nước có nguồn
+tn|biet_on|V_TONSU,V_TET|Mồng một Tết cha, mồng hai Tết mẹ, mồng ba Tết thầy
+tn|biet_on|V_BIETON,V_TONSU|Một chữ nên thầy, một ngày nên nghĩa
+tn|biet_on|WQTH,V_775,V_MOITRUONG|Ăn cây nào rào cây ấy
+tn|biet_on|V_TET,V_COM,V_775|Ăn cơm mới, nói chuyện cũ
+tn|biet_on|V_ANUONG|Ăn miếng ngọt, trả miếng bùi
+tn|biet_on|V_ANUONG|Ăn oản của chùa phải quét lá đa
+tn|biet_on|V_BIETON|Đường mòn nhân nghĩa không mòn
+th|biet_on|V_BIETON|Ân trả nghĩa đền
+cd|biet_on|V_BIETON,V_DAODUC|Vay chín thì trả cả mười / Phòng khi túng lỡ có người cho vay
+cd|biet_on|V_CAYLUA,V_CONTRAU,VANVN,V_BIETON|Cày đồng đang buổi ban trưa / Mồ hôi thánh thót như mưa ruộng cày / Ai ơi bưng bát cơm đầy / Dẻo thơm một hạt, đắng cay muôn phần
+cd|biet_on|V_BIETON,V_TONSU,V_DAODUC|Vua, thầy, cha, ấy ba ngôi / Kính thờ như một trẻ ơi ghi lòng
+cd|biet_on|V_TONSU,V_DAODUC|Mười năm rèn luyện sách đèn / Công danh gặp bước chớ quên ơn thầy
+## HỌC TẬP
+tn|hoc_tap|WQTH,V_TONSU,V_DAODUC|Không thầy đố mày làm nên
+tn|hoc_tap|WQTH,V_TONSU,V_DAODUC,V_TINHBAN,V_775|Học thầy không tày học bạn
+tn|hoc_tap|V_TONSU,V_DAODUC|Muốn biết phải hỏi, muốn giỏi phải học
+tn|hoc_tap|V_TONSU,V_DAODUC,V_GIAODUC,T_CHAME|Người không học như ngọc không mài
+tn|hoc_tap|WQTH,V_TONSU|Ông bảy mươi học ông bảy mốt
+tn|hoc_tap|WQTH,V_775|Đi một ngày đàng, học một sàng khôn
+tn|hoc_tap|WQTH,V_GIAODUC,V_LOINOI,T_CHAME|Học ăn, học nói, học gói, học mở
+tn|hoc_tap|V_TONSU|Kính thầy mới được làm thầy
+tn|hoc_tap|V_TONSU,V_DAODUC,V_GIAODUC,T_CHAME|Một kho vàng không bằng một nang chữ
+tn|hoc_tap|V_TONSU|Học thầy học bạn, vô vạn phong lưu
+tn|hoc_tap|V_GIAODUC,T_CHAME|Học khôn đến chết, học nết đến già
+tn|hoc_tap|V_GIAODUC|Ăn vóc học hay
+tn|hoc_tap|V_GIAODUC|Muốn lành nghề chớ nề học hỏi
+tn|hoc_tap|V_GIAODUC,T_CHAME|Khi măng không uốn thì tre trổ vồng
+tn|hoc_tap|V_GIAODUC,T_CHAME|Non chẳng uốn, già nổ đốt
+tn|hoc_tap|V_775|Trăm nghe không bằng một thấy
+tn|hoc_tap|WQTH,V_775|Đi hỏi già, về nhà hỏi trẻ
+tn|hoc_tap|V_775|Có dốt mới có khôn
+tn|hoc_tap|WSN,WQCN|Nhất nghệ tinh, nhất thân vinh
+tn|hoc_tap|WQTH|Hát hay không bằng hay hát
+th|hoc_tap|WQTH,WQHT|Học một biết mười
+cd|hoc_tap|V_GIAODUC,V_TONSU,V_BIETON,T_CHAME|Dạy con từ thuở tiểu sinh / Gần thầy gần bạn tập tành lễ nghi
+cd|hoc_tap|V_TONSU,V_DAODUC|Cơm cha áo mẹ chữ thầy / Gắng công mà học có ngày thành danh
+cd|hoc_tap|V_GIAODUC,T_CHAME|Ngọc kia chẳng giũa chẳng mài / Cũng thành vô dụng, cũng hoài ngọc đi
+cd|hoc_tap|V_BIETON,V_TONSU,V_DAODUC|Dốt kia thì phải cậy thầy / Vụng kia cậy thợ thì mày làm nên
+cd|hoc_tap|V_GIAODUC|Học là học để mà hành / Vừa hành vừa học mới thành người khôn
+cd|hoc_tap|V_TONSU,V_DAODUC|Ở đây gần bạn gần thầy / Có công mài sắt có ngày nên kim
+cd|hoc_tap|V_TONSU,V_DAODUC|Mấy ai là kẻ không thầy / Thế gian thường nói đố mày làm nên
+cd|hoc_tap|WQXH,V_DAODUC|Muốn sang thì bắc cầu kiều / Muốn con hay chữ thì yêu lấy thầy
+cd|hoc_tap|WQXH,V_DAODUC|Lên non cho biết non cao / Lội sông cho biết sông nào cạn sâu
+## CẦN CÙ
+tn|can_cu|ENWQ,V_YCHI,L_SIENGNANG,V_775|Tay làm hàm nhai, tay quai miệng trễ
+tn|can_cu|V_YCHI,V_DAODUC,L_SIENGNANG|Cần cù bù thông minh
+tn|can_cu|WQTH,V_YCHI|Muốn ăn thì lăn vào bếp
+tn|can_cu|WQTH,V_YCHI,V_SIENGNANG,V_TIETKIEM,V_775|Năng nhặt chặt bị
+tn|can_cu|L_SIENGNANG,V_775|Trăm hay không bằng tay quen
+tn|can_cu|V_775|Quen tay hay làm
+tn|can_cu|V_YCHI|Lười biếng chẳng ai thiết, siêng việc ai cũng mời
+tn|can_cu|V_TIETKIEM,V_GIANDI,V_775|Làm khi lành để dành khi đau
+tn|can_cu|V_TIETKIEM,V_GIANDI|Ăn phải dành, có phải kiệm
+tn|can_cu|WQTH,WSK,V_TIETKIEM,V_GIANDI,V_775|Khéo ăn thì no, khéo co thì ấm
+tn|can_cu|V_TIETKIEM,V_GIANDI|Ít chắt chiu hơn nhiều phung phí
+tn|can_cu|WQCN,V_MOITRUONG,V_775|Ruộng bề bề không bằng nghề trong tay
+tn|can_cu|V_775|Người lười, đất không lười
+tn|can_cu|WSC,V_775|Của một đồng, công một nén
+tn|can_cu|V_775|Của bền tại người
+tn|can_cu|V_775|Làm nghề gì ăn nghề ấy
+tn|can_cu|V_775|Đông tay hơn hay làm
+th|can_cu|WQTH,V_YCHI|Một nắng hai sương
+th|can_cu|V_TIETKIEM,V_GIANDI|Ăn chắc mặc bền
+th|can_cu|V_GIANDI|Ăn cần ở kiệm
+th|can_cu|WQTH|Dày công vun xới
+th|can_cu|WQTH|Của ăn của để
+cd|can_cu|V_YCHI,VANVN|Có làm thì mới có ăn / Không dưng ai dễ mang phần đến cho
+cd|can_cu|V_YCHI|Trời nào có phụ ai đâu / Hay làm thì giàu, có chí thì nên
+cd|can_cu|WQTN,VANVN,V_DAODUC|Giàu đâu những kẻ ngủ trưa / Sang đâu những kẻ say sưa tối ngày
+cd|can_cu|WQXH,V_DAODUC|Muốn no thì phải chăm làm / Một hạt thóc vàng chín hạt mồ hôi
+cd|can_cu|V_YCHI,VANVN,V_TIETKIEM|Đời người có một gang tay / Ai hay ngủ ngày còn có nửa gang
+cd|can_cu|V_CONTRAU,VANVN|Rủ nhau đi cấy đi cày / Bây giờ khó nhọc có ngày phong lưu
+cd|can_cu|V_SIENGNANG,L_SIENGNANG|Có vất vả mới thanh nhàn / Không dưng ai dễ cầm tàn che cho
+cd|can_cu|V_SIENGNANG|Nước lã mà vã nên hồ / Tay không mà nổi cơ đồ mới ngoan
+## KIÊN NHẪN
+tn|kien_nhan|ENWQ,WQTH,V_YCHI,L_SIENGNANG,V_775|Có công mài sắt, có ngày nên kim
+tn|kien_nhan|ENWQ,V_YCHI,V_SIENGNANG,V_775|Có chí thì nên
+tn|kien_nhan|WQTH,V_YCHI,V_775|Kiến tha lâu cũng đầy tổ
+tn|kien_nhan|WQTN,ENWQ,WQTH,V_SIENGNANG,L_SIENGNANG,V_775|Nước chảy đá mòn
+tn|kien_nhan|WQTH,V_YCHI,V_SIENGNANG,V_775|Thua keo này, bày keo khác
+tn|kien_nhan|WQTH,V_YCHI,V_SIENGNANG,L_SIENGNANG|Chớ thấy sóng cả mà ngã tay chèo
+tn|kien_nhan|V_SIENGNANG,L_SIENGNANG,V_775|Lửa thử vàng, gian nan thử sức
+tn|kien_nhan|V_YCHI,V_SIENGNANG,L_SIENGNANG,V_775|Có cứng mới đứng đầu gió
+tn|kien_nhan|V_YCHI,V_SIENGNANG,V_775|Mưu cao chẳng bằng chí dày
+tn|kien_nhan|V_YCHI,V_SIENGNANG,V_775|Có chí làm quan, có gan làm giàu
+tn|kien_nhan|V_YCHI,V_775|Trăm bó đuốc cũng vớ được con ếch
+tn|kien_nhan|V_YCHI|Người có chí thì nên, nhà có nền thì vững
+tn|kien_nhan|WQTH,V_DAODUC,V_775|Sông có khúc, người có lúc
+tn|kien_nhan|WQTH,V_DAODUC,V_775|Còn nước còn tát
+tn|kien_nhan|V_DAODUC,V_775|Có bột mới gột nên hồ
+tn|kien_nhan|V_MOITRUONG,V_775|Đất sỏi có chạch vàng
+tn|kien_nhan|V_775|Trời không đóng cửa ai
+tn|kien_nhan|WSC|Còn người còn của
+tn|kien_nhan|WQTH,WSG,V_DOANKET,L_DOANKET|Góp gió thành bão
+th|kien_nhan|WQTH,V_SIENGNANG|Chân cứng đá mềm
+cd|kien_nhan|V_YCHI,V_SIENGNANG,L_SIENGNANG,V_TRUNGTHUC,V_ANHEM|Ai ơi giữ chí cho bền / Dù ai xoay hướng đổi nền mặc ai
+cd|kien_nhan|V_YCHI,V_SIENGNANG,L_SIENGNANG|Dù ai nói ngả nói nghiêng / Lòng ta vẫn vững như kiềng ba chân
+cd|kien_nhan|V_YCHI,V_SIENGNANG,L_SIENGNANG|Ngọc kia chuốt mãi cũng tròn / Sắt kia mài mãi cũng còn nên kim
+cd|kien_nhan|V_YCHI,V_SIENGNANG|Hãy cho bền chí câu cua / Dù ai câu chạch câu rùa mặc ai
+cd|kien_nhan|V_SIENGNANG|Ai ơi đã quyết thì hành / Đã đan thì lận tròn vành mới thôi
+cd|kien_nhan|V_DAODUC|Non cao cũng có đường trèo / Đường dẫu hiểm nghèo cũng có lối đi
+## NHÂN ÁI
+cd|nhan_ai|L_QUEHUONG,V_DOANKET,L_DOANKET,V_DAODUC,V_ANHEM,V_QUEHUONG|Bầu ơi thương lấy bí cùng / Tuy rằng khác giống nhưng chung một giàn
+cd|nhan_ai|WQXH,V_DOANKET,L_DOANKET,V_DAODUC|Nhiễu điều phủ lấy giá gương / Người trong một nước phải thương nhau cùng
+cd|nhan_ai|WQXH,V_DOANKET,L_DOANKET,V_DAODUC,V_MOITRUONG|Một cây làm chẳng nên non / Ba cây chụm lại nên hòn núi cao
+cd|nhan_ai|V_DAODUC,V_ANHEM|Anh em bốn bể là nhà / Người dưng khác họ vẫn là anh em
+tn|nhan_ai|WQTH,V_DOANKET,L_DOANKET,V_DAODUC,L_QH3|Lá lành đùm lá rách
+tn|nhan_ai|L_DOANKET|Lá rách ít đùm lá rách nhiều
+tn|nhan_ai|L_DOANKET,V_DAODUC|Thương người như thể thương thân
+tn|nhan_ai|WQTH,V_DOANKET,L_DOANKET,V_TINHBAN,V_775|Một con ngựa đau, cả tàu bỏ cỏ
+tn|nhan_ai|WQTH,L_QH3,L_DOANKET,V_LANGXOM,V_775|Bán anh em xa, mua láng giềng gần
+tn|nhan_ai|L_DOANKET,V_LANGXOM|Hàng xóm tối lửa tắt đèn có nhau
+tn|nhan_ai|V_DAODUC,V_775|Một miếng khi đói bằng một gói khi no
+tn|nhan_ai|WQTH,V_TUTRONG|Yêu trẻ, trẻ đến nhà; kính già, già để tuổi cho
+tn|nhan_ai|V_DAODUC|Thương nhau củ ấu cũng tròn
+th|nhan_ai|V_TUTRONG|Kính già yêu trẻ
+th|nhan_ai|V_DOANKET,L_DOANKET|Nhường cơm sẻ áo
+th|nhan_ai|V_DOANKET,L_DOANKET|Chung lưng đấu cật
+th|nhan_ai|WQTH,V_DOANKET,V_775|Môi hở răng lạnh
+th|nhan_ai|WQTH|Của ít lòng nhiều
+## BẠN BÈ
+tn|ban_be|ENWQ,WQTH,WSG,V_DAODUC,V_TINHBAN,V_775|Gần mực thì đen, gần đèn thì rạng
+tn|ban_be|V_DAODUC,V_GIAODUC,V_TINHBAN,V_775|Chọn bạn mà chơi, chọn nơi mà ở
+tn|ban_be|WQTH,V_TINHBAN,V_775|Giàu vì bạn, sang vì vợ
+tn|ban_be|V_DOANKET,V_TINHBAN,V_775|Ngựa chạy có bầy, chim bay có bạn
+tn|ban_be|V_DOANKET,V_DAODUC|Buôn có bạn, bán có phường
+tn|ban_be|V_TINHBAN|Bớt thù thêm bạn
+tn|ban_be|V_TINHBAN,V_775|Thua trời một vạn không bằng thua bạn một ly
+tn|ban_be|V_TINHBAN|Lắm kẻ yêu hơn nhiều người ghét
+tn|ban_be|V_775,V_TINHBAN|Trước lạ sau quen
+tn|ban_be|V_775|Áo năng may năng mới, người năng tới năng thân
+tn|ban_be|V_COM,V_ANUONG,V_775|Ăn cơm có canh, tu hành có bạn
+th|ban_be|V_TINHBAN|Ăn cùng mâm, nằm cùng chiếu
+th|ban_be|WQTH|Sống chết có nhau
+cd|ban_be|V_DAODUC,V_TINHBAN|Bạn bè là nghĩa tương tri / Sao cho sau trước một bề mới nên
+## ĐẠO ĐỨC
+tn|dao_duc|WQTH,V_DAODUC,V_775|Ở hiền gặp lành
+tn|dao_duc|V_LOINOI,V_775|Lời chào cao hơn mâm cỗ
+tn|dao_duc|V_LOINOI|Lời nói gói vàng
+tn|dao_duc|ENWQ,V_775,V_LOINOI|Một câu nhịn, chín câu lành
+tn|dao_duc|V_LOINOI,V_775|Ăn có nhai, nói có nghĩ
+tn|dao_duc|V_LOINOI,V_TRUNGTHUC,V_775|Ăn ngay nói thật, mọi tật mọi lành
+tn|dao_duc|V_LOINOI,V_TRUNGTHUC|Một lời nói dối, sám hối bảy ngày
+tn|dao_duc|WQTH,V_TRUNGTHUC,V_TUTRONG,V_775|Cây ngay không sợ chết đứng
+tn|dao_duc|WQTH,V_TRUNGTHUC,V_775|Thuốc đắng dã tật, sự thật mất lòng
+tn|dao_duc|WQTH,V_TRUNGTHUC,V_775|Mất lòng trước, được lòng sau
+tn|dao_duc|V_DAODUC,V_TRUNGTHUC,V_TUTRONG,V_775|Đói cho sạch, rách cho thơm
+tn|dao_duc|WQTH,V_DAODUC,V_TUTRONG,V_775|Giấy rách phải giữ lấy lề
+tn|dao_duc|WQXH,V_DAODUC,V_GIANDI,V_775|Tốt gỗ hơn tốt nước sơn
+tn|dao_duc|V_DAODUC,V_TUTRONG,V_775|Tốt danh hơn lành áo
+tn|dao_duc|ENWQ,WQTH,V_DAODUC,V_775|Cái nết đánh chết cái đẹp
+tn|dao_duc|V_DAODUC|Đẹp nết hơn đẹp người
+tn|dao_duc|V_TUTRONG|Ăn có mời, làm có khiến
+tn|dao_duc|V_775,V_TUTRONG|Ăn một miếng, tiếng một đời
+tn|dao_duc|V_TUTRONG|Được tiếng còn hơn được miếng
+tn|dao_duc|V_DAODUC,V_775|Vàng thật không sợ lửa
+tn|dao_duc|V_TUTRONG,V_775|Biết thì thưa thốt, không biết thì dựa cột mà nghe
+tn|dao_duc|WQTH,V_LOINOI,V_775|Nói có sách, mách có chứng
+tn|dao_duc|WQTH,V_DAODUC,V_TUTRONG,V_ANUONG,V_775|Ăn trông nồi, ngồi trông hướng
+tn|dao_duc|V_775|Ăn tùy nơi, chơi tùy chỗ
+tn|dao_duc|V_DAODUC,V_775|Ăn theo thuở, ở theo thì
+tn|dao_duc|ENWQ,WQTH|Tham thì thâm
+tn|dao_duc|V_DAODUC,V_775|No mất ngon, giận mất khôn
+tn|dao_duc|V_DAODUC|Trách mình trước, trách người sau
+tn|dao_duc|V_DAODUC|Trách người một, trách ta mười
+tn|dao_duc|V_DAODUC,V_SUCKHOE|Đói ăn rau, đau uống thuốc
+tn|dao_duc|V_SUCKHOE,V_ANUONG|Tham thực cực thân
+tn|dao_duc|V_775,V_SUCKHOE|Chẳng ốm chẳng đau, làm giàu mấy chốc
+tn|dao_duc|ENWQ,V_775|Có thực mới vực được đạo
+tn|dao_duc|WQCN,V_MOITRUONG,V_775|Người ta là hoa đất
+tn|dao_duc|WQCN,V_775|Người sống đống vàng
+tn|dao_duc|V_775|Người làm nên của, của không làm nên người
+tn|dao_duc|V_775|Muốn tròn phải có khuôn, muốn vuông phải có thước
+tn|dao_duc|V_775|Có vay có trả, mới thỏa lòng nhau
+tn|dao_duc|V_775|Dễ người dễ ta
+tn|dao_duc|V_775|Lời nói không cánh mà bay
+tn|dao_duc|V_775|Miếng ngon nhớ lâu, lời đau nhớ đời
+tn|dao_duc|V_775|Xấu đều hơn tốt lỏi
+tn|dao_duc|V_775|Bụng làm dạ chịu
+tn|dao_duc|WSN,V_775|Nói hay hơn hay nói
+tn|dao_duc|WSK|Khôn ngoan chẳng bằng thật thà
+tn|dao_duc|V_TRUNGTHUC|Một câu nói ngay bằng ăn chay cả tháng
+tn|dao_duc|V_775,V_TRUNGTHUC|Đi buôn nói ngay bằng đi cày giữa ruộng
+tn|dao_duc|V_TRUNGTHUC|Cây thẳng bóng ngay, cây cong bóng vẹo
+th|dao_duc|V_TRUNGTHUC|Ăn ngay nói thẳng
+th|dao_duc|V_GIANDI|Áo vải cơm rau
+th|dao_duc|WQTH|Trọn tình trọn nghĩa
+th|dao_duc|WQTH,V_775|Xanh vỏ đỏ lòng
+th|dao_duc|WQTH|Một vừa hai phải
+th|dao_duc|WQTH|Thuận mua vừa bán
+th|dao_duc|WQTH|Lạt mềm buộc chặt
+th|dao_duc|V_775|Chắc rễ bền cây
+th|dao_duc|WQTH,V_775|Liệu cơm gắp mắm
+cd|dao_duc|WQXH,V_LOINOI,V_DAODUC|Lời nói chẳng mất tiền mua / Lựa lời mà nói cho vừa lòng nhau
+cd|dao_duc|WSC,V_LOINOI|Chim khôn kêu tiếng rảnh rang / Người khôn nói tiếng dịu dàng dễ nghe
+cd|dao_duc|V_LOINOI|Người thanh tiếng nói cũng thanh / Chuông kêu khẽ đánh bên thành cũng kêu
+cd|dao_duc|WQXH,V_LOINOI,V_DAODUC|Kim vàng ai nỡ uốn câu / Người khôn ai nỡ nói nhau nặng lời
+cd|dao_duc|V_LOINOI,V_DAODUC|Vàng thì thử lửa thử than / Chuông kêu thử tiếng, người ngoan thử lời
+cd|dao_duc|WQXH,V_LOINOI,V_TRUNGTHUC,V_TUTRONG|Nói lời phải giữ lấy lời / Đừng như con bướm đậu rồi lại bay
+cd|dao_duc|WQXH,V_DAODUC,V_TUTRONG|Ai ơi chớ vội cười nhau / Cười người hôm trước, hôm sau người cười
+cd|dao_duc|WQXH,V_LOINOI,V_DAODUC|Rượu nhạt uống lắm cũng say / Người khôn nói lắm dẫu hay cũng nhàm
+cd|dao_duc|V_TRUNGTHUC|Khôn ngoan chẳng lọ thật thà / Lường thưng tráo đấu chẳng qua đong đầy
+cd|dao_duc|WQXH,V_DAODUC,V_TRUNGTHUC|Làm người phải đắn phải đo / Phải cân nặng nhẹ, phải dò nông sâu
+cd|dao_duc|V_DAODUC,V_SEN|Hoa sen mọc bãi cát lầm / Tuy rằng lấm láp vẫn mầm hoa sen
+cd|dao_duc|V_DAODUC|Ở hiền thì lại gặp lành / Những người nhân đức trời dành phúc cho
+cd|dao_duc|V_TRUNGTHUC|Những người tính nết thật thà / Đi đâu cũng được người ta tin dùng
+cd|dao_duc|V_TRUNGTHUC|Người gian thì sợ người ngay / Người ngay chẳng sợ đường cày cong queo
+cd|dao_duc|V_TRUNGTHUC|Của phi nghĩa có giàu đâu / Ở cho ngay thật giàu sau mới giàu
+cd|dao_duc|V_DAODUC,V_SUCKHOE|Ăn được ngủ được là tiên / Không ăn không ngủ mất tiền thêm lo
+## NÔNG NGHIỆP
+cd|nong_nghiep|WQXH,VANVN|Ai ơi đừng bỏ ruộng hoang / Bao nhiêu tấc đất tấc vàng bấy nhiêu
+cd|nong_nghiep|V_CAYLUA,V_CONTRAU,VANVN|Trâu ơi ta bảo trâu này / Trâu ra ngoài ruộng trâu cày với ta / Cấy cày vốn nghiệp nông gia / Ta đây trâu đấy ai mà quản công
+cd|nong_nghiep|WQTN,V_THOITIET,V_CAYLUA,VANVN|Lúa chiêm lấp ló đầu bờ / Hễ nghe tiếng sấm phất cờ mà lên
+cd|nong_nghiep|V_THOITIET,V_THIENNHIEN,V_MOITRUONG,VANVN|Người ta đi cấy lấy công / Tôi nay đi cấy còn trông nhiều bề / Trông trời, trông đất, trông mây / Trông mưa, trông gió, trông ngày, trông đêm / Trông cho chân cứng đá mềm / Trời êm biển lặng mới yên tấm lòng
+cd|nong_nghiep|WQTN,VANVN|Muốn cho lúa nảy bông to / Cày sâu bừa kỹ, phân gio cho nhiều
+cd|nong_nghiep|VANVN|Tháng Chạp là tháng trồng khoai / Tháng Giêng trồng đậu, tháng Hai trồng cà / Tháng Ba cày vỡ ruộng ra / Tháng Tư làm mạ, mưa sa đầy đồng
+cd|nong_nghiep|VANVN|Ơn trời mưa nắng phải thì / Nơi thì bừa cạn, nơi thì cày sâu / Công lênh chẳng quản bao lâu / Ngày nay nước bạc, ngày sau cơm vàng
+cd|nong_nghiep|V_THOITIET,VANVN|Nhờ trời mưa gió thuận hòa / Nào cày nào cấy, trẻ già đua nhau
+cd|nong_nghiep|V_TET|Tháng Giêng là tháng ăn chơi / Tháng Hai trồng đậu, trồng khoai, trồng cà / Tháng Ba thì đậu đã già / Ta đi ta hái về nhà phơi khô
+cd|nong_nghiep|V_CAYLUA,VANVN|Tỏ trăng mười bốn được tằm / Tỏ trăng hôm rằm thì được lúa chiêm
+cd|nong_nghiep|V_THOITIET,V_CAYLUA|Lập thu mới cấy lúa mùa / Khác nào hương khói lên chùa cầu con
+tn|nong_nghiep|V_THIENNHIEN,V_MOITRUONG,VANVN,V_775|Tấc đất tấc vàng
+tn|nong_nghiep|V_CONTRAU,VANVN,V_775|Con trâu là đầu cơ nghiệp
+tn|nong_nghiep|WQTN,V_THIENNHIEN,VANVN,V_775|Nhất nước, nhì phân, tam cần, tứ giống
+tn|nong_nghiep|WQTN,V_THIENNHIEN,VANVN|Nhất thì, nhì thục
+tn|nong_nghiep|WQTN,V_THIENNHIEN,VANVN,V_MOITRUONG|Nhất canh trì, nhì canh viên, tam canh điền
+tn|nong_nghiep|V_THIENNHIEN,V_CAYLUA,VANVN,V_775|Nắng tốt dưa, mưa tốt lúa
+tn|nong_nghiep|V_THIENNHIEN,V_MOITRUONG,VANVN,V_775|Ao sâu tốt cá
+tn|nong_nghiep|WQTN,VANVN|Mạ già ruộng ngấu không thua bạn điền
+tn|nong_nghiep|V_THIENNHIEN,VANVN,V_775|Trồng khoai đất lạ, gieo mạ đất quen
+tn|nong_nghiep|V_CAYLUA,V_ANUONG,VANVN,V_775|Ăn kỹ no lâu, cày sâu tốt lúa
+tn|nong_nghiep|V_CAYLUA,VANVN,V_775|Năm trước được cau, năm sau được lúa
+tn|nong_nghiep|V_CAYLUA,V_775|Được mùa lúa, úa mùa cau
+tn|nong_nghiep|V_THIENNHIEN,VANVN,V_775|Một tiền gà, ba tiền thóc
+tn|nong_nghiep|VANVN,V_775|Một lượt cỏ thêm giỏ thóc
+tn|nong_nghiep|VANVN,V_775|Làm ruộng ba năm không bằng chăn tằm một lứa
+tn|nong_nghiep|VANVN,V_775|Tằm đói một bữa bằng người đói nửa năm
+tn|nong_nghiep|VANVN,V_775|Làm ruộng ăn cơm nằm, chăn tằm ăn cơm đứng
+tn|nong_nghiep|WQTN,V_DAODUC,V_775|Người đẹp vì lụa, lúa tốt vì phân
+tn|nong_nghiep|V_THIENNHIEN,V_775|Gió đông là chồng lúa chiêm, gió bấc là duyên lúa mùa
+tn|nong_nghiep|V_775|Ruộng cao trồng màu, ruộng sâu cấy chiêm
+tn|nong_nghiep|V_775|Chiêm xấp tới, mùa đợi nhau
+tn|nong_nghiep|V_775,VANVN|Đom đóm bay ra, trồng cà tra đỗ
+tn|nong_nghiep|V_THOITIET,V_THIENNHIEN,VANVN,V_775|Trăng mờ tốt lúa nỏ, trăng tỏ tốt lúa sâu
+tn|nong_nghiep|V_MOITRUONG,V_775|Biết sự trời, mười đời chẳng khó
+tn|nong_nghiep|V_THOITIET,V_THIENNHIEN,V_MOITRUONG,V_775|Nắng sớm thì đi trồng cà, mưa sớm ở nhà phơi thóc
+tn|nong_nghiep|V_CAYLUA|Một nuộc lạt, một bát cơm
+tn|nong_nghiep|V_COM|Cơm tẻ là mẹ ruột
+tn|nong_nghiep|V_COM,V_775|Cơm không rau như đau không thuốc
+tn|nong_nghiep|V_CONTRAU,V_775|Trâu đồng nào ăn cỏ đồng nấy
+th|nong_nghiep|V_MOITRUONG|Bán mặt cho đất, bán lưng cho trời
+th|nong_nghiep|WQTH|Cười như được mùa
+## THIÊN NHIÊN
+cd|thien_nhien|WQTH,V_THOITIET,V_THIENNHIEN|Chuồn chuồn bay thấp thì mưa / Bay cao thì nắng, bay vừa thì râm
+cd|thien_nhien|V_THOITIET,V_THIENNHIEN|Kiến đen tha trứng lên cao / Thế nào cũng có mưa rào rất to
+cd|thien_nhien|L_QUEHUONG,V_QUEHUONG,V_SEN,V_TUTRONG|Trong đầm gì đẹp bằng sen / Lá xanh bông trắng lại chen nhị vàng / Nhị vàng bông trắng lá xanh / Gần bùn mà chẳng hôi tanh mùi bùn
+cd|thien_nhien|L_QUEHUONG,V_QUEHUONG|Ruộng đồng mặc sức chim bay / Biển hồ lai láng mặc bầy cá đua
+cd|thien_nhien|L_QUEHUONG,V_QUEHUONG|Trăng bao nhiêu tuổi trăng già / Núi bao nhiêu tuổi gọi là núi non
+tn|thien_nhien|WQTH,V_THOITIET,V_THIENNHIEN,V_775|Én bay thấp mưa ngập bờ ao, én bay cao mưa rào lại tạnh
+tn|thien_nhien|WQTN,V_THOITIET,V_THIENNHIEN,V_775|Mau sao thì nắng, vắng sao thì mưa
+tn|thien_nhien|V_THOITIET,V_THIENNHIEN,V_775,V_MOITRUONG|Ráng mỡ gà, có nhà thì giữ
+tn|thien_nhien|V_THOITIET,V_THIENNHIEN|Tháng Bảy kiến bò, chỉ lo lại lụt
+tn|thien_nhien|V_THOITIET,V_THIENNHIEN,V_775|Trăng quầng thì hạn, trăng tán thì mưa
+tn|thien_nhien|WQTN,V_THOITIET,V_THIENNHIEN,V_775|Mống đông vồng tây, chẳng mưa dây cũng bão giật
+tn|thien_nhien|V_THOITIET,V_775,V_MOITRUONG|Mưa tháng Ba hoa đất, mưa tháng Tư hư đất
+tn|thien_nhien|V_THOITIET,V_THIENNHIEN,V_775|Đêm tháng Năm chưa nằm đã sáng, ngày tháng Mười chưa cười đã tối
+tn|thien_nhien|V_THOITIET,V_775|Gió thổi là chổi trời
+tn|thien_nhien|V_THOITIET,V_775|Nước mưa là cưa trời
+tn|thien_nhien|WQTH,V_THOITIET,V_775|Mây xanh thì nắng, mây trắng thì mưa
+tn|thien_nhien|V_THOITIET,V_THIENNHIEN,V_775|Nắng chóng trưa, mưa chóng tối
+tn|thien_nhien|WQTN,V_THOITIET,V_THIENNHIEN,V_775|Quạ tắm thì ráo, sáo tắm thì mưa
+tn|thien_nhien|V_THOITIET,V_THIENNHIEN,V_TET,V_775|Tháng Giêng rét đài, tháng Hai rét lộc, tháng Ba rét nàng Bân
+tn|thien_nhien|V_THOITIET,V_THIENNHIEN,V_775|Tháng Chín mưa rươi, tháng Mười mưa cữ
+tn|thien_nhien|V_THOITIET,V_MOITRUONG|Sấm kêu rêu mọc
+tn|thien_nhien|V_THOITIET,V_THIENNHIEN,V_775|Chớp đông nhay nháy, gà gáy thì mưa
+tn|thien_nhien|V_THOITIET,V_THIENNHIEN,V_775|Ếch kêu uôm uôm, ao chuôm đầy nước
+tn|thien_nhien|V_THOITIET,V_THIENNHIEN,V_775|Gió bấc hiu hiu, sếu kêu thì rét
+tn|thien_nhien|V_THOITIET,V_THIENNHIEN|Cơn đằng Đông vừa trông vừa chạy
+tn|thien_nhien|WQTN,V_THOITIET,V_THIENNHIEN,V_775|Mưa chẳng qua Ngọ, gió chẳng qua Mùi
+tn|thien_nhien|V_THOITIET,V_775|Tháng Bảy heo may, chuồn chuồn bay thì bão
+tn|thien_nhien|V_THOITIET,V_THIENNHIEN,V_775|Tháng Bảy kiến đàn, đại hàn hồng thủy
+tn|thien_nhien|V_775|Tháng Tám nắng rám trái bưởi
+tn|thien_nhien|V_THOITIET,V_THIENNHIEN|Mống dài trời lụt, mống cụt trời mưa
+tn|thien_nhien|V_THOITIET,V_THIENNHIEN|Vàng mây thì gió, đỏ mây thì mưa
+tn|thien_nhien|V_THOITIET|Thâm đông, hồng tây, dựng may, ai ơi ở lại ba ngày hãy đi
+tn|thien_nhien|V_THOITIET,V_TET,V_775|Qua Giêng hết năm, qua rằm hết tháng
+tn|thien_nhien|V_ANUONG,V_775|Mùa hè ăn cá sông, mùa đông ăn cá bể
+th|thien_nhien|V_THIENNHIEN|Mưa thuận gió hòa
+th|thien_nhien|V_MOITRUONG|Đâm chồi nảy lộc
+## QUÊ HƯƠNG
+cd|que_huong|L_QUEHUONG,V_DAODUC,V_QUEHUONG|Ta về ta tắm ao ta / Dù trong dù đục ao nhà vẫn hơn
+cd|que_huong|L_QUEHUONG,V_QUEHUONG,V_ANUONG|Anh đi anh nhớ quê nhà / Nhớ canh rau muống, nhớ cà dầm tương / Nhớ ai dãi nắng dầm sương / Nhớ ai tát nước bên đường hôm nao
+cd|que_huong|L_QUEHUONG,L_QH3,V_QUEHUONG|Đường vô xứ Nghệ quanh quanh / Non xanh nước biếc như tranh họa đồ
+cd|que_huong|L_QUEHUONG,L_QH3,V_QUEHUONG|Đồng Đăng có phố Kỳ Lừa / Có nàng Tô Thị, có chùa Tam Thanh
+cd|que_huong|L_QUEHUONG,V_QUEHUONG|Đường lên xứ Lạng bao xa / Cách một trái núi với ba quãng đồng
+cd|que_huong|L_QUEHUONG,V_QUEHUONG,V_HANOI|Rủ nhau xem cảnh Kiếm Hồ / Xem cầu Thê Húc, xem chùa Ngọc Sơn
+cd|que_huong|L_QUEHUONG,V_QUEHUONG,V_HANOI|Thăng Long Hà Nội đô thành / Nước non ai vẽ nên tranh họa đồ
+cd|que_huong|L_QUEHUONG,V_QUEHUONG,V_HANOI,V_THIENNHIEN|Làng tôi có lũy tre xanh / Có sông Tô Lịch uốn quanh xóm làng
+cd|que_huong|L_QUEHUONG,V_QUEHUONG|Đứng bên ni đồng, ngó bên tê đồng, mênh mông bát ngát / Đứng bên tê đồng, ngó bên ni đồng, bát ngát mênh mông
+cd|que_huong|L_QUEHUONG,V_QUEHUONG|Ai ơi về miệt Tháp Mười / Cá tôm sẵn bắt, lúa trời sẵn ăn
+cd|que_huong|V_QUEHUONG|Đồng Tháp Mười cò bay thẳng cánh / Nước Tháp Mười lóng lánh cá tôm
+cd|que_huong|L_QUEHUONG,V_QUEHUONG,V_CAYLUA|Cần Thơ gạo trắng nước trong / Ai đi đến đó lòng không muốn về
+cd|que_huong|L_QUEHUONG,V_QUEHUONG|Quê em có gió bốn mùa / Có trăng giữa tháng, có chùa quanh năm
+cd|que_huong|L_QUEHUONG,V_QUEHUONG|Ai về Quảng Ngãi quê ta / Mía ngon đường ngọt trắng ngà dễ ăn
+cd|que_huong|V_QUEHUONG|Ai về Gia Định thì về / Nước trong gạo trắng dễ bề làm ăn
+cd|que_huong|V_ANUONG|Chim, gà, cá, lợn, cành cau / Mùa nào thức nấy giữ màu nhà quê
+tn|que_huong|L_QH3,V_MOITRUONG,V_775|Đất lành chim đậu
+tn|que_huong|V_MOITRUONG,V_775|Đất có lề, quê có thói
+tn|que_huong|V_775|Lá rụng về cội
+tn|que_huong|V_CAYLUA|Gạo Cần Đước, nước Đồng Nai
+th|que_huong|V_THIENNHIEN,V_MOITRUONG|Gạo trắng nước trong
+th|que_huong|WQTH,V_MOITRUONG|Rừng vàng biển bạc
+th|que_huong|L_QH3|Non xanh nước biếc
+th|que_huong|L_QH3|Giang sơn gấm vóc
+th|que_huong|L_QH3|Chôn rau cắt rốn
+th|que_huong|L_QH3|Quê cha đất tổ
+th|que_huong|WSC|Cây nhà lá vườn
+th|que_huong|WQTH|Con Rồng cháu Tiên
+th|que_huong|WQTH,V_TET|Vui như Tết
+## BỔ SUNG
+tn|gia_dinh|WQTH,V_775|Cha mẹ sinh con, trời sinh tính
+tn|gia_dinh|V_775|Trẻ vui nhà, già vui chùa
+th|gia_dinh|V_COM|Cơm dẻo canh ngọt
+th|hieu_thao|V_GIAODUC|Đi thưa về gửi
+tn|can_cu|V_775|Của làm ăn no, của cho ăn thèm
+tn|can_cu|V_775|Khen nết hay làm, ai khen nết hay ăn
+th|can_cu|WQTH,V_TIETKIEM,V_GIANDI,V_775|Tích tiểu thành đại
+tn|can_cu|V_775,V_ANUONG|Ăn không lo, của kho cũng hết
+th|can_cu|WQTH|Một công đôi việc
+tn|can_cu|WQTH|Tiểu phú do cần, đại phú do thiên
+tn|can_cu|WQCN|Một nghề thì sống, đống nghề thì chết
+tn|can_cu|V_DAODUC|Ngồi ăn không, núi cũng mòn
+tn|biet_on|V_775,V_MOITRUONG|Đời cha trồng cây, đời con ăn quả
+tn|biet_on|V_COM|Ăn bát cơm đầy, nhớ ngày gian khổ
+th|hoc_tap|V_775|Ôn cố tri tân
+tn|hoc_tap|V_775,V_TONSU,V_DAODUC,WQHT,V_GIAODUC,T_CHAME|Tiên học lễ, hậu học văn
+tn|hoc_tap|V_DAODUC|Một chữ cũng là thầy, nửa chữ cũng là thầy
+tn|ban_be|V_775,V_TINHBAN,V_MOITRUONG|Ở chọn nơi, chơi chọn bạn
+th|ban_be|ENWQ|Càng đông càng vui
+tn|kien_nhan|WQTH,V_775|Vạn sự khởi đầu nan
+tn|kien_nhan|WQTH,V_DAODUC,V_SIENGNANG,V_775|Thắng không kiêu, bại không nản
+th|kien_nhan|WQTH|Khổ trước sướng sau
+th|kien_nhan|ENWQ|Chậm mà chắc
+th|kien_nhan|ENWQ,WQTH,V_775|Đầu xuôi đuôi lọt
+tn|dao_duc|V_775|Ăn ít ngon nhiều
+tn|dao_duc|WQTH,V_775|Khôn đâu đến trẻ, khỏe đâu đến già
+th|dao_duc|WQTH,V_DAODUC|Cẩn tắc vô ưu
+th|dao_duc|WQTH|Nhập gia tùy tục
+tn|dao_duc|WQTH|Phòng bệnh hơn chữa bệnh
+th|dao_duc|WQTH|Thật thà như đếm
+th|dao_duc|WQTH,V_TRUNGTHUC|Thẳng như ruột ngựa
+tn|dao_duc|WQTH,V_SUCKHOE|Sức khỏe là vàng
+tn|dao_duc|V_DAODUC|Thức lâu mới biết đêm dài, ở lâu mới biết con người có nhân
+tn|dao_duc|V_DAODUC|Ăn có chừng, chơi có độ
+tn|dao_duc|WQTH,V_DAODUC,V_775|Ở bầu thì tròn, ở ống thì dài
+tn|dao_duc|WQCN|Một mặt người bằng mười mặt của
+tn|dao_duc|V_LOINOI,V_ANUONG|Ăn bớt bát, nói bớt lời
+cd|dao_duc|V_DAODUC|Làm người ăn tối lo mai / Việc mình hồ dễ để ai lo lường
+cd|dao_duc|V_GIAODUC,V_DAODUC,T_CHAME|Thứ nhất thì tu tại gia / Thứ nhì tu chợ, thứ ba tu chùa
+cd|dao_duc|V_LOINOI|Nói chín thì nên làm mười / Nói mười làm chín, kẻ cười người chê
+tn|nhan_ai|WQTH,WSK|Khách đến nhà không gà thì gỏi
+tn|nhan_ai|V_DAODUC|Kính lão đắc thọ
+tn|nhan_ai|V_DOANKET|Cả bè hơn cây nứa
+tn|nhan_ai|V_DOANKET|Khi đói cùng chung một dạ, khi rét cùng chung một lòng
+th|nhan_ai|V_DOANKET|Đồng cam cộng khổ
+th|thien_nhien|V_TET|Năm hết Tết đến
+tn|nong_nghiep|V_775,VANVN|Gió heo may, mía bay lên ngọn
+tn|nong_nghiep|V_775|Trẻ trồng na, già trồng chuối
+cd|nong_nghiep|V_CONTRAU|Tậu trâu, lấy vợ, làm nhà / Trong ba việc ấy thật là khó thay
+tn|nong_nghiep|VANVN|Đất thiếu trồng dừa, đất thừa trồng cau
+tn|nong_nghiep|VANVN|Tằm có lứa, ruộng có mùa
+th|que_huong|WSN|Ngọn rau tấc đất
+cd|que_huong|V_ANUONG,V_HANOI|Cốm Vòng, gạo tám Mễ Trì / Tương Bần, húng Láng còn gì ngon hơn
+tn|que_huong|V_ANUONG,V_HANOI|Dưa La, cà Láng, nem Báng, tương Bần, nước mắm Vạn Vân, cá rô đầm Sét
+cd|que_huong|V_HANOI|Ổi Quảng Bá, cá Hồ Tây / Hàng Đào tơ lụa làm say lòng người
+tn|que_huong|V_HANOI|Vải Quang, húng Láng, ngổ Đầm, cá rô đầm Sét, sâm cầm Hồ Tây
+cd|que_huong|V_HANOI|Chẳng thơm cũng thể hoa nhài / Dẫu không thanh lịch cũng người Tràng An
+cd|que_huong|V_CONTRAU|Trâu ta ăn cỏ đồng ta / Tuy rằng cỏ cụt nhưng mà cỏ thơm

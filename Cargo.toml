@@ -1,0 +1,10 @@
+[workspace]
+resolver = "2"
+members = ["core", "ngochap", "ffi"]
+
+[profile.release]
+opt-level = 3
+codegen-units = 1
+lto = true
+# RS-04: tràn số nguyên ở bản phát hành phải panic (không gói quanh lặng lẽ). Đo: docs/05.
+overflow-checks = true

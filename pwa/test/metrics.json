@@ -1,0 +1,63 @@
+{
+  "date": "2026-11-05T22:19:25.231Z",
+  "machine": "linux x64, Node v22.23.4, Chromium 153.0.8010.12",
+  "viewports": {
+    "360x780": {
+      "first_load_transfer_gzip_bytes": 321463,
+      "first_load_transfer_gzip_kb": 313.9,
+      "first_load_cdp_encoded_bytes": 145517,
+      "first_load_files_page_and_sw_precache": 20,
+      "js_heap_used_bytes": 2547728,
+      "js_heap_used_mb": 2.43,
+      "js_heap_total_mb": 3.12,
+      "render_ms_max": 3,
+      "render_ms_median": 1.6,
+      "service_worker_active": true,
+      "offline_second_visit": true,
+      "console_errors": [],
+      "external_requests": []
+    },
+    "1280x800": {
+      "first_load_transfer_gzip_bytes": 321463,
+      "first_load_transfer_gzip_kb": 313.9,
+      "js_heap_used_bytes": 2506824,
+      "js_heap_used_mb": 2.39,
+      "console_errors": [],
+      "external_requests": []
+    }
+  },
+  "criteria": {
+    "P3_first_load_gzip_under_500KB": {
+      "value_kb": 313.9,
+      "pass": true
+    },
+    "P4_js_heap_under_30MB": {
+      "value_mb": 2.43,
+      "pass": true
+    },
+    "P5_offline_after_first_load": {
+      "pass": true
+    },
+    "S3_no_external_network_and_strict_csp": {
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; font-src 'self'; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'",
+      "pass": true
+    },
+    "S4_no_personal_data_stored": {
+      "note": "localStorage chỉ có khóa lvhv.ui (cỡ chữ, sáng/tối); năm sinh không lưu",
+      "pass": true
+    }
+  },
+  "dist": {
+    "files": 14,
+    "raw_bytes": 574224,
+    "gzip_bytes_all_files": 176312
+  },
+  "engine": "tsport",
+  "method": "hnd",
+  "layout_probe_days": {
+    "long_cadao": "2027-01-18",
+    "many_stars": "2026-09-04"
+  },
+  "failures": [],
+  "pass": true
+}

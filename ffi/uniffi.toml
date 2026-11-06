@@ -1,0 +1,10 @@
+# Cấu hình sinh mã UniFFI (đọc ở chế độ --library).
+[bindings.kotlin]
+package_name = "vn.clevix.lichviet.core"
+cdylib_name = "lvhv_ffi"
+
+[bindings.swift]
+# Tên mô-đun Swift của tệp sinh ra (lvhv_ffi.swift) và mô-đun C của phần tiêu đề.
+module_name = "LvhvCore"
+ffi_module_name = "lvhv_ffiFFI"
+ffi_module_filename = "lvhv_ffiFFI"

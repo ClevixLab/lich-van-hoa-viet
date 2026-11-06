@@ -1,0 +1,18 @@
+[package]
+name = "lvhv-core"
+version = "0.1.0"
+edition = "2021"
+description = "Lõi lịch âm Việt Nam (Lịch và Văn hóa Việt) — không phụ thuộc thư viện ngoài"
+license = "MIT"
+publish = false
+
+[lib]
+name = "lvhv_core"
+path = "src/lib.rs"
+
+[[bin]]
+name = "lvhv-dump"
+path = "src/bin/lvhv-dump.rs"
+
+[dependencies]
+lvhv-ngochap = { path = "../ngochap" }

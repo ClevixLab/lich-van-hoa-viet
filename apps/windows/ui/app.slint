@@ -1,0 +1,811 @@
+// Lịch và Văn hóa Việt — giao diện Windows (Slint 1.8). Bảng màu và bố cục theo pwa/src/style.css.
+// Mọi phép tính lịch ở Rust (src/main.rs → lvhv-ffi); tệp này chỉ hiển thị.
+import { Button, LineEdit, ComboBox, CheckBox, ScrollView, Palette } from "std-widgets.slint";
+
+import "fonts/LVHVSerif-Regular.ttf";
+import "fonts/LVHVSerif-SemiBold.ttf";
+import "fonts/LVHVSerif-Bold.ttf";
+
+export struct Gio { chi: string, range: string }
+export struct Cell { day: int, lunar: string, key: bool, sunday: bool, today: bool, selected: bool, blank: bool, label: string }
+export struct GoodRow { y: int, m: int, d: int, day: string, mon: string, l1: string, l2: string, l3: string, reasons: string, score: string, sunday: bool }
+export struct Block { kind: string, text: string }
+
+export struct Sheet {
+    month-title: string, year: string, weekday: string, day: string, sunday: bool, is-today: bool,
+    lunar-day: string, lunar-key: bool, lunar-month: string, month-len: string,
+    cc-year: string, cc-month: string, cc-day: string, tiet: string,
+    than-kind: string, than-name: string, hoang-dao: bool, truc: string, rating: string, rating-level: int,
+    nen: [string], ky: [string], sao-tot: [string], sao-xau: [string],
+    tu: string, nap-am: string, hour-ty: string, xung: string,
+    cadao: [string], cadao-type: string, has-cadao: bool,
+}
+
+export global Theme {
+    in-out property <bool> dark: false;
+    in-out property <float> scale: 1.0;
+    out property <color> wall: dark ? #141011 : #e8e3e1;
+    out property <color> paper: dark ? #211a1b : #fdfcfa;
+    out property <color> paper2: dark ? #2a2223 : #f6f2ee;
+    out property <color> rule: dark ? #3a3031 : #e4dbd5;
+    out property <color> ink: dark ? #f1e9e6 : #231a1a;
+    out property <color> ink2: dark ? #cdbfbb : #5e5150;
+    out property <color> ink3: dark ? #a99a96 : #7a6b69;
+    out property <color> red: dark ? #ff6b63 : #c4161c;
+    out property <color> red-deep: dark ? #7a1214 : #8f1416;
+    out property <color> red-ink: dark ? #ff8a83 : #b3151b;
+    out property <color> red-tint: dark ? #3a1d1e : #fbeceb;
+    out property <color> gold: dark ? #e3b45c : #8a5e0c;
+    out property <color> gold-tint: dark ? #352a18 : #f8efdc;
+    out property <color> green: dark ? #7fd1a2 : #1f6b45;
+    out property <color> green-tint: dark ? #1b2e24 : #e7f2ec;
+    out property <color> band-ink: dark ? #fff1ec : #fff8f4;
+    out property <string> serif: "LVHV Serif";
+}
+
+component T inherits Text {
+    in property <float> size: 15;
+    color: Theme.ink;
+    font-size: size * Theme.scale * 1px;
+    wrap: word-wrap;
+}
+
+component S inherits Text {
+    in property <float> size: 18;
+    color: Theme.ink;
+    font-family: Theme.serif;
+    font-size: size * Theme.scale * 1px;
+    font-weight: 600;
+}
+
+component Card inherits Rectangle {
+    background: Theme.paper;
+    border-radius: 16px;
+}
+
+component Pill inherits Rectangle {
+    in property <string> text;
+    in property <bool> active;
+    in property <bool> enabled: true;
+    in property <bool> nowrap: false;
+    callback clicked;
+    min-height: 44px;
+    min-width: nowrap ? pt.preferred-width + 24px : 0px;
+    border-radius: 12px;
+    background: active ? Theme.red-deep : (ta.has-hover ? Theme.rule : Theme.paper2);
+    opacity: enabled ? 1 : 0.45;
+    accessible-role: button;
+    accessible-label: text;
+    accessible-checked: active;
+    HorizontalLayout {
+        padding-left: 10px; padding-right: 10px;
+        pt := T { text: root.text; color: active ? #ffffff : Theme.ink; font-weight: active ? 600 : 400; horizontal-alignment: center; vertical-alignment: center; wrap: root.nowrap ? no-wrap : word-wrap; }
+    }
+    ta := TouchArea { enabled: root.enabled; clicked => { root.clicked(); } mouse-cursor: pointer; }
+}
+
+component ThemeBtn inherits Rectangle {
+    in property <string> label;
+    callback clicked;
+    width: 48px; height: 48px;
+    border-radius: 24px;
+    background: ta.has-hover ? Theme.paper2 : Theme.paper;
+    border-width: 1px; border-color: Theme.rule;
+    accessible-role: button;
+    accessible-label: label;
+    Rectangle {
+        width: 20px; height: 20px; border-radius: 10px; border-width: 2px; border-color: Theme.ink; clip: true;
+        Rectangle { x: parent.width / 2; width: parent.width / 2; height: parent.height; background: Theme.ink; }
+    }
+    ta := TouchArea { clicked => { root.clicked(); } mouse-cursor: pointer; }
+}
+
+component RoundBtn inherits Rectangle {
+    in property <string> glyph;
+    in property <string> label;
+    in property <bool> enabled: true;
+    callback clicked;
+    width: 48px; height: 48px;
+    border-radius: 24px;
+    background: ta.has-hover ? Theme.paper2 : Theme.paper;
+    border-width: 1px; border-color: Theme.rule;
+    opacity: enabled ? 1 : 0.4;
+    accessible-role: button;
+    accessible-label: label;
+    T { text: glyph; size: 22; horizontal-alignment: center; vertical-alignment: center; }
+    ta := TouchArea { enabled: root.enabled; clicked => { root.clicked(); } mouse-cursor: pointer; }
+}
+
+component LabelBox inherits Rectangle {
+    in property <string> k;
+    in property <string> v;
+    in property <color> bg: Theme.paper2;
+    in property <color> fg: Theme.ink;
+    background: bg;
+    border-radius: 12px;
+    accessible-role: text;
+    accessible-label: k + ": " + v;
+    VerticalLayout {
+        padding: 10px; spacing: 2px;
+        T { text: k; color: Theme.ink3; size: 14; horizontal-alignment: center; }
+        T { text: v; color: fg; size: 17; font-weight: 600; horizontal-alignment: center; }
+    }
+}
+
+component Bullets inherits VerticalLayout {
+    in property <string> title;
+    in property <color> accent;
+    in property <[string]> items;
+    in-out property <bool> open: false;
+    spacing: 4px;
+    S { text: title; color: accent; size: 20; accessible-role: text; }
+    if items.length == 0: T { text: "Không có ghi nhận"; color: Theme.ink3; }
+    for it[i] in items: T { text: "• " + it; visible: open || i < 4; height: (open || i < 4) ? self.preferred-height : 0; }
+    if items.length > 4: Rectangle {
+        height: 28px;
+        T { text: open ? "Thu gọn" : "Xem thêm " + (items.length - 4) + " việc"; color: Theme.red-ink; font-weight: 600; x: 0; }
+        TouchArea { clicked => { root.open = !root.open; } mouse-cursor: pointer; }
+        accessible-role: button;
+        accessible-label: open ? "Thu gọn" : "Xem thêm";
+    }
+}
+
+component Chips inherits VerticalLayout {
+    in property <[string]> items;
+    in property <color> bg;
+    in property <color> fg;
+    spacing: 4px;
+    if items.length == 0: T { text: "Không có"; color: Theme.ink3; }
+    // Slint 1.8 chưa có FlowLayout: hiển thị mỗi sao một dòng, nền nhạt.
+    for it in items: Rectangle {
+        background: bg; border-radius: 10px; height: t.preferred-height + 6px;
+        t := T { text: it; color: fg; x: 10px; width: parent.width - 20px; }
+    }
+}
+
+component Fact inherits HorizontalLayout {
+    in property <string> k;
+    in property <string> v;
+    spacing: 8px;
+    T { text: k; color: Theme.ink3; width: 40%; }
+    T { text: v; }
+}
+
+// ---------------- Tờ lịch ----------------
+
+component SheetPage inherits Rectangle {
+    in property <Sheet> s;
+    in-out property <bool> details-open: false;
+    callback open-month;
+    callback swipe(int);
+
+    ScrollView {
+        VerticalLayout {
+            alignment: start;
+            padding: 16px;
+            HorizontalLayout {
+                alignment: center;
+                Rectangle {
+                    max-width: 560px;
+                    preferred-width: 560px;
+                    VerticalLayout {
+                        padding-top: 9px;
+                        Rectangle {
+                            background: Theme.paper;
+                            border-radius: 6px;
+                            clip: true;
+                            VerticalLayout {
+                                // Dải đỏ đầu tờ
+                                band := Rectangle {
+                                    background: Theme.red-deep;
+                                    height: 66px;
+                                    accessible-role: button;
+                                    accessible-label: s.month-title + " năm " + s.year + ". Mở bảng tháng để chọn ngày khác";
+                                    HorizontalLayout {
+                                        alignment: center; spacing: 10px;
+                                        S { text: s.month-title; color: Theme.band-ink; size: 24; vertical-alignment: center; }
+                                        S { text: s.year; color: Theme.band-ink; size: 24; font-weight: 400; opacity: 0.82; vertical-alignment: center; }
+                                        T { text: "▦"; color: Theme.band-ink; size: 20; opacity: 0.8; vertical-alignment: center; }
+                                    }
+                                    TouchArea { clicked => { root.open-month(); } mouse-cursor: pointer; }
+                                }
+                                // Mép răng cưa
+                                Rectangle {
+                                    height: 6px;
+                                    HorizontalLayout {
+                                        for i in 64: Rectangle { width: 10px; Rectangle { y: -3.4px; width: 6.8px; height: 6.8px; border-radius: 3.4px; background: Theme.red-deep; } }
+                                    }
+                                }
+                                VerticalLayout {
+                                    padding-left: 18px; padding-right: 18px; padding-bottom: 12px; spacing: 0;
+                                    // Ngày dương
+                                    VerticalLayout {
+                                        padding-top: 12px; padding-bottom: 8px;
+                                        accessible-role: text;
+                                        accessible-label: s.weekday + ", ngày " + s.day + " " + s.month-title + " năm " + s.year;
+                                        S { text: s.weekday; size: 26; color: s.sunday ? Theme.red : Theme.ink; horizontal-alignment: center; }
+                                        S { text: s.day; size: 150; color: s.sunday ? Theme.red : Theme.ink; horizontal-alignment: center; }
+                                        if s.is-today: HorizontalLayout {
+                                            alignment: center;
+                                            Rectangle {
+                                                background: Theme.red-tint; border-radius: 12px; height: 26px; width: ht.preferred-width + 24px;
+                                                ht := T { text: "Hôm nay"; color: Theme.red-ink; font-weight: 600; size: 14; }
+                                            }
+                                        }
+                                    }
+                                    Rectangle { height: 1px; background: Theme.rule; }
+                                    // Âm lịch + Can Chi
+                                    HorizontalLayout {
+                                        padding-top: 14px; padding-bottom: 14px; spacing: 16px;
+                                        VerticalLayout {
+                                            width: 40%; alignment: center; spacing: 2px;
+                                            T { text: "Âm lịch"; color: Theme.ink3; size: 14; horizontal-alignment: center; }
+                                            S { text: s.lunar-day; size: 56; font-weight: 700; color: s.lunar-key ? Theme.red : Theme.gold; horizontal-alignment: center; }
+                                            S { text: s.lunar-month; size: 19; font-weight: 400; horizontal-alignment: center; wrap: word-wrap; }
+                                            T { text: s.month-len; color: Theme.ink3; size: 12; horizontal-alignment: center; }
+                                        }
+                                        Rectangle { width: 1px; background: Theme.rule; }
+                                        VerticalLayout {
+                                            alignment: center; spacing: 6px;
+                                            for kv in [{k: "Năm", v: s.cc-year}, {k: "Tháng", v: s.cc-month}, {k: "Ngày", v: s.cc-day}, {k: "Tiết", v: s.tiet}]: HorizontalLayout {
+                                                spacing: 8px;
+                                                T { text: kv.k; color: Theme.ink3; size: 14; width: 58px; vertical-alignment: center; }
+                                                S { text: kv.v; size: 19; font-weight: 400; }
+                                            }
+                                        }
+                                    }
+                                    Rectangle { height: 1px; background: Theme.rule; }
+                                    // Nhãn
+                                    VerticalLayout {
+                                        padding-top: 14px; padding-bottom: 14px; spacing: 8px;
+                                        LabelBox { k: s.than-kind; v: s.than-name; bg: s.hoang-dao ? Theme.gold-tint : Theme.paper2; fg: s.hoang-dao ? Theme.gold : Theme.ink; }
+                                        HorizontalLayout {
+                                            spacing: 8px;
+                                            LabelBox { k: "Trực"; v: s.truc; }
+                                            LabelBox {
+                                                k: "Đánh giá"; v: s.rating;
+                                                bg: s.rating-level >= 2 ? Theme.green-tint : (s.rating-level == 1 ? Theme.paper2 : Theme.red-tint);
+                                                fg: s.rating-level >= 2 ? Theme.green : (s.rating-level == 1 ? Theme.ink : Theme.red-ink);
+                                            }
+                                        }
+                                    }
+                                    // Giờ hoàng đạo
+                                    S { text: "Giờ hoàng đạo"; size: 20; }
+                                    hours := VerticalLayout {
+                                        padding-top: 8px; padding-bottom: 8px; spacing: 8px;
+                                        for row in [0, 1]: HorizontalLayout {
+                                            spacing: 8px;
+                                            for col in [0, 1, 2]: Rectangle {
+                                                property <int> idx: row * 3 + col;
+                                                border-width: 1px; border-color: Theme.rule; border-radius: 10px; height: 52px;
+                                                accessible-role: text;
+                                                accessible-label: idx < Data.gio.length ? "Giờ " + Data.gio[idx].chi + ", " + Data.gio[idx].range : "";
+                                                VerticalLayout {
+                                                    alignment: center;
+                                                    S { text: idx < Data.gio.length ? Data.gio[idx].chi : ""; size: 18; horizontal-alignment: center; }
+                                                    T { text: idx < Data.gio.length ? Data.gio[idx].range : ""; size: 12; color: Theme.ink3; horizontal-alignment: center; }
+                                                }
+                                            }
+                                        }
+                                    }
+                                    // Nên / Kỵ
+                                    HorizontalLayout {
+                                        padding-top: 6px; padding-bottom: 6px; spacing: 14px;
+                                        Bullets { title: "Nên làm"; accent: Theme.green; items: s.nen; }
+                                        Bullets { title: "Kỵ"; accent: Theme.red-ink; items: s.ky; }
+                                    }
+                                    // Ca dao
+                                    if s.has-cadao: Rectangle {
+                                        background: Theme.gold-tint; border-radius: 12px;
+                                        accessible-role: text;
+                                        accessible-label: "Ca dao trong ngày";
+                                        VerticalLayout {
+                                            padding: 16px; spacing: 2px;
+                                            for line in s.cadao: S { text: line; size: 18; font-weight: 400; horizontal-alignment: center; wrap: word-wrap; }
+                                            T { text: s.cadao-type; color: Theme.gold; size: 13; font-weight: 600; horizontal-alignment: center; }
+                                        }
+                                    }
+                                    // Chi tiết
+                                    Rectangle {
+                                        border-width: 1px; border-color: Theme.rule; border-radius: 12px;
+                                        VerticalLayout {
+                                            padding: 14px; spacing: 10px;
+                                            Rectangle {
+                                                height: 30px;
+                                                accessible-role: button;
+                                                accessible-label: root.details-open ? "Thu gọn chi tiết" : "Mở chi tiết";
+                                                HorizontalLayout {
+                                                    S { text: "Chi tiết"; size: 20; }
+                                                    T { text: root.details-open ? "▲" : "▼"; color: Theme.ink2; horizontal-alignment: right; vertical-alignment: center; }
+                                                }
+                                                TouchArea { clicked => { root.details-open = !root.details-open; } mouse-cursor: pointer; }
+                                            }
+                                            if root.details-open: VerticalLayout {
+                                                spacing: 8px;
+                                                T { text: "Sao tốt"; font-weight: 600; }
+                                                Chips { items: s.sao-tot; bg: Theme.green-tint; fg: Theme.green; }
+                                                T { text: "Sao xấu"; font-weight: 600; }
+                                                Chips { items: s.sao-xau; bg: Theme.red-tint; fg: Theme.red-ink; }
+                                                Fact { k: "Nhị thập bát tú"; v: s.tu; }
+                                                Fact { k: "Nạp âm"; v: s.nap-am; }
+                                                Fact { k: "Giờ Tý đầu ngày"; v: s.hour-ty; }
+                                                Fact { k: "Tuổi xung"; v: s.xung; }
+                                            }
+                                        }
+                                    }
+                                    T { text: "Theo Ngọc Hạp Thông Thư; tham khảo"; color: Theme.ink3; size: 12; }
+                                }
+                            }
+                        }
+                    }
+                    // Hai khoen treo
+                    Rectangle { x: parent.width * 0.27 - 7px; y: 0; width: 14px; height: 22px; border-radius: 8px; background: @linear-gradient(180deg, #d8d2ce 0%, #9d9592 100%); }
+                    Rectangle { x: parent.width * 0.73 - 7px; y: 0; width: 14px; height: 22px; border-radius: 8px; background: @linear-gradient(180deg, #d8d2ce 0%, #9d9592 100%); }
+                }
+            }
+        }
+    }
+    SwipeGestureHandler {
+        handle-swipe-left: true;
+        handle-swipe-right: true;
+        swiped => {
+            if (self.current-position.x < self.pressed-position.x - 60px) { root.swipe(1); }
+            else if (self.current-position.x > self.pressed-position.x + 60px) { root.swipe(-1); }
+        }
+    }
+}
+
+// ---------------- Bảng tháng ----------------
+
+component MonthGrid inherits VerticalLayout {
+    in property <[Cell]> cells;
+    in property <int> month;
+    in property <string> year-text;
+    in property <bool> can-prev;
+    in property <bool> can-next;
+    callback shift(int);
+    callback set-month(int);
+    callback set-year(string);
+    callback pick(int);
+    spacing: 8px;
+    HorizontalLayout {
+        spacing: 8px;
+        RoundBtn { glyph: "‹"; label: "Tháng trước"; enabled: can-prev; clicked => { root.shift(-1); } }
+        ComboBox {
+            horizontal-stretch: 1;
+            min-width: 110px;
+            model: ["Tháng 1", "Tháng 2", "Tháng 3", "Tháng 4", "Tháng 5", "Tháng 6", "Tháng 7", "Tháng 8", "Tháng 9", "Tháng 10", "Tháng 11", "Tháng 12"];
+            current-index: month - 1;
+            selected => { root.set-month(self.current-index + 1); }
+        }
+        LineEdit {
+            width: 84px;
+            text: year-text;
+            input-type: number;
+            horizontal-alignment: center;
+            accessible-label: "Năm";
+            edited(t) => { root.set-year(t); }
+        }
+        RoundBtn { glyph: "›"; label: "Tháng sau"; enabled: can-next; clicked => { root.shift(1); } }
+    }
+    HorizontalLayout {
+        for w[i] in ["T2", "T3", "T4", "T5", "T6", "T7", "CN"]: T { text: w; font-weight: 600; color: i == 6 ? Theme.red : Theme.ink3; horizontal-alignment: center; size: 14; }
+    }
+    for r in 6: HorizontalLayout {
+        spacing: 4px;
+        visible: r * 7 < cells.length;
+        height: r * 7 < cells.length ? 54px : 0;
+        for c in 7: Rectangle {
+            property <Cell> cell: r * 7 + c < cells.length ? cells[r * 7 + c] : { blank: true };
+            border-radius: 10px;
+            background: cell.blank ? transparent : (cell.selected ? Theme.red-deep : (cell.key ? Theme.gold-tint : (ta.has-hover ? Theme.paper2 : transparent)));
+            border-width: (cell.today && !cell.selected) ? 1.5px : 0;
+            border-color: Theme.red;
+            accessible-role: button;
+            accessible-label: cell.label;
+            if !cell.blank: VerticalLayout {
+                alignment: center;
+                S { text: cell.day; size: 20; horizontal-alignment: center; color: cell.selected ? #ffffff : (cell.sunday ? Theme.red : Theme.ink); }
+                T { text: cell.lunar; size: 12; horizontal-alignment: center; font-weight: cell.key ? 700 : 400; color: cell.selected ? #ffffff : (cell.key ? Theme.red-ink : Theme.ink3); }
+            }
+            ta := TouchArea { enabled: !cell.blank; clicked => { root.pick(cell.day); } mouse-cursor: pointer; }
+        }
+    }
+    HorizontalLayout {
+        spacing: 8px;
+        Rectangle { width: 14px; height: 14px; border-radius: 3px; background: Theme.gold-tint; border-width: 1px; border-color: Theme.gold; }
+        T { text: "Mùng 1 và ngày rằm âm lịch"; color: Theme.ink3; size: 13; }
+    }
+}
+
+// ---------------- Dữ liệu dùng chung ----------------
+
+export global Data {
+    in-out property <Sheet> sheet;
+    in-out property <[Gio]> gio;
+    in-out property <bool> can-prev: true;
+    in-out property <bool> can-next: true;
+    in-out property <bool> is-today: true;
+    // Bảng tháng
+    in-out property <[Cell]> cells;
+    in-out property <int> view-month: 1;
+    in-out property <string> view-year: "2026";
+    in-out property <bool> view-can-prev: true;
+    in-out property <bool> view-can-next: true;
+    // Chọn ngày tốt
+    in-out property <[string]> activities;
+    in-out property <int> act: -1;
+    in-out property <int> range: 1;
+    in-out property <string> from-text;
+    in-out property <string> to-text;
+    in-out property <string> birth;
+    in-out property <string> birth-cc;
+    in-out property <string> summary: "Chọn một việc ở trên để xem những ngày phù hợp.";
+    in-out property <string> hint;
+    in-out property <[GoodRow]> good;
+    in-out property <int> more: 0;
+    // Đổi ngày
+    in-out property <string> s-text;
+    in-out property <string> s-big;
+    in-out property <string> s-sub;
+    in-out property <string> s-link;
+    in-out property <bool> s-ok;
+    in-out property <int> l-day: 1;
+    in-out property <int> l-month: 1;
+    in-out property <string> l-year;
+    in-out property <bool> l-leap;
+    in-out property <string> l-big;
+    in-out property <bool> l-ok;
+    in-out property <string> today-text;
+    // Giới thiệu
+    in-out property <string> version;
+    in-out property <string> method-text;
+    in-out property <string> attribution;
+    in-out property <string> cadao-count-text;
+    in-out property <[Block]> rule-sources;
+    in-out property <[Block]> cadao-sources;
+
+    callback step(int);
+    callback go-today();
+    callback open-month();
+    callback month-shift(int);
+    callback month-set(int);
+    callback year-set(string);
+    callback month-pick(int);
+    callback recompute-good();
+    callback open-good(int);
+    callback load-more();
+    callback convert-solar();
+    callback convert-lunar();
+    callback open-solar();
+    callback open-lunar();
+}
+
+component H1 inherits VerticalLayout {
+    in property <string> title;
+    in property <string> lead;
+    spacing: 4px;
+    S { text: title; size: 30; accessible-role: text; }
+    if lead != "": T { text: lead; color: Theme.ink2; size: 16; }
+}
+
+component Blocks inherits VerticalLayout {
+    in property <[Block]> blocks;
+    spacing: 6px;
+    for b in blocks: T {
+        text: b.kind == "li" ? "• " + b.text : b.text;
+        color: b.kind == "h" ? Theme.ink : Theme.ink2;
+        font-weight: b.kind == "h" ? 600 : 400;
+        size: b.kind == "h" ? 16 : 14;
+    }
+}
+
+component GoodDaysPage inherits ScrollView {
+    VerticalLayout {
+        padding: 16px; spacing: 12px; alignment: start;
+        H1 { title: "Chọn ngày tốt"; lead: "Chọn việc định làm và khoảng thời gian. Ngày được xếp từ tốt nhất."; }
+        Card {
+            VerticalLayout {
+                padding: 16px; spacing: 10px;
+                S { text: "Việc định làm"; size: 20; }
+                for row in (Data.activities.length + 1) / 2: HorizontalLayout {
+                    spacing: 8px;
+                    for col in 2: Pill {
+                        property <int> idx: row * 2 + col;
+                        text: idx < Data.activities.length ? Data.activities[idx] : "";
+                        visible: idx < Data.activities.length;
+                        active: Data.act == idx;
+                        clicked => { Data.act = idx; Data.recompute-good(); }
+                    }
+                }
+                S { text: "Trong khoảng"; size: 20; }
+                HorizontalLayout {
+                    spacing: 8px;
+                    for r[i] in ["Tuần này", "Tháng này", "3 tháng tới", "Tự chọn"]: Pill { text: r; active: Data.range == i; clicked => { Data.range = i; Data.recompute-good(); } }
+                }
+                if Data.range == 3: HorizontalLayout {
+                    spacing: 8px;
+                    VerticalLayout { T { text: "Từ ngày (ngày/tháng/năm)"; color: Theme.ink3; size: 13; } LineEdit { text <=> Data.from-text; edited => { Data.recompute-good(); } } }
+                    VerticalLayout { T { text: "Đến ngày"; color: Theme.ink3; size: 13; } LineEdit { text <=> Data.to-text; edited => { Data.recompute-good(); } } }
+                }
+                T { text: "Năm sinh âm lịch (không bắt buộc)"; font-weight: 600; }
+                HorizontalLayout {
+                    spacing: 12px;
+                    LineEdit { width: 160px; text <=> Data.birth; placeholder-text: "Ví dụ 1976"; input-type: number; edited => { Data.recompute-good(); } }
+                    S { text: Data.birth-cc; color: Theme.gold; font-weight: 400; vertical-alignment: center; }
+                }
+                T { text: "Nhập năm âm lịch của ngày sinh (năm tuổi). Ai sinh trước Tết Nguyên đán thì lấy năm trước, ví dụ sinh 20/01/1977 dương lịch (trước Tết Đinh Tỵ) là năm Bính Thìn 1976."; color: Theme.ink3; size: 12; }
+                T { text: "Năm sinh chỉ dùng để tránh ngày xung tuổi, không được lưu lại."; color: Theme.ink3; size: 12; }
+            }
+        }
+        S { text: "Kết quả"; size: 24; }
+        T { text: Data.summary; color: Theme.ink2; size: 16; accessible-role: text; }
+        if Data.hint != "": T { text: Data.hint; color: Theme.ink3; size: 14; }
+        for g[i] in Data.good: Rectangle {
+            background: ta.has-hover ? Theme.paper2 : Theme.paper;
+            border-radius: 14px; border-width: 1px; border-color: Theme.rule;
+            accessible-role: button;
+            accessible-label: g.l1 + ", " + g.l2 + ", điểm " + g.score + ". Mở tờ lịch ngày này";
+            HorizontalLayout {
+                padding: 12px; spacing: 10px;
+                VerticalLayout { width: 54px; alignment: start;
+                    S { text: g.day; size: 30; font-weight: 700; color: g.sunday ? Theme.red : Theme.ink; horizontal-alignment: center; }
+                    T { text: g.mon; size: 12; color: Theme.ink3; horizontal-alignment: center; }
+                }
+                VerticalLayout { spacing: 2px;
+                    T { text: g.l1; font-weight: 600; size: 16; }
+                    T { text: g.l2; color: Theme.ink2; size: 14; }
+                    T { text: g.l3; color: Theme.ink2; size: 14; }
+                    T { text: g.reasons; color: Theme.green; size: 12; }
+                }
+                VerticalLayout { width: 52px; alignment: start;
+                    S { text: g.score; size: 24; font-weight: 700; color: Theme.gold; horizontal-alignment: center; }
+                    T { text: "điểm"; size: 11; color: Theme.ink3; horizontal-alignment: center; }
+                }
+            }
+            ta := TouchArea { clicked => { Data.open-good(i); } mouse-cursor: pointer; }
+        }
+        if Data.more > 0: Pill { text: "Xem thêm " + Data.more + " ngày"; clicked => { Data.load-more(); } }
+    }
+}
+
+component ConvertPage inherits ScrollView {
+    VerticalLayout {
+        padding: 16px; spacing: 12px; alignment: start;
+        H1 { title: "Đổi ngày"; lead: "Đổi qua lại giữa dương lịch và âm lịch, từ năm 2000 đến năm 3000."; }
+        Card {
+            VerticalLayout {
+                padding: 16px; spacing: 8px;
+                S { text: "Dương lịch sang âm lịch"; size: 20; }
+                T { text: "Ngày dương lịch (ngày/tháng/năm)"; color: Theme.ink3; size: 13; }
+                LineEdit { text <=> Data.s-text; edited => { Data.convert-solar(); } }
+                S { text: Data.s-big; size: 26; font-weight: 400; color: Data.s-ok ? Theme.ink : Theme.red-ink; }
+                T { text: Data.s-sub; color: Theme.ink2; size: 16; }
+                if Data.s-ok: Rectangle { height: 28px;
+                    T { text: Data.s-link; color: Theme.red-ink; font-weight: 600; x: 0; }
+                    TouchArea { clicked => { Data.open-solar(); } mouse-cursor: pointer; }
+                    accessible-role: button; accessible-label: Data.s-link;
+                }
+            }
+        }
+        Card {
+            VerticalLayout {
+                padding: 16px; spacing: 8px;
+                S { text: "Âm lịch sang dương lịch"; size: 20; }
+                HorizontalLayout {
+                    spacing: 8px;
+                    VerticalLayout { T { text: "Ngày"; color: Theme.ink3; size: 13; }
+                        ComboBox {
+                            model: ["Mùng 1","Mùng 2","Mùng 3","Mùng 4","Mùng 5","Mùng 6","Mùng 7","Mùng 8","Mùng 9","Mùng 10","Ngày 11","Ngày 12","Ngày 13","Ngày 14","Ngày 15","Ngày 16","Ngày 17","Ngày 18","Ngày 19","Ngày 20","Ngày 21","Ngày 22","Ngày 23","Ngày 24","Ngày 25","Ngày 26","Ngày 27","Ngày 28","Ngày 29","Ngày 30"];
+                            current-index: Data.l-day - 1;
+                            selected => { Data.l-day = self.current-index + 1; Data.convert-lunar(); }
+                        }
+                    }
+                    VerticalLayout { T { text: "Tháng"; color: Theme.ink3; size: 13; }
+                        ComboBox {
+                            model: ["Tháng 1 (Giêng)","Tháng 2 (Hai)","Tháng 3 (Ba)","Tháng 4 (Tư)","Tháng 5 (Năm)","Tháng 6 (Sáu)","Tháng 7 (Bảy)","Tháng 8 (Tám)","Tháng 9 (Chín)","Tháng 10 (Mười)","Tháng 11 (Mười Một)","Tháng 12 (Chạp)"];
+                            current-index: Data.l-month - 1;
+                            selected => { Data.l-month = self.current-index + 1; Data.convert-lunar(); }
+                        }
+                    }
+                    VerticalLayout { T { text: "Năm"; color: Theme.ink3; size: 13; }
+                        LineEdit { text <=> Data.l-year; input-type: number; edited => { Data.convert-lunar(); } }
+                    }
+                }
+                CheckBox { text: "Tháng nhuận"; checked <=> Data.l-leap; toggled => { Data.convert-lunar(); } }
+                S { text: Data.l-big; size: Data.l-ok ? 26 : 15; font-weight: 400; color: Data.l-ok ? Theme.ink : Theme.red-ink; wrap: word-wrap; }
+                if Data.l-ok: Rectangle { height: 28px;
+                    T { text: "Mở tờ lịch ngày này"; color: Theme.red-ink; font-weight: 600; x: 0; }
+                    TouchArea { clicked => { Data.open-lunar(); } mouse-cursor: pointer; }
+                    accessible-role: button; accessible-label: "Mở tờ lịch ngày này";
+                }
+            }
+        }
+        T { text: Data.today-text; color: Theme.ink3; size: 12; }
+    }
+}
+
+component AboutPage inherits ScrollView {
+    in-out property <bool> rules: false;
+    VerticalLayout {
+        padding: 16px; spacing: 12px; alignment: start;
+        if !root.rules: VerticalLayout {
+            spacing: 12px;
+            HorizontalLayout {
+                spacing: 14px;
+                Image { source: @image-url("../assets/icon-256.png"); width: 72px; height: 72px; }
+                VerticalLayout { alignment: center;
+                    S { text: "Lịch và Văn hóa Việt"; size: 26; }
+                    T { text: "Clevix Lab"; color: Theme.red-ink; font-weight: 600; }
+                    T { text: "Phiên bản " + Data.version + " (thử nghiệm nội bộ)"; color: Theme.ink3; size: 12; }
+                }
+            }
+            Card { VerticalLayout { padding: 16px; spacing: 8px;
+                S { text: "Về ứng dụng"; size: 20; }
+                T { text: "Lịch âm dương Việt Nam theo múi giờ UTC+7, từ năm 2000 đến năm 3000: ngày âm, Can Chi, tiết khí, giờ hoàng đạo, chọn ngày tốt, và một câu ca dao, tục ngữ cho mỗi ngày."; color: Theme.ink2; size: 16; }
+                T { text: Data.method-text; color: Theme.ink2; size: 16; }
+                T { text: "Phần xem ngày (sao tốt, sao xấu, việc nên làm và nên tránh, trực, hoàng đạo, hắc đạo) được biên soạn theo quan niệm truyền thống trong sách Ngọc Hạp Thông Thư. Đây là nét văn hóa dân gian, chỉ có giá trị tham khảo; những quyết định quan trọng xin cân nhắc thêm hoàn cảnh thực tế. Điểm số là quy ước của ứng dụng, không có trong sách."; color: Theme.ink2; size: 16; }
+                Rectangle { height: 28px;
+                    T { text: "Nguồn quy tắc xem ngày"; color: Theme.red-ink; font-weight: 600; x: 0; }
+                    TouchArea { clicked => { root.rules = true; } mouse-cursor: pointer; }
+                    accessible-role: button; accessible-label: "Nguồn quy tắc xem ngày";
+                }
+            } }
+            Card { VerticalLayout { padding: 16px; spacing: 8px;
+                S { text: "Quyền riêng tư"; size: 20; }
+                T { text: "Ứng dụng không thu thập dữ liệu, không có tài khoản, không quảng cáo và không gửi thông tin đi đâu. Mọi tính toán diễn ra ngay trên máy của bạn."; color: Theme.ink2; size: 16; }
+                T { text: "Ứng dụng không dùng mạng và hoạt động hoàn toàn khi không có mạng. Ứng dụng không ghi gì xuống máy; cỡ chữ và giao diện sáng tối trở về mặc định mỗi lần mở."; color: Theme.ink2; size: 16; }
+                T { text: "Năm sinh nhập ở mục Chọn ngày tốt chỉ dùng trong lúc tính, không được lưu lại."; color: Theme.ink2; size: 16; }
+            } }
+            Card { VerticalLayout { padding: 16px; spacing: 8px;
+                S { text: "Nguồn ca dao, tục ngữ"; size: 20; }
+                T { text: Data.attribution; color: Theme.ink2; size: 16; }
+                T { text: Data.cadao-count-text; color: Theme.ink2; size: 16; }
+            } }
+            Card { VerticalLayout { padding: 16px; spacing: 8px;
+                S { text: "Phông chữ và thư viện"; size: 20; }
+                T { text: "Phông chữ tiêu đề là bản rút gọn cho chữ Việt của phông Lora (The Lora Project Authors), cấp phép SIL Open Font License 1.1 (tệp OFL.txt đi kèm); bản rút gọn mang tên \"LVHV Serif\" theo điều kiện giấy phép."; color: Theme.ink2; size: 16; }
+                T { text: "Giao diện dựng bằng Slint (Made with Slint — https://slint.dev), theo giấy phép Slint Royalty-free 2.0."; color: Theme.ink2; size: 16; }
+            } }
+        }
+        if root.rules: VerticalLayout {
+            spacing: 12px;
+            Rectangle { height: 28px;
+                T { text: "‹ Về trang Giới thiệu"; color: Theme.red-ink; font-weight: 600; x: 0; }
+                TouchArea { clicked => { root.rules = false; } mouse-cursor: pointer; }
+                accessible-role: button; accessible-label: "Về trang Giới thiệu";
+            }
+            H1 { title: "Nguồn quy tắc"; lead: "Theo Ngọc Hạp Thông Thư; tham khảo. Địa chỉ trang được ghi để đối chiếu; ứng dụng không mở các trang này."; }
+            Card { VerticalLayout { padding: 16px; Blocks { blocks: Data.rule-sources; } } }
+            Card { VerticalLayout { padding: 16px; spacing: 8px;
+                S { text: "Nguồn ca dao, tục ngữ (chi tiết)"; size: 20; }
+                Blocks { blocks: Data.cadao-sources; }
+            } }
+        }
+    }
+}
+
+// ---------------- Cửa sổ chính ----------------
+
+export component AppWindow inherits Window {
+    title: "Lịch và Văn hóa Việt";
+    icon: @image-url("../assets/icon-256.png");
+    preferred-width: 1100px;
+    preferred-height: 900px;
+    min-width: 420px;
+    min-height: 600px;
+    background: Theme.wall;
+    default-font-size: 15px;
+
+    in-out property <int> tab: 0;
+    in-out property <bool> month-open: false;
+    in-out property <int> size: 1;
+    in-out property <int> theme-mode: 0; // 0 = theo máy, 1 = sáng, 2 = tối
+
+    forward-focus: keys;
+    keys := FocusScope {
+        key-pressed(e) => {
+            if (root.tab == 0 && !root.month-open) {
+                if (e.text == Key.LeftArrow) { Data.step(-1); return accept; }
+                if (e.text == Key.RightArrow) { Data.step(1); return accept; }
+                if (e.text == Key.Home) { Data.go-today(); return accept; }
+            }
+            if (e.text == Key.Escape && root.month-open) { root.month-open = false; return accept; }
+            reject
+        }
+
+        VerticalLayout {
+            // Thanh trên
+            HorizontalLayout {
+                padding: 10px; spacing: 10px;
+                Image { source: @image-url("../assets/icon-256.png"); width: 32px; height: 32px; }
+                S { text: "Lịch và Văn hóa Việt"; size: 18; vertical-alignment: center; }
+                Rectangle { horizontal-stretch: 1; }
+                for t[i] in ["Tờ lịch", "Chọn ngày tốt", "Đổi ngày", "Giới thiệu"]: Pill {
+                    text: t; active: root.tab == i; nowrap: true;
+                    clicked => { root.tab = i; }
+                }
+                Rectangle { horizontal-stretch: 1; }
+                for z[i] in ["A", "A+", "A++"]: Pill {
+                    text: z; active: root.size == i + 1; width: 52px; nowrap: true;
+                    clicked => { root.size = i + 1; Theme.scale = i == 0 ? 1.0 : (i == 1 ? 1.15 : 1.32); }
+                }
+                ThemeBtn {
+                    label: root.theme-mode == 0 ? "Giao diện theo máy. Bấm để chuyển sang tối" : (root.theme-mode == 2 ? "Giao diện tối. Bấm để chuyển sang sáng" : "Giao diện sáng. Bấm để theo máy");
+                    clicked => {
+                        root.theme-mode = root.theme-mode == 0 ? 2 : (root.theme-mode == 2 ? 1 : 0);
+                        Palette.color-scheme = root.theme-mode == 0 ? ColorScheme.unknown : (root.theme-mode == 1 ? ColorScheme.light : ColorScheme.dark);
+                    }
+                }
+            }
+            if root.tab == 0: HorizontalLayout {
+                padding-left: 16px; padding-right: 16px; spacing: 16px;
+                alignment: center;
+                RoundBtn { glyph: "‹"; label: "Ngày trước"; enabled: Data.can-prev; clicked => { Data.step(-1); } }
+                Pill { text: "Hôm nay"; active: true; enabled: !Data.is-today; width: 160px; clicked => { Data.go-today(); } }
+                RoundBtn { glyph: "›"; label: "Ngày sau"; enabled: Data.can-next; clicked => { Data.step(1); } }
+            }
+            Rectangle {
+                vertical-stretch: 1;
+                if root.tab == 0: HorizontalLayout {
+                    SheetPage {
+                        s: Data.sheet;
+                        open-month => { Data.open-month(); root.month-open = true; }
+                        swipe(n) => { Data.step(n); }
+                    }
+                    // Màn rộng: bảng tháng đặt cạnh tờ lịch (giống PWA ở 1280px).
+                    if root.width >= 980px: VerticalLayout {
+                        width: 400px; padding: 16px; alignment: start;
+                        Card {
+                            VerticalLayout { padding: 16px;
+                                MonthGrid {
+                                    cells: Data.cells; month: Data.view-month; year-text: Data.view-year;
+                                    can-prev: Data.view-can-prev; can-next: Data.view-can-next;
+                                    shift(n) => { Data.month-shift(n); }
+                                    set-month(m) => { Data.month-set(m); }
+                                    set-year(t) => { Data.year-set(t); }
+                                    pick(d) => { Data.month-pick(d); }
+                                }
+                            }
+                        }
+                    }
+                }
+                if root.tab == 1: GoodDaysPage { }
+                if root.tab == 2: ConvertPage { }
+                if root.tab == 3: AboutPage { }
+
+                // Hộp thoại "Chọn ngày"
+                if root.month-open: Rectangle {
+                    background: #00000066;
+                    TouchArea { clicked => { root.month-open = false; } }
+                    Card {
+                        width: min(parent.width - 32px, 480px);
+                        height: min(parent.height - 32px, 640px);
+                        x: (parent.width - self.width) / 2;
+                        y: (parent.height - self.height) / 2;
+                        border-radius: 24px;
+                        TouchArea { }
+                        VerticalLayout {
+                            padding: 20px; spacing: 12px;
+                            HorizontalLayout {
+                                S { text: "Chọn ngày"; size: 26; }
+                                RoundBtn { glyph: "✕"; label: "Đóng"; clicked => { root.month-open = false; } }
+                            }
+                            MonthGrid {
+                                cells: Data.cells; month: Data.view-month; year-text: Data.view-year;
+                                can-prev: Data.view-can-prev; can-next: Data.view-can-next;
+                                shift(n) => { Data.month-shift(n); }
+                                set-month(m) => { Data.month-set(m); }
+                                set-year(t) => { Data.year-set(t); }
+                                pick(d) => { Data.month-pick(d); root.month-open = false; }
+                            }
+                            HorizontalLayout { alignment: center;
+                                Pill { text: "Về hôm nay"; active: true; width: 180px; clicked => { Data.go-today(); root.month-open = false; } }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

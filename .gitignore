@@ -1,0 +1,5 @@
+# Sản phẩm phát hành (zip, PDF, tệp tạm) — chỉ giữ README của thư mục release/
+/release/*
+!/release/README.md
+# Thư mục dựng gốc
+/target/

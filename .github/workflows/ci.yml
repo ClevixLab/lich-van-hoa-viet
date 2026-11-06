@@ -1,0 +1,129 @@
+# Kiểm tra chung: Rust (fmt, clippy, test, kiểm tra phụ thuộc), tsport so với lõi (L7), PWA (build +
+# kiểm thử khói Playwright). Chạy trên mọi push và pull request.
+name: ci
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: "0"
+
+jobs:
+  rust:
+    name: Rust — fmt, clippy, test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - name: rustfmt
+        run: cargo fmt --all --check
+      - name: clippy (-D warnings)
+        run: cargo clippy --workspace --all-targets -- -D warnings
+      - name: test (core, ngochap, ffi)
+        run: cargo test --workspace --release
+      - name: S1 — không có unsafe trong lvhv-core
+        run: |
+          # bỏ qua dòng chú thích (//, //!, ///) và thuộc tính #![forbid(unsafe_code)]
+          if grep -rn --include='*.rs' -E '\bunsafe\b' core/src | grep -vE '^[^:]+:[0-9]+:[[:space:]]*(//|#!\[forbid\(unsafe_code\)\])'; then
+            echo "::error::Tìm thấy unsafe trong core/src (tiêu chí S1)"; exit 1
+          fi
+          grep -q '#!\[forbid(unsafe_code)\]' core/src/lib.rs
+      - name: FFI — sinh lại mã Kotlin/Swift và so với ffi/generated
+        run: |
+          cargo build -p lvhv-ffi --release --lib
+          cargo build -p lvhv-ffi --features bindgen-cli --bin uniffi-bindgen
+          rm -rf "$RUNNER_TEMP/gen"
+          for L in kotlin swift; do
+            target/debug/uniffi-bindgen generate --library target/release/liblvhv_ffi.so \
+              --language "$L" --out-dir "$RUNNER_TEMP/gen/$L" --config ffi/uniffi.toml --no-format
+          done
+          if ! diff -r "$RUNNER_TEMP/gen" ffi/generated; then
+            echo "::warning::ffi/generated cũ so với mã nguồn — chạy lại lệnh sinh mã (docs/04-BUILD-NATIVE.md §2) và commit."
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ffi-bindings
+          path: ${{ runner.temp }}/gen
+          retention-days: 14
+
+  deps:
+    name: Kiểm tra phụ thuộc (cargo-deny advisories)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          command: check advisories
+          arguments: --workspace
+
+  l7-pwa:
+    name: L7 (tsport = core) + PWA build + smoke
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: pwa/package-lock.json
+      - name: Dựng lvhv-dump và sinh dữ liệu đối chiếu (core/out bị .gitignore)
+        run: |
+          cargo build -p lvhv-core --release --bin lvhv-dump
+          D=target/release/lvhv-dump
+          mkdir -p core/out/precise
+          for M in hnd precise; do
+            O=core/out; [ "$M" = precise ] && O=core/out/precise
+            $D --method $M dayinfo-jsonl 2000-01-01 3000-12-31 | gzip -1 > $O/dayinfo_2000_3000.jsonl.gz
+            $D --method $M tet 2000 3000 > $O/tet.csv
+            { $D --method $M gooddays all 2026-01-01 2026-12-31 none
+              $D --method $M gooddays all 2026-01-01 2026-12-31 1976; } > $O/gooddays_sample.jsonl
+          done
+          ls -la core/out core/out/precise
+      - name: npm ci (pwa)
+        working-directory: pwa
+        run: npm ci
+      - name: tsport — build + so sánh L7
+        working-directory: tsport
+        run: npm test
+      - name: PWA — typecheck + build
+        working-directory: pwa
+        run: |
+          npm run build      # sinh src/gen/ trước, typecheck cần các tệp này
+          npm run typecheck
+      - name: Cài Chromium cho Playwright
+        working-directory: pwa
+        run: npx playwright-core install --with-deps chromium
+      - name: PWA — kiểm thử khói
+        working-directory: pwa
+        run: npm run test:smoke
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pwa-smoke
+          path: |
+            pwa/test/metrics.json
+            pwa/test/shots/
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pwa-dist
+          path: pwa/dist
+          retention-days: 14

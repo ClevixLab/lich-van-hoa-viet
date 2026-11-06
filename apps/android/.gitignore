@@ -1,0 +1,13 @@
+.gradle/
+build/
+app/build/
+app/rustJniLibs/
+local.properties
+*.jks
+*.keystore
+keystore.properties
+.idea/
+*.iml
+captures/
+.externalNativeBuild/
+.cxx/

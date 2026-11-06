@@ -1,0 +1,26 @@
+Bộ dữ liệu ca dao, tục ngữ, thành ngữ — content/cadao/cadao.json
+Dataset of Vietnamese folk verse, proverbs and idioms — content/cadao/cadao.json
+
+Licence: Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0)
+https://creativecommons.org/licenses/by-sa/4.0/legalcode
+Biên soạn (compiled by): Clevix Lab (Clevix LLC), 2026.
+
+Ghi công bắt buộc (required attribution, SOURCES.md §C.1):
+
+  Bộ ca dao, tục ngữ, thành ngữ là văn học dân gian Việt Nam (khuyết danh, phạm vi công
+  cộng). Câu chữ được đối chiếu với Wikiquote tiếng Việt và Wikiquote tiếng Anh (nội dung
+  theo giấy phép CC BY-SA 4.0, https://creativecommons.org/licenses/by-sa/4.0/), và với
+  "Tục ngữ, cổ ngữ, gia ngôn" của Huỳnh Tịnh Của (1896–1897, phạm vi công cộng; bản số hóa
+  trên Wikisource). Danh sách nguồn chi tiết: content/cadao/SOURCES.md. Biên soạn: Clevix Lab.
+
+Phạm vi (scope):
+- Giấy phép này áp dụng cho TỆP DỮ LIỆU cadao.json (tuyển chọn, sắp xếp, trường "meaning",
+  "theme", "sources"). Từng câu dân gian đơn lẻ thuộc phạm vi công cộng; giấy phép được áp
+  dụng thận trọng vì câu chữ được đối chiếu với nội dung CC BY-SA của Wikiquote.
+- Khi bộ dữ liệu được nhúng vào gói ứng dụng (pwa/dist/app-*.js, ffi/), phần dữ liệu đó vẫn
+  theo CC BY-SA 4.0; mã nguồn ứng dụng không chịu điều kiện ShareAlike (tác phẩm tập hợp —
+  collection). Mã nguồn theo LICENSE ở gốc kho.
+- Không dùng logo Wikimedia; không ngụ ý Wikimedia, VOH hay bất kỳ nguồn nào tán thành ứng dụng
+  (SOURCES.md §C.3).
+- Thay đổi (changes): câu chữ được chuẩn hóa chính tả/dấu câu, ngắt dòng, thêm chủ đề và giải
+  nghĩa; xem content/cadao/README.md và SOURCES.md §D.
