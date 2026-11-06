@@ -331,8 +331,8 @@ fn filter_rule_for_events() {
     );
     let has = |p: &Period, id: &str| p.items.iter().any(|i| i.occ.entity_id == id);
     // Bổ sung B4: có người đã mất (một mình, hỗn hợp, hai người) → không lần xuất hiện nào.
-    for k in 0..3 {
-        assert!(!has(&all, &e[k]), "sự kiện {k}");
+    for (k, id) in e.iter().take(3).enumerate() {
+        assert!(!has(&all, id), "sự kiện {k}");
     }
     // Chỉ người sống / không gắn ai → "đang sống".
     assert!(has(&ds_, &e[3]));

@@ -326,6 +326,11 @@ RustBuffer uniffi_lvhv_ffi_fn_method_lvhvstore_export_backup(void*_Nonnull ptr, 
 int8_t uniffi_lvhv_ffi_fn_method_lvhvstore_lock_screen_names(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_MARK_DECEASED_JSON
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_MARK_DECEASED_JSON
+RustBuffer uniffi_lvhv_ffi_fn_method_lvhvstore_mark_deceased_json(void*_Nonnull ptr, RustBuffer person_id, RustBuffer death_date_value_json, RustBuffer notice_json, RustBuffer today, RustCallStatus *_Nonnull out_status
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_PERSON_JSON
 #define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_PERSON_JSON
 RustBuffer uniffi_lvhv_ffi_fn_method_lvhvstore_person_json(void*_Nonnull ptr, RustBuffer id, RustCallStatus *_Nonnull out_status
@@ -1156,6 +1161,12 @@ uint16_t uniffi_lvhv_ffi_checksum_method_lvhvstore_export_backup(void
 #ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_LOCK_SCREEN_NAMES
 #define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_LOCK_SCREEN_NAMES
 uint16_t uniffi_lvhv_ffi_checksum_method_lvhvstore_lock_screen_names(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_MARK_DECEASED_JSON
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_MARK_DECEASED_JSON
+uint16_t uniffi_lvhv_ffi_checksum_method_lvhvstore_mark_deceased_json(void
     
 );
 #endif

@@ -153,8 +153,8 @@ export class Store {
     const tx = this.tx(["persons", "photos", "meta"], "readwrite");
     const fin = done(tx);
     if (photoRec) tx.objectStore("photos").put(photoRec);
-    const pid = p.photo_id;
-    if (typeof pid === "string" && pid !== photoRec?.id) {
+    for (const pid of V.personPhotoRefs(p)) {
+      if (pid === photoRec?.id) continue;
       const r = tx.objectStore("photos").getKey(pid);
       r.onsuccess = () => { if (r.result === undefined) { tx.abort(); } };
     }
@@ -198,11 +198,15 @@ export class Store {
     await done(tx);
   }
 
-  /** Xóa một người: gỡ id khỏi mọi sự kiện (01 §3.4), xóa ảnh nếu không còn ai dùng — một giao dịch. */
+  /**
+   * Xóa một người: gỡ id khỏi mọi sự kiện (01 §3.4), xóa ảnh chân dung và ảnh giấy báo tử (01 §3.2a) nếu không hồ
+   * sơ nào khác còn dùng — một giao dịch.
+   */
   async deletePerson(id: string): Promise<void> {
     const now = nowRfc3339();
     const p = await this.person(id);
-    const others = (await this.persons()).filter((x) => x.id !== id && x.photo_id === p.photo_id && p.photo_id !== null);
+    const used = new Set((await this.persons()).filter((x) => x.id !== id).flatMap((x) => V.personPhotoRefs(x)));
+    const gone = V.personPhotoRefs(p).filter((x) => !used.has(x));
     const evs = await this.eventsOf(id);
     const tx = this.tx(["persons", "events", "photos", "meta"], "readwrite");
     const fin = done(tx);
@@ -210,7 +214,7 @@ export class Store {
       tx.objectStore("events").put({ ...e, person_ids: (e.person_ids as string[]).filter((x) => x !== id), rev: (e.rev as number) + 1, updated_at: now });
     }
     tx.objectStore("persons").delete(id);
-    if (typeof p.photo_id === "string" && others.length === 0) tx.objectStore("photos").delete(p.photo_id);
+    for (const pid of gone) tx.objectStore("photos").delete(pid);
     Store.markChanged(tx, now);
     await fin;
   }

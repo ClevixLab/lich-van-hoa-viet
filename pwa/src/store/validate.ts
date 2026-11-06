@@ -207,8 +207,56 @@ function birthInfo(v: Json, path: string): void {
   nullable(o.solar, p(path, "solar"), solarDay);
 }
 
+/** 01 §3.2a: optional notice string — null, or 1–max code points, trimmed (empty must be null). */
+function optTrimmed(v: Json, path: string, max: number, multiline: boolean): void {
+  if (v === null) return;
+  text(v, path, 1, max, multiline, true);
+  if ((v as string).trim() !== v) throw v1(path, "chưa cắt khoảng trắng hai đầu");
+}
+
+export const MAX_CERTIFICATE_PHOTOS = 4;
+
+/** `DeathNotice` (01 §3.2a, YC-2026-05) — mirror of store/src/validate.rs `death_notice`. */
+export function deathNotice(v: Json, path: string): void {
+  const o = obj(v, path, ["reported_by", "place", "reason", "notice_date", "certificate_photo_ids", "note"]);
+  optTrimmed(o.reported_by, p(path, "reported_by"), 200, false);
+  optTrimmed(o.place, p(path, "place"), 200, false);
+  optTrimmed(o.reason, p(path, "reason"), 500, false);
+  optTrimmed(o.note, p(path, "note"), 2000, true);
+  nullable(o.notice_date, p(path, "notice_date"), (d, dp) => {
+    dateValue(d, dp, ["day"]);
+    if ((d as JsonObj).calendar !== "solar") throw v1(dp, "ngày nhận tin phải là ngày dương");
+  });
+  const cp = p(path, "certificate_photo_ids");
+  const ids = o.certificate_photo_ids;
+  if (!Array.isArray(ids)) throw v1(cp, "phải là mảng");
+  if (ids.length > MAX_CERTIFICATE_PHOTOS) throw v1(cp, `quá ${MAX_CERTIFICATE_PHOTOS} ảnh`);
+  const seen = new Set<string>();
+  ids.forEach((x, i) => {
+    const id = uuid(x, `${cp}/${i}`);
+    if (seen.has(id)) throw v1(`${cp}/${i}`, "ảnh trùng");
+    seen.add(id);
+  });
+}
+
+/** Every photo id a Person references: `photo_id` and `death.notice.certificate_photo_ids`. */
+export function personPhotoRefs(pj: JsonObj): string[] {
+  const out: string[] = [];
+  if (typeof pj.photo_id === "string") out.push(pj.photo_id);
+  const d = pj.death as JsonObj | null | undefined;
+  const n = d && isObj(d) ? (d.notice as JsonObj | null | undefined) : null;
+  if (n && isObj(n) && Array.isArray(n.certificate_photo_ids)) {
+    for (const x of n.certificate_photo_ids) if (typeof x === "string") out.push(x);
+  }
+  return out;
+}
+
 function deathInfo(v: Json, path: string): void {
-  const o = obj(v, path, ["input", "lunar", "solar", "lunar_source", "method", "tuoi"]);
+  // `notice` (01 §3.2a) is an optional key: absent ≡ null (old v1 documents and vectors stay valid).
+  const hasNotice = isObj(v) && has(v, "notice");
+  const base = ["input", "lunar", "solar", "lunar_source", "method", "tuoi"];
+  const o = obj(v, path, hasNotice ? [...base, "notice"] : base);
+  if (hasNotice) nullable(o.notice, p(path, "notice"), deathNotice);
   dateValue(o.input, p(path, "input"), ["day", "month_day"]);
   lunarDay(o.lunar, p(path, "lunar"));
   nullable(o.solar, p(path, "solar"), solarDay);
@@ -390,6 +438,13 @@ export function document(v: Json): void {
   persons.forEach((x, i) => {
     const pid = (x as JsonObj).photo_id;
     if (typeof pid === "string" && !photoIds.has(pid)) throw err("V3", `/persons/${i}/photo_id`, "ảnh không tồn tại");
+    const d = (x as JsonObj).death as JsonObj | null;
+    const n = d && isObj(d) ? (d.notice as JsonObj | null | undefined) : null;
+    if (n && isObj(n)) {
+      (n.certificate_photo_ids as string[]).forEach((c, j) => {
+        if (!photoIds.has(c)) throw err("V3", `/persons/${i}/death/notice/certificate_photo_ids/${j}`, "ảnh không tồn tại");
+      });
+    }
   });
   events.forEach((x, i) => {
     const e = x as JsonObj;

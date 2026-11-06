@@ -584,20 +584,20 @@ impl Store {
         Ok(meta)
     }
 
-    /// Xóa một người: gỡ id khỏi mọi sự kiện (01 §3.4), xóa ảnh của người đó nếu không ai dùng.
+    /// Xóa một người: gỡ id khỏi mọi sự kiện (01 §3.4), xóa ảnh chân dung và ảnh giấy báo tử (01 §3.2a) của
+    /// người đó nếu không hồ sơ nào khác còn dùng.
     pub fn delete_person(&mut self, id: &str) -> Result<()> {
         let now = now_rfc3339();
         let tx = self.conn.transaction()?;
-        let photo: Option<Option<String>> = tx
-            .query_row(
-                "SELECT photo_id FROM person WHERE id = ?1",
-                params![id],
-                |r| r.get(0),
-            )
+        let pj: Option<String> = tx
+            .query_row("SELECT json FROM person WHERE id = ?1", params![id], |r| {
+                r.get(0)
+            })
             .optional()?;
-        let Some(photo) = photo else {
+        let Some(pj) = pj else {
             return Err(StoreError::NotFound);
         };
+        let refs = validate::person_photo_refs(&parse_col(&pj)?);
         let ev: Vec<String> = {
             let mut st = tx.prepare("SELECT event_id FROM event_person WHERE person_id = ?1")?;
             let r = st
@@ -619,27 +619,23 @@ impl Store {
             upsert_event(&tx, &e)?;
         }
         tx.execute("DELETE FROM person WHERE id = ?1", params![id])?;
-        if let Some(pid) = &photo {
-            let used: i64 = tx.query_row(
-                "SELECT count(*) FROM person WHERE photo_id = ?1",
-                params![pid],
-                |r| r.get(0),
-            )?;
-            if used == 0 {
-                tx.execute("DELETE FROM photo WHERE id = ?1", params![pid])?;
+        // Ảnh còn được hồ sơ khác dùng thì giữ.
+        let mut used: std::collections::HashSet<String> = Default::default();
+        {
+            let mut st = tx.prepare("SELECT json FROM person")?;
+            let rows = st.query_map([], |r| r.get::<_, String>(0))?;
+            for r in rows {
+                used.extend(validate::person_photo_refs(&parse_col(&r?)?));
             }
+        }
+        let gone: Vec<String> = refs.into_iter().filter(|r| !used.contains(r)).collect();
+        for pid in &gone {
+            tx.execute("DELETE FROM photo WHERE id = ?1", params![pid])?;
         }
         Self::mark_changed(&tx, &now)?;
         tx.commit()?;
-        if let Some(pid) = photo {
-            let still: i64 = self.conn.query_row(
-                "SELECT count(*) FROM photo WHERE id = ?1",
-                params![pid],
-                |r| r.get(0),
-            )?;
-            if still == 0 {
-                let _ = std::fs::remove_file(self.photo_path(&pid));
-            }
+        for pid in gone {
+            let _ = std::fs::remove_file(self.photo_path(&pid));
         }
         Ok(())
     }
@@ -877,7 +873,8 @@ fn write_atomic(path: &Path, bytes: &[u8]) -> Result<()> {
 }
 
 fn check_refs_person(tx: &rusqlite::Transaction<'_>, p: &Value) -> Result<()> {
-    if let Some(pid) = p["photo_id"].as_str() {
+    for pid in validate::person_photo_refs(p) {
+        let pid = pid.as_str();
         let n: i64 = tx.query_row(
             "SELECT count(*) FROM photo WHERE id = ?1",
             params![pid],

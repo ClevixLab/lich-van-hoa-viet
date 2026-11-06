@@ -44,6 +44,7 @@ lược đồ `docs/v0.2/schema/backup-v1.schema.json` (Person, Event, EventType
 |---|---|
 | `LvhvStore::open(dir)` | Mở/tạo kho SQLite (`lvhv.sqlite`, `photos/`) trong thư mục riêng của ứng dụng (01 §4.2) |
 | `settings_json()`, `put_settings_json(json)` | `AppSettings` |
+| `mark_deceased_json(person_id, death_date_value_json, notice_json?, today)` | Cập nhật người đang sống thành đã mất trên **cùng** hồ sơ (01 §3.2a, US-M-07): thêm `death` + thông tin báo tử tùy chọn, `kind = deceased`, tăng `rev`, bỏ quy tắc nhắc sinh nhật; theo 02 §6.1 (B4) sinh nhật và sự kiện của người này không còn lần xuất hiện |
 | `persons_json()`, `person_json(id)`, `save_person_json(json)`, `delete_person(id)` | Hồ sơ. `save_person_json` tự tính trường dẫn xuất (02 §1, §4), gắn id/`created_at`/`updated_at`/`rev`, kiểm V1–V8 |
 | `events_json()`, `save_event_json(json)`, `delete_event(id)` | Sự kiện |
 | `event_types_json()`, `save_event_type_json(json)` | Loại sự kiện (tên duy nhất — V7) |
@@ -65,6 +66,11 @@ lược đồ `docs/v0.2/schema/backup-v1.schema.json` (Person, Event, EventType
 
 Lược đồ đầu ra: `docs/v0.2/schema/ffi-v02-output.schema.json` (mọi đối tượng đóng; kiểm thử `output_matches_schema`
 so đầu ra thật của từng hàm với lược đồ). Đổi hay thêm trường phải sửa lược đồ cùng lúc.
+
+Thông tin báo tử (`death.notice`, 01 §3.2a): chỉ có trong dữ liệu hồ sơ (`person_json`, `persons_json`,
+`dataset_json`) và tệp sao lưu mã hóa; **không** có trong lời nhắc, thông báo, .ics, tên tệp, danh sách hay
+`person_summary_json` (kiểm thử `notice_never_leaks` gieo chuỗi canh vào mọi trường và dò mọi đầu ra). Xóa hồ sơ xóa
+luôn ảnh giấy báo tử. Chuỗi được chuẩn hóa NFC, cắt khoảng trắng; rỗng → `null`.
 
 O-9: khi không hiện tên, phần tử lời nhắc chỉ có `occ = {entity_id, class, date, key}` (không có `name`,
 `headline`, `date_line`); **nội dung thông báo chỉ lấy từ `title`/`body`**.

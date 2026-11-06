@@ -459,12 +459,101 @@ fn birth_info(v: &Value, path: &str) -> R {
     Ok(())
 }
 
-fn death_info(v: &Value, path: &str) -> R {
+/// Chuỗi tùy chọn của `DeathNotice` (01 §3.2a): `null`, hoặc chuỗi 1–`max` điểm mã đã cắt khoảng trắng hai
+/// đầu (rỗng phải ghi là `null`).
+fn opt_trimmed(v: &Value, path: &str, max: usize, multiline: bool) -> R {
+    if v.is_null() {
+        return Ok(());
+    }
+    text(v, path, 1, max, multiline, true)?;
+    let s = v.as_str().unwrap_or_default();
+    if s.trim_matches(js_space) != s {
+        return Err(v1(path, "chưa cắt khoảng trắng hai đầu"));
+    }
+    Ok(())
+}
+
+/// Số ảnh giấy báo tử tối đa (01 §3.2a).
+pub const MAX_CERTIFICATE_PHOTOS: usize = 4;
+
+/// `DeathNotice` (01 §3.2a, Bổ sung YC-2026-05): đủ sáu khóa, mỗi giá trị tùy chọn.
+pub fn death_notice(v: &Value, path: &str) -> R {
     let o = obj(
         v,
         path,
-        &["input", "lunar", "solar", "lunar_source", "method", "tuoi"],
+        &[
+            "reported_by",
+            "place",
+            "reason",
+            "notice_date",
+            "certificate_photo_ids",
+            "note",
+        ],
     )?;
+    opt_trimmed(&o["reported_by"], &p(path, "reported_by"), 200, false)?;
+    opt_trimmed(&o["place"], &p(path, "place"), 200, false)?;
+    opt_trimmed(&o["reason"], &p(path, "reason"), 500, false)?;
+    opt_trimmed(&o["note"], &p(path, "note"), 2000, true)?;
+    nullable(&o["notice_date"], &p(path, "notice_date"), |d, dp| {
+        date_value(d, dp, &["day"])?;
+        if d["calendar"] != "solar" {
+            return Err(v1(dp, "ngày nhận tin phải là ngày dương"));
+        }
+        Ok(())
+    })?;
+    let cp = p(path, "certificate_photo_ids");
+    let ids = o["certificate_photo_ids"]
+        .as_array()
+        .ok_or_else(|| v1(&cp, "phải là mảng"))?;
+    if ids.len() > MAX_CERTIFICATE_PHOTOS {
+        return Err(v1(&cp, format!("quá {MAX_CERTIFICATE_PHOTOS} ảnh")));
+    }
+    let mut seen = HashSet::new();
+    for (i, x) in ids.iter().enumerate() {
+        let id = uuid(x, &format!("{cp}/{i}"))?;
+        if !seen.insert(id) {
+            return Err(v1(&format!("{cp}/{i}"), "ảnh trùng"));
+        }
+    }
+    Ok(())
+}
+
+/// Mọi id ảnh mà một `Person` tham chiếu: `photo_id` và `death.notice.certificate_photo_ids`.
+pub fn person_photo_refs(p: &Value) -> Vec<String> {
+    let mut v: Vec<String> = p["photo_id"]
+        .as_str()
+        .map(str::to_owned)
+        .into_iter()
+        .collect();
+    for x in p["death"]["notice"]["certificate_photo_ids"]
+        .as_array()
+        .into_iter()
+        .flatten()
+    {
+        if let Some(s) = x.as_str() {
+            v.push(s.to_owned());
+        }
+    }
+    v
+}
+
+fn death_info(v: &Value, path: &str) -> R {
+    // `notice` (01 §3.2a) là khóa tùy chọn: thiếu ≡ `null` (để tài liệu và vector cũ của lược đồ v1 vẫn hợp lệ).
+    let has_notice = v.as_object().is_some_and(|o| o.contains_key("notice"));
+    let base = ["input", "lunar", "solar", "lunar_source", "method", "tuoi"];
+    let with = [
+        "input",
+        "lunar",
+        "solar",
+        "lunar_source",
+        "method",
+        "tuoi",
+        "notice",
+    ];
+    let o = obj(v, path, if has_notice { &with[..] } else { &base[..] })?;
+    if has_notice {
+        nullable(&o["notice"], &p(path, "notice"), death_notice)?;
+    }
     date_value(&o["input"], &p(path, "input"), &["day", "month_day"])?;
     lunar_day(&o["lunar"], &p(path, "lunar"))?;
     nullable(&o["solar"], &p(path, "solar"), solar_day)?;
@@ -869,6 +958,20 @@ pub fn document(v: &Value) -> R {
                 return Err(err(
                     "V3",
                     &format!("/persons/{i}/photo_id"),
+                    "ảnh không tồn tại",
+                ));
+            }
+        }
+        for (j, c) in x["death"]["notice"]["certificate_photo_ids"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .enumerate()
+        {
+            if !photo_ids.contains(c.as_str().unwrap_or_default()) {
+                return Err(err(
+                    "V3",
+                    &format!("/persons/{i}/death/notice/certificate_photo_ids/{j}"),
                     "ảnh không tồn tại",
                 ));
             }

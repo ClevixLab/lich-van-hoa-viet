@@ -259,6 +259,56 @@ pub fn new_uuid() -> R<String> {
     Ok(lvhv_backup::uuid_to_string(&b))
 }
 
+/// Khoảng trắng hai đầu cần cắt — cùng tập với `String.prototype.trim` của JavaScript (bản PWA).
+fn js_space(c: char) -> bool {
+    matches!(
+        c,
+        '\t' | '\n' | '\u{b}' | '\u{c}' | '\r' | ' ' | '\u{a0}' | '\u{1680}' | '\u{2000}'
+            ..='\u{200a}'
+                | '\u{2028}'
+                | '\u{2029}'
+                | '\u{202f}'
+                | '\u{205f}'
+                | '\u{3000}'
+                | '\u{feff}'
+    )
+}
+
+/// Chuẩn hóa `DeathNotice` (01 §3.2a) trước khi lưu: đủ sáu khóa; chuỗi NFC, cắt khoảng trắng hai đầu, rỗng →
+/// `null`; `certificate_photo_ids` thiếu → `[]`. Khóa lạ để nguyên cho bước kiểm tra báo lỗi.
+fn normalize_notice(n: &Value) -> R<Value> {
+    use unicode_normalization::UnicodeNormalization;
+    if n.is_null() {
+        return Ok(Value::Null);
+    }
+    let mut o = n
+        .as_object()
+        .cloned()
+        .ok_or_else(|| bad("Thông tin báo tử phải là đối tượng JSON."))?;
+    for k in ["reported_by", "place", "reason", "note"] {
+        let v = match o.get(k) {
+            Some(Value::String(s)) => {
+                let t: String = s
+                    .nfc()
+                    .collect::<String>()
+                    .trim_matches(js_space)
+                    .to_owned();
+                if t.is_empty() {
+                    Value::Null
+                } else {
+                    Value::String(t)
+                }
+            }
+            Some(other) => other.clone(),
+            None => Value::Null,
+        };
+        o.insert(k.into(), v);
+    }
+    o.entry("notice_date").or_insert(Value::Null);
+    o.entry("certificate_photo_ids").or_insert(json!([]));
+    Ok(Value::Object(o))
+}
+
 fn to_text(v: &Value) -> String {
     lvhv_store::canonical_json(v)
 }
@@ -337,7 +387,13 @@ impl LvhvStore {
     /// sinh, Can Chi, hưởng thọ/hưởng dương trừ khi `tuoi.manual`), gắn id/`created_at`/`updated_at`/`rev`,
     /// kiểm V1–V8 rồi ghi. Trả bản đã lưu.
     pub fn save_person_json(&self, json: String) -> R<String> {
-        let mut p = lvhv_store::build_person(&parse_json(&json)?)?;
+        let mut input = parse_json(&json)?;
+        if input["death"].is_object() {
+            if let Some(n) = input["death"].get("notice").cloned() {
+                input["death"]["notice"] = normalize_notice(&n)?;
+            }
+        }
+        let mut p = lvhv_store::build_person(&input)?;
         let mut st = self.lock();
         let old = match p["id"].as_str() {
             Some(id) if !id.is_empty() => match st.person(id) {
@@ -350,6 +406,78 @@ impl LvhvStore {
         stamp(&mut p, old.as_ref())?;
         st.put_person(&p)?;
         Ok(to_text(&st.person(p["id"].as_str().unwrap_or_default())?))
+    }
+
+    /// Cập nhật một người **đang sống** (hoặc sửa người đã mất) thành người đã mất trên **cùng** hồ sơ
+    /// (01 §3.2a, US-M-07): giữ id, tên, ảnh, ngày sinh; thêm `death` (tính trường dẫn xuất từ
+    /// `death_date_value_json`) và tùy chọn `notice` (thông tin báo tử, chuỗi được cắt khoảng trắng và chuẩn hóa
+    /// NFC, rỗng → `null`); `kind = deceased`; tạo `memorial` mặc định nếu chưa có; quy tắc nhắc giỗ mặc định theo
+    /// cài đặt nếu chưa có; bỏ quy tắc nhắc sinh nhật (lược đồ: người đã khuất chỉ có nhắc giỗ); tăng `rev`.
+    /// Theo 02 §6.1 (Bổ sung B4), sinh nhật và sự kiện của người này không còn lần xuất hiện. `today`: ngày hôm
+    /// nay của thiết bị — ngày mất và ngày nhận tin không được sau hôm nay. Trả bản đã lưu.
+    pub fn mark_deceased_json(
+        &self,
+        person_id: String,
+        death_date_value_json: String,
+        notice_json: Option<String>,
+        today: SolarDay,
+    ) -> R<String> {
+        let today = ymd(today)?;
+        let input = parse_json(&death_date_value_json)?;
+        let notice = match notice_json {
+            Some(t) => normalize_notice(&parse_json(&t)?)?,
+            None => Value::Null,
+        };
+        if let Some(d) = notice.get("notice_date").filter(|d| d.is_object()) {
+            let nd = Ymd::new(
+                d["year"].as_i64().unwrap_or(0) as i32,
+                d["month"].as_i64().unwrap_or(0) as u32,
+                d["day"].as_i64().unwrap_or(0) as u32,
+            );
+            if nd > today {
+                return Err(bad("Ngày nhận tin không được sau hôm nay."));
+            }
+        }
+        let mut st = self.lock();
+        let mut p = st.person(&person_id)?;
+        let settings = st.settings()?;
+        let tuoi_manual = p["death"]["tuoi"]["manual"] == true;
+        let mut death = json!({ "input": input });
+        if tuoi_manual {
+            death["tuoi"] = p["death"]["tuoi"].clone();
+        }
+        death["notice"] = notice;
+        p["death"] = death;
+        p["kind"] = json!("deceased");
+        if p["memorial"].is_null() {
+            p["memorial"] = json!({
+                "tray_style": "truyen_thong", "incense": true, "bia_tieu_de": "", "loi_tuong_niem": "",
+                "gio_het_nam": 2, "huong_duong_duoi": 60,
+            });
+        }
+        if p["reminders"]["gio"].is_null() {
+            p["reminders"]["gio"] = json!({
+                "id": new_uuid()?,
+                "enabled": true,
+                "offsets_days": settings["default_offsets_days"].clone(),
+                "time_local": settings["default_time_local"].clone(),
+                "tien_thuong": false,
+            });
+        }
+        p["reminders"]["sinh_nhat"] = Value::Null;
+        p["reminders"]["sinh_nhat_am"] = Value::Null;
+        p["sinh_nhat_am"] = json!(false);
+        let old = p.clone();
+        let mut p = lvhv_store::build_person(&p)?;
+        if let Some(s) = p["death"]["solar"].as_object() {
+            let g = |k: &str| s.get(k).and_then(Value::as_i64).unwrap_or(0);
+            if Ymd::new(g("y") as i32, g("m") as u32, g("d") as u32) > today {
+                return Err(bad("Ngày mất không được sau hôm nay."));
+            }
+        }
+        stamp(&mut p, Some(&old))?;
+        st.put_person(&p)?;
+        Ok(to_text(&st.person(&person_id)?))
     }
 
     /// Xóa một người (gỡ id khỏi mọi sự kiện, xóa ảnh không còn ai dùng).

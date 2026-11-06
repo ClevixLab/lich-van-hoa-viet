@@ -842,6 +842,8 @@ internal interface UniffiForeignFutureCompleteVoid : com.sun.jna.Callback {
 
 
 
+
+
 // For large crates we prevent `MethodTooLargeException` (see #2340)
 // N.B. the name of the extension is very misleading, since it is 
 // rather `InterfaceTooLargeException`, caused by too many methods 
@@ -953,6 +955,8 @@ fun uniffi_lvhv_ffi_checksum_method_lvhvstore_export_backup(
 ): Short
 fun uniffi_lvhv_ffi_checksum_method_lvhvstore_lock_screen_names(
 ): Short
+fun uniffi_lvhv_ffi_checksum_method_lvhvstore_mark_deceased_json(
+): Short
 fun uniffi_lvhv_ffi_checksum_method_lvhvstore_person_json(
 ): Short
 fun uniffi_lvhv_ffi_checksum_method_lvhvstore_persons_json(
@@ -1060,6 +1064,8 @@ fun uniffi_lvhv_ffi_fn_method_lvhvstore_export_backup(`ptr`: Pointer,`password`:
 ): RustBuffer.ByValue
 fun uniffi_lvhv_ffi_fn_method_lvhvstore_lock_screen_names(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
 ): Byte
+fun uniffi_lvhv_ffi_fn_method_lvhvstore_mark_deceased_json(`ptr`: Pointer,`personId`: RustBuffer.ByValue,`deathDateValueJson`: RustBuffer.ByValue,`noticeJson`: RustBuffer.ByValue,`today`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
 fun uniffi_lvhv_ffi_fn_method_lvhvstore_person_json(`ptr`: Pointer,`id`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_lvhv_ffi_fn_method_lvhvstore_persons_json(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
@@ -1430,6 +1436,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_lvhv_ffi_checksum_method_lvhvstore_lock_screen_names() != 2023.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_lvhv_ffi_checksum_method_lvhvstore_mark_deceased_json() != 28404.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_lvhv_ffi_checksum_method_lvhvstore_person_json() != 48207.toShort()) {
@@ -1977,6 +1986,17 @@ public interface LvhvStoreInterface {
     fun `lockScreenNames`(): kotlin.Boolean
     
     /**
+     * Cập nhật một người **đang sống** (hoặc sửa người đã mất) thành người đã mất trên **cùng** hồ sơ
+     * (01 §3.2a, US-M-07): giữ id, tên, ảnh, ngày sinh; thêm `death` (tính trường dẫn xuất từ
+     * `death_date_value_json`) và tùy chọn `notice` (thông tin báo tử, chuỗi được cắt khoảng trắng và chuẩn hóa
+     * NFC, rỗng → `null`); `kind = deceased`; tạo `memorial` mặc định nếu chưa có; quy tắc nhắc giỗ mặc định theo
+     * cài đặt nếu chưa có; bỏ quy tắc nhắc sinh nhật (lược đồ: người đã khuất chỉ có nhắc giỗ); tăng `rev`.
+     * Theo 02 §6.1 (Bổ sung B4), sinh nhật và sự kiện của người này không còn lần xuất hiện. `today`: ngày hôm
+     * nay của thiết bị — ngày mất và ngày nhận tin không được sau hôm nay. Trả bản đã lưu.
+     */
+    fun `markDeceasedJson`(`personId`: kotlin.String, `deathDateValueJson`: kotlin.String, `noticeJson`: kotlin.String?, `today`: SolarDay): kotlin.String
+    
+    /**
      * Một `Person`.
      */
     fun `personJson`(`id`: kotlin.String): kotlin.String
@@ -2313,6 +2333,28 @@ open class LvhvStore: Disposable, AutoCloseable, LvhvStoreInterface
     uniffiRustCallWithError(LvhvDataException) { _status ->
     UniffiLib.INSTANCE.uniffi_lvhv_ffi_fn_method_lvhvstore_lock_screen_names(
         it, _status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Cập nhật một người **đang sống** (hoặc sửa người đã mất) thành người đã mất trên **cùng** hồ sơ
+     * (01 §3.2a, US-M-07): giữ id, tên, ảnh, ngày sinh; thêm `death` (tính trường dẫn xuất từ
+     * `death_date_value_json`) và tùy chọn `notice` (thông tin báo tử, chuỗi được cắt khoảng trắng và chuẩn hóa
+     * NFC, rỗng → `null`); `kind = deceased`; tạo `memorial` mặc định nếu chưa có; quy tắc nhắc giỗ mặc định theo
+     * cài đặt nếu chưa có; bỏ quy tắc nhắc sinh nhật (lược đồ: người đã khuất chỉ có nhắc giỗ); tăng `rev`.
+     * Theo 02 §6.1 (Bổ sung B4), sinh nhật và sự kiện của người này không còn lần xuất hiện. `today`: ngày hôm
+     * nay của thiết bị — ngày mất và ngày nhận tin không được sau hôm nay. Trả bản đã lưu.
+     */
+    @Throws(LvhvDataException::class)override fun `markDeceasedJson`(`personId`: kotlin.String, `deathDateValueJson`: kotlin.String, `noticeJson`: kotlin.String?, `today`: SolarDay): kotlin.String {
+            return FfiConverterString.lift(
+    callWithPointer {
+    uniffiRustCallWithError(LvhvDataException) { _status ->
+    UniffiLib.INSTANCE.uniffi_lvhv_ffi_fn_method_lvhvstore_mark_deceased_json(
+        it, FfiConverterString.lower(`personId`),FfiConverterString.lower(`deathDateValueJson`),FfiConverterOptionalString.lower(`noticeJson`),FfiConverterTypeSolarDay.lower(`today`),_status)
 }
     }
     )
@@ -3455,6 +3497,38 @@ public object FfiConverterOptionalLong: FfiConverterRustBuffer<kotlin.Long?> {
         } else {
             buf.put(1)
             FfiConverterLong.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalString: FfiConverterRustBuffer<kotlin.String?> {
+    override fun read(buf: ByteBuffer): kotlin.String? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterString.read(buf)
+    }
+
+    override fun allocationSize(value: kotlin.String?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterString.allocationSize(value)
+        }
+    }
+
+    override fun write(value: kotlin.String?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterString.write(value, buf)
         }
     }
 }

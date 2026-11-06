@@ -674,3 +674,248 @@ fn output_matches_schema() {
     bad[0]["extra"] = json!(1);
     assert!(conforms(&root, &root["properties"]["upcoming_json"], &bad, "x").is_err());
 }
+
+// ---------------------------------------------------------------- YC-2026-05: thông tin báo tử
+
+const SECRET: [&str; 4] = ["ZZBAOTIN7Q", "ZZNOIMAT7Q", "ZZLYDO7Q", "ZZGHICHU7Q"];
+/// Ngày nhận tin dùng làm chuỗi canh: không trùng ngày nào khác trong dữ liệu ví dụ.
+const SECRET_DATE: (i32, u32, u32) = (2025, 8, 9);
+
+fn add_cert_photo(s: &LvhvStore) -> String {
+    let id = new_uuid().unwrap();
+    let bytes = std::fs::read(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../docs/v0.2/schema/test-vectors/photo-0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09.jpg"
+    ))
+    .unwrap();
+    s.add_photo(id.clone(), "image/jpeg".into(), 64, 64, bytes)
+        .unwrap();
+    id
+}
+
+fn secret_notice(cert: &str) -> String {
+    json!({
+        "reported_by": format!("  {}  ", SECRET[0]),
+        "place": SECRET[1],
+        "reason": SECRET[2],
+        "notice_date": {"calendar":"solar","precision":"day","year":SECRET_DATE.0,"month":SECRET_DATE.1,"day":SECRET_DATE.2,"leap":false},
+        "certificate_photo_ids": [cert],
+        "note": format!("{}\ndòng hai", SECRET[3]),
+    })
+    .to_string()
+}
+
+/// US-M-07 + B4: cập nhật người đang sống thành đã mất trên cùng hồ sơ; sinh nhật và sự kiện biến mất.
+#[test]
+fn mark_deceased_same_record_and_b4() {
+    let (s, dir) = tmp_store();
+    let mut c = v(EXAMPLE)["persons"][2].clone();
+    c["id"] = json!("");
+    let c = v(&s.save_person_json(c.to_string()).unwrap());
+    let cid = c["id"].as_str().unwrap().to_owned();
+    let mut e = v(EXAMPLE)["events"][0].clone();
+    e["person_ids"] = json!([cid]);
+    s.save_event_json(e.to_string()).unwrap();
+    let up = |s: &LvhvStore| v(&s.upcoming_json(sd(2026, 1, 1), 365).unwrap());
+    let before = up(&s);
+    assert!(before
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|x| x["entity_id"] == cid.as_str() && x["class"] == "sinh_nhat"));
+    assert!(before
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|x| x["class"] == "su_kien_duong_lap"));
+    let cert = add_cert_photo(&s);
+    let p = v(&s
+        .mark_deceased_json(
+            cid.clone(),
+            r#"{"calendar":"solar","precision":"day","year":2025,"month":8,"day":8,"leap":false}"#
+                .into(),
+            Some(secret_notice(&cert)),
+            sd(2026, 1, 1),
+        )
+        .unwrap());
+    assert_eq!(p["id"], cid.as_str());
+    assert_eq!(p["rev"], c["rev"].as_i64().unwrap() + 1);
+    assert_eq!(p["created_at"], c["created_at"]);
+    assert_eq!(p["kind"], "deceased");
+    assert_eq!(p["ho_ten"], c["ho_ten"]);
+    assert_eq!(p["birth"], c["birth"]);
+    assert_eq!(p["death"]["lunar"]["leap"], true);
+    assert_eq!(p["death"]["notice"]["reported_by"], SECRET[0]); // đã cắt khoảng trắng
+    assert_eq!(p["reminders"]["sinh_nhat"], Value::Null);
+    assert!(p["reminders"]["gio"].is_object());
+    assert_eq!(v(&s.persons_json().unwrap()).as_array().unwrap().len(), 1);
+    let after = up(&s);
+    let a = after.as_array().unwrap();
+    assert!(
+        a.iter()
+            .all(|x| x["class"] == "gio" || x["class"] == "tien_thuong"),
+        "{after}"
+    );
+    assert!(a
+        .iter()
+        .any(|x| x["entity_id"] == cid.as_str() && x["class"] == "gio"));
+    // Ngày mất / ngày nhận tin sau hôm nay → lỗi.
+    assert!(s
+        .mark_deceased_json(
+            cid.clone(),
+            r#"{"calendar":"solar","precision":"day","year":2026,"month":5,"day":1,"leap":false}"#
+                .into(),
+            None,
+            sd(2026, 1, 1),
+        )
+        .is_err());
+    // Xóa hồ sơ → xóa ảnh giấy báo tử.
+    s.delete_person(cid).unwrap();
+    assert!(matches!(
+        s.photo_bytes(cert),
+        Err(LvhvDataError::NotFound(_))
+    ));
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+/// R-PRIV-2: không trường nào của thông tin báo tử xuất hiện trong lời nhắc, thông báo, .ics, tên tệp, danh
+/// sách hay tóm tắt hồ sơ — ở cả hai chế độ hiện/ẩn tên. Tệp sao lưu (mã hóa) không lộ bản rõ.
+#[test]
+fn notice_never_leaks() {
+    let (s, dir) = tmp_store();
+    let cert = add_cert_photo(&s);
+    let mut a = person_a();
+    a["death"]["notice"] = v(&secret_notice(&cert));
+    let a = v(&s.save_person_json(a.to_string()).unwrap());
+    assert_eq!(a["death"]["notice"]["place"], SECRET[1]);
+    let ds = s.dataset_json().unwrap();
+    assert!(
+        ds.contains(SECRET[2]),
+        "dataset_json là tài liệu sao lưu, phải có báo tử"
+    );
+    let date_iso = format!(
+        "{:04}-{:02}-{:02}",
+        SECRET_DATE.0, SECRET_DATE.1, SECRET_DATE.2
+    );
+    let date_ics = date_iso.replace('-', "");
+    let mut outs: Vec<(String, String)> = Vec::new();
+    for names in [false, true] {
+        s.set_lock_screen_names(names).unwrap();
+        for now in [unix_vn(2026, 1, 1, 0, 0), unix_vn(2026, 7, 25, 7, 1)] {
+            outs.push((
+                "reminders".into(),
+                s.reminders_json(now, vn(), 3660).unwrap(),
+            ));
+            outs.push((
+                "reschedule".into(),
+                s.reschedule_json(now, vn(), "[]".into()).unwrap(),
+            ));
+            outs.push((
+                "android".into(),
+                s.android_alarm_step_json(now, Some(now - 30 * 86_400), vn())
+                    .unwrap(),
+            ));
+        }
+    }
+    outs.push((
+        "upcoming".into(),
+        s.upcoming_json(sd(2026, 1, 1), 3660).unwrap(),
+    ));
+    for k in ["tuan", "thang", "quy", "nam"] {
+        for f in ["tat_ca", "da_mat", "dang_song"] {
+            outs.push((
+                "period".into(),
+                s.events_in_period_json(k.into(), sd(2026, 7, 28), f.into())
+                    .unwrap(),
+            ));
+        }
+    }
+    outs.push((
+        "summary".into(),
+        person_summary_json(a.to_string(), sd(2026, 11, 6)).unwrap(),
+    ));
+    for only in [None, Some(vec![a["id"].as_str().unwrap().to_owned()])] {
+        let f = ics_export(
+            ds.clone(),
+            sd(2025, 1, 1),
+            unix_vn(2026, 11, 6, 10, 0),
+            only,
+        )
+        .unwrap();
+        outs.push(("ics.name".into(), f.file_name));
+        outs.push(("ics".into(), f.content.replace("\r\n ", "")));
+    }
+    let mut needles: Vec<String> = SECRET.iter().map(|x| x.to_string()).collect();
+    needles.extend([cert.clone(), date_iso, date_ics, "dòng hai".into()]);
+    for (what, text) in &outs {
+        for n in &needles {
+            assert!(!text.contains(n.as_str()), "{what} chứa {n}");
+        }
+    }
+    // Tệp sao lưu: bản rõ không lộ trong byte tệp; khôi phục giữ nguyên báo tử và ảnh giấy báo tử (R2/R6).
+    let file = s
+        .export_backup("mật khẩu đúng".into(), "0.2.0".into(), "android".into())
+        .unwrap();
+    for n in &needles {
+        assert!(
+            !file.windows(n.len()).any(|w| w == n.as_bytes()),
+            "tệp sao lưu lộ {n}"
+        );
+    }
+    let (t, dir2) = tmp_store();
+    t.apply_import(
+        open_backup(file, "mật khẩu đúng".into()).unwrap(),
+        BackupImportMode::Replace,
+    )
+    .unwrap();
+    assert_eq!(t.persons_json().unwrap(), s.persons_json().unwrap());
+    assert_eq!(
+        t.photo_bytes(cert.clone()).unwrap(),
+        s.photo_bytes(cert).unwrap()
+    );
+    let _ = std::fs::remove_dir_all(dir);
+    let _ = std::fs::remove_dir_all(dir2);
+}
+
+/// 01 §3.2a: giới hạn và kiểm tra của thông tin báo tử.
+#[test]
+fn notice_validation() {
+    let (s, dir) = tmp_store();
+    let cert = add_cert_photo(&s);
+    let base = v(&secret_notice(&cert));
+    let save = |n: Value| {
+        let mut a = person_a();
+        a["id"] = json!(new_uuid().unwrap());
+        a["death"]["notice"] = n;
+        s.save_person_json(a.to_string())
+    };
+    assert!(save(base.clone()).is_ok());
+    assert!(save(Value::Null).is_ok());
+    let bad = |k: &str, val: Value| {
+        let mut n = base.clone();
+        n[k] = val;
+        n
+    };
+    let long = |n: usize| json!("a".repeat(n));
+    assert!(save(bad("reported_by", long(200))).is_ok());
+    assert!(save(bad("reported_by", long(201))).is_err());
+    assert!(save(bad("place", long(201))).is_err());
+    assert!(save(bad("reason", long(500))).is_ok());
+    assert!(save(bad("reason", long(501))).is_err());
+    assert!(save(bad("note", long(2001))).is_err());
+    assert!(save(bad("reason", json!("dòng\nhai"))).is_err()); // chỉ note được xuống dòng
+    assert!(save(bad("place", json!("   "))).is_ok()); // rỗng sau khi cắt → null
+    assert!(save(bad("certificate_photo_ids", json!([new_uuid().unwrap()]))).is_err()); // V3
+    let five: Vec<String> = (0..5).map(|_| add_cert_photo(&s)).collect();
+    assert!(save(bad("certificate_photo_ids", json!(five[..4]))).is_ok());
+    assert!(save(bad("certificate_photo_ids", json!(five))).is_err());
+    assert!(save(bad("certificate_photo_ids", json!([cert, cert]))).is_err());
+    assert!(save(bad(
+        "notice_date",
+        json!({"calendar":"lunar","precision":"day","year":2025,"month":6,"day":15,"leap":false})
+    ))
+    .is_err());
+    assert!(save(bad("extra", json!(1))).is_err());
+    // Người đang sống không có `death`, nên không có báo tử.
+    let _ = std::fs::remove_dir_all(dir);
+}

@@ -144,7 +144,35 @@
             "manual": { "type": "boolean" },
             "approx": { "type": "boolean" }
           }
+        },
+        "notice": {
+          "$comment": "01 §3.2a (Bổ sung YC-2026-05): khóa tùy chọn; thiếu tương đương null.",
+          "oneOf": [{ "$ref": "#/$defs/DeathNotice" }, { "type": "null" }]
         }
+      }
+    },
+    "DeathNotice": {
+      "$comment": "01 §3.2a — thông tin báo tử. Không bao giờ vào thông báo, .ics, màn hình tưởng niệm, tên tệp, URL.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reported_by", "place", "reason", "notice_date", "certificate_photo_ids", "note"],
+      "properties": {
+        "reported_by": { "oneOf": [{ "allOf": [{ "$ref": "#/$defs/text" }, { "minLength": 1, "maxLength": 200, "pattern": "\\S" }] }, { "type": "null" }] },
+        "place": { "oneOf": [{ "allOf": [{ "$ref": "#/$defs/text" }, { "minLength": 1, "maxLength": 200, "pattern": "\\S" }] }, { "type": "null" }] },
+        "reason": { "oneOf": [{ "allOf": [{ "$ref": "#/$defs/text" }, { "minLength": 1, "maxLength": 500, "pattern": "\\S" }] }, { "type": "null" }] },
+        "notice_date": {
+          "oneOf": [
+            {
+              "allOf": [
+                { "$ref": "#/$defs/DateValue" },
+                { "properties": { "calendar": { "const": "solar" }, "precision": { "const": "day" } } }
+              ]
+            },
+            { "type": "null" }
+          ]
+        },
+        "certificate_photo_ids": { "type": "array", "maxItems": 4, "uniqueItems": true, "items": { "$ref": "#/$defs/uuid" } },
+        "note": { "oneOf": [{ "allOf": [{ "$ref": "#/$defs/multiline" }, { "minLength": 1, "maxLength": 2000, "pattern": "\\S" }] }, { "type": "null" }] }
       }
     },
     "BirthInfo": {

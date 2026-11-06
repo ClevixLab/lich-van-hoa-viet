@@ -617,6 +617,17 @@ public protocol LvhvStoreProtocol: AnyObject, Sendable {
     func lockScreenNames() throws  -> Bool
     
     /**
+     * Cập nhật một người **đang sống** (hoặc sửa người đã mất) thành người đã mất trên **cùng** hồ sơ
+     * (01 §3.2a, US-M-07): giữ id, tên, ảnh, ngày sinh; thêm `death` (tính trường dẫn xuất từ
+     * `death_date_value_json`) và tùy chọn `notice` (thông tin báo tử, chuỗi được cắt khoảng trắng và chuẩn hóa
+     * NFC, rỗng → `null`); `kind = deceased`; tạo `memorial` mặc định nếu chưa có; quy tắc nhắc giỗ mặc định theo
+     * cài đặt nếu chưa có; bỏ quy tắc nhắc sinh nhật (lược đồ: người đã khuất chỉ có nhắc giỗ); tăng `rev`.
+     * Theo 02 §6.1 (Bổ sung B4), sinh nhật và sự kiện của người này không còn lần xuất hiện. `today`: ngày hôm
+     * nay của thiết bị — ngày mất và ngày nhận tin không được sau hôm nay. Trả bản đã lưu.
+     */
+    func markDeceasedJson(personId: String, deathDateValueJson: String, noticeJson: String?, today: SolarDay) throws  -> String
+    
+    /**
      * Một `Person`.
      */
     func personJson(id: String) throws  -> String
@@ -880,6 +891,26 @@ open func exportBackup(password: String, appVersion: String, platform: String)th
 open func lockScreenNames()throws  -> Bool  {
     return try  FfiConverterBool.lift(try rustCallWithError(FfiConverterTypeLvhvDataError_lift) {
     uniffi_lvhv_ffi_fn_method_lvhvstore_lock_screen_names(self.uniffiClonePointer(),$0
+    )
+})
+}
+    
+    /**
+     * Cập nhật một người **đang sống** (hoặc sửa người đã mất) thành người đã mất trên **cùng** hồ sơ
+     * (01 §3.2a, US-M-07): giữ id, tên, ảnh, ngày sinh; thêm `death` (tính trường dẫn xuất từ
+     * `death_date_value_json`) và tùy chọn `notice` (thông tin báo tử, chuỗi được cắt khoảng trắng và chuẩn hóa
+     * NFC, rỗng → `null`); `kind = deceased`; tạo `memorial` mặc định nếu chưa có; quy tắc nhắc giỗ mặc định theo
+     * cài đặt nếu chưa có; bỏ quy tắc nhắc sinh nhật (lược đồ: người đã khuất chỉ có nhắc giỗ); tăng `rev`.
+     * Theo 02 §6.1 (Bổ sung B4), sinh nhật và sự kiện của người này không còn lần xuất hiện. `today`: ngày hôm
+     * nay của thiết bị — ngày mất và ngày nhận tin không được sau hôm nay. Trả bản đã lưu.
+     */
+open func markDeceasedJson(personId: String, deathDateValueJson: String, noticeJson: String?, today: SolarDay)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeLvhvDataError_lift) {
+    uniffi_lvhv_ffi_fn_method_lvhvstore_mark_deceased_json(self.uniffiClonePointer(),
+        FfiConverterString.lower(personId),
+        FfiConverterString.lower(deathDateValueJson),
+        FfiConverterOptionString.lower(noticeJson),
+        FfiConverterTypeSolarDay_lower(today),$0
     )
 })
 }
@@ -2370,6 +2401,30 @@ fileprivate struct FfiConverterOptionInt64: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionString: FfiConverterRustBuffer {
+    typealias SwiftType = String?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterString.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterString.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionTypeSolarDay: FfiConverterRustBuffer {
     typealias SwiftType = SolarDay?
 
@@ -3085,6 +3140,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_lvhv_ffi_checksum_method_lvhvstore_lock_screen_names() != 2023) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_lvhv_ffi_checksum_method_lvhvstore_mark_deceased_json() != 28404) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_lvhv_ffi_checksum_method_lvhvstore_person_json() != 48207) {
