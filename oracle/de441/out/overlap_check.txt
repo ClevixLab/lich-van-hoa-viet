@@ -1,13 +1,13 @@
 so doan moi cap than: {(0, 3): 2, (3, 399): 2, (3, 301): 2, (0, 10): 2}
-Traceback (most recent call last):
-  File "/home/runner/work/lich-van-hoa-viet/lich-van-hoa-viet/oracle/de441/overlap_check.py", line 22, in <module>
-    print("  %s doan %s .. %s" % (p, I.jd_to_iso(s.start_jd)[:10], I.jd_to_iso(s.end_jd)[:10]))
-                                     ^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/runner/work/lich-van-hoa-viet/lich-van-hoa-viet/oracle/de441/instants.py", line 248, in jd_to_iso
-    y, mo, d, _ = erfa.jd2cal(DJ0, float(day))
-                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/erfa/core.py", line 599, in jd2cal
-    check_errwarn(c_retval, 'jd2cal')
-  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/erfa/core.py", line 124, in check_errwarn
-    raise ErfaError(f'ERFA function "{func_name}" yielded {emsg}')
-erfa.core.ErfaError: ERFA function "jd2cal" yielded 1 of "unacceptable date (Note 1)"
+  (0, 3) doan JD -3100015.5 .. 2440432.5
+  (0, 3) doan JD 2440432.5 .. 8000016.5
+  (3, 399) doan JD -3100015.5 .. 2440432.5
+  (3, 399) doan JD 2440432.5 .. 8000016.5
+  (3, 301) doan JD -3100015.5 .. 2440432.5
+  (3, 301) doan JD 2440432.5 .. 8000016.5
+  (0, 10) doan JD -3100015.5 .. 2440432.5
+  (0, 10) doan JD 2440432.5 .. 8000016.5
+(0, 3) noi tai TDB 1969-07-30T00:00:00.000: |dPos| = 3.414e-08 km, |dVel| = 2.328e-10 km/ngay
+(3, 399) noi tai TDB 1969-07-30T00:00:00.000: |dPos| = 9.095e-13 km, |dVel| = 0.000e+00 km/ngay
+(3, 301) noi tai TDB 1969-07-30T00:00:00.000: |dPos| = 5.821e-11 km, |dVel| = 1.627e-11 km/ngay
+(0, 10) noi tai TDB 1969-07-30T00:00:00.000: |dPos| = 1.166e-10 km, |dVel| = 2.344e-13 km/ngay
