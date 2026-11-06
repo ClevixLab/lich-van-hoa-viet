@@ -1,0 +1,10 @@
+Traceback (most recent call last):
+  File "/home/runner/work/lich-van-hoa-viet/lich-van-hoa-viet/oracle/de441/instants.py", line 319, in <module>
+    main()
+  File "/home/runner/work/lich-van-hoa-viet/lich-van-hoa-viet/oracle/de441/instants.py", line 274, in main
+    eph = Ephem(paths)
+          ^^^^^^^^^^^^
+  File "/home/runner/work/lich-van-hoa-viet/lich-van-hoa-viet/oracle/de441/instants.py", line 76, in __init__
+    assert s2.start_jd < s1.end_jd, "hai doan khong noi tiep"
+           ^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: hai doan khong noi tiep

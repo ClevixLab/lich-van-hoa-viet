@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "/home/runner/work/lich-van-hoa-viet/lich-van-hoa-viet/oracle/de441/overlap_check.py", line 17, in <module>
+    base = I.Ephem(sys.argv[1:])
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/lich-van-hoa-viet/lich-van-hoa-viet/oracle/de441/instants.py", line 76, in __init__
+    assert s2.start_jd < s1.end_jd, "hai doan khong noi tiep"
+           ^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: hai doan khong noi tiep
