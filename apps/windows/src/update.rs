@@ -8,6 +8,8 @@
 use std::path::PathBuf;
 
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
+/// Số bản dựng (CI: github.run_number): chỉ dùng nội bộ, không hiển thị cho người dùng.
+#[allow(dead_code)]
 pub const BUILD_NUMBER: &str = env!("LVHV_BUILD_NUMBER");
 pub const BUILD_DATE: &str = env!("LVHV_BUILD_DATE");
 pub const MS_STORE_ID: &str = env!("LVHV_MS_STORE_ID");
@@ -26,7 +28,7 @@ pub fn version_line() -> String {
 }
 
 pub fn running_version() -> String {
-    format!("Phiên bản đang dùng: {VERSION} (bản dựng {BUILD_NUMBER})")
+    format!("Phiên bản đang dùng: {VERSION}")
 }
 
 /// Địa chỉ nút cập nhật mở: trang Microsoft Store khi đã có mã sản phẩm, nếu không thì trang tải về.

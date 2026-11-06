@@ -2,7 +2,7 @@
 import { IS_MOCK, MAX_YEAR, METHOD, MIN_YEAR } from "../engine";
 import { TZ_NOTE } from "./convert";
 import {
-  APP_VERSION, BUILD_DATE, BUILD_ID, CADAO, CADAO_ATTRIBUTION, CADAO_IS_MOCK, RULE_SOURCES, RULE_SOURCES_INTRO, RULE_SOURCES_LIMITS,
+  APP_VERSION, CADAO, CADAO_ATTRIBUTION, CADAO_IS_MOCK, RULE_SOURCES, RULE_SOURCES_INTRO, RULE_SOURCES_LIMITS,
 } from "../gen/content";
 import { append, clear, h } from "../dom";
 import { applyUpdate, checkForUpdate, type CheckResult } from "../update";
@@ -43,7 +43,7 @@ function versionPanel(): HTMLElement {
   });
   return h("section", { class: "panel prose", id: "phien-ban" },
     h("h2", null, "Phiên bản"),
-    h("p", { class: "cur-ver" }, `Phiên bản đang dùng: ${APP_VERSION} (bản dựng ${BUILD_ID}, ngày ${BUILD_DATE})`),
+    h("p", { class: "cur-ver" }, `Phiên bản đang dùng: ${APP_VERSION}`),
     h("p", null, btn),
     out);
 }

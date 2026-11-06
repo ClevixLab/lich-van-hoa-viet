@@ -29,7 +29,8 @@ object UpdatePolicy {
     /** Dòng 2 chân trang Giới thiệu: số phiên bản, chữ nhỏ và nhạt. */
     fun versionLine(version: String): String = "Phiên bản $version"
 
-    fun runningVersion(version: String, build: String): String = "Phiên bản đang dùng: $version (bản dựng $build)"
+    /** Chỉ số phiên bản; số bản dựng (versionCode) vẫn có trong APK nhưng không hiển thị. */
+    fun runningVersion(version: String): String = "Phiên bản đang dùng: $version"
 
     /** Ngày dựng dạng YYYY-MM-DD; sai định dạng → null (khi đó không nhắc). */
     fun parseDate(s: String): LocalDate? = runCatching { LocalDate.parse(s) }.getOrNull()

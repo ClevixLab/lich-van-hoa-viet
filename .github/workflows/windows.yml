@@ -58,7 +58,9 @@ jobs:
           workspaces: apps/windows -> target
           key: windows
 
-      - name: Kiểm thử (cargo test)
+      # Gồm cả kiểm thử giao diện (src/ui_tests.rs, backend kiểm thử của Slint): bấm chuột giả lập vào
+      # mọi nút của tờ lịch (Chi tiết, Xem thêm, dải tháng, bảng tháng), Chọn ngày tốt, Đổi ngày, Giới thiệu.
+      - name: Kiểm thử (cargo test, gồm kiểm thử giao diện)
         working-directory: apps/windows
         run: cargo test
 
@@ -75,6 +77,29 @@ jobs:
           $p.Refresh()
           "Working set: {0:N1} MB; Private: {1:N1} MB" -f ($p.WorkingSet64/1MB), ($p.PrivateMemorySize64/1MB) | Tee-Object -FilePath $env:RUNNER_TEMP\mem.txt
           Stop-Process -Id $p.Id -Force
+
+      # Chạy bản release ở chế độ chụp màn hình: mở lần lượt các màn hình chính, chụp bằng chính renderer
+      # của ứng dụng (Window::take_snapshot) rồi tự thoát. Ảnh đính kèm trong artifact "windows-screens".
+      - name: Chụp màn hình các trang chính
+        working-directory: apps/windows
+        run: |
+          $out = Join-Path $env:RUNNER_TEMP 'screens'
+          $p = Start-Process -FilePath target\release\LichViet.exe -ArgumentList '--chup-man-hinh', $out -PassThru
+          if (-not $p.WaitForExit(120000)) { Stop-Process -Id $p.Id -Force; Write-Host "::error::Chụp màn hình quá 120 giây"; exit 1 }
+          $shots = Get-ChildItem $out -Filter *.png -ErrorAction SilentlyContinue
+          $shots | ForEach-Object { "{0}  {1:N0} byte" -f $_.Name, $_.Length }
+          if ($p.ExitCode -ne 0) { Write-Host "::error::LichViet.exe --chup-man-hinh thoát mã $($p.ExitCode)"; exit 1 }
+          if ($shots.Count -lt 11) { Write-Host "::error::Chỉ có $($shots.Count)/11 ảnh"; exit 1 }
+          $small = $shots | Where-Object { $_.Length -lt 20000 }
+          if ($small) { Write-Host "::error::Ảnh quá nhỏ (có thể trống): $($small.Name -join ', ')"; exit 1 }
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: windows-screens
+          path: ${{ runner.temp }}/screens/*.png
+          if-no-files-found: warn
+          retention-days: 30
 
       - name: Ký mã (nếu có chứng chỉ)
         if: ${{ env.HAS_CERT == 'true' }}

@@ -468,7 +468,7 @@ const DIST_B = join(TMP_B, "dist");
   await page.goto(BASE + "#/gioi-thieu");
   await page.waitForSelector("#check-update");
   const cur = await page.innerText(".cur-ver");
-  check(cur.startsWith(`Phiên bản đang dùng: ${VERSION_A} (bản dựng ${vjA.build}, ngày ${vjA.date})`), `Giới thiệu: "${cur}"`);
+  check(cur.trim() === `Phiên bản đang dùng: ${VERSION_A}` && !cur.includes("bản dựng") && !cur.includes(vjA.build), `Giới thiệu chỉ hiện số phiên bản: "${cur}"`);
   check((await page.innerText("main")).includes("mô hình thiên văn chính xác (Meeus)") && (await page.innerText("main")).includes("Hồ Ngọc Đức"), "Giới thiệu mô tả phương pháp Meeus, giữ HND để đối chiếu");
   await page.click("#check-update");
   await page.waitForFunction(() => /phiên bản mới nhất|ngoại tuyến|Có phiên bản/.test(document.querySelector(".upd-out")?.textContent ?? ""));

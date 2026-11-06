@@ -66,7 +66,7 @@ fun AboutScreen(openRules: () -> Unit) {
         }
         Panel {
             H2("Phiên bản và cập nhật")
-            P(UpdatePolicy.runningVersion(Updates.versionName, Updates.buildNumber))
+            P(UpdatePolicy.runningVersion(Updates.versionName))
             P(UpdatePolicy.EXPLAIN)
             if (fromPlay) P("Bản cài từ Google Play cũng được cửa hàng tự cập nhật nếu bạn bật tự động cập nhật trong Google Play.")
             Button(
