@@ -509,6 +509,248 @@ Tệp cho bên kiểm định: `core/out/lunar_1900_1999.csv`, `tet_1900_1999.cs
 `1968-01-29T23:31:10+07:00`), `dayinfo_1900_3000.jsonl.gz`, và bản `core/out/precise/…` tương ứng.
 `lvhv-dump terms` cho năm < 1968 xuất cột `date_local,datetime_local` (độ lệch theo từng dòng).
 
+## §17 Phương pháp Jpl (Bổ sung A4)
+
+Trạng thái: đặc tả, 2026-11-07, viết **trước** khi có bảng và mã. Căn cứ: docs/02 "Bổ sung A4" (khóa). Mục này
+được viết để một bên không tham gia xây dựng đặc tả (bên kiểm định độc lập) có thể tự cài lại toàn bộ chỉ từ
+văn bản này và các tài liệu công bố được dẫn, **không đọc mã lõi hay bảng của lõi**, và khớp thời điểm sự kiện
+đến ≤ 2 giây (L14), ngày âm/Can Chi/tiết khí đến 0 sai lệch (L15). Từ "phải" dưới đây là bắt buộc; mọi lựa
+chọn có thể gây khác biệt > 0,01 s đều được ghi ra.
+
+`Method::Jpl` **chưa** là phương pháp mặc định (`DEFAULT_METHOD` vẫn là `Precise`, §15.7). Chỉ đổi khi
+L14–L17 ĐẠT và L12, P1, P3 vẫn ĐẠT (A4 mục 4).
+
+### 17.1 Tóm tắt
+
+`Jpl` khác `Precise` đúng ở hai nguồn dữ liệu thiên văn; mọi thứ khác giữ nguyên:
+
+| Thành phần | `Precise` (§15.3) | `Jpl` (§17) |
+|---|---|---|
+| Thời điểm Sóc | Meeus ch.49 | bảng nhúng, tính từ DE441 (§17.2–17.3, 17.5) |
+| Thời điểm 24 tiết khí (cả 12 Trung khí dùng cho tháng nhuận/tháng 11) | VSOP87 rút gọn (§6) | cùng bảng nhúng |
+| ΔT | Espenak–Meeus (§11) | Morrison–Stephenson–Hohenkerk–Zawilski 2021 + parabol 2016 (§17.4) |
+| Quy tắc múi giờ | §16.1 (A1, A2) | **giữ nguyên** §16.1 |
+| Quy tắc lập lịch (tháng 11, tháng nhuận, đổi ngày) | §3 | **giữ nguyên** §3, chỉ thay nguồn Sóc và cung Mặt Trời (§17.6) |
+| Can Chi, Trực, tú, thần, giờ Hoàng đạo, Ngọc Hạp | §4–§10 | **giữ nguyên** (suy ra từ ngày âm và tiết khí của `Jpl`) |
+
+### 17.2 Lịch thiên văn
+
+- **JPL DE441** (Park, Folkner, Williams, Boggs 2021, *AJ* 161:105, doi:10.3847/1538-3881/abd414), dạng SPK:
+  `de441_part-1.bsp` và `de441_part-2.bsp`, tải từ <https://ssd.jpl.nasa.gov/ftp/eph/planets/bsp/>. Tổng kiểm
+  SHA-256 của hai tệp đã dùng được ghi vào tệp CSV kiểm toán (§17.5) và báo cáo tạo bảng.
+- Hai phần là cùng một lời giải tích phân số, chia đôi theo thời gian, chồng nhau quanh 1969-06/07. Quy ước:
+  thời điểm (thang TDB) **trước JD 2440403,5 (1969-07-01 00:00 TDB)** đọc từ `part-1`, **từ đó trở đi** đọc từ
+  `part-2`. (Chọn bất kỳ điểm nào trong vùng chồng cho cùng kết quả đến mức số học máy.)
+- Các thân dùng: Mặt Trời (10), Mặt Trăng (301), Trái Đất (399), qua tâm khối Trái Đất–Mặt Trăng (3) và tâm khối
+  hệ Mặt Trời (0), tất cả lấy trực tiếp từ DE441 (không thêm mô hình nào khác cho vị trí các thân).
+- Thang thời gian: đối số của DE441 là TDB (T_eph). Mọi thời điểm của bảng là **TT**. Đổi TT → TDB bằng
+  TDB − TT ≈ 0,001657 s·sin(g) + 0,000014 s·sin(2g), g = 357,53° + 0,98560028°·(JD_TT − 2451545,0) (công thức gần
+  đúng chuẩn của *Explanatory Supplement to the Astronomical Almanac*; bộ sinh bảng dùng chuỗi đầy đủ hơn của thư
+  viện, khác < 0,0001 s). Bỏ qua hoàn toàn TDB − TT chỉ đổi kết quả < 0,002 s.
+
+### 17.3 Quy đổi vị trí và định nghĩa sự kiện
+
+Vị trí **biểu kiến địa tâm** (người quan sát ở tâm Trái Đất, không phải trên mặt đất) của Mặt Trời và của Mặt
+Trăng tại thời điểm t, theo đúng chuỗi quy đổi chuẩn của IAU (như IERS Conventions 2010 / USNO Circular 179 ch.7):
+
+1. **Thời gian ánh sáng**: vị trí của thân tại t − τ so với vị trí tâm Trái Đất (hệ quy chiếu tâm khối hệ Mặt
+   Trời, BCRS) tại t; τ lặp đến hội tụ (< 1 µs). Không bỏ qua cho Mặt Trăng (τ ≈ 1,3 s) hay Mặt Trời (≈ 499 s).
+2. **Lệch hấp dẫn của ánh sáng** do Mặt Trời (và Sao Mộc, Sao Thổ) theo công thức hậu Newton chuẩn — được
+   áp dụng nhưng **không đáng kể** ở đây (với chính Mặt Trời bằng 0; với Mặt Trăng < 0,001″). Bên cài lại có thể
+   bỏ bước này mà không vượt 0,01 s.
+3. **Quang sai năm** (aberration) theo vận tốc tâm khối của tâm Trái Đất, công thức tương đối tính đầy đủ
+   (không dùng hằng số quang sai −20,4898″ gần đúng).
+4. **Quay về xích đạo và điểm xuân phân thật của ngày** (hệ "true equator and equinox of date"): ma trận
+   N·P·B gồm lệch khung (frame bias) IAU 2006, **tuế sai IAU 2006** (Capitaine và cs. 2003, mô hình P03) và
+   **chương động IAU 2000A đầy đủ** (Mathews và cs. 2002; 678 số hạng nhật nguyệt + 687 số hạng hành tinh).
+   **Không** dùng IAU 2000B. (Hiệu chỉnh IAU 2006 cho chương động — cỡ vài chục micro-giây cung — có hay không đều
+   không ảnh hưởng ở mức 0,01 s.)
+5. **Sang hoàng đạo thật của ngày**: quay quanh trục x một góc bằng **độ nghiêng thật**
+   ε = ε_A + Δε, với ε_A là độ nghiêng trung bình IAU 2006 (84381,406″ − 46,836769″·T − 0,0001831″·T²
+   + 0,00200340″·T³ − 0,000000576″·T⁴ − 0,0000000434″·T⁵, T = thế kỷ Julius TDB kể từ J2000,0) và Δε là chương
+   động theo độ nghiêng của bước 4. Kinh độ hoàng đạo biểu kiến λ ∈ [0°, 360°) đo từ điểm xuân phân thật.
+
+Định nghĩa sự kiện (λ☉, λ☾: kinh độ hoàng đạo biểu kiến địa tâm của Mặt Trời, Mặt Trăng theo 1–5):
+
+- **Sóc**: thời điểm t mà D(t) = λ☾(t) − λ☉(t), quy về (−180°, 180°], đi qua 0 theo chiều tăng.
+- **Tiết khí i** (i = 0..23; i = 0 là Xuân Phân, tên theo `TERM_NAMES` ở §6): thời điểm t mà λ☉(t) = 15°·i
+  (hiệu λ☉ − 15°·i quy về (−180°, 180°] đi qua 0 theo chiều tăng). Trung khí là các i chẵn (bội số 30°).
+- **Tìm nghiệm**: kẹp nghiệm trong một khoảng chỉ chứa đúng một lần đi qua 0 (Sóc: ±1,5 ngày quanh Sóc trung bình;
+  tiết khí: ±5 ngày quanh thời điểm trung bình), rồi chia đôi (hoặc phương pháp có kẹp tương đương) đến khi độ
+  rộng khoảng ≤ 1·10⁻⁹ ngày; nghiệm = trung điểm. Sai số tìm nghiệm ≤ 0,0001 s, tức **≤ 0,01 s** như yêu cầu.
+- **Đánh số**: Sóc mang chỉ số k theo quy ước Hồ Ngọc Đức (k = 0: Sóc ngày 1900-01-01; k = k_Meeus + 1237, với
+  k_Meeus = 0 là Sóc 2000-01-06). Chỉ số chỉ để đối chiếu; không ảnh hưởng thời điểm.
+- **Phạm vi của bảng**: mọi Sóc và mọi tiết khí có thời điểm TT trong
+  **[1899-10-01 00:00 TT, 3002-02-01 00:00 TT)** = [JD 2414928,5; JD 2817548,5).
+  *Lưu ý so với A4 mục 1 (ghi "1899-10-01 → 3001-03-31"):* với quy tắc §3, ngày âm của mọi ngày từ đầu tháng 11 âm
+  năm 3000 (cuối tháng 11/3000) đến 3000-12-31 cần bảng tuế kết thúc ở tháng 11 âm năm **3001** (tức Sóc và Đông
+  chí tháng 12/3001). Khoảng ghi trong A4 không đủ cho các ngày đó. Bảng vì vậy được **mở rộng** đến 3002-01-31; đây
+  là tập chứa khoảng của A4, mọi sự kiện thêm vào cũng chịu kiểm định L14 như các sự kiện khác. Chủ dự án cần xác
+  nhận điểm này (không phải nới tiêu chí: không ngưỡng nào thay đổi).
+
+### 17.4 ΔT = TT − UT
+
+ΔT (giây) là hàm của **năm thập phân**
+
+> Y = 2000 + (JD_TT − 2451544,5) / 365,2425
+
+tính từ thời điểm TT của sự kiện (không lặp theo UT). Ba đoạn:
+
+**(a) Y < 2019,0 — bảng spline bậc ba "Table S15.2020"** của Morrison, Stephenson, Hohenkerk & Zawilski (2021),
+"Addendum 2020 to 'Measurement of the Earth's rotation: 720 BC to AD 2015'", *Proc. R. Soc. A* 477: 20200776,
+doi:10.1098/rspa.2020.0776 (bảng phát hành cùng bài và trên trang HM Nautical Almanac Office
+<http://astro.ukho.gov.uk/nao/lvm/>; hợp lệ −720,0 → 2019,0). Chọn hàng i có K_i ≤ Y < K_{i+1};
+t = (Y − K_i)/(K_{i+1} − K_i); **ΔT = a₀ + a₁t + a₂t² + a₃t³**. Phạm vi của `Jpl` (Y ≥ 1899,74) chỉ dùng các hàng
+25–58, chép nguyên văn (K_i, K_{i+1}, a₀, a₁, a₂, a₃):
+
+```
+  K_i    K_i+1     a0      a1      a2      a3
+1895.0 1900.0   -5.017   0.134   3.138  -0.232
+1900.0 1905.0   -1.977   5.715   2.443  -1.257
+1905.0 1910.0    4.923   6.828  -1.329   0.720
+1910.0 1915.0   11.142   6.330   0.831  -0.825
+1915.0 1920.0   17.479   5.518  -1.643   0.262
+1920.0 1925.0   21.617   3.020  -0.856   0.008
+1925.0 1930.0   23.789   1.333  -0.831   0.127
+1930.0 1935.0   24.418   0.052  -0.449   0.142
+1935.0 1940.0   24.164  -0.419  -0.022   0.702
+1940.0 1945.0   24.426   1.645   2.086  -1.106
+1945.0 1950.0   27.050   2.499  -1.232   0.614
+1950.0 1953.0   28.932   1.127   0.220  -0.277
+1953.0 1956.0   30.002   0.737  -0.610   0.631
+1956.0 1959.0   30.760   1.409   1.282  -0.799
+1959.0 1962.0   32.652   1.577  -1.115   0.507
+1962.0 1965.0   33.621   0.868   0.406   0.199
+1965.0 1968.0   35.093   2.275   1.002  -0.414
+1968.0 1971.0   37.956   3.035  -0.242   0.202
+1971.0 1974.0   40.951   3.157   0.364  -0.229
+1974.0 1977.0   44.244   3.199  -0.323   0.172
+1977.0 1980.0   47.291   3.069   0.193  -0.192
+1980.0 1983.0   50.361   2.878  -0.384   0.081
+1983.0 1986.0   52.936   2.354  -0.140  -0.165
+1986.0 1989.0   54.984   1.577  -0.637   0.448
+1989.0 1992.0   56.373   1.648   0.708  -0.276
+1992.0 1995.0   58.453   2.235  -0.121   0.110
+1995.0 1998.0   60.678   2.324   0.210  -0.313
+1998.0 2001.0   62.898   1.804  -0.729   0.109
+2001.0 2004.0   64.083   0.674  -0.402   0.199
+2004.0 2007.0   64.553   0.466   0.194  -0.017
+2007.0 2010.0   65.197   0.804   0.144  -0.084
+2010.0 2013.0   66.061   0.839  -0.109   0.128
+2013.0 2016.0   66.920   1.007   0.277  -0.095
+2016.0 2019.0   68.109   1.277  -0.007  -0.139
+```
+
+Hai bản sao độc
+lập của bảng (tệp `Table-S15.2020.txt` phân phối kèm gói phần mềm thiên văn và bản nhúng trong thư viện Skyfield
+1.53) trùng nhau ở cả 34 hàng (kiểm 2026-11-07).
+
+**(b) 2019,0 ≤ Y < 2800,0 — đoạn nối Hermite bậc ba** (quy ước của dự án; xem "Vì sao" bên dưới). Với
+h = 781,0 và s = (Y − 2019,0)/h:
+
+> ΔT = h₀₀(s)·P₀ + h₁₀(s)·h·M₀ + h₀₁(s)·P₁ + h₁₁(s)·h·M₁,
+> h₀₀ = 2s³ − 3s² + 1, h₁₀ = s³ − 2s² + s, h₀₁ = −2s³ + 3s², h₁₁ = s³ − s²,
+
+trong đó P₀ = a₀+a₁+a₂+a₃ = **69,240 s** và M₀ = (a₁ + 2a₂ + 3a₃)/3 = **0,282 s/năm** là giá trị và đạo hàm của
+hàng cuối (2016–2019) tại 2019,0; P₁ = **2769,53125 s** và M₁ = **6,3375 s/năm** là giá trị và đạo hàm của parabol (c)
+tại 2800,0. ΔT và dΔT/dY liên tục tại 2019,0 và 2800,0.
+
+**(c) Y ≥ 2800,0 — parabol dài hạn** của Stephenson, Morrison & Hohenkerk (2016), *Proc. R. Soc. A* 472: 20160404,
+doi:10.1098/rspa.2016.0404, công thức (4.1): **ΔT = −320,0 + 32,5·u², u = (Y − 1825)/100**.
+
+Vì sao có đoạn (b): bảng S15 kết thúc ở 2019,0 và các tác giả ghi rõ bảng "không hợp lệ ngoài khoảng"; parabol (c)
+là đường xu thế dài hạn, tại 2019,0 cho −197,7 s, thấp hơn giá trị đo 69,24 s tới ~267 s, nên không thể nối thẳng.
+Các tác giả **không công bố quy tắc nối** cho thời gian sau bảng; A4 chỉ yêu cầu "nối liên tục". Dự án chọn đoạn
+Hermite (liên tục cả giá trị lẫn độ dốc) dài ~800 năm kết thúc đúng trên parabol tại một năm tròn trăm — cùng cách
+thư viện Skyfield nối bảng ΔT với chính parabol này (khoảng nối 800 năm, làm tròn xuống bội 100 năm). Từ 2800,0 trở
+đi ΔT đúng bằng parabol của các tác giả.
+
+**Bảng giá trị kiểm tra** (từ cài đặt tham chiếu `tools/jpl/deltat.py`; bên cài lại nên khớp đến 1·10⁻⁶ s):
+
+| Y | ΔT (s) | | Y | ΔT (s) |
+|---|---|---|---|---|
+| 1899,75 | −2,256566 | | 2026,0 | 71,431601 |
+| 1900,0 | −1,977000 | | 2050,0 | 82,238467 |
+| 1929,0 | 24,388584 | | 2100,0 | 120,983118 |
+| 1950,0 | 28,932000 | | 2200,0 | 263,006864 |
+| 1968,0 | 37,956000 | | 2500,0 | 1179,196651 |
+| 2000,0 | 63,808963 | | 2800,0 | 2769,531250 |
+| 2019,0 | 69,240000 | | 3000,0 | 4167,031250 |
+
+**Bảng 2016 hay 2020?** Dùng bản **2020** (Table S15.2020) vì A4 ghi "2016, bổ sung 2020/2021" — bản bổ sung thay
+thế bảng hệ số của bài 2016 (thêm dữ liệu, kéo dài đến 2019,0). Không trộn hai bản. Mức chênh giữa hai bản trong
+1900–2016 chưa được đo lại ở đây (bảng hệ số 2016 không truy cập được từ môi trường làm việc).
+
+**Điểm mở cần chủ dự án biết:** bản tóm tắt của bài 2021 công bố gia tốc quan sát được sửa thành
+−4,59 × 10⁻²² rad s⁻² (bài 2016 tương ứng ~+1,78 ms/thế kỷ, tức hệ số 32,5 s/thế kỷ²). Nếu toàn văn bài 2021 có
+công bố một **parabol mới**, thì (c) ở trên (theo bài 2016) có thể không phải bản mới nhất. Toàn văn bài 2021 không
+truy cập được từ môi trường làm việc (máy chủ nhà xuất bản từ chối kết nối), nên đặc tả **ghim** parabol 2016 nêu
+trên và ghi rõ đây là lựa chọn có chủ ý; đổi parabol sẽ đổi ΔT sau 2019 và cần quyết định của chủ dự án.
+
+**Độ bất định vật lý:** ΔT sau ~2050 không dự báo được chính xác (A4 mục 2); năm 3000 sai số cỡ hàng chục phút
+đến hơn một giờ. Ngày của Sóc/tiết khí sát nửa đêm sau ~2100 là kết quả của **quy ước** này, không phải chân lý.
+
+### 17.5 Bảng nhúng
+
+- **Đơn vị lưu**: mỗi thời điểm là số nguyên **n = ⌊100·S + 0,5⌋**, với S = (JD_TT − 2451545,0)·86400 là số giây
+  TT kể từ J2000,0 (2000-01-01 12:00 TT). Tức thời điểm TT **làm tròn đến 0,01 s** (sai số lưu ≤ 0,005 s). Tổng
+  sai số bảng ≤ 0,0051 s ≪ 2 s của L14.
+- **Đọc lại**: JD_TT = 2451545,0 + n / 8 640 000 (số thực IEEE-754 double, phép chia đúng một lần).
+- **Mã hóa** (không mất thông tin, chỉ để nén; không ảnh hưởng giá trị): tệp nhị phân `core/data/jpl_events.bin`
+  gồm hai dãy (Sóc theo k tăng dần; tiết khí theo thời gian tăng dần với chỉ số i của phần tử đầu), mỗi dãy là các
+  số nguyên n mã hóa bằng sai phân có dự báo tuyến tính + zigzag varint; định dạng chi tiết ghi ở đầu
+  `tools/jpl/gen_table.py`. TypeScript dùng đúng các byte đó (base64 trong `tsport/src/jpl_data.ts`, sinh từ tệp
+  nhị phân; kiểm bằng tổng kiểm SHA-256).
+- **Tệp kiểm toán** (người đọc được): `core/data/jpl_events.csv.gz` — mỗi dòng một sự kiện:
+  `kind,index,n_cs,jd_tt,tt_iso` (`kind` = `soc` với `index` = k, hoặc `tk` với `index` = i; `tt_iso` là giờ TT dạng
+  `YYYY-MM-DDTHH:MM:SS.ss`).
+- Bảng được sinh trên máy chủ tích hợp liên tục (`.github/workflows/jpl-table.yml`, tải DE441 từ nguồn ở §17.2) và
+  commit lại vào kho; phiên bản phần mềm sinh bảng được ghim (§17.8).
+
+### 17.6 Suy ra ngày lúc chạy
+
+1. JD_TT của sự kiện từ bảng (§17.5); Y và ΔT theo §17.4; **JD_UT = JD_TT − ΔT/86400**.
+2. **Ngày lịch chứa sự kiện** = `local_day_of(JD_UT)` theo §16.1 (giờ Bắc Kinh UT+7:45:40 trước 1929-01-01 00:00 giờ
+   Bắc Kinh; UTC+8 đến trước 1968-01-01 00:00 UTC+8; UTC+7 từ đó). Một thời điểm đúng 00:00 thuộc ngày mới.
+3. **Cung Mặt Trời lúc 00:00 đầu ngày J** (dùng cho tháng 11 và tháng nhuận, §3): gọi M(J) = `local_midnight_ut(J)`
+   (§16.1). Cung = ⌊i*/2⌋ với i* là chỉ số của tiết khí **muộn nhất có JD_UT ≤ M(J)** — tương đương ⌊λ☉(M)/30°⌋
+   của phương pháp liên tục. (Lấy các tiết khí, không chỉ Trung khí, cho cùng kết quả vì ⌊i/2⌋.)
+4. **Tiết khí của ngày J** (hiển thị, Trực, tháng tiết — §6, §7) = chỉ số của tiết khí muộn nhất có
+   JD_UT ≤ M(J + 1). **Ngày bắt đầu** của một tiết khí (lệnh `terms`) = `local_day_of(JD_UT)`.
+5. **Ngày Sóc k** = `local_day_of(JD_UT của Sóc k)`. Quy tắc §3 (tháng 11 = tháng chứa Đông chí, tháng nhuận = tháng
+   đầu tiên không có Trung khí trong tuế 13 tháng, Can Chi …) giữ nguyên, chỉ thay "ngày Sóc" bằng 5 và "cung" bằng 3.
+6. **Ngoài bảng**: mọi phép tra cần một sự kiện ngoài [JD 2414928,5; JD 2817548,5) TT phải trả lỗi
+   (`DateError::OutOfRange` trong Rust, `LvhvError` mã `OutOfRange` trong TypeScript) — **không** được rơi về
+   `Precise` hay ngoại suy. Miền công khai của `Jpl` vẫn là 1900-01-01 → 3000-12-31 (như hai phương pháp kia).
+7. Mọi phép tính ở 1–5 dùng số thực double theo đúng thứ tự phép toán đã ghi; Rust và TypeScript cho kết quả trùng
+   từng bit (không hàm siêu việt nào tham gia: ΔT là đa thức).
+
+Hệ quả: các sự kiện cách nửa đêm dưới vài phần trăm giây có thể đổi ngày nếu bên cài lại dùng phép tính khác;
+L15 đã liệt kê riêng các sự kiện cách nửa đêm < 2 s là "không phân định được".
+
+### 17.7 Kiểm định (A4)
+
+| Mã | Ai làm | Dữ liệu từ lõi |
+|---|---|---|
+| L14 | bên kiểm định độc lập, tự tính từ DE441 bằng phần mềm riêng theo §17.2–17.3 | tệp kiểm toán `core/data/jpl_events.csv.gz` (chỉ để so **sau khi** họ tính xong) |
+| L15 | bên kiểm định độc lập, từ thời điểm của chính họ + §17.4 + §16.1 + §3 | `lvhv-dump --method jpl lunar-csv 1900-01-01 3000-12-31` (§17.9) |
+| L16 | nhóm dự án | `docs/reports/BAO-CAO-JPL-L16.md` |
+| L17 | nhóm dự án | như trên |
+
+### 17.8 Phần mềm sinh bảng (thông tin, không bắt buộc với bên cài lại)
+
+Python 3.13, `skyfield==1.53`, `jplephem==2.23`, `numpy==2.5.4` (ghim trong `tools/jpl/requirements.txt`).
+Các bước 1–5 của §17.3 là quy đổi chuẩn `earth.at(t).observe(body).apparent().frame_latlon(ecliptic_frame)` của
+Skyfield (tuế sai IAU 2006, chương động IAU 2000A đầy đủ, độ nghiêng thật IAU 2006). Bên kiểm định nên dùng phần
+mềm và mã quy đổi khác (A4, L14).
+
+### 17.9 Kết xuất hộp đen
+
+`lvhv-dump --method jpl lunar-csv FROM TO` in mỗi ngày một dòng:
+`date,ly,lm,ld,leap,cc_year,cc_month,cc_day,tiet_khi` (ngày dương; năm/tháng/ngày âm, nhuận 0/1; Can Chi
+năm/tháng/ngày; tên tiết khí đang hiệu lực). `lvhv-dump --method jpl newmoons|terms` in thời điểm sự kiện theo giờ
+lịch. `lvhv-dump --method jpl dayinfo-jsonl` in JSON `day_info` đầy đủ.
+
 ## 14. Tài liệu tham khảo
 
 - Jean Meeus, *Astronomical Algorithms*, 2nd ed., Willmann-Bell, 1998 — ch.7 (ngày Julian),

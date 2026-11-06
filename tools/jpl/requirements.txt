@@ -1,0 +1,3 @@
+skyfield==1.53
+jplephem==2.23
+numpy==2.5.4
