@@ -585,8 +585,9 @@ Trăng tại thời điểm t, theo đúng chuỗi quy đổi chuẩn của IAU 
   *Lưu ý so với A4 mục 1 (ghi "1899-10-01 → 3001-03-31"):* với quy tắc §3, ngày âm của mọi ngày từ đầu tháng 11 âm
   năm 3000 (cuối tháng 11/3000) đến 3000-12-31 cần bảng tuế kết thúc ở tháng 11 âm năm **3001** (tức Sóc và Đông
   chí tháng 12/3001). Khoảng ghi trong A4 không đủ cho các ngày đó. Bảng vì vậy được **mở rộng** đến 3002-01-31; đây
-  là tập chứa khoảng của A4, mọi sự kiện thêm vào cũng chịu kiểm định L14 như các sự kiện khác. Chủ dự án cần xác
-  nhận điểm này (không phải nới tiêu chí: không ngưỡng nào thay đổi).
+  là tập chứa khoảng của A4, mọi sự kiện thêm vào cũng chịu kiểm định L14 như các sự kiện khác. Lý do: đây là tập
+  chứa kỹ thuật **cần thiết để đáp ứng dải ngày đã khóa của L15 (đến 3000-12-31)**; không tiêu chí hay ngưỡng nào
+  thay đổi. Chủ dự án được thông báo điểm này.
 
 ### 17.4 ΔT = TT − UT
 
@@ -645,7 +646,8 @@ Hai bản sao độc
 lập của bảng (tệp `Table-S15.2020.txt` phân phối kèm gói phần mềm thiên văn và bản nhúng trong thư viện Skyfield
 1.53) trùng nhau ở cả 34 hàng (kiểm 2026-11-07).
 
-**(b) 2019,0 ≤ Y < 2800,0 — đoạn nối Hermite bậc ba** (quy ước của dự án; xem "Vì sao" bên dưới). Với
+**(b) 2019,0 ≤ Y < 2800,0 — đoạn nối Hermite bậc ba: lựa chọn của dự án, các tác giả không công bố quy tắc nối**
+(xem "Vì sao" bên dưới; toàn văn bài 2021 không truy cập được từ môi trường làm việc). Với
 h = 781,0 và s = (Y − 2019,0)/h:
 
 > ΔT = h₀₀(s)·P₀ + h₁₀(s)·h·M₀ + h₀₁(s)·P₁ + h₁₁(s)·h·M₁,
@@ -664,6 +666,16 @@ Các tác giả **không công bố quy tắc nối** cho thời gian sau bảng
 Hermite (liên tục cả giá trị lẫn độ dốc) dài ~800 năm kết thúc đúng trên parabol tại một năm tròn trăm — cùng cách
 thư viện Skyfield nối bảng ΔT với chính parabol này (khoảng nối 800 năm, làm tròn xuống bội 100 năm). Từ 2800,0 trở
 đi ΔT đúng bằng parabol của các tác giả.
+
+**(d) Gia tốc thủy triều của Mặt Trăng — KHÔNG hiệu chỉnh.** Trang HM Nautical Almanac Office ghi các giá trị ΔT
+của bảng S15 dùng cùng lịch Mặt Trăng JPL DE430/LE430 (ṅ = −25,85″/thế kỷ²; bài 2016 ghi −25,82″/thế kỷ² cho
+DE430). Công thức hiệu chỉnh chuẩn khi dùng lịch có ṅ khác là c = −0,000091·(ṅ + 25,85)·(Y − 1955)² s. **Đặc tả
+ghim: không áp dụng hiệu chỉnh này ở bất kỳ đâu** — không cho đoạn (a), không cho đoạn nối (b), không cho parabol
+(c); ΔT dùng đúng như công thức (a)–(c). Lý do: (i) bài công bố DE440/DE441 (Park và cs. 2021) **không công bố**
+một giá trị ṅ số cho DE441 (đã đọc, 2026-11-07), nên không có giá trị có nguồn để đưa vào; (ii) DE441 cùng mô hình
+thủy triều với DE440 và được khớp với cùng loại dữ liệu đo laser Mặt Trăng như DE430, nên chênh ṅ (nếu có) nhỏ.
+Ước lượng ảnh hưởng nếu |ṅ_DE441 + 25,85| ≤ 0,2″/thế kỷ²: ≤ 0,04 s trong 1900–2019, ≤ 6 s năm 2500, ≤ 20 s năm 3000
+— nhỏ hơn nhiều độ bất định của chính ΔT ở các năm đó (§17.4 cuối). Bên cài lại **không** được áp dụng hiệu chỉnh.
 
 **Bảng giá trị kiểm tra** (từ cài đặt tham chiếu `tools/jpl/deltat.py`; bên cài lại nên khớp đến 1·10⁻⁶ s):
 
