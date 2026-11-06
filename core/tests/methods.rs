@@ -70,11 +70,11 @@ fn jpl_out_of_table_is_error() {
     let t = lvhv_core::jpl::table().expect("bảng Jpl");
     assert_eq!(lvhv_core::jpl::new_moon_ut(t.k0 - 1), None);
     assert_eq!(
-        lvhv_core::jpl::new_moon_ut(t.k0 + t.soc_ut.len() as i64),
+        lvhv_core::jpl::new_moon_ut(t.k0 + t.soc_cs.len() as i64),
         None
     );
-    assert_eq!(lvhv_core::jpl::term_at(t.tk_ut[0] - 1e-9), None);
-    assert_eq!(lvhv_core::jpl::term_at(*t.tk_ut.last().unwrap()), None);
+    assert_eq!(lvhv_core::jpl::term_at(t.tk_ut(0) - 1e-9), None);
+    assert_eq!(lvhv_core::jpl::term_at(t.tk_ut(t.tk_cs.len() - 1)), None);
     assert!(matches!(
         YearTable::new(Method::Jpl, 1899),
         Err(DateError::OutOfRange { .. })

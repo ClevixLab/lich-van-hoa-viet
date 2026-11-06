@@ -122,14 +122,39 @@ pub struct Table {
     pub k0: i64,
     /// n (0,01 s TT) của từng Sóc.
     pub soc_cs: Vec<i64>,
-    /// JD (UT) của từng Sóc.
-    pub soc_ut: Vec<f64>,
     /// Chỉ số (0..23) của tiết khí đầu tiên.
     pub i0: usize,
     /// n (0,01 s TT) của từng tiết khí (theo thời gian).
     pub tk_cs: Vec<i64>,
-    /// JD (UT) của từng tiết khí.
-    pub tk_ut: Vec<f64>,
+}
+
+/// JD (UT) của thời điểm n (0,01 s TT). ΔT luôn xác định trong bảng (đã kiểm khi giải mã: Y ≥ 1899,7).
+fn ut_of(n: i64) -> f64 {
+    tt_to_ut(jd_tt_of(n)).unwrap_or(f64::NAN)
+}
+
+impl Table {
+    /// JD (UT) của Sóc thứ j trong bảng (tính khi cần — giải mã lần đầu rẻ, P1).
+    pub fn soc_ut(&self, j: usize) -> f64 {
+        ut_of(self.soc_cs[j])
+    }
+    /// JD (UT) của tiết khí thứ j trong bảng.
+    pub fn tk_ut(&self, j: usize) -> f64 {
+        ut_of(self.tk_cs[j])
+    }
+    /// Số tiết khí j có `pred(tk_ut(j))` đúng, với `pred` đúng ở một đoạn đầu (như `partition_point`).
+    fn tk_partition(&self, pred: impl Fn(f64) -> bool) -> usize {
+        let (mut lo, mut hi) = (0usize, self.tk_cs.len());
+        while lo < hi {
+            let mid = lo + (hi - lo) / 2;
+            if pred(self.tk_ut(mid)) {
+                lo = mid + 1;
+            } else {
+                hi = mid;
+            }
+        }
+        lo
+    }
 }
 
 struct Reader<'a> {
@@ -193,21 +218,19 @@ fn decode(b: &[u8]) -> Option<Table> {
     if r.pos != b.len() {
         return None;
     }
-    let ut =
-        |v: &Vec<i64>| -> Option<Vec<f64>> { v.iter().map(|&n| tt_to_ut(jd_tt_of(n))).collect() };
-    let soc_ut = ut(&soc)?;
-    let tk_ut = ut(&tk)?;
-    // Bất biến: tăng ngặt.
-    if soc_ut.windows(2).any(|w| w[1] <= w[0]) || tk_ut.windows(2).any(|w| w[1] <= w[0]) {
-        return None;
+    // Bất biến: tăng ngặt, trong phạm vi bảng (ΔT xác định cho mọi phần tử).
+    let start = ((JD_TT_START - 2451545.0) * 8640000.0) as i64;
+    let end = ((JD_TT_END - 2451545.0) * 8640000.0) as i64;
+    for v in [&soc, &tk] {
+        if v.windows(2).any(|w| w[1] <= w[0]) || v[0] < start || v[v.len() - 1] >= end {
+            return None;
+        }
     }
     Some(Table {
         k0,
         soc_cs: soc,
-        soc_ut,
         i0,
         tk_cs: tk,
-        tk_ut,
     })
 }
 
@@ -221,28 +244,28 @@ pub fn table() -> Option<&'static Table> {
 pub fn new_moon_ut(k: i64) -> Option<f64> {
     let t = table()?;
     let j = usize::try_from(k.checked_sub(t.k0)?).ok()?;
-    t.soc_ut.get(j).copied()
+    (j < t.soc_cs.len()).then(|| t.soc_ut(j))
 }
 
 /// Chỉ số (0..23) của tiết khí muộn nhất có JD_UT ≤ `jd_ut` (§17.6.3–4). `None` nếu `jd_ut` trước tiết
 /// khí đầu tiên hoặc không trước tiết khí cuối cùng của bảng (khi đó không chắc không có tiết khí nào sau).
 pub fn term_at(jd_ut: f64) -> Option<usize> {
     let t = table()?;
-    let last = *t.tk_ut.last()?;
-    if jd_ut.is_nan() || jd_ut < t.tk_ut[0] || jd_ut >= last {
+    let last = t.tk_ut(t.tk_cs.len() - 1);
+    if jd_ut.is_nan() || jd_ut < t.tk_ut(0) || jd_ut >= last {
         return None;
     }
     // số phần tử ≤ jd_ut, ≥ 1
-    let cnt = t.tk_ut.partition_point(|&x| x <= jd_ut);
+    let cnt = t.tk_partition(|x| x <= jd_ut);
     Some((t.i0 + cnt - 1) % 24)
 }
 
 /// Các tiết khí (chỉ số, JD UT) có JD_UT trong [from_ut, to_ut).
 pub fn terms_between(from_ut: f64, to_ut: f64) -> Option<Vec<(usize, f64)>> {
     let t = table()?;
-    let a = t.tk_ut.partition_point(|&x| x < from_ut);
-    let b = t.tk_ut.partition_point(|&x| x < to_ut);
-    Some((a..b).map(|j| ((t.i0 + j) % 24, t.tk_ut[j])).collect())
+    let a = t.tk_partition(|x| x < from_ut);
+    let b = t.tk_partition(|x| x < to_ut);
+    Some((a..b).map(|j| ((t.i0 + j) % 24, t.tk_ut(j))).collect())
 }
 
 /// Ngày lịch D của tiết khí tại `t` (JD UT) theo nghĩa của `term_at`: D = ngày nhỏ nhất có 00:00 đầu ngày
@@ -267,8 +290,10 @@ fn term_day(t: f64) -> i64 {
 pub fn days_ts_source() -> Option<String> {
     use crate::astro::local_day_of;
     let t = table()?;
-    let soc: Vec<i64> = t.soc_ut.iter().map(|&x| local_day_of(x)).collect();
-    let tk: Vec<i64> = t.tk_ut.iter().map(|&x| term_day(x)).collect();
+    let soc: Vec<i64> = (0..t.soc_cs.len())
+        .map(|j| local_day_of(t.soc_ut(j)))
+        .collect();
+    let tk: Vec<i64> = (0..t.tk_cs.len()).map(|j| term_day(t.tk_ut(j))).collect();
     let mut sd = String::with_capacity(soc.len());
     for w in soc.windows(2) {
         let d = w[1] - w[0];
@@ -345,11 +370,11 @@ mod tests {
         assert!(jd_tt_of(t.soc_cs[0]) >= JD_TT_START && jd_tt_of(t.tk_cs[0]) >= JD_TT_START);
         assert!(*t.soc_cs.last().unwrap() < ((JD_TT_END - 2451545.0) * 8640000.0) as i64);
         // Khoảng cách hợp lý.
-        for w in t.soc_ut.windows(2) {
-            assert!((29.2..29.9).contains(&(w[1] - w[0])));
+        for j in 1..t.soc_cs.len() {
+            assert!((29.2..29.9).contains(&(t.soc_ut(j) - t.soc_ut(j - 1))));
         }
-        for w in t.tk_ut.windows(2) {
-            assert!((14.6..15.8).contains(&(w[1] - w[0])));
+        for j in 1..t.tk_cs.len() {
+            assert!((14.6..15.8).contains(&(t.tk_ut(j) - t.tk_ut(j - 1))));
         }
     }
 }

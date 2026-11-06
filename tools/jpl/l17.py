@@ -38,7 +38,7 @@ def main():
     with open(os.path.join(ROOT, 'oracle', 'reference', 'tet_published_1900_1999.csv'), encoding='utf-8') as f:
         for r in csv.DictReader(f):
             src[int(r['lunar_year'])].append(r)
-    per_source = defaultdict(lambda: [0, 0])
+    per_source = defaultdict(lambda: [0, 0, []])
     agree_years = conflict_years = 0
     bad = []
     for y in range(1900, 2000):
@@ -46,6 +46,8 @@ def main():
         for r in src[y]:
             per_source[r['source_id']][1] += 1
             per_source[r['source_id']][0] += r['tet_date'] == tj[y]
+            if r['tet_date'] != tj[y]:
+                per_source[r['source_id']][2].append(f"{y} ({r['tet_date']})")
         dates = {r['tet_date'] for r in vn}
         if not vn:
             bad.append((y, 'không có nguồn VN'))
@@ -63,7 +65,8 @@ def main():
     print(f'- Năm nguồn VN thống nhất: {agree_years}; năm mâu thuẫn: {conflict_years} (chấm theo A3).')
     print('- Khớp theo từng nguồn (số dòng khớp / số dòng):')
     for k in sorted(per_source):
-        print(f'  - {k}: {per_source[k][0]}/{per_source[k][1]}')
+        miss = per_source[k][2]
+        print(f'  - {k}: {per_source[k][0]}/{per_source[k][1]}' + (f' — lệch: {", ".join(miss)}' if miss else ''))
     print(f'- Sai lệch theo cách chấm A3: {len(bad)} {bad}')
     print(f'- L9 với Jpl: {"ĐẠT (theo A3)" if not bad else "KHÔNG ĐẠT"}')
 

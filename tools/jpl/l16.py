@@ -13,6 +13,7 @@ import argparse
 import datetime as dt
 import gzip
 import json
+import os
 import subprocess
 import sys
 from collections import defaultdict
@@ -180,6 +181,20 @@ def main():
         w('| Sự kiện | Precise | Jpl | Cách nửa đêm Precise / Jpl |\n|---|---|---|---|\n')
         for e in unused:
             w(f'| {e[0][0]} {e[0][1]} | {e[1]} | {e[2]} | {midnight_dist(e[1])} s / {midnight_dist(e[2])} s |\n')
+        # L17: Tết 1900–1999 (cách chấm A3) + TK20.
+        l17 = subprocess.run([sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'l17.py'),
+                              '--dump', a.dump], check=True, capture_output=True, text=True).stdout
+        w('\n## L17 — L9 (Tết 1900–1999) và bảng 1900–1999 của Hồ Ngọc Đức, chạy lại với `Jpl`\n\n')
+        w('Nguồn Tết: `oracle/reference/tet_published_1900_1999.csv`; cách chấm A3 (năm nguồn Việt Nam mâu thuẫn 1903, '
+          '1925, 1935, 1965 chấm theo nguồn tuân thủ quy ước lịch sử — biên bản G1–G4). Sinh bởi `tools/jpl/l17.py`.\n\n')
+        w(l17)
+        w('\nBảng TK20 (1237 tháng âm của năm âm 1900–1999, mã nguồn `amlich` của Hồ Ngọc Đức): `Jpl` trùng '
+          '**1237/1237** tháng (test `core/tests/range1900.rs::tk20_month_starts_1900_1999`; Precise 1237/1237, '
+          'Hnd 1233/1237).\n\n')
+        l9ok = 'L9 với Jpl: ĐẠT (theo A3)' in l17
+        w(f'Kết luận L17: **{"ĐẠT (L9 theo cách chấm A3; TK20 1237/1237)" if l9ok else "KHÔNG ĐẠT"}**. '
+          f'Ghi chú: ngày đầu tiên `Jpl` khác `Precise` là {segs[0][0] if segs else "không có"}; trước đó hai '
+          'phương pháp cho cùng ngày âm, Can Chi và tiết khí ở mọi ngày.\n')
     print(f'[l16] ngày khác {ndays}, đoạn {len(segs)}, nguyên nhân khác {other}, sự kiện khác ngày {len(disc)}',
           file=sys.stderr)
 

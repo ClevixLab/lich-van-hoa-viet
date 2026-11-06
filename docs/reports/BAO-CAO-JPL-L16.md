@@ -140,3 +140,23 @@ Trường so: năm/tháng/ngày âm, nhuận, Can Chi năm/tháng/ngày, tên ti
 
 | Sự kiện | Precise | Jpl | Cách nửa đêm Precise / Jpl |
 |---|---|---|---|
+
+## L17 — L9 (Tết 1900–1999) và bảng 1900–1999 của Hồ Ngọc Đức, chạy lại với `Jpl`
+
+Nguồn Tết: `oracle/reference/tet_published_1900_1999.csv`; cách chấm A3 (năm nguồn Việt Nam mâu thuẫn 1903, 1925, 1935, 1965 chấm theo nguồn tuân thủ quy ước lịch sử — biên bản G1–G4). Sinh bởi `tools/jpl/l17.py`.
+
+- Tết Jpl = Tết Precise: 100/100 năm.
+- Năm nguồn VN thống nhất: 96; năm mâu thuẫn: 4 (chấm theo A3).
+- Khớp theo từng nguồn (số dòng khớp / số dòng):
+  - HKO_CN_SUPPORT: 4/5 — lệch: 1968 (1968-01-30)
+  - SUPPORT_SADPONY_BLOG: 1/1
+  - VN_BAOLAMDONG: 1/1
+  - VN_CHOGIA: 7/10 — lệch: 1903 (1903-01-28), 1935 (1935-02-03), 1965 (1965-02-01)
+  - VN_WIKIPEDIA_VI_COPY: 5/5
+  - VN_XEMLICHAM: 102/103 — lệch: 1925 (1925-01-25)
+- Sai lệch theo cách chấm A3: 0 []
+- L9 với Jpl: ĐẠT (theo A3)
+
+Bảng TK20 (1237 tháng âm của năm âm 1900–1999, mã nguồn `amlich` của Hồ Ngọc Đức): `Jpl` trùng **1237/1237** tháng (test `core/tests/range1900.rs::tk20_month_starts_1900_1999`; Precise 1237/1237, Hnd 1233/1237).
+
+Kết luận L17: **ĐẠT (L9 theo cách chấm A3; TK20 1237/1237)**. Ghi chú: ngày đầu tiên `Jpl` khác `Precise` là 2077-11-15; trước đó hai phương pháp cho cùng ngày âm, Can Chi và tiết khí ở mọi ngày.
