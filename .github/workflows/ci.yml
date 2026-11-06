@@ -42,6 +42,12 @@ jobs:
             echo "::error::Tìm thấy unsafe trong core/src (tiêu chí S1)"; exit 1
           fi
           grep -q '#!\[forbid(unsafe_code)\]' core/src/lib.rs
+          grep -q '#!\[forbid(unsafe_code)\]' memorial/src/lib.rs
+          if grep -rn --include='*.rs' -E '\bunsafe\b' memorial/src | grep -vE '^[^:]+:[0-9]+:[[:space:]]*(//|#!\[forbid\(unsafe_code\)\])'; then
+            echo "::error::Tìm thấy unsafe trong memorial/src"; exit 1
+          fi
+          # lvhv-memorial chỉ phụ thuộc lvhv-core (docs/v0.2/05 §2)
+          test "$(cargo tree -p lvhv-memorial -e normal --prefix none | sort -u | awk '{print $1}' | tr '\n' ' ')" = "lvhv-core lvhv-memorial lvhv-ngochap "
       - name: FFI — sinh lại mã Kotlin/Swift và so với ffi/generated
         run: |
           cargo build -p lvhv-ffi --release --lib
@@ -59,6 +65,25 @@ jobs:
           name: ffi-bindings
           path: ${{ runner.temp }}/gen
           retention-days: 14
+
+  memorial-parity:
+    name: v0.2 lvhv-memorial — Rust ≡ TypeScript (R1/R3/R10/R11/R12/.ics)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: pwa/package-lock.json
+      - name: npm ci (pwa — tsc/esbuild cho tsport)
+        working-directory: pwa
+        run: npm ci
+      - name: check-parity.sh --memorial-only
+        run: scripts/check-parity.sh --memorial-only
 
   deps:
     name: Kiểm tra phụ thuộc (cargo-deny advisories)

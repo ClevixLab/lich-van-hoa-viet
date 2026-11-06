@@ -338,3 +338,50 @@ chứng ở G1, sẽ đo ở R4 (`04`).
   (1900-01-01, 3000-12-31 — giỗ có ngày dương ngoài miền trả `None`, không lỗi); sinh 29/02/2000 (năm 2100 không nhuận →
   28/02/2100); nhắc 15 ngày trước một giỗ đầu tháng Giêng (rơi vào năm dương trước); offset 60 qua ranh giới năm;
   `time_local = "00:00"` và `"23:59"`.
+
+## Phụ lục A — Định dạng tệp dump kiểm định (bổ sung 2026-11-06, đợt 1, trước khi có kết quả kiểm định)
+
+Phụ lục này **chỉ bổ sung** định dạng tệp mà 04 chưa định nghĩa; không đổi quy tắc nào ở §1–§9. Công cụ:
+`lvhv-memorial-dump` (Rust, crate `memorial/`) và bản đôi `tsport/test/memorial_dump.mjs` (TypeScript) nhận cùng lệnh
+và cho cùng từng byte (`scripts/check-parity.sh`, phần 6). Mọi ngày dạng `YYYY-MM-DD`; giờ đồng hồ thiết bị dạng
+`YYYY-MM-DDTHH:MM`; phương pháp lịch mặc định `Precise` (`--method hnd` để đối chiếu).
+
+**A.1 R1 — `gio-dates` (JSONL, đúng mẫu 04 R1).** Mỗi dòng một lần giỗ:
+`{"death":DateValue,"Y":Y,"lunar":{"y":Y,"m":m,"d":d'},"solar":{"y":…,"m":…,"d":…},"n":n|null,"label":"gio|gio_dau|gio_het"}`.
+`death` là `DateValue` nhập (01 §2.1, thứ tự khóa `calendar, precision, year, month, day, leap`). Thứ tự dòng: theo
+ngày mất nhập rồi theo Y tăng dần; năm có ngày dương ngoài miền bị bỏ (§2.2). `gio_het_nam` = 2 (`--gio-het 3` để đổi).
+- `gio-dates solar FROM TO [N]` — 04 R1(a): mọi ngày mất dương, Y = năm âm mất + 1 … + N (mặc định 10).
+- `gio-dates unknown FROM_Y TO_Y` — 04 R1(b): tháng 1…12 × ngày 1…30 × `leap` ∈ {false, true} (720 đầu vào), Y = FROM_Y … TO_Y.
+- `gio-dates lunar FROM_Y TO_Y [N]` — 04 R1(c): mọi ngày âm tồn tại của năm âm (theo tháng 1…12, tháng thường trước tháng nhuận cùng số).
+- `gio-dates list FILE [N]` — mỗi dòng của FILE là một `DateValue` JSON; ngày không rõ năm dùng Y = 1900 … 3000.
+
+**A.2 R3 — `reminders`.** `reminders configs` → `cfg,presets,custom,offsets,tien_thuong,time_local,class` (140 544
+dòng): `cfg` = chỉ số 0…; thứ tự lồng: mask nút có sẵn 0…63 (bit i ↔ {0,1,3,5,10,15}[i]) → mốc tự đặt (trống, 1…60)
+→ `tien_thuong` (0, 1) → `time_local` (00:00, 07:00, 23:59) → `class` (`gio`, `sinh_nhat`, `sinh_nhat_am`,
+`su_kien_duong_lap`, `su_kien_am_lap`, `su_kien_khong_lap`). `presets`/`offsets` ngăn bằng dấu cách; `offsets` là tập
+sau khi gộp. `reminders DATASET [FROM TO]` → `cfg,id,at_local,type,occ_date`: với mỗi cấu hình, mọi lần xuất hiện của
+lớp đó trong bộ dữ liệu có ngày trong [FROM, TO] (mặc định 2026-01-01 … 2036-12-31), mỗi lần dùng quy tắc của bản ghi
+với `offsets_days`/`tien_thuong`/`time_local` thay bằng cấu hình (`id` giữ nguyên), `reminders_enabled = true`, `now` =
+2026-01-01T00:00 giờ thiết bị, múi giờ +07:00. `type` = `k=<số>` hoặc `tt`. Dòng sắp theo (cfg, thời điểm, id).
+Bộ dữ liệu cố định 40 hồ sơ/sự kiện: `memorial/testdata/r3-dataset.json` (sinh từ `make_r3_dataset.py` + `derive`).
+
+**A.3 R11 — `upcoming DATASET FROM TO`** → `today,rank,days,date,class,entity_id,key,n,label`: với mỗi hôm nay,
+danh sách §7.2 theo thứ tự hiển thị (`rank` 0…); `class` thêm `tien_thuong`; `key` = năm âm/dương hoặc `once`;
+`n`, `label` trống khi không có. Phân xử thêm (sau tên, để xác định): lớp, id thực thể, khóa năm.
+
+**A.4 R10 — `r10 a|b|c|d`.** (a) `birth,lunar_year,can_chi` cho mọi ngày sinh dương 1900-01-01 … 2026-12-31;
+(b) `lunar_year,can_chi` 1899 … 3000; (c) `i,birth,death,nguong,birth_lunar_year,approx,death_lunar_year,value,label,error`
+cho 10 000 cặp từ bộ sinh mulberry32 hạt 20261106 (kiểu sinh xoay vòng dương-đủ/dương-năm/âm-đủ/âm-năm, kiểu mất xoay
+dương-đủ/âm-đủ, ngưỡng xoay 59/60/61; `birth`, `death` là `DateValue` JSON trong ngoặc kép CSV); (d) `year,rule,date`
+cho sinh 29/02 (gốc 29/02/1896), mọi năm 1900 … 3000 × `feb28`/`mar1`.
+
+**A.5 R12 — `r12 DATASET [--steps]`** → `size,scenario,opens,max_pending,delivered,sentinel_delivered,violations,missed,missed_without_sentinel`
+cho cỡ 10/50/200 (bản ghi thứ i = bản ghi i mod 40 của bộ R3, id đổi 8 ký tự đầu thành i dạng hex) × kịch bản `p1`,
+`p0.1`, `p0`; mô phỏng 2026-01-01 … 2028-12-31, mở ứng dụng lúc 09:00 (ngày đầu luôn mở; `p0.1` dùng mulberry32 hạt
+20261106, một số mỗi ngày). `--steps` thêm khối `size,scenario,day,future,pending,sentinel,dropped,violations` cho mỗi
+lần mở. Bất biến: I1 ≤ 64 chờ; I2 63 sớm nhất + thông báo nhắc mở ứng dụng tại `at₆₃ + 1 phút`; I3 mọi lời nhắc bị bỏ có
+`at ≥` thông báo nhắc mở ứng dụng.
+
+**A.6 .ics — `ics DATASET TODAY DTSTAMP`**: tệp §8 cho mọi mục có quy tắc nhắc bật, `[TODAY, TODAY + 10 năm)`. Chi
+tiết đã chọn trong phạm vi §8: thứ tự VEVENT theo §7.2; VALARM theo `offsets_days` giảm dần (như ví dụ §8.1);
+`TRIGGER` bằng 0 viết `PT0S`; VEVENT tiên thường có SUMMARY `Tiên thường — …` và một VALARM nội dung tiên thường.

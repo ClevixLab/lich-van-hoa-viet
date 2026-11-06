@@ -13,6 +13,7 @@ và các dòng dưới đây được viết lại thành ghi chú cho người 
 - Nhắc trước 1, 3, 5, 10, 15 ngày hoặc tự đặt, cả khi không có mạng; danh sách "Sắp tới" 30 ngày; xuất lịch .ics.
 - Màn hình tưởng niệm ngày giỗ: bia, ảnh, mâm lễ, ba nén hương.
 - Dữ liệu chỉ lưu trên máy; sao lưu ra tệp có mật khẩu.
+- (Đợt 1, nội bộ) Lõi tính ngày giỗ, tuổi, lời nhắc và tệp .ics (`memorial/`, `tsport/src/memorial*.ts`), chưa có giao diện.
 
 ## [0.1.1] — 2026-11-06
 
