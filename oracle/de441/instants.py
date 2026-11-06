@@ -52,29 +52,36 @@ def jd_of(y, m, d):
 
 
 class Ephem:
-    """Doc doan SPK theo khoang thoi gian; part-1 truoc moc tach, part-2 tu moc tach."""
+    """Doc cac doan SPK (mot tep de441.bsp co hai doan cho moi cap than, hoac hai tep part-1/part-2).
+
+    Moi cap (tam, dich) co the co nhieu doan noi tiep, chong lan nhau mot khoang ngan (DE441: quanh
+    1969). Moc tach giua doan i va i+1: 1969-01-01 neu nam trong vung chung (cach bien >= 2 ngay), neu
+    khong thi dau doan i+1 + 2 ngay. Truoc moc tach dung doan i, tu moc tach dung doan i+1.
+    """
+
+    PAIRS = [(0, 3), (3, 399), (3, 301), (0, 10)]
 
     def __init__(self, paths):
-        self.kernels = []
-        for p in paths:
-            k = SPK.open(p)
-            starts = [s.start_jd for s in k.segments]
-            ends = [s.end_jd for s in k.segments]
-            self.kernels.append((max(starts), min(ends), k, p))
-        self.kernels.sort(key=lambda x: x[0])
-        if len(self.kernels) == 2:
-            # moc tach: 1969-01-01 neu nam trong vung chung; neu khong, dau part-2 + 2 ngay
-            s2 = self.kernels[1][0]
-            e1 = self.kernels[0][1]
-            split = jd_of(1969, 1, 1)
-            if not (s2 + 2 <= split <= e1 - 2):
-                split = s2 + 2.0
-            self.split = split
-        else:
-            self.split = None
-
-    def _seg(self, kern, c, t):
-        return kern[c, t]
+        self.paths = list(paths)
+        self.files = [SPK.open(p) for p in self.paths]
+        self.segs = {}
+        for pair in self.PAIRS:
+            lst = []
+            for k in self.files:
+                lst += [s for s in k.segments if (s.center, s.target) == pair]
+            lst.sort(key=lambda s: s.start_jd)
+            assert lst, pair
+            splits = []
+            for s1, s2 in zip(lst, lst[1:]):
+                assert s2.start_jd < s1.end_jd, "hai doan khong noi tiep"
+                sp = jd_of(1969, 1, 1)
+                if not (s2.start_jd + 2 <= sp <= s1.end_jd - 2):
+                    sp = s2.start_jd + 2.0
+                splits.append(sp)
+            self.segs[pair] = (lst, np.array(splits))
+        self.lo = max(v[0][0].start_jd for v in self.segs.values())
+        self.hi = min(v[0][-1].end_jd for v in self.segs.values())
+        self.splits = sorted(set(float(x) for v in self.segs.values() for x in v[1]))
 
     def posvel(self, c, t, tdb1, tdb2):
         """Vector vi tri (km) va van toc (km/ngay), shape (3, n)."""
@@ -83,16 +90,13 @@ class Ephem:
         n = tdb1.size
         pos = np.empty((3, n))
         vel = np.empty((3, n))
-        if self.split is None:
-            groups = [(np.ones(n, bool), self.kernels[0][2])]
-        else:
-            m2 = (tdb1 + tdb2) >= self.split
-            groups = [(~m2, self.kernels[0][2]), (m2, self.kernels[1][2])]
-        for mask, k in groups:
-            if mask.any():
-                p, v = k[c, t].compute_and_differentiate(tdb1[mask], tdb2[mask])
-                pos[:, mask] = p
-                vel[:, mask] = v
+        lst, splits = self.segs[(c, t)]
+        idx = np.searchsorted(splits, tdb1 + tdb2, side="right")
+        for i in np.unique(idx):
+            mask = idx == i
+            p, v = lst[i].compute_and_differentiate(tdb1[mask], tdb2[mask])
+            pos[:, mask] = p
+            vel[:, mask] = v
         return pos, vel
 
 
@@ -258,7 +262,7 @@ def sha256(path):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--bsp1", required=True)
+    ap.add_argument("--bsp1", required=True, help="de441.bsp (hoac part-1)")
     ap.add_argument("--bsp2")
     ap.add_argument("--out", required=True)
     ap.add_argument("--nutation", default="2000A", choices=["2000A", "2000B"])
@@ -269,8 +273,8 @@ def main():
     paths = [a.bsp1] + ([a.bsp2] if a.bsp2 else [])
     eph = Ephem(paths)
     red = Reducer(eph, a.nutation)
-    lo = max(a.start, eph.kernels[0][0] + 40)
-    hi = min(a.end, eph.kernels[-1][1] - 40)
+    lo = max(a.start, eph.lo + 40)
+    hi = min(a.end, eph.hi - 40)
     chunks_nm, chunks_t = [], []
     step = 36525.0  # tung the ky de gioi han bo nho
     s = lo
@@ -298,8 +302,8 @@ def main():
         for p in paths:
             f.write("# kernel %s size=%d sha256=%s\n" % (os.path.basename(p), os.path.getsize(p),
                                                         "-" if a.no_hash else sha256(p)))
-        if eph.split is not None:
-            f.write("# split_jd_tdb=%.1f (%s)\n" % (eph.split, jd_to_iso(eph.split)))
+        for sp in eph.splits:
+            f.write("# segment_split_jd_tdb=%.1f (%s)\n" % (sp, jd_to_iso(sp)))
         f.write("# max_residual_s newmoon=%.6f term=%.6f\n" % (nm_r.max(), tm_r.max()))
         f.write("kind,lon_deg,jd_tt,tt_iso,resid_s\n")
         ev = [(t, "newmoon", 0, r) for t, r in zip(nm_t, nm_r)] + \

@@ -69,6 +69,7 @@ jobs:
           get Table-S15.txt http://astro.ukho.gov.uk/nao/lvm/Table-S15.txt
           get Table-S15.2020.opensuse.txt "https://src.opensuse.org/pool/python-skyfield/raw/branch/factory/Table-S15.2020.txt"
           get hpiers_longterm_dir.html https://hpiers.obspm.fr/eoppc/series/longterm/
+          get hmnao_a_2021.eop https://hpiers.obspm.fr/eoppc/series/longterm/hmnao_a_2021.eop
           # Bảng TK20 (1900–1999) do Hồ Ngọc Đức công bố trong mã nguồn amlich (để kiểm L17)
           get hnd_amlich-hnd.js https://www.informatik.uni-leipzig.de/~duc/amlich/JavaScript/amlich-hnd.js
           get hnd_amlich_index.html https://www.informatik.uni-leipzig.de/~duc/amlich/
@@ -104,25 +105,24 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/de441
-          key: verifier-de441-part1-part2-v1
-      - name: Tải DE441 (part-1, part-2)
+          key: verifier-de441-full-v1
+      - name: Tải DE441
         if: steps.task.outputs.task == 'instants'
         run: |
           mkdir -p ~/de441 && cd ~/de441
-          for p in 1 2; do
-            f=de441_part-$p.bsp
-            if [ ! -s "$f" ]; then curl -fL --retry 5 --retry-delay 10 -o "$f" "https://ssd.jpl.nasa.gov/ftp/eph/planets/bsp/$f"; fi
-          done
+          # Thư mục JPL hiện chỉ còn de441.bsp (hai đoạn mỗi thân, nối quanh 1969); thử tệp part-1/part-2 nếu cần.
+          if [ ! -s de441.bsp ]; then
+            curl -fL --retry 5 --retry-delay 10 -o de441.bsp.part https://ssd.jpl.nasa.gov/ftp/eph/planets/bsp/de441.bsp && mv de441.bsp.part de441.bsp
+          fi
           ls -la
       - name: instants
         if: steps.task.outputs.task == 'instants'
         run: |
           mkdir -p oracle/de441/out
-          python3 -I oracle/de441/instants.py --bsp1 ~/de441/de441_part-1.bsp --bsp2 ~/de441/de441_part-2.bsp \
+          python3 -I oracle/de441/instants.py --bsp1 ~/de441/de441.bsp \
               --out oracle/de441/out/instants_tt.csv.gz 2>&1 | tee oracle/de441/out/instants_log.txt
-          python3 -I oracle/de441/overlap_check.py ~/de441/de441_part-1.bsp ~/de441/de441_part-2.bsp \
-              > oracle/de441/out/overlap_check.txt 2>&1 || true
-          python3 -I oracle/de441/instants.py --bsp1 ~/de441/de441_part-1.bsp --bsp2 ~/de441/de441_part-2.bsp \
+          python3 -I oracle/de441/overlap_check.py ~/de441/de441.bsp > oracle/de441/out/overlap_check.txt 2>&1 || true
+          python3 -I oracle/de441/instants.py --bsp1 ~/de441/de441.bsp \
               --nutation 2000B --no-hash --out oracle/de441/out/instants_tt_nut2000B.csv.gz 2>&1 | tail -1
           pip freeze > oracle/de441/out/pip_freeze_instants.txt
           python3 --version >> oracle/de441/out/pip_freeze_instants.txt
