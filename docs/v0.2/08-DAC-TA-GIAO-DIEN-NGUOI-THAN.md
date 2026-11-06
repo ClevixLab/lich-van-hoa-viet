@@ -474,7 +474,7 @@ trên mục giỗ của hôm nay ở "Sắp tới".
 **L6 — Sắp tới**: mở "Người thân" → danh sách 30 ngày; mục hôm nay ghi "Hôm nay", ngày mai "Ngày mai".
 
 **L7 — Thẻ nhắc trong ứng dụng**
-1. Người dùng mở ứng dụng (bất kỳ trang nào, thường là "Tờ lịch") vào ngày có lời nhắc đến hạn: ngày `D − k` với `k` trong
+1. Người dùng mở ứng dụng ở "Tờ lịch" (trang mở đầu) hoặc "Người thân › Sắp tới" vào ngày có lời nhắc đến hạn: ngày `D − k` với `k` trong
    `offsets_days` của một lần xuất hiện có nhắc bật, hoặc ngày tiên thường `D − 1` khi bật.
 2. Đầu trang hiện thẻ: "Còn 3 ngày: Giỗ đầu Ông Nguyễn Văn A" / dòng phụ "Thứ Ba, 28/07/2026 — 15/6 âm lịch" (02 §7.1).
    Đúng ngày giỗ: "Hôm nay: Giỗ đầu …" + nút "Mở trang tưởng niệm".
@@ -647,3 +647,20 @@ Không `blob:` trong `img-src`; ảnh luôn vẽ vào `<canvas>` (`createImageBi
   dùng giá trị trong cài đặt, chưa có màn hình sửa.
 - Danh sách theo **tháng/năm âm lịch** (07 §9 câu 3): để đợt sau theo mặc định của chủ dự án.
 - Đo R8 (CPU, số lần rAF) và P4 trạng thái "200 hồ sơ" / "tưởng niệm sau 120 s": chưa có trong kiểm thử khói đợt này.
+
+## 12. Sai khác khi cài đặt (ghi trong cùng PR, 2026-11-07)
+
+Các điểm dưới đây được đổi hoặc làm rõ khi cài; phần trên đã sửa theo, mô tả PR liệt kê lại.
+
+1. **Thẻ nhắc khi mở ứng dụng** chỉ hiện ở "Tờ lịch" và "Sắp tới" (không ở mọi trang): ở các trang biểu mẫu, hồ sơ,
+   tưởng niệm, thẻ nhắc chen vào đầu trang làm rối và đẩy nội dung xuống. L7 đã sửa câu chữ.
+2. **Dòng "Dương lịch"** trên hồ sơ người đã mất chỉ hiện khi ngày mất nhập theo âm lịch (khi nhập dương, nó trùng dòng
+   "Ngày mất (đã nhập)").
+3. **Ghi chú** của hồ sơ và của sự kiện nằm trong nhóm đầu của biểu mẫu (không có nhóm "Ghi chú" riêng — nhãn bị lặp).
+   Nhóm nhắc có hộp "Bật nhắc" thay vì lặp lại tiêu đề nhóm.
+4. **Thông báo ngắn** ("Đã lưu hồ sơ.", "Đã xóa hồ sơ.") được mang sang trang kế tiếp khi lưu/xóa xong rồi chuyển trang.
+5. **Khôi phục "Thay toàn bộ"** thay cả cài đặt bằng cài đặt trong tệp (hành vi của lớp lưu trữ đợt 2, 01 §6.3), nên
+   "Lần sao lưu gần nhất" trở về giá trị lúc xuất tệp (thường là "Chưa sao lưu lần nào"). Chưa sửa ở đợt này — cần quyết
+   định của vai lưu trữ (giữ `last_backup_at` của máy hay của tệp).
+6. **R8 trong kiểm thử khói** chỉ kiểm phần đo được nhanh: khói là CSS (`smokeRise`), nút dừng, 0 lần
+   `requestAnimationFrame`, giảm chuyển động → tĩnh, không audio/video. Đo CPU 120 s / 60 s theo 04 R8 chưa làm.

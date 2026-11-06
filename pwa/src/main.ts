@@ -14,7 +14,7 @@ import { applyUpdate, attachRegistration, autoCheck, onUpdateResult } from "./up
 import * as storage from "./storage";
 import type { SolarDate } from "./types";
 
-type Route = "ngay" | "chon-ngay" | "doi-ngay" | "gioi-thieu" | "nguon-quy-tac";
+type Route = "ngay" | "chon-ngay" | "doi-ngay" | "nguoi-than" | "gioi-thieu" | "nguon-quy-tac";
 /** Trang con không có tab riêng → tab được đánh dấu. */
 const PARENT: Partial<Record<Route, Route>> = { "nguon-quy-tac": "gioi-thieu" };
 
@@ -26,6 +26,8 @@ const state = {
   detailsOpen: false,
   gdState: null as ReturnType<ReturnType<typeof renderGoodDays>> | null,
   gdGetter: null as null | (() => ReturnType<ReturnType<typeof renderGoodDays>>),
+  /** Phần sau `#/nguoi-than/` (mô-đun Người thân, docs/v0.2/08 §1.2). */
+  sub: "",
 };
 
 declare global {
@@ -49,6 +51,7 @@ const TABS: Array<[Route, string, string]> = [
   ["ngay", "Tờ lịch", I.sheet],
   ["chon-ngay", "Chọn ngày tốt", I.star],
   ["doi-ngay", "Đổi ngày", I.swap],
+  ["nguoi-than", "Người thân", I.people],
   ["gioi-thieu", "Giới thiệu", I.info],
 ];
 
@@ -81,7 +84,10 @@ const dialog = h("dialog", { class: "mdialog", "aria-label": "Chọn ngày trên
 /** Thanh báo cập nhật DUY NHẤT (ở đầu trang, không che nội dung, không chặn thao tác). */
 const updateBar = h("div", { class: "update-bar", role: "status", "aria-live": "polite", hidden: true });
 
-app.append(updateBar, topbar, tabbar, main, footer, dialog);
+/** Thẻ nhắc khi mở ứng dụng (02 §7.5) — chỉ trên Tờ lịch; ở trang Người thân thẻ nằm trong trang "Sắp tới". */
+const remindHost = h("div", { class: "remind-host", hidden: true });
+
+app.append(updateBar, topbar, tabbar, remindHost, main, footer, dialog);
 
 function cycleTheme(): void {
   const order: Theme[] = ["auto", "light", "dark"];
@@ -101,11 +107,12 @@ function syncPrefsUi(): void {
 
 // ---------- Định tuyến ----------
 function parseHash(): void {
-  const m = /^#\/([a-z-]+)(?:\/(\d{4}-\d{2}-\d{2}))?/.exec(location.hash);
+  const m = /^#\/([a-z-]+)(?:\/(.*))?$/.exec(location.hash);
   const r = (m?.[1] ?? "ngay") as Route;
   state.route = TABS.some((t) => t[0] === r) || r in PARENT ? r : "ngay";
+  state.sub = state.route === "nguoi-than" ? (m?.[2] ?? "") : "";
   if (state.route === "ngay") {
-    const d = m?.[2] ? parseIso(m[2]) : null;
+    const d = m?.[2] && /^\d{4}-\d{2}-\d{2}$/.test(m[2]) ? parseIso(m[2]) : null;
     state.date = d ? clamp(d) : state.date;
   }
 }
@@ -135,6 +142,8 @@ function render(): void {
     if (a.dataset.r === (PARENT[state.route] ?? state.route)) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
   });
   document.body.dataset.route = state.route;
+  remindHost.hidden = state.route !== "ngay" || !remindHost.firstChild;
+  const token = ++renderToken;
   clear(main);
   sheetHost = sideHost = navHost = null;
   const openDay = (d: SolarDate) => { setDate(d, true); window.scrollTo(0, 0); main.focus({ preventScroll: true }); };
@@ -148,6 +157,7 @@ function render(): void {
   } else {
     const page = h("div", { class: "page" });
     main.append(page);
+    if (state.route === "nguoi-than") { renderPeopleRoute(page, token); return; }
     if (state.route === "chon-ngay") state.gdGetter = renderGoodDays(page, openDay, state.gdState);
     else if (state.route === "doi-ngay") renderConvert(page, openDay, state.date);
     else if (state.route === "nguon-quy-tac") renderRuleSources(page);
@@ -156,6 +166,43 @@ function render(): void {
     document.title = `${title} — Lịch và Văn hóa Việt`;
     window.scrollTo(0, 0);
   }
+}
+
+// ---------- Mô-đun Người thân (nạp lười, docs/v0.2/08 §1.3) ----------
+let renderToken = 0;
+type PeopleModule = typeof import("./people/index");
+let peopleMod: Promise<PeopleModule> | null = null;
+const loadPeople = () => (peopleMod ??= import("./people/index").catch((e) => { peopleMod = null; throw e; }));
+const peopleNav = {
+  go(hash: string, replace = false) {
+    if (replace) { history.replaceState(null, "", hash); parseHash(); render(); }
+    else location.hash = hash;
+  },
+};
+function renderPeopleRoute(page: HTMLElement, token: number): void {
+  page.classList.add("wide");
+  const loading = h("p", { class: "empty-hint loading" }, "Đang mở sổ người thân…");
+  page.append(loading);
+  document.title = "Người thân — Lịch và Văn hóa Việt";
+  window.scrollTo(0, 0);
+  loadPeople().then(async (mod) => {
+    if (token !== renderToken) return;
+    loading.remove();
+    await mod.renderPeople(page, state.sub, peopleNav);
+    if (token === renderToken) document.dispatchEvent(new CustomEvent("lvhv:people-ready"));
+  }).catch((e) => {
+    console.error(e);
+    if (token === renderToken) { clear(page); page.append(h("p", { class: "warn", role: "alert" }, "Không mở được mục Người thân. Hãy tải lại trang.")); }
+  });
+}
+/** Khi mở ứng dụng: chỉ nạp mô-đun nếu đã có cơ sở dữ liệu `lvhv` (không tạo IndexedDB cho người chưa dùng). */
+async function startupReminders(): Promise<void> {
+  try {
+    if (!indexedDB.databases || !(await indexedDB.databases()).some((d) => d.name === "lvhv")) return;
+    const mod = await loadPeople();
+    const has = await mod.startupCards(remindHost, peopleNav);
+    remindHost.hidden = !has || state.route !== "ngay";
+  } catch (e) { console.warn("Không kiểm được lời nhắc:", e); }
 }
 
 const wide = window.matchMedia("(min-width: 960px)");
@@ -304,6 +351,7 @@ try {
   main.append(h("p", { class: "warn", role: "alert" }, "Có lỗi khi hiển thị trang này. Hãy tải lại trang."));
 }
 armMidnight();
+void startupReminders();
 
 // ---------- Phiên bản và cập nhật (update.ts) ----------
 // "Để sau" chỉ ẩn thanh; lần kiểm tra kế tiếp (tự động, tối đa 6 giờ một lần) sẽ nhắc lại.

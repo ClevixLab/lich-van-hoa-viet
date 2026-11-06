@@ -413,6 +413,9 @@ const LAZY = JSON.parse(readFileSync(join(DIST, "lazy-manifest.json"), "utf8"));
     const dbs = (await indexedDB.databases()).map((d) => d.name);
     return { due0, persist, same: h1 === h2, exportMs, importMs, wrong, rustPersons: fromRust.preview.persons, dbs, ls: Object.keys(localStorage) };
   }, { PHOTO, EX, RUST_FILE });
+  // Mô-đun Người thân (tải lười, docs/v0.2/08 §1.3) chỉ nạp khi mở mục này.
+  await page.goto(BASE + "#/nguoi-than");
+  await page.waitForSelector(".people-body > *");
   const lazyServed = served.slice(before).map((x) => x.path);
   check(r.due0 === false, "backupReminderDue() khi chưa có dữ liệu = false (không tạo IndexedDB)");
   check(r.same, "Chromium: putPerson + ảnh → xuất → nhập Thay toàn bộ → giống hệt (stateHash)");
@@ -439,6 +442,16 @@ const LAZY = JSON.parse(readFileSync(join(DIST, "lazy-manifest.json"), "utf8"));
     persist_granted_headless: r.persist, roundtrip_identical: r.same, csp_violations: csp,
   };
   await ctx.close();
+}
+
+// ---------- 1d. Mô-đun Người thân (v0.2 đợt 3, docs/v0.2/08): luồng người dùng thật, R13, ảnh chụp ----------
+{
+  const { runPeople } = await import("./people-flows.mjs");
+  try {
+    await runPeople({ browser, BASE, ORIGIN, ROOT, SHOTS, check, metrics });
+  } catch (e) {
+    check(false, `Người thân: luồng kiểm thử dừng giữa chừng (${e.message.split("\n")[0]})`);
+  }
 }
 
 // ---------- 1b. Phiên bản và cập nhật (bản A → bản B), ngoại tuyến ----------

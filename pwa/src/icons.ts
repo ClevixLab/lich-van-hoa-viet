@@ -12,5 +12,6 @@ export const I = {
   auto: `<svg ${S}><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17a8.5 8.5 0 0 0 0-17z" fill="currentColor"/></svg>`,
   grid: `<svg ${S}><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 5v-2M16 5v-2M8.5 14h1M11.5 14h1M14.5 14h1M8.5 17h1M11.5 17h1"/></svg>`,
   close: `<svg ${S}><path d="M6 6l12 12M18 6 6 18"/></svg>`,
+  people: `<svg ${S}><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19.5c.6-3.3 2.8-5 5.5-5s4.9 1.7 5.5 5"/><circle cx="16.5" cy="9" r="2.5"/><path d="M15.5 14.3c2.6-.2 4.5 1.4 5 4.7"/></svg>`,
   down: `<svg ${S}><path d="M6 9l6 6 6-6"/></svg>`,
 };
