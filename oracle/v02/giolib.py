@@ -19,6 +19,7 @@ Nam nhuan Gregory: theo datetime (thu ngay 29/02) — doc lap voi cong thuc chia
 """
 import csv
 import datetime as dt
+import gzip
 import os
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -29,6 +30,9 @@ TABLES = {
                os.path.join(ROOT, "oracle", "out", "lunar_2000_3000.csv")],
     "core": [os.path.join(ROOT, "core", "out", "precise", "lunar_1900_1999.csv"),
              os.path.join(ROOT, "core", "out", "precise", "lunar_2000_3000.csv")],
+    # Bo sung B2 (2026-11-07): lich tu lap tu JPL DE441 cua ben kiem dinh (oracle/de441, L15 khop loi
+    # 402 132/402 132 ngay). Dung cho R1-Jpl va R3/R11/R12/R13 (phuong phap Jpl).
+    "de441": [os.path.join(ROOT, "oracle", "de441", "out", "days_1900_3000.csv.gz")],
 }
 
 FIRST = dt.date(1900, 1, 1)
@@ -53,7 +57,8 @@ class Calendar:
         self.month_complete = {}          # True neu ca thang nam trong bang
         expect = ORD0
         for path in TABLES[source]:
-            with open(path, encoding="utf-8", newline="") as f:
+            opener = gzip.open if path.endswith(".gz") else open
+            with opener(path, "rt", encoding="utf-8", newline="") as f:
                 r = csv.reader(f)
                 next(r)
                 for row in r:

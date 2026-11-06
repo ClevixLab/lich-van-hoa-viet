@@ -1,6 +1,7 @@
 # Phân tích yêu cầu, rủi ro và phân công — đợt 3 v0.2: mô-đun Người đã mất và Người đang sống
 
-Trạng thái: **NHÁP — chờ chủ dự án duyệt (cổng G1-Đ3).** Lập theo quy trình docs/08, ngày 2026-11-07.
+Trạng thái: **ĐÃ DUYỆT (cổng G1-Đ3) — chủ dự án đồng ý ngày 07/11/2026 lúc 06:17**, kèm ba điểm mặc định ở §9 và yêu cầu
+bổ sung YC-2026-05. Lập theo quy trình docs/08, ngày 2026-11-07.
 
 Ghi rõ để trung thực: việc lập trình đợt 3 (lõi, PWA, kiểm định) đã khởi động lúc 02:3x ngày 07/11/2026, **trước khi
 có tài liệu này**. Tiêu chí R13 đã khóa trước khi viết mã (04, Bổ sung B2), nhưng phân tích yêu cầu, đặc tả giao diện
@@ -15,6 +16,8 @@ duyệt; nếu duyệt đổi yêu cầu, phần mã đã viết được sửa 
 | YC-2026-02 | 06/11 | Ai cũng tự thêm được, không cần đăng ký; muốn lưu lâu dài, chia sẻ thì cần tài khoản (v0.3) | Cao |
 | YC-2026-03 | 07/11 | "anh muốn bổ sung ngay module cho người đã mất, và module cho người còn sống; lưu ý người dùng có thể xem danh sách sự kiện cho người sống/mất theo tuần/tháng/quý/năm" | Cao |
 | YC-2026-04 | 07/11 | Mọi mở rộng đều theo quy trình chuyên nghiệp (docs/08) | Bắt buộc |
+| YC-2026-05 | 07/11 | "Khi cập nhật một người từ sống thành mất thì nên có phần ghi chú ( ai báo, mất ở đâu, lý do, giấy báo tử nếu có)" | Cao |
+| YC-2026-06 | 07/11 | Với người đã mất chỉ nhắc ngày giỗ; dùng từ thường ngày (ông/bà/cụ/kỵ…), bỏ "Hiển khảo" (04 Bổ sung B4) | Cao |
 
 ## 2. Câu chuyện người dùng
 
@@ -31,6 +34,13 @@ quen công nghệ); người trẻ muốn nhớ sinh nhật và ngày giỗ ông
 - **US-M-04** … được nhắc trước 1/3/5/10/15 ngày hoặc số ngày tôi chọn, đúng giờ tôi chọn. — R3, R5, R12
 - **US-M-05** … mở màn hình tưởng niệm vào ngày giỗ: bia, ảnh, mâm lễ, ba nén hương. — R8, R9
 - **US-M-06** … ghi nơi an táng, quan hệ với tôi, tên hiệu, ảnh chân dung. — 01 §3.1, S9
+- **US-M-07** Là người trong gia đình, khi một người thân đang sống qua đời, tôi muốn **cập nhật hồ sơ đó thành người
+  đã mất** (không phải tạo hồ sơ mới) và ghi lại **thông tin báo tử**: ai báo tin, mất ở đâu, lý do, ảnh giấy báo tử
+  nếu có, ghi chú — để gia đình có một chỗ lưu giữ.
+  Cho hồ sơ người đang sống / Khi bấm "Cập nhật: đã mất", nhập ngày mất và (tùy chọn) thông tin báo tử / Thì hồ sơ
+  chuyển sang nhóm đã mất, giữ nguyên tên, ảnh, ngày sinh; lời nhắc sinh nhật và sự kiện của người đó bị gỡ (B4); bắt
+  đầu có ngày giỗ; thông tin báo tử chỉ hiện trên trang hồ sơ. Người tạo hồ sơ người đã mất mới cũng nhập được phần
+  này. — 01 §3.2a, R2, R6, S9, S10, B4
 
 **Người đang sống**
 - **US-S-01** … thêm người thân với ngày sinh dương, tùy chọn nhắc thêm sinh nhật âm. — 02 §5–6, R10
@@ -80,6 +90,7 @@ dùng bản TypeScript trùng từng byte.
 | R-DATA-2 | Người dùng mất dữ liệu bản web khi trình duyệt dọn | Vừa | Cao | `persist()`, nhắc sao lưu, khuyên cài lên màn hình chính (R-PWA-1) | Vai PWA |
 | R-CUL-2 | Hình mâm cúng, bia không hợp phong tục vùng miền | Vừa | Vừa | Một phong cách trung tính trước; nguồn trong `content/memorial/PHONG-TUC.md`; thêm phong cách ở đợt 4 | Vai nội dung |
 | R-NAT-1 | Bốn nền tảng làm giao diện riêng → lệch hành vi | Cao | Vừa | Mọi tính toán ở lõi qua FFI; giao diện chỉ hiển thị; cùng đặc tả 08; ca kiểm thử giao diện chung | Điều phối viên |
+| R-PRIV-2 | Lý do mất và giấy báo tử là thông tin nhạy cảm | Vừa | Cao | Chỉ lưu trên máy; không bao giờ đưa vào thông báo, .ics, màn hình tưởng niệm, tên tệp, URL; có trong sao lưu mã hóa; hộp xác nhận xuất ghi rõ "gồm thông tin báo tử"; ảnh giấy tờ bỏ siêu dữ liệu (S9) | Vai lõi + PWA |
 | R-PERF-1 | Tính danh sách năm cho nhiều hồ sơ chậm trên máy yếu | Thấp | Vừa | Đo với 200 hồ sơ; ngưỡng ghi vào biên bản | Vai lõi |
 
 ## 7. Kế hoạch và phân công
