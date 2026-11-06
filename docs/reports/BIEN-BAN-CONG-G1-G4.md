@@ -140,7 +140,7 @@ Chủ dự án duyệt: ____________________  Ngày: ____________
 
 | # | Quyết định | Ảnh hưởng | Phương án | Tài liệu |
 |---|---|---|---|---|
-| 1 | **Phương pháp lịch mặc định**: Hnd hay Precise | L2, L3, L4, L6; bản dựng mọi nền tảng | Hnd: khớp các lịch Việt phổ biến, 4 KHÔNG ĐẠT. Precise: tự nhất quán, 2 KHÔNG ĐẠT (L4, L6) | docs/03 §15; G2 |
+| 1 | **Phương pháp lịch mặc định**: Hnd hay Precise | L2, L3, L4, L6; bản dựng mọi nền tảng | **ĐÃ QUYẾT 06/11/2026: Precise** (docs/02 "Bổ sung A3"; xem "Cập nhật 06/11/2026" cuối biên bản). Hnd giữ trong mã để đối chiếu | docs/03 §15.7; G2 |
 | 2 | **Khoảng trống bằng chứng L1** | L1 | (a) Chấp nhận danh sách HKO 2000–2100 + 3 ngoại lệ đã biết (2007, 2030, 2053) làm "danh sách công bố", rồi chạy lại so sánh. (b) Giữ CHƯA ĐỦ BẰNG CHỨNG và tìm thêm nguồn VN cho 50 năm còn thiếu | BAO-CAO-KIEM-DINH-LICH §3 |
 | 3 | **Ghi chú sát nửa đêm cho L6** (Xử Thử 2074, 11 s) | L6 cả hai phương pháp | Ghi thành sai lệch đã biết (không sửa tiêu chí v0.1); hoặc v0.2 dùng VSOP87 đầy đủ/ephemeris chuẩn làm trọng tài | docs/03 §15.5 |
 | 4 | **Origin phát hành** `lich.clevix.vn` (RS-10) | S3 (tách origin), DEPLOY | Tên miền tùy chỉnh của GitHub Pages; xác minh tên miền `clevix.vn` trên GitHub | docs/05 §C RS-10; `DEPLOY.md` trong gói PWA |
@@ -153,3 +153,81 @@ Chủ dự án duyệt: ____________________  Ngày: ____________
 
 Các quyết định khác còn mở trong tài liệu: diễn giải S2 (G4); duyệt các thay đổi hợp đồng (G1); mở rộng
 kiểm định cho ngày sinh 1900–1999 (docs/05 §D.3); phương án C01/C15 trong rules.md.
+
+---
+
+## Cập nhật 06/11/2026 (bổ sung A1–A3)
+
+Phần này **bổ sung**, không sửa các mục trên. Căn cứ: `docs/02` "Bổ sung A1" (L9–L13, khóa trước khi sửa mã),
+"Bổ sung A2" và "Bổ sung A3" (cả hai ghi rõ là quyết định của chủ dự án **sau khi đã thấy kết quả**); báo cáo
+`docs/reports/BAO-CAO-KIEM-DINH-1900-1999.md` **Lần 2** (sau A2), do bên không tham gia xây dựng đặc tả lập
+(chỉ đọc tệp dữ liệu, không đọc mã lõi). Thang kết luận giữ nguyên: ĐẠT / KHÔNG ĐẠT / CHƯA ĐỦ BẰNG CHỨNG.
+Không ngưỡng nào bị nới: A3 chỉ quy định **chấm theo nguồn nào** khi các nguồn Việt Nam mâu thuẫn nhau và
+**cột phương pháp nào** là cột áp dụng.
+
+### Quyết định A3 được áp dụng trong biên bản
+
+1. Phương pháp mặc định là **Precise**. Từ nay cột áp dụng của L2, L3, L4, L6, L10, L12 là cột Precise; cột Hnd
+   giữ để đối chiếu. Mã đã đổi: `DEFAULT_METHOD = Method::Precise` (lõi Rust), `"precise"` (tsport); bản PWA đọc
+   giá trị từ lõi lúc build (`pwa/test/metrics.json`: `"method": "precise"`).
+2. **L9 khi nguồn Việt Nam mâu thuẫn:** chấm theo nguồn tuân thủ quy ước lịch sử đã chọn (giờ địa phương Bắc Kinh
+   trước 1929, UTC+8 đến hết 1967). Theo báo cáo Lần 2 §L2.3, nguồn đó là xemlicham (khớp lịch Trung Quốc cùng
+   quy ước, HKO xác nhận ở 1916 và 1965); chogia khớp phép tính UTC+7 suốt, tức không theo quy ước đã chọn.
+
+### L9 — từng năm nguồn Việt Nam mâu thuẫn (số liệu từ báo cáo Lần 2 và `oracle/reference/tet_published_1900_1999.csv`)
+
+| Năm | xemlicham | chogia | Nguồn khác | Lõi (Hnd = Precise = oracle) | Nguồn theo quy ước A3 | Nguồn còn lại lệch |
+|---|---|---|---|---|---|---|
+| 1903 | 1903-01-29 | 1903-01-28 | — | 1903-01-29 | xemlicham: khớp | chogia sớm hơn **1 ngày** |
+| 1925 | 1925-01-25 (trang năm) / 1925-01-24 (trang ngày) | 1925-01-24 | — | 1925-01-24 | xemlicham trang ngày: khớp | xemlicham trang năm muộn hơn **1 ngày** (nguồn tự mâu thuẫn; Sóc cách nửa đêm > 1 giờ ở mọi múi giờ 7–8, báo cáo §3) |
+| 1935 | 1935-02-04 | 1935-02-03 | — | 1935-02-04 | xemlicham: khớp | chogia sớm hơn **1 ngày** |
+| 1965 | 1965-02-02 | 1965-02-01 | HKO (Trung Quốc, hỗ trợ): 1965-02-02 | 1965-02-02 | xemlicham: khớp | chogia sớm hơn **1 ngày** |
+
+Ghi chú 1925: A3 coi 1925 là năm "một nguồn tự mâu thuẫn". Chọn trang ngày của xemlicham là áp dụng A3 (giá trị
+nhất quán với quy ước và với nguồn VN còn lại); trang năm 01-25 được ghi là lệch, không bị xóa.
+
+### Bảng kết luận L9–L13
+
+| Mã | Ngưỡng khóa (A1) | Hnd (đối chiếu) | **Precise (mặc định, A3)** | Bằng chứng | Ghi chú |
+|---|---|---|---|---|---|
+| L9 | Tết 1900–1999 so nguồn VN: 0 sai lệch ở các năm có nguồn | **ĐẠT** (theo A3) | **ĐẠT** (theo A3) | Báo cáo Lần 2 §L2.2, §L2.3; bảng trên | Tết hai phương pháp và oracle trùng nhau cả 100 năm. Nguồn VN phủ 100/100 năm. Ở 96 năm nguồn thống nhất: 0 sai lệch. 4 năm mâu thuẫn chấm theo A3: 0 sai lệch. **Nếu không áp dụng A3** (đọc ngưỡng là "khớp mọi nguồn"), kết luận là KHÔNG ĐẠT như báo cáo Lần 2 ghi. Cách chấm A3 có sau khi thấy kết quả — người đọc cần biết điều này |
+| L10 | Ngày âm 1900–1999 so oracle cùng quy tắc múi giờ: 0 sai lệch | **KHÔNG ĐẠT**: 118/36 524 ngày, 2 đoạn (1917-03-23→05-20; 1922-06-25→08-22), vị trí tháng nhuận do Trung khí sát nửa đêm giờ Bắc Kinh (3,2′ và 5,6′) | **ĐẠT**: 0/36 524 | Báo cáo Lần 2 §L2.2, §L2.4; `oracle/out/mismatches_1900_1999_{hnd,precise}.csv` | Ngưỡng L10 "cùng quy tắc như L2" không có ngoại lệ sát nửa đêm |
+| L11 | Liên tục 1967–1969; Tết 1968 = 1968-01-29 | **ĐẠT** | **ĐẠT** | Báo cáo Lần 2 §L2.2 (1096/1096 ngày, 0 lỗi); `core/tests/range1900.rs::l11_continuity_1967_1969` | Ngoài tiêu chí: liên tục quanh 1929-01-01 (1928–1930) ĐẠT cả hai |
+| L12 | Khứ hồi và TS = Rust từng byte, 1900–3000, cả hai phương pháp | **ĐẠT** | **ĐẠT** | Chạy lại trong đợt này sau khi đổi mặc định: `scripts/check-parity.sh` 0 sai lệch (dayinfo 402 132 dòng × 2, Tết 1 101 × 2, gooddays 4 470 × 2); `range1900.rs::l12_roundtrip_1900_3000` 402 132 ngày × 2, 0 lỗi | Kiểm tra nội bộ, không phải kiểm định độc lập (bên kiểm định không kiểm được khứ hồi) |
+| L13 | 2000–3000 không đổi so với tệp chuẩn | **ĐẠT** | **ĐẠT** | Báo cáo Lần 2 §L2.2 (kiểm từ dữ liệu); chạy lại trong đợt này: `check-parity.sh` bước 5 "giống hệt từng byte" với `core/out/baseline-2000-3000/{hnd,precise}.jsonl.gz` | Tệp chuẩn tách theo phương pháp nên đổi mặc định không làm tệp chuẩn mất hiệu lực |
+
+Ngoài tiêu chí L10 (không thuộc năm/tháng/ngày/nhuận): cột tiết khí lệch 1 ngày ở cả hai phương pháp,
+1951-12-22 (Đông Chí cách nửa đêm UTC+8 3 giây theo oracle). Ghi lại để biết; không đổi kết luận nào.
+
+### L2/L10 — chấm cho phương pháp mặc định Precise
+
+| Mã | Precise | Ghi chú |
+|---|---|---|
+| L2 (2000–2100) | **ĐẠT** — 0 sai lệch | Không đổi so với mục G2 ở trên; nay là cột áp dụng |
+| L10 (1900–1999) | **ĐẠT** — 0 sai lệch | Như bảng trên |
+| L3 (2101–3000) | **ĐẠT** — 3 đoạn, cả 3 "sát nửa đêm", 0 "nguyên nhân khác" | Không đổi so với mục G2; vẫn dựa trên công cụ của đợt phát hành, chưa được bên kiểm định độc lập chạy lại cho Precise |
+
+### Không đổi: L4, L6 (các ca sát nửa đêm 2000–3000)
+
+- **L4 Precise: KHÔNG ĐẠT** như trước — 3 ngày lệch Can Chi tháng (2242-07-28, 2962-10-19, 2988-06-05), hệ quả
+  của 3 tháng có Sóc sát nửa đêm (dưới 5 phút).
+- **L6: KHÔNG ĐẠT** ở cả hai phương pháp như trước — Xử Thử 2074 (lõi 2074-08-23 00:00:06, oracle 2074-08-22
+  23:59:55). Tiết khí dùng chung một mô hình nên đổi phương pháp không ảnh hưởng.
+- **L1: CHƯA ĐỦ BẰNG CHỨNG** như trước (nguồn VN phủ 51/101 năm).
+- A3 không quyết định gì về L1, L4, L6. Các mục 2 và 3 trong "Các quyết định đang chờ chủ dự án" vẫn mở.
+
+### Tổng hợp sau A3 (cột áp dụng: Precise)
+
+| Nhóm | ĐẠT | KHÔNG ĐẠT | CHƯA ĐỦ BẰNG CHỨNG |
+|---|---|---|---|
+| L1–L8 (2000–3000) | L2, L3, L5, L7, L8 | **L4, L6** | L1 |
+| L9–L13 (1900–1999, A1) | L9 (theo A3), L10, L11, L12, L13 | — | — |
+| N1–N3 | N1, N2, N3 | — | — |
+
+Đối chiếu Hnd: thêm KHÔNG ĐẠT ở L2, L3, L10.
+
+**Đề nghị:** G2 vẫn **chưa thông qua được** khi giữ nguyên tiêu chí, vì L4 và L6 KHÔNG ĐẠT ở phương pháp mặc
+định. Mục quyết định số 1 (phương pháp mặc định) **đã quyết: Precise** (A3, 06/11/2026). Hướng (a) hoặc (b) ở
+mục G2 vẫn cần chủ dự án chọn và ghi lại.
+
+Chủ dự án duyệt: ____________________  Ngày: ____________
