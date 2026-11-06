@@ -91,7 +91,9 @@ jobs:
           mkdir -p core/out/precise
           for M in hnd precise; do
             O=core/out; [ "$M" = precise ] && O=core/out/precise
-            $D --method $M dayinfo-jsonl 2000-01-01 3000-12-31 | gzip -1 > $O/dayinfo_2000_3000.jsonl.gz
+            # tsport/test/compare.mjs so dải 1900–3000 (bổ sung A1, L12)
+            $D --method $M dayinfo-jsonl 1900-01-01 3000-12-31 | gzip -1 > $O/dayinfo_1900_3000.jsonl.gz
+            $D --method $M tet 1900 1999 > $O/tet_1900_1999.csv
             $D --method $M tet 2000 3000 > $O/tet.csv
             { $D --method $M gooddays all 2026-01-01 2026-12-31 none
               $D --method $M gooddays all 2026-01-01 2026-12-31 1976; } > $O/gooddays_sample.jsonl

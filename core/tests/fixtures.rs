@@ -80,6 +80,8 @@ fn tet_known() {
     for (ly, (y, m, d)) in known {
         let t = tet(ly).unwrap();
         assert_eq!((t.year, t.month, t.day), (y, m, d), "Tết {ly}");
+        let h = tet_with(Method::Hnd, ly).unwrap();
+        assert_eq!((h.year, h.month, h.day), (y, m, d), "Tết {ly} (Hnd)");
     }
 }
 
@@ -111,15 +113,16 @@ fn invalid_lunar_dates() {
     assert!(lunar_to_solar(2026, 1, 31, false).is_none());
 }
 
-fn roundtrip(from: (i32, u32, u32), to: (i32, u32, u32)) {
+fn roundtrip(method: Method, from: (i32, u32, u32), to: (i32, u32, u32)) {
     let a = jdn_from_date(from.0, from.1, from.2);
     let b = jdn_from_date(to.0, to.1, to.2);
     let mut prev: Option<LunarDate> = None;
     for j in a..=b {
         let (y, m, d) = date_from_jdn(j);
-        let l = solar_to_lunar(y, m, d).unwrap();
-        let s = lunar_to_solar(l.year, l.month, l.day, l.leap).expect("ngày âm phải tồn tại");
-        assert_eq!((s.year, s.month, s.day), (y, m, d), "{l:?}");
+        let l = solar_to_lunar_with(method, y, m, d).unwrap();
+        let s = lunar_to_solar_with(method, l.year, l.month, l.day, l.leap)
+            .expect("ngày âm phải tồn tại");
+        assert_eq!((s.year, s.month, s.day), (y, m, d), "{method:?} {l:?}");
         assert!(l.month_len == 29 || l.month_len == 30);
         if let Some(p) = prev {
             if l.day != 1 {
@@ -137,11 +140,19 @@ fn roundtrip(from: (i32, u32, u32), to: (i32, u32, u32)) {
 
 #[test]
 fn roundtrip_2000_2100() {
-    roundtrip((2000, 1, 1), (2100, 12, 31));
+    roundtrip(DEFAULT_METHOD, (2000, 1, 1), (2100, 12, 31));
+    roundtrip(Method::Hnd, (2000, 1, 1), (2100, 12, 31));
+}
+
+/// Bổ sung A3 (docs/02): mặc định là Precise; Hnd giữ để đối chiếu.
+#[test]
+fn default_method_is_precise() {
+    assert_eq!(DEFAULT_METHOD, Method::Precise);
 }
 
 #[test]
 #[ignore = "chậm ở bản debug; chạy bằng: cargo test --release -- --ignored"]
 fn roundtrip_2000_3000() {
-    roundtrip((2000, 1, 1), (3000, 12, 31));
+    // Precise (mặc định) được kiểm ở methods.rs::precise_roundtrip_2000_3000.
+    roundtrip(Method::Hnd, (2000, 1, 1), (3000, 12, 31));
 }

@@ -1,5 +1,5 @@
 // Port of core/src/lunar.rs — Vietnamese lunar calendar (UTC+7). Two selectable methods, as in
-// Rust: "hnd" (Hồ Ngọc Đức, default) and "precise" (Meeus ch.49 full + ΔT Espenak–Meeus; Trung khí
+// Rust: "hnd" (Hồ Ngọc Đức, kept for comparison) and "precise" (default since A3) (Meeus ch.49 full + ΔT Espenak–Meeus; Trung khí
 // from the apparent solar longitude used for the displayed solar terms).
 
 import { apparentSunLongitudeUt, hndNewMoon, hndNewMoonDay, hndSunSector, localDayOf, localMidnightUt, preciseNewMoonUt } from "./astro.ts";
@@ -12,8 +12,8 @@ import { dateFromJdn, isValidSolar, jdnFromDate } from "./jd.ts";
 /** Rust `Method` (`Method::Hnd` = "hnd", `Method::Precise` = "precise"). */
 export type Method = "hnd" | "precise";
 
-/** Rust `DEFAULT_METHOD` (currently `Method::Hnd`). */
-export const DEFAULT_METHOD: Method = "hnd";
+/** Rust `DEFAULT_METHOD` (currently `Method::Precise`, docs/02 Bổ sung A3). */
+export const DEFAULT_METHOD: Method = "precise";
 
 export function isMethod(v: unknown): v is Method {
   return v === "hnd" || v === "precise";

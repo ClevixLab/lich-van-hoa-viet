@@ -67,8 +67,11 @@ const HND_VIOLATION_YEARS: [i32; 6] = [2405, 2682, 2728, 2758, 2864, 2948];
 
 #[test]
 fn precise_fixture_2026_11_05() {
+    // Mặc định (Precise, A3) và Hnd cho cùng tờ lịch 2026-11-05 (L8 đúng cho cả hai phương pháp).
     let i = day_info_with(Method::Precise, 2026, 11, 5).unwrap();
     assert_eq!(i.to_json(), day_info(2026, 11, 5).unwrap().to_json());
+    let h = day_info_with(Method::Hnd, 2026, 11, 5).unwrap();
+    assert_eq!(h.to_json(), i.to_json());
 }
 
 #[test]

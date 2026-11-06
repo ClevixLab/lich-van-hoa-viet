@@ -261,17 +261,19 @@ theo chính cột tiết khí hiển thị của lõi lại chứa Trung khí �
 (b) L2: 2072-12 và 2077-11 lệch (Sóc HND sau nửa đêm ~13–14 s, oracle trước nửa đêm);
 (c) L6: Xử Thử 2074 (lõi 00:00:06, oracle 23:59:55).
 
-Lõi không đổi mặc định một cách lặng lẽ; chủ dự án quyết định.
+Lõi không đổi mặc định một cách lặng lẽ; chủ dự án quyết định. **Đã quyết (docs/02 "Bổ sung A3",
+2026-11-06): mặc định là `Precise`** — xem §15.7.
 
 ### 15.2 Cách chọn
 
-- `lvhv_core::Method { Hnd, Precise }`; hằng `DEFAULT_METHOD = Method::Hnd` (tương thích ngược:
-  đầu ra HND giống hệt từng byte bản trước — đã kiểm tra bằng `cmp` trên 2000–3000).
+- `lvhv_core::Method { Hnd, Precise }`; hằng `DEFAULT_METHOD = Method::Precise` (từ bổ sung A3; trước
+  đó là `Method::Hnd`). Đầu ra của từng phương pháp không đổi: `--method hnd` vẫn giống hệt từng byte
+  bản trước (L13, `scripts/check-parity.sh`), chỉ có lựa chọn mặc định thay đổi.
 - API cũ (`solar_to_lunar`, `lunar_to_solar`, `day_info`, `day_ctx`, `tet`, …) giữ nguyên chữ ký
   và dùng `DEFAULT_METHOD`. Mỗi hàm có bản `_with(method, …)` (`solar_to_lunar_with`,
   `lunar_to_solar_with`, `day_info_with`, `day_ctx_with`, `day_ctx_jdn_with`, `tet_with`,
   `jdn_to_lunar_with`, `lunar_to_jdn_with`). Đổi mặc định = sửa một hằng.
-- `lvhv-dump --method hnd|precise LỆNH …` (mặc định hnd). Lệnh `terms` không phụ thuộc phương
+- `lvhv-dump --method hnd|precise LỆNH …` (mặc định precise, theo `DEFAULT_METHOD`). Lệnh `terms` không phụ thuộc phương
   pháp (tiết khí luôn theo mô hình chính xác §6) và nhận mọi dải năm, ví dụ 2000–3000.
 
 ### 15.3 `Method::Precise`
@@ -337,6 +339,30 @@ Ngày âm (năm, tháng, ngày, nhuận) khác nhau:
 - Đề xuất (để chủ dự án quyết định, không phải kết luận): nếu ưu tiên tiêu chí L2/L3 và tính
   nhất quán nội bộ thì đổi `DEFAULT_METHOD` sang `Precise`; nếu ưu tiên khớp lịch HND phổ biến
   thì giữ `Hnd` và ghi 6 năm vi phạm thành sai lệch đã biết. Cả hai lựa chọn đều không làm L6 ĐẠT.
+
+### 15.7 Phương pháp mặc định: `Precise` (bổ sung A3, 2026-11-06)
+
+Chủ dự án chọn `Precise` (docs/02 "Bổ sung A3", ghi rõ là quyết định sau khi thấy kết quả). Căn cứ ghi
+trong A3: L2 và L10 ĐẠT với `Precise` (0 sai lệch so với bên kiểm định độc lập, 2000–2100 và 1900–1999),
+không tự mâu thuẫn tháng nhuận (§15.4), khớp 1237/1237 tháng của bảng TK20 1900–1999 (§16.4; `Hnd`
+1233/1237).
+
+| Nơi | Giá trị mặc định | Cách kiểm |
+|---|---|---|
+| Lõi Rust `core/src/lunar.rs` | `DEFAULT_METHOD = Method::Precise` | `core/tests/fixtures.rs::default_method_is_precise` |
+| tsport `tsport/src/lunar.ts` | `DEFAULT_METHOD = "precise"` | `pwa/build.mjs` dừng build nếu khác lõi Rust |
+| PWA | đọc từ lõi Rust lúc build (`src/gen/content.ts`) | smoke: `metrics.json` `"method": "precise"` |
+| FFI (`lunar_method()`) và app native | theo `lvhv_core::DEFAULT_METHOD` | — |
+
+Không đổi:
+- `Hnd` vẫn có đủ trong mã, gọi qua các hàm `_with(Method::Hnd, …)` / `lvhv-dump --method hnd`. Các test
+  riêng của `Hnd` (vi phạm tự nhất quán §15.4, TK20 1917/1922, khứ hồi 2000–3000) gọi tường minh
+  `Method::Hnd`, nên vẫn khóa hành vi của `Hnd`.
+- Tệp chuẩn L13 (`core/out/baseline-2000-3000/{hnd,precise}.jsonl.gz`) tách theo phương pháp, nên vẫn hợp lệ.
+- Hai phương pháp cho cùng ngày âm ở mọi ngày 1900–2100, trừ 1917-03-23→05-20, 1922-06-25→08-22 (vị trí
+  tháng nhuận, §16.4), 2072-12-09…2073-01-07 và 2077-11-15…12-14 (§15.5). Sau 2100 khác nhiều hơn (§15.5).
+
+Hệ quả cho người dùng: ở các khoảng trên, lịch của ứng dụng có thể khác các lịch Việt dùng thuật toán HND.
 
 ## 16. Phạm vi 1900–1999 và điểm chuyển múi giờ (bổ sung A1 + A2, 2026-11-06)
 

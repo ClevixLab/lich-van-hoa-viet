@@ -24,9 +24,9 @@ pub enum Method {
     Precise,
 }
 
-/// Phương pháp mặc định của các hàm không có hậu tố `_with`. Giữ `Hnd` cho tương thích ngược;
-/// chủ dự án quyết định có đổi hay không.
-pub const DEFAULT_METHOD: Method = Method::Hnd;
+/// Phương pháp mặc định của các hàm không có hậu tố `_with`: `Precise` (quyết định của chủ dự án,
+/// docs/02 "Bổ sung A3", 2026-11-06). `Hnd` vẫn giữ để đối chiếu qua các hàm `_with(Method::Hnd, …)`.
+pub const DEFAULT_METHOD: Method = Method::Precise;
 
 /// Ngày (JDN, giờ lịch) chứa Sóc thứ k theo phương pháp (nội bộ, không kiểm miền).
 pub(crate) fn new_moon_day(method: Method, k: i64) -> i64 {

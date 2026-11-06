@@ -1,7 +1,7 @@
 // lvhv-core TypeScript port — public API used by the PWA (pwa/src/engine.ts).
 // Zero runtime dependencies. Mirrors core/src/lib.rs (+ the lvhv-ngochap crate).
 //
-// Method selection mirrors Rust: every function defaults to DEFAULT_METHOD ("hnd" = Method::Hnd);
+// Method selection mirrors Rust: every function defaults to DEFAULT_METHOD ("precise" = Method::Precise);
 // the `…With(method, …)` variants (and the optional trailing `method` argument of dayInfo /
 // dayInfoJson / dayCtx) select "hnd" | "precise" explicitly.
 //
