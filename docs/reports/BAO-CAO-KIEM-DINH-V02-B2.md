@@ -371,3 +371,55 @@ Bộ dữ liệu kiểm tới cả hai nhánh của quy tắc lọc sự kiện.
 
 Máy đo: Linux x86_64, 2 vCPU, 7 GB RAM; Python 3 (chỉ thư viện chuẩn), Rust 1.97 (bản release), Node 22. Không dùng
 máy chạy GitHub: mọi phép tính chạy được trong môi trường kiểm định (R3 đầy đủ mất vài phút).
+
+## 12. Kiểm định lại sau Bổ sung B4 (2026-11-07)
+
+Căn cứ: 04 Bổ sung B4 (`main` e5c475e, PR #20); 02 tại `8faa3cd` (§6.1 mới và các ghi chú B4 ở §5, §7.2–§7.6, §8.1,
+Phụ lục A.6), chỉ đọc **sau khi** đầu ra oracle đã được commit. Lõi: PR #14, head `e9a341c` (có B4), chạy như hộp đen.
+Bộ dữ liệu: `memorial/testdata/r3-dataset.json` và `r13-linked.json` (tại e9a341c giống từng byte bản 181c039 đã dùng ở
+mục 10, `oracle/v02/out/b3_input_r13-linked_181c039.json`). Các mục 1–11 giữ nguyên làm hồ sơ các lần trước.
+
+### 12.1 Kết luận
+
+| Mã | Kết luận | Số liệu |
+|---|---|---|
+| **R3** | **ĐẠT** | Bộ R3: 38 432 256 lời nhắc, sha256 `86bcc3d2…` trùng (không đổi so với trước B4: bộ R3 không có sự kiện gắn hồ sơ, người đã mất vốn chỉ có giỗ). Bộ `r13-linked`: 34 103 233 dòng, sha256 `3ef0536e…` trùng. `--global-off`, `--rule-off`: 0 lời nhắc ở cả hai bên, giống từng byte |
+| **R4 (b)** tập (UID, DTSTART) | **ĐẠT** phần (b) | `ics … 2026-11-06`: bộ R3 390/390, bộ `r13-linked` 350/350 cặp (UID, DTSTART) trùng, 0 thừa, 0 thiếu. R4 (a) cú pháp và (c) nhập vào ứng dụng lịch **không** thuộc lần này — R4 toàn tiêu chí vẫn CHƯA ĐỦ BẰNG CHỨNG |
+| **R11** | **ĐẠT** | Bộ R3: 13 691 dòng giống từng byte (không đổi). Bộ `r13-linked`: 12 234 dòng giống từng byte |
+| **R12** | **ĐẠT** cả 9 ô | Bảng tổng hợp (mọi cột, kể cả i1–i4) và mọi bước `--steps` giống lõi; 0 vi phạm I1–I4 (bộ R3 không đổi so với mục 10) |
+| **R13** bộ R3 | **ĐẠT** (a)(b)(c)(d) | 2 286 dòng giống từng byte; (c) 561 phép hợp + 762 kỳ, 0 vi phạm; (d) 0 vi phạm (88 / 97 kỳ có mục ở ngày đầu / cuối) |
+| **R13** bộ `r13-linked` | **ĐẠT** (a)(b)(c)(d) | 2 286 dòng giống từng byte; (c), (d) 0 vi phạm (86 / 94 kỳ có mục ở ngày đầu / cuối). `da_mat` chỉ còn giỗ (185) và tiên thường (33) qua 11 năm; các sự kiện gắn ít nhất một người đã mất (kể cả sự kiện hỗn hợp "Ngày cưới", "Mốc cuối cửa sổ", "Mừng thọ") không còn ở bộ lọc nào; sự kiện chỉ gắn người sống hoặc không gắn ai ở `dang_song` |
+| **Rust ≡ TS** | **ĐẠT** | e9a341c: 27/27 lệnh giống (24 lệnh của mục 10 + `ics` hai bộ + `upcoming` bộ `r13-linked`), `oracle/v02/out/b4_parity_e9a341c.tsv` |
+
+Không có sai lệch nào. Không có sửa oracle nào sau đối chiếu ở lần B4.
+
+### 12.2 Trình tự
+
+| Giờ (+07) | Commit (nhánh `oracle-v02-b4`) | Việc |
+|---|---|---|
+| ~06:15 | — | Đọc 04 B4 trên `main`; cài B4 vào oracle (bật bằng `LVHV_B4=1`, để các đầu ra cũ vẫn tái tạo được) |
+| 06:20 | `d9c565d` | Đầu ra oracle B4 cho mọi tiêu chí ở 12.1, chỉ dựa trên 04 B4; tổng băm `SHA256SUMS.b4` |
+| 06:20 | — | Đọc 02 tại 8faa3cd (tệp báo sẵn sàng có sau commit trên). Một điểm mới ảnh hưởng mã oracle: ghi chú MA3-14-06 (§7.4) — khi không đặt được lời nhắc nào trong cửa sổ, thông báo nhắc mở ứng dụng đặt 09:00 ngày hôm nay + 399 thay vì `now + 400 ngày` |
+| 06:21 | `dc7e9a3` | Cài ghi chú MA3-14-06 vào `b3_r12.py` (chế độ B4). Đầu ra `b4_r12.csv` **không đổi** (không bước mô phỏng nào có k = 0). Vẫn trước khi chạy dump của lõi |
+| sau 06:21 | commit báo cáo | Dựng dump e9a341c (Rust, TypeScript), chạy, so; báo cáo |
+
+Ghi chú: commit `e9a341c` của lõi có giờ 06:20:33, trước commit đầu ra oracle `d9c565d` (06:20:37) vài giây; bên kiểm
+định chỉ lấy và chạy mã đó sau `dc7e9a3`. Thứ tự "nộp trước, so sau" được neo bằng hai commit của oracle, không bằng giờ
+của lõi.
+
+### 12.3 Cài đặt oracle cho B4
+
+- `b2_occ.py`: khi `LVHV_B4=1`, sự kiện có ít nhất một id trong `person_ids` trỏ tới hồ sơ có ngày mất không sinh lần
+  xuất hiện; id không trỏ tới hồ sơ nào coi như không phải người đã mất. Hồ sơ có ngày mất vốn chỉ sinh giỗ (+ tiên
+  thường) ở bộ sinh này từ lần B2, nên mục 1 của B4 không đổi gì.
+- `b2_r13.py`: khi B4, `da_mat` = lớp `gio` hoặc `tien_thuong`, `dang_song` = phần còn lại.
+- `b4_r4.py` (mới): tập (UID, DTSTART) kỳ vọng theo 02 §8 (`<id>-<gio|tt|sn|sna|ev>-<khóa năm>@lich.clevix.vn`, mục có
+  quy tắc nhắc bật, `[TODAY, TODAY + 10 năm)`), và bộ đọc .ics (bỏ gấp dòng) để so.
+- `b4_run_oracle.sh`, `b4_run_core.sh`, `b4_parity_extra.sh`: chạy oracle, chạy dump lõi, Rust ≡ TS bổ sung.
+
+### 12.4 Tệp (`oracle/v02/out/`)
+
+Oracle: `b4_r11_upcoming.csv`, `b4_r11_upcoming_linked.csv`, `b4_r12.csv`, `b4_r13_r3.jsonl`, `b4_r13_linked.jsonl`,
+`b4_r13_*_check_oracle.json`, `b4_r4_expect_r3.tsv`, `b4_r4_expect_linked.tsv`, `b4_r3_global_off.csv`,
+`b4_r3_rule_off.csv`, `b4_r3_reminders.sha`, `SHA256SUMS.b4`. Lõi (e9a341c): `b4_core_*_e9a341c.*` (gồm hai tệp .ics và
+bản đọc `.tsv` của chúng), `b4_r13_*_check_core.json`, `b4_cmp_r12.json`, `b4_parity_e9a341c.tsv`.

@@ -102,7 +102,13 @@ def simulate(rem, scenario, steps=None, size=None):
             if len(desired) > CAP or beyond:
                 k = min(len(desired), CAP - 1)
                 keep = desired[:k]
-                sat = keep[k - 1][0] if k > 0 else hi
+                if k > 0:
+                    sat = keep[k - 1][0]
+                elif O.B4:   # 02 ghi chu MA3-14-06 (doc tai 8faa3cd): 09:00 cua ngay hom nay + 399
+                    d399 = day + dt.timedelta(days=399)
+                    sat = dt.datetime(d399.year, d399.month, d399.day, 9, 0)
+                else:
+                    sat = hi
                 keep = keep + [(sat, SENT)]
             else:
                 keep = desired
