@@ -69,6 +69,16 @@ jobs:
           get Table-S15.txt http://astro.ukho.gov.uk/nao/lvm/Table-S15.txt
           get Table-S15.2020.opensuse.txt "https://src.opensuse.org/pool/python-skyfield/raw/branch/factory/Table-S15.2020.txt"
           get hpiers_longterm_dir.html https://hpiers.obspm.fr/eoppc/series/longterm/
+          # Bảng TK20 (1900–1999) do Hồ Ngọc Đức công bố trong mã nguồn amlich (để kiểm L17)
+          get hnd_amlich-hnd.js https://www.informatik.uni-leipzig.de/~duc/amlich/JavaScript/amlich-hnd.js
+          get hnd_amlich_index.html https://www.informatik.uni-leipzig.de/~duc/amlich/
+          for r in ichuot/jquery-amlich vanng822/amlich; do
+            d=$(echo $r | tr / _)
+            git clone -q --depth 1 https://github.com/$r /tmp/$d && (cd /tmp/$d && echo "$r $(git rev-parse HEAD)" >> $OLDPWD/FETCH-LOG.txt) || echo "ERR clone $r" >> FETCH-LOG.txt
+            for f in $(grep -rl "TK20" /tmp/$d --include=*.js --include=*.java --include=*.py 2>/dev/null | head -3); do
+              cp "$f" "tk20_${d}_$(basename $f)"; echo "TK20 in $r: ${f#/tmp/$d/}" >> FETCH-LOG.txt
+            done
+          done
           curl -sv -m 60 -o /dev/null http://astro.ukho.gov.uk/nao/lvm/Table-S15.2020.txt 2>&1 | tail -20 >> FETCH-LOG.txt || true
           get de441_dir.html https://ssd.jpl.nasa.gov/ftp/eph/planets/bsp/
           get de441_readme.txt https://ssd.jpl.nasa.gov/ftp/eph/planets/bsp/README.txt
