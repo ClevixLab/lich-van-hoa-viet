@@ -65,7 +65,11 @@ jobs:
           get hmnao_a_2021.txt https://hpiers.obspm.fr/eoppc/series/longterm/hmnao_a_2021.txt
           get ukho_lvm_index.html http://astro.ukho.gov.uk/nao/lvm/
           get Table-S15.2020.txt http://astro.ukho.gov.uk/nao/lvm/Table-S15.2020.txt
+          get Table-S15.2020.https.txt https://astro.ukho.gov.uk/nao/lvm/Table-S15.2020.txt
           get Table-S15.txt http://astro.ukho.gov.uk/nao/lvm/Table-S15.txt
+          get Table-S15.2020.opensuse.txt "https://src.opensuse.org/pool/python-skyfield/raw/branch/factory/Table-S15.2020.txt"
+          get hpiers_longterm_dir.html https://hpiers.obspm.fr/eoppc/series/longterm/
+          curl -sv -m 60 -o /dev/null http://astro.ukho.gov.uk/nao/lvm/Table-S15.2020.txt 2>&1 | tail -20 >> FETCH-LOG.txt || true
           get de441_dir.html https://ssd.jpl.nasa.gov/ftp/eph/planets/bsp/
           get de441_readme.txt https://ssd.jpl.nasa.gov/ftp/eph/planets/bsp/README.txt
           curl -fsSL -m 60 -H 'Content-Type: application/json' -d '{"search_for":"Addendum 2020 Measurement of the Earth rotation 720 BC to AD 2015"}' https://api.figshare.com/v2/articles/search -o figshare_search.json || true
