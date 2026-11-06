@@ -4,7 +4,7 @@
 Phuong phap thien van GIONG oracle.py (PyEphem: ephem.next_new_moon, kinh do bieu kien
 Mat Troi tim bang chia doi). Khac biet duy nhat: mui gio lich phu thuoc thoi diem.
 
-QUY TAC MUI GIO CUA ORACLE (do ben kiem dinh tu dat tu bang chung lich su, truoc khi
+QUY TAC MUI GIO CUA ORACLE - LAN 1 (A1; tu Lan 2 them gio Bac Kinh truoc 1929, xem make_tz) (do ben kiem dinh tu dat tu bang chung lich su, truoc khi
 doc docs/03; xem docs/reports/BAO-CAO-KIEM-DINH-1900-1999.md muc 1):
   * Moi su kien thien van (Soc, tiet khi) co thoi diem UT t duoc quy ra ngay dan su theo
     mui gio z(t): UTC+8 neu t < SWITCH_UT, UTC+7 neu t >= SWITCH_UT.
@@ -78,8 +78,21 @@ def compute_terms():
     return res
 
 
-def make_tz(switch_ut):
+# Bo sung A2: truoc 1929 lich Trung Hoa (va lich am VN theo cung phep tinh) dung gio dia phuong
+# kinh tuyen Bac Kinh 116°25' E = UT+7:45:40 (= 1397/180 h). Moc 1929 do ben kiem dinh tu dat:
+# su kien co thoi diem UT t < 1928-12-31 16:00 UT (= 1929-01-01 00:00 UTC+8) dung UT+7:45:40,
+# ngược lai UTC+8 (den moc 1968). Ly do: ytliu0 "Rules for the Chinese Calendar" (Rule 1, kinh tuyen
+# 120° E, "only adopted since 1929"), ICU4X calendrical_calculations UTC_OFFSET_PRE_1929 = 1397/180 h.
+# Chon moc theo UTC+8 (khong theo LMT 1928-12-31 16:14:20 UT): khoang 14 phut chong lan khong chua
+# su kien nao (kiem trong main), nen hai cach chon cho ket qua ngay giong het.
+BJ_LMT = (7 + 45 / 60 + 40 / 3600) / 24.0
+A2_BJ_END = ephem.Date("1928/12/31 16:00:00")
+
+
+def make_tz(switch_ut, bj_end=None):
     def tz(d):
+        if bj_end is not None and d < float(bj_end):
+            return BJ_LMT
         return 8.0 / 24.0 if d < float(switch_ut) else 7.0 / 24.0
     return tz
 
@@ -98,13 +111,18 @@ def fmt(d, off_days):
     return "%s %02d:%02d:%02d" % (O.jdn_to_date(jdn).isoformat(), secs // 3600, (secs // 60) % 60, secs % 60)
 
 
+def offstr(off):
+    s = int(round(off * 86400))
+    return "+%02d:%02d" % (s // 3600, (s // 60) % 60) + (":%02d" % (s % 60) if s % 60 else "")
+
+
 def secs_from_midnight(d, off_days):
     jd = O.ed_to_jd(d) + off_days + 0.5
     return (jd - math.floor(jd)) * 86400.0
 
 
-def build(switch_name):
-    tz = make_tz(SWITCHES[switch_name])
+def build(switch_name, a2=True):
+    tz = make_tz(SWITCHES[switch_name], A2_BJ_END if a2 else None)
     nm = compute_new_moons()
     terms = compute_terms()
     nm_days = [local_jdn(x, tz) for x in nm]
@@ -115,8 +133,8 @@ def build(switch_name):
     return tz, nm, terms, term_days, months
 
 
-def write_all(switch_name, suffix):
-    tz, nm, terms, term_days, months = build(switch_name)
+def write_all(switch_name, suffix, a2=True):
+    tz, nm, terms, term_days, months = build(switch_name, a2)
     lo, hi = FIRST.isoformat(), LAST.isoformat()
     with open(os.path.join(OUT, "newmoons_1900_1999%s.csv" % suffix), "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f, lineterminator="\n")
@@ -125,7 +143,7 @@ def write_all(switch_name, suffix):
             off = tz(x)
             s = fmt(x, off)
             if lo <= s[:10] <= hi:
-                w.writerow([s, "+%02d:00" % round(off * 24), fmt(x, 7 / 24.0), "%.6f" % O.ed_to_jd(x),
+                w.writerow([s, offstr(off), fmt(x, 7 / 24.0), "%.6f" % O.ed_to_jd(x),
                             "%.1f" % secs_from_midnight(x, off)])
     with open(os.path.join(OUT, "terms_1900_1999%s.csv" % suffix), "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f, lineterminator="\n")
@@ -134,7 +152,7 @@ def write_all(switch_name, suffix):
             off = tz(t)
             s = fmt(t, off)
             if lo <= s[:10] <= hi:
-                w.writerow([s[:4], O.TERMS[k], s, "+%02d:00" % round(off * 24), 15 * k, "%.6f" % O.ed_to_jd(t)])
+                w.writerow([s[:4], O.TERMS[k], s, offstr(off), 15 * k, "%.6f" % O.ed_to_jd(t)])
     with open(os.path.join(OUT, "tet_1900_1999%s.csv" % suffix), "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f, lineterminator="\n")
         w.writerow(["lunar_year", "tet_date"])
@@ -161,6 +179,7 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--switch", default="1968-01-01", choices=sorted(SWITCHES))
     ap.add_argument("--suffix", default="")
+    ap.add_argument("--no-a2", action="store_true", help="quy tac A1 (UTC+8 ca truoc 1929)")
     a = ap.parse_args()
-    write_all(a.switch, a.suffix)
+    write_all(a.switch, a.suffix, not a.no_a2)
     print("done", a.switch, file=sys.stderr)

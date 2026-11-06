@@ -17,7 +17,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OR = os.path.join(ROOT, "oracle", "out")
 CO = os.path.join(ROOT, "core", "out")
 REF = os.path.join(ROOT, "oracle", "reference", "tet_published_1900_1999.csv")
-DT_RE = re.compile(r"(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}(?:\.\d+)?))?(?:([+-])(\d{2}):?(\d{2}))?")
+DT_RE = re.compile(r"(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}(?:\.\d+)?))?(?:([+-])(\d{2}):?(\d{2})(?::?(\d{2}))?)?")
 SWITCH_UT = dt.datetime(1967, 12, 31, 17, 0)
 NEAR = 30.0
 FIELDS = ["ly", "lm", "ld", "leap"]
@@ -32,7 +32,7 @@ def parse(s):
     t = dt.datetime(y, mo, d, h, mi) + dt.timedelta(seconds=float(m.group(6) or 0))
     off = None
     if m.group(7):
-        off = (1 if m.group(7) == "+" else -1) * (int(m.group(8)) + int(m.group(9)) / 60)
+        off = (1 if m.group(7) == "+" else -1) * (int(m.group(8)) + int(m.group(9)) / 60 + int(m.group(10) or 0) / 3600)
     return t, off
 
 
@@ -54,7 +54,7 @@ def oracle_nm():
     out = []
     for r in rd(os.path.join(OR, "newmoons_1900_1999.csv")):
         t, _ = parse(r["datetime_local"])
-        off = 8 if r["utc_offset"] == "+08:00" else 7
+        _, off = parse("2000-01-01 00:00:00" + r["utc_offset"])
         out.append((t - dt.timedelta(hours=off), t))  # (UT, local)
     return out
 
@@ -69,6 +69,21 @@ def core_nm(path):
             raise SystemExit("core newmoons khong co offset: " + r[col])
         out.append((t - dt.timedelta(hours=off), t, off))
     return out
+
+
+def continuity(col, a, b):
+    days = [r for d, r in sorted(col.items()) if a <= d <= b]
+    expect = (dt.date.fromisoformat(b) - dt.date.fromisoformat(a)).days + 1
+    err = []
+    for p, q in zip(days, days[1:]):
+        pl, ql = int(p["ld"]), int(q["ld"])
+        same = (p["ly"], p["lm"], leap(p["leap"])) == (q["ly"], q["lm"], leap(q["leap"]))
+        if (ql == pl + 1 and same) or (ql == 1 and pl in (29, 30) and not same):
+            continue
+        err.append((p["date"], q["date"], pl, ql))
+    keys = [(r["ly"], r["lm"], leap(r["leap"]), r["ld"]) for r in days]
+    return {"days": len(days), "expected": expect, "n_seq_errors": len(err), "seq_errors": err[:10],
+            "dup_lunar": len(keys) - len(set(keys))}
 
 
 def main(method):
@@ -135,7 +150,7 @@ def main(method):
     offs = defaultdict(list)
     for ut, loc, off in cnm:
         offs[off].append(loc)
-    res["core_offsets"] = {str(k): [min(v).isoformat(sep=" "), max(v).isoformat(sep=" "), len(v)] for k, v in offs.items()}
+    res["core_offsets"] = {"%.6f" % k: [min(v).isoformat(sep=" "), max(v).isoformat(sep=" "), len(v)] for k, v in offs.items()}
     # discordant new-moon days
     disc = []
     for ut, loc, (cut_, cloc, coff), d in pairs:
@@ -187,11 +202,12 @@ def main(method):
         pl, ql = int(p["ld"]), int(q["ld"])
         if ql == pl + 1 and (p["ly"], p["lm"], leap(p["leap"])) == (q["ly"], q["lm"], leap(q["leap"])):
             continue
-        if ql == 1 and pl in (29, 30):
+        if ql == 1 and pl in (29, 30) and (p["ly"], p["lm"], leap(p["leap"])) != (q["ly"], q["lm"], leap(q["leap"])):
             continue
         seq_err.append((p["date"], q["date"], pl, ql))
     lunar_keys = [(r["ly"], r["lm"], leap(r["leap"]), r["ld"]) for r in days]
     dup = len(lunar_keys) - len(set(lunar_keys))
+    res["l11_1929"] = continuity(col, "1928-01-01", "1930-12-31")
     res["l11"] = {"days": len(days), "expected": expect, "dates_ok": datesok, "seq_errors": seq_err[:10],
                   "n_seq_errors": len(seq_err), "dup_lunar": dup, "tet1968": ctet.get("1968")}
     return res
