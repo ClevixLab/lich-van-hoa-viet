@@ -1,0 +1,11 @@
+{
+ "name": "a2099_quy_tac",
+ "core": "/home/claude/v02-data/core/r1a_solar_1900_2099.jsonl.gz",
+ "oracle": "/dev/fd/63",
+ "n_core": 730490,
+ "n_oracle": 730490,
+ "dup_core": 0,
+ "dup_oracle": 0,
+ "mismatch": 0,
+ "sha256_core": "aa7c218cad7c881ac2384cb79b89d53f1004b351f2ec15c283f79597c4133122"
+}

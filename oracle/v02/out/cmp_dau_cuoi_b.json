@@ -1,0 +1,11 @@
+{
+ "name": "dau_cuoi_b",
+ "core": "/home/claude/v02-data/core/r1b_unknown_1900_3000.jsonl.gz",
+ "oracle": "out/r1_dau_cuoi_b_all.jsonl.gz",
+ "n_core": 792628,
+ "n_oracle": 792628,
+ "dup_core": 0,
+ "dup_oracle": 0,
+ "mismatch": 186,
+ "sha256_core": "5b07d729ace0cfa17d8a25cf65991751a5bebb74735756fc5956b475e4925cc2"
+}

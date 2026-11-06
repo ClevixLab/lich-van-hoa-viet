@@ -7,3 +7,6 @@
 # Bộ nhớ đệm Python
 __pycache__/
 *.pyc
+
+# Dữ liệu đối chiếu lớn của bên kiểm định v0.2 (tái tạo bằng oracle/v02; tổng kiểm trong SHA256SUMS)
+oracle/v02/out/*.jsonl.gz

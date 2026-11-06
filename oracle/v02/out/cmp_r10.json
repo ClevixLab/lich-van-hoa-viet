@@ -1,0 +1,55 @@
+{
+ "a": {
+  "n_core": 46386,
+  "n_oracle": 46386,
+  "mismatch": 0
+ },
+ "b": {
+  "n_core": 1102,
+  "n_oracle": 1102,
+  "mismatch": 0
+ },
+ "c": {
+  "n_core": 10000,
+  "core_error_rows": 3,
+  "oracle_vs_core_table_differ": 0,
+  "kinds": {
+   "lunar/day|lunar/day|59": 417,
+   "lunar/day|lunar/day|60": 416,
+   "lunar/day|lunar/day|61": 417,
+   "lunar/day|solar/day|59": 416,
+   "lunar/day|solar/day|60": 417,
+   "lunar/day|solar/day|61": 417,
+   "lunar/year|lunar/day|59": 417,
+   "lunar/year|lunar/day|60": 417,
+   "lunar/year|lunar/day|61": 416,
+   "lunar/year|solar/day|59": 417,
+   "lunar/year|solar/day|60": 416,
+   "lunar/year|solar/day|61": 417,
+   "solar/day|lunar/day|59": 417,
+   "solar/day|lunar/day|60": 417,
+   "solar/day|lunar/day|61": 416,
+   "solar/day|solar/day|59": 417,
+   "solar/day|solar/day|60": 416,
+   "solar/day|solar/day|61": 417,
+   "solar/year|lunar/day|59": 416,
+   "solar/year|lunar/day|60": 417,
+   "solar/year|lunar/day|61": 417,
+   "solar/year|solar/day|59": 417,
+   "solar/year|solar/day|60": 417,
+   "solar/year|solar/day|61": 416
+  },
+  "mismatch": 0
+ },
+ "d": {
+  "n_core": 2202,
+  "rules": [
+   "feb28",
+   "mar1"
+  ],
+  "Y_min": 1900,
+  "Y_max": 3000,
+  "complete": true,
+  "mismatch": 0
+ }
+}
