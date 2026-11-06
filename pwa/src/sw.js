@@ -1,11 +1,15 @@
 /* Service worker — Lịch và Văn hóa Việt. Sinh bởi build.mjs.
-   Chiến lược: precache toàn bộ tệp khi cài, cache-first, xóa cache cũ khi kích hoạt.
+   Chiến lược: precache toàn bộ tệp của lần tải đầu khi cài, cache-first, xóa cache cũ khi kích hoạt; tệp tải
+   lười (LAZY) được cache khi trang nạp lần đầu.
    Riêng version.json: luôn lấy qua mạng (cache: "no-store"), không bao giờ trả từ cache — trang dùng tệp
    này để biết có phiên bản mới hay không; mất mạng thì báo lỗi để trang hiện "đang ngoại tuyến".
    Cập nhật: bản mới chờ (waiting) đến khi người dùng đồng ý (RS-08).
    Không gọi mạng ra ngoài nguồn gốc của chính ứng dụng. */
 const CACHE = "%CACHE_NAME%";
 const PRECACHE = %PRECACHE%;
+// Tệp tải lười (mô-đun lưu trữ và mật mã, P6): không tải khi cài; cache lần đầu trang nạp chúng để sau đó
+// dùng được khi không có mạng.
+const LAZY = new Set(%LAZY%.map((u) => new URL(u, self.registration.scope).pathname));
 const VERSION_URL = new URL(%VERSION_JSON%, self.registration.scope).pathname;
 const PREFIX = "lvhv-";
 
@@ -52,7 +56,9 @@ self.addEventListener("fetch", (event) => {
       const hit = await cache.match(req, { ignoreSearch: true });
       if (hit) return hit;
       try {
-        return await fetch(req);
+        const res = await fetch(req);
+        if (res.ok && LAZY.has(url.pathname)) await cache.put(req, res.clone());
+        return res;
       } catch (e) {
         const shell = await cache.match("./");
         if (req.mode === "navigate" && shell) return shell;

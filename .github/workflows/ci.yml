@@ -33,8 +33,14 @@ jobs:
         run: cargo fmt --all --check
       - name: clippy (-D warnings)
         run: cargo clippy --workspace --all-targets -- -D warnings
-      - name: test (core, ngochap, ffi)
+      - name: test (core, ngochap, ffi, store, backup)
         run: cargo test --workspace --release
+      - name: S1/S8 — lvhv-store, lvhv-backup cấm unsafe; phụ thuộc mật mã ghim chính xác
+        run: |
+          for f in store/src/lib.rs backup/src/lib.rs; do grep -q '#!\[forbid(unsafe_code)\]' "$f" || { echo "::error::$f thiếu #![forbid(unsafe_code)]"; exit 1; }; done
+          for c in argon2 chacha20poly1305 zeroize; do
+            grep -Eq "^$c = \{ version = \"=[0-9]+\.[0-9]+\.[0-9]+\"" backup/Cargo.toml || { echo "::error::$c không ghim =x.y.z (S11)"; exit 1; }
+          done
       - name: S1 — không có unsafe trong lvhv-core
         run: |
           # bỏ qua dòng chú thích (//, //!, ///) và thuộc tính #![forbid(unsafe_code)]
@@ -42,6 +48,12 @@ jobs:
             echo "::error::Tìm thấy unsafe trong core/src (tiêu chí S1)"; exit 1
           fi
           grep -q '#!\[forbid(unsafe_code)\]' core/src/lib.rs
+          grep -q '#!\[forbid(unsafe_code)\]' memorial/src/lib.rs
+          if grep -rn --include='*.rs' -E '\bunsafe\b' memorial/src | grep -vE '^[^:]+:[0-9]+:[[:space:]]*(//|#!\[forbid\(unsafe_code\)\])'; then
+            echo "::error::Tìm thấy unsafe trong memorial/src"; exit 1
+          fi
+          # lvhv-memorial chỉ phụ thuộc lvhv-core (docs/v0.2/05 §2)
+          test "$(cargo tree -p lvhv-memorial -e normal --prefix none | sort -u | awk '{print $1}' | tr '\n' ' ')" = "lvhv-core lvhv-memorial lvhv-ngochap "
       - name: FFI — sinh lại mã Kotlin/Swift và so với ffi/generated
         run: |
           cargo build -p lvhv-ffi --release --lib
@@ -60,6 +72,25 @@ jobs:
           path: ${{ runner.temp }}/gen
           retention-days: 14
 
+  memorial-parity:
+    name: v0.2 lvhv-memorial — Rust ≡ TypeScript (R1/R3/R10/R11/R12/.ics)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: pwa/package-lock.json
+      - name: npm ci (pwa — tsc/esbuild cho tsport)
+        working-directory: pwa
+        run: npm ci
+      - name: check-parity.sh --memorial-only
+        run: scripts/check-parity.sh --memorial-only
+
   deps:
     name: Kiểm tra phụ thuộc (cargo-deny advisories)
     runs-on: ubuntu-24.04
@@ -68,8 +99,44 @@ jobs:
       - uses: actions/checkout@v4
       - uses: EmbarkStudios/cargo-deny-action@v2
         with:
-          command: check advisories
+          command: check advisories bans
           arguments: --workspace
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: S11 — npm audit (phụ thuộc chạy trong PWA, gồm @noble/*)
+        working-directory: pwa
+        run: |
+          npm ci --ignore-scripts
+          npm audit --omit=dev --audit-level=low
+          node -e 'const p=require("./package.json");for(const [k,v] of Object.entries({...p.dependencies,...p.devDependencies}))if(!/^\d+\.\d+\.\d+$/.test(v)){console.error(`::error::${k} không ghim chính xác: ${v}`);process.exit(1)}'
+
+  store:
+    name: Lưu trữ + sao lưu (R6, vector 03 §2.5, Rust ↔ PWA)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: pwa/package-lock.json
+      - name: npm ci (pwa)
+        working-directory: pwa
+        run: npm ci
+      - name: vector tất định + R6 phía PWA (gồm lật bit 65 536 biến thể) + kiểm chéo Rust ↔ PWA
+        run: scripts/check-store.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: store-r6
+          path: |
+            pwa/test/store/out/results.json
+            pwa/test/store/out/*.lvhv
+          retention-days: 14
 
   l7-pwa:
     name: L7 (tsport = core) + PWA build + smoke

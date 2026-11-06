@@ -1,0 +1,2 @@
+oracle d self-check: []
+oracle {'a': 4001120, 'b': 396314, 'c': 4000820, 'c_deaths': 401763}

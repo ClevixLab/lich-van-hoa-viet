@@ -11,6 +11,7 @@ import { renderMonth } from "./ui/month";
 import { renderDayNav, renderSheet } from "./ui/sheet";
 import { APP_VERSION } from "./gen/content";
 import { applyUpdate, attachRegistration, autoCheck, onUpdateResult } from "./update";
+import * as storage from "./storage";
 import type { SolarDate } from "./types";
 
 type Route = "ngay" | "chon-ngay" | "doi-ngay" | "gioi-thieu" | "nguon-quy-tac";
@@ -28,9 +29,10 @@ const state = {
 };
 
 declare global {
-  interface Window { __lvhv?: { renderMs: number[]; mock: boolean } }
+  interface Window { __lvhv?: { renderMs: number[]; mock: boolean; storage: typeof storage } }
 }
-const metrics = { renderMs: [] as number[], mock: IS_MOCK };
+// `storage`: API lưu trữ (đợt 2, chỉ hàm; giao diện ở đợt 3) — kiểm thử khói gọi qua đây.
+const metrics = { renderMs: [] as number[], mock: IS_MOCK, storage };
 window.__lvhv = metrics;
 
 function clamp(d: SolarDate): SolarDate {

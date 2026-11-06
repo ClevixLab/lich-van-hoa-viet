@@ -1,0 +1,20 @@
+[package]
+name = "lvhv-store"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.85"
+description = "Kho dữ liệu SQLite (lược đồ, chuyển đổi phiên bản, nhập/xuất sao lưu) của Lịch và Văn hóa Việt — docs/v0.2/01"
+license = "MIT"
+publish = false
+
+[dependencies]
+lvhv-core = { path = "../core" }
+lvhv-backup = { path = "../backup" }
+rusqlite = { version = "=0.41.1", features = ["bundled"] }
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.145"
+sha2 = { version = "=0.11.1" }
+unicode-normalization = { version = "=0.1.26" }
+getrandom = { version = "=0.4.3" }
+
+[dev-dependencies]

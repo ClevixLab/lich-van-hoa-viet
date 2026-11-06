@@ -1,0 +1,2 @@
+core d self-check: []
+core {'a': 4001120, 'b': 396314, 'c': 4000820, 'c_deaths': 401763}

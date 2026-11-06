@@ -1,0 +1,18 @@
+[package]
+name = "lvhv-backup"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.85"
+description = "Tệp sao lưu mã hóa (Argon2id + XChaCha20-Poly1305) của Lịch và Văn hóa Việt — docs/v0.2/03-SAO-LUU.md"
+license = "MIT"
+publish = false
+
+[dependencies]
+# docs/v0.2/03 §4.1 — ghim chính xác; nâng phiên bản là PR riêng kèm chạy lại vector §2.5.
+argon2 = { version = "=0.6.0", default-features = false, features = ["alloc", "zeroize"] }
+chacha20poly1305 = { version = "=0.11.0", default-features = false, features = ["alloc"] }
+zeroize = { version = "=1.9.1" }
+getrandom = { version = "=0.4.3" }
+unicode-normalization = { version = "=0.1.26" }
+
+[dev-dependencies]

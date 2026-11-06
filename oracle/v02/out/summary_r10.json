@@ -1,0 +1,31 @@
+{
+ "r10": {
+  "a": 46386,
+  "b": 1102,
+  "b_internal_mismatch": [],
+  "c": 10000,
+  "d": 4404,
+  "examples": {
+   "1990-01-20": [
+    {
+     "year": 1989,
+     "month": 12,
+     "day": 24,
+     "leap": false
+    },
+    "Kỷ Tỵ"
+   ],
+   "1940/2025": {
+    "value": 86,
+    "label": "huong_tho",
+    "manual": false,
+    "approx": false
+   },
+   "song_2026-11-06": {
+    "tuoi_duong": 36,
+    "tuoi_am": 38
+   },
+   "29/02/2000->2100": "2100-02-28"
+  }
+ }
+}

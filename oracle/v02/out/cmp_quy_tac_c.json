@@ -1,0 +1,11 @@
+{
+ "name": "quy_tac_c",
+ "core": "/home/claude/v02-data/core/r1c_lunar_1900_2999.jsonl.gz",
+ "oracle": "out/r1_quy_tac_c.jsonl.gz",
+ "n_core": 4000820,
+ "n_oracle": 4000820,
+ "dup_core": 0,
+ "dup_oracle": 0,
+ "mismatch": 0,
+ "sha256_core": "87c0cabb3ad7f1605c05d0617b4c03c2f97ef72d637f4e5339aea43fd5d64285"
+}

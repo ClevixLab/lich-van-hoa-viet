@@ -1,0 +1,18 @@
+[package]
+name = "lvhv-memorial"
+version = "0.1.0"
+edition = "2021"
+description = "Ngày giỗ, tuổi, lời nhắc và tệp .ics cho Lịch và Văn hóa Việt v0.2 (docs/v0.2/02) — chỉ phụ thuộc lvhv-core"
+license = "MIT"
+publish = false
+
+[lib]
+name = "lvhv_memorial"
+path = "src/lib.rs"
+
+[[bin]]
+name = "lvhv-memorial-dump"
+path = "src/bin/lvhv-memorial-dump.rs"
+
+[dependencies]
+lvhv-core = { path = "../core" }
