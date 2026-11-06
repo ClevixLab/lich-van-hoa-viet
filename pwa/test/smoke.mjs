@@ -352,6 +352,7 @@ async function newCtx(vp, opts = {}) {
     first_load_transfer_gzip_kb: +(firstLoadGz / 1024).toFixed(1),
     first_load_cdp_encoded_bytes: cdpBytes,
     first_load_files_page_and_sw_precache: firstLoadFiles.length,
+    first_load_paths: firstLoadFiles,
     js_heap_used_bytes: heap.usedSize,
     js_heap_used_mb: +(heap.usedSize / 1048576).toFixed(2),
     js_heap_total_mb: +(heap.totalSize / 1048576).toFixed(2),
@@ -361,6 +362,81 @@ async function newCtx(vp, opts = {}) {
     offline_second_visit: offOk === 1,
     console_errors: realErrors,
     external_requests: external,
+  };
+  await ctx.close();
+}
+
+// ---------- 1c. Lưu trữ và sao lưu v0.2 (đợt 2): tải lười, CSP không đổi, IndexedDB, Argon2id trong Chromium ----------
+const LAZY = JSON.parse(readFileSync(join(DIST, "lazy-manifest.json"), "utf8"));
+{
+  // P6: lần tải đầu không có tệp lưu trữ/mật mã (danh sách tệp phục vụ ở mục 1 + precache của SW).
+  const sw = readFileSync(join(DIST, "sw.js"), "utf8");
+  const pre = JSON.parse(/const PRECACHE = (\[[^\]]*\]);/.exec(sw)[1]);
+  check(LAZY.lazy_js.length >= 2 && LAZY.lazy_js.every((f) => !pre.includes("./" + f)), `P6: ${LAZY.lazy_js.length} tệp tải lười không nằm trong precache`);
+  check(LAZY.lazy_js.every((f) => !metrics.viewports["360x780"].first_load_paths.includes("/" + f)), "P6: lần tải đầu không yêu cầu tệp lưu trữ/mật mã");
+
+  bytesSent = 0; served.length = 0;
+  const { ctx, page, errors, external } = await newCtx({ width: 360, height: 780 }, { touch: true });
+  const csp = [];
+  page.on("console", (m) => { if (/Content.Security.Policy|CSP/i.test(m.text())) csp.push(m.text()); });
+  await page.goto(BASE + DAY, { waitUntil: "load" });
+  await page.waitForSelector(".sheet");
+  await page.evaluate(() => navigator.serviceWorker.ready);
+  const before = served.length;
+  const PHOTO = [...readFileSync(join(ROOT, "..", "docs/v0.2/schema/test-vectors/photo-0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09.jpg"))];
+  const EX = readFileSync(join(ROOT, "..", "docs/v0.2/schema/test-vectors/example-v1.json"), "utf8");
+  const RUST_FILE = [...readFileSync(join(ROOT, "..", "docs/v0.2/schema/test-vectors/example-v1.lvhv"))];
+  const r = await page.evaluate(async ({ PHOTO, EX, RUST_FILE }) => {
+    const st = window.__lvhv.storage;
+    const due0 = await st.backupReminderDue();
+    const M = await st.loadStore();
+    const s = await M.openStore();
+    const ex = JSON.parse(EX);
+    const photo = new Uint8Array(PHOTO);
+    const p = M.buildPerson(ex.persons[0]);
+    await s.putPerson(p, { id: p.photo_id, mime: "image/jpeg", width: 768, height: 1024, bytes: photo });
+    const persist = await s.persistResult();
+    const h1 = await s.stateHash();
+    let t = performance.now();
+    const file = await s.exportBackup("mật khẩu thử nghiệm", { version: "0.2.0", platform: "pwa" });
+    const exportMs = performance.now() - t;
+    const s2 = await M.openStore(); // cùng kho; dùng để nhập lại "Thay toàn bộ" sau khi xóa
+    await s2.deletePerson(p.id);
+    t = performance.now();
+    const v = await M.openBackup(file, "mật khẩu thử nghiệm");
+    const importMs = performance.now() - t;
+    await s2.applyImport(v, "replace");
+    const h2 = await s2.stateHash();
+    let wrong = "";
+    try { await M.openBackup(file, "mật khẩu sai"); } catch (e) { wrong = e.message; }
+    const fromRust = await M.openBackup(new Uint8Array(RUST_FILE), "mật khẩu thử nghiệm");
+    const dbs = (await indexedDB.databases()).map((d) => d.name);
+    return { due0, persist, same: h1 === h2, exportMs, importMs, wrong, rustPersons: fromRust.preview.persons, dbs, ls: Object.keys(localStorage) };
+  }, { PHOTO, EX, RUST_FILE });
+  const lazyServed = served.slice(before).map((x) => x.path);
+  check(r.due0 === false, "backupReminderDue() khi chưa có dữ liệu = false (không tạo IndexedDB)");
+  check(r.same, "Chromium: putPerson + ảnh → xuất → nhập Thay toàn bộ → giống hệt (stateHash)");
+  check(r.wrong === "Sai mật khẩu hoặc tệp bị hỏng", `Chromium: sai mật khẩu → "${r.wrong}"`);
+  check(r.rustPersons === 3, "Chromium: mở được tệp mẫu do Rust tạo (example-v1.lvhv)");
+  check(typeof r.persist === "boolean", `navigator.storage.persist() đã gọi khi lưu hồ sơ đầu tiên (kết quả ${r.persist})`);
+  check(LAZY.lazy_js.every((f) => lazyServed.includes("/" + f)), `tệp tải lười được nạp khi dùng (${lazyServed.join(", ")})`);
+  check(csp.length === 0, `0 vi phạm CSP khi chạy Argon2id/XChaCha20 (${csp.join(" | ") || "0"})`);
+  check(r.dbs.includes("lvhv") && r.ls.every((k) => k === "lvhv.ui"), "dữ liệu chỉ ở IndexedDB 'lvhv'; localStorage chỉ lvhv.ui (S4')");
+  check(errors.length === 0, `không lỗi console (lưu trữ) ${errors.join(" | ")}`);
+  check(external.length === 0, "không gọi mạng ngoài (lưu trữ)");
+  // Ngoại tuyến: mô-đun tải lười đã được SW cache khi nạp lần đầu → dùng được khi mất mạng.
+  online = false;
+  await ctx.setOffline(true);
+  await page.goto(BASE + DAY, { waitUntil: "load" });
+  const off = await page.evaluate(async () => { const M = await window.__lvhv.storage.loadStore(); const s = await M.openStore(); return (await s.persons()).length; }).catch((e) => "ERR " + e.message);
+  check(off === 1, `ngoại tuyến: mô-đun lưu trữ nạp từ cache, đọc được kho (${off})`);
+  await ctx.setOffline(false);
+  online = true;
+  const lazyGz = LAZY.lazy_js.reduce((n, f) => n + gzipSync(readFileSync(join(DIST, f)), { level: 9 }).length, 0);
+  metrics.storage_v02 = {
+    lazy_js: LAZY.lazy_js, lazy_js_gzip_bytes: lazyGz, lazy_js_gzip_kb: +(lazyGz / 1024).toFixed(1),
+    argon2id_export_ms_chromium: Math.round(r.exportMs), argon2id_import_ms_chromium: Math.round(r.importMs),
+    persist_granted_headless: r.persist, roundtrip_identical: r.same, csp_violations: csp,
   };
   await ctx.close();
 }
@@ -537,6 +613,10 @@ const html = readFileSync(join(DIST, "index.html"), "utf8");
 const csp = /http-equiv="Content-Security-Policy" content="([^"]+)"/.exec(html)?.[1] ?? "";
 const inlineScript = /<script(?![^>]*\bsrc=)[^>]*>/.test(html);
 check(csp.includes("default-src 'self'") && !csp.includes("unsafe"), "CSP chặt (default-src 'self', không unsafe-*)");
+// S2b (docs/v0.2/04): CSP giống từng byte bản 0.1.1 (O-7: mật mã JS, không ngoại lệ 'wasm-unsafe-eval').
+const CSP_011 = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; font-src 'self'; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'";
+check(csp === CSP_011, "S2b: CSP giống từng byte bản 0.1.1");
+check(!/WebAssembly|\.wasm/.test(files.filter((f) => f.endsWith(".js")).map((f) => readFileSync(f, "utf8")).join("\n")), "không có WebAssembly trong bản dựng");
 check(!inlineScript, "không có script nội tuyến");
 const allJs = files.filter((f) => f.endsWith(".js")).map((f) => readFileSync(f, "utf8")).join("\n");
 // URL chỉ được phép xuất hiện dưới dạng DỮ LIỆU hiển thị (nguồn ca dao trong cadao.json, nguồn quy tắc trong
@@ -559,6 +639,8 @@ metrics.criteria = {
   P4_js_heap_under_30MB: { value_mb: Math.max(vp.js_heap_used_mb, metrics.viewports["1280x800"].js_heap_used_mb), pass: Math.max(vp.js_heap_used_bytes, metrics.viewports["1280x800"].js_heap_used_bytes) < 30 * 1048576 },
   P5_offline_after_first_load: { pass: vp.offline_second_visit },
   S3_no_external_network_and_strict_csp: { csp, pass: vp.external_requests.length === 0 && metrics.viewports["1280x800"].external_requests.length === 0 && csp.includes("default-src 'self'") && !inlineScript },
+  S2b_csp_unchanged_from_0_1_1: { pass: csp === CSP_011 },
+  P6_crypto_lazy_loaded: { lazy_js_gzip_kb: metrics.storage_v02?.lazy_js_gzip_kb, pass: !failures.some((f) => f.startsWith("P6")) },
   S4_no_personal_data_stored: { note: "localStorage chỉ có khóa lvhv.ui (cỡ chữ, sáng/tối); năm sinh không lưu", pass: !failures.some((f) => f.startsWith("localStorage")) },
 };
 metrics.dist = { files: files.length, raw_bytes: distRaw, gzip_bytes_all_files: distGz };

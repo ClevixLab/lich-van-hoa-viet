@@ -227,6 +227,9 @@ const res = await build({
   format: "esm",
   target: "es2020",
   outdir: DIST,
+  // Tách mã: mô-đun lưu trữ và mật mã (src/store/, @noble/*) chỉ nạp bằng import() — tiêu chí P6.
+  splitting: true,
+  chunkNames: "chunks/[name]-[hash]",
   entryNames: "[name]-[hash]",
   assetNames: "fonts/[name]-[hash]",
   loader: { ".woff2": "file" },
@@ -242,6 +245,24 @@ const outputs = Object.keys(res.metafile.outputs).map((p) => relative(DIST, reso
 const jsFile = outputs.find((p) => /^app-.*\.js$/.test(p));
 const cssFile = outputs.find((p) => /^style-.*\.css$/.test(p));
 const fontFiles = outputs.filter((p) => p.endsWith(".woff2"));
+
+// P6: tệp JS của lần tải đầu = bao đóng import TĨNH của app-*.js. Mọi tệp JS khác (chỉ đến được qua
+// import() — lưu trữ, mật mã) là tải lười: KHÔNG precache, service worker chỉ cache khi trang thật sự nạp.
+const outKey = (p) => relative(DIST, resolve(ROOT, p)).split("\\").join("/");
+const metaOut = Object.fromEntries(Object.entries(res.metafile.outputs).map(([k, v]) => [outKey(k), v]));
+const firstLoadJs = new Set();
+(function closure(f) {
+  if (firstLoadJs.has(f)) return;
+  firstLoadJs.add(f);
+  for (const im of metaOut[f]?.imports ?? []) if (im.kind === "import-statement") closure(outKey(im.path));
+})(jsFile);
+const lazyJs = outputs.filter((p) => p.endsWith(".js") && !firstLoadJs.has(p)).sort();
+// Mô-đun mật mã phải nằm trong phần tải lười (không bao giờ trong bao đóng tĩnh).
+for (const f of firstLoadJs) {
+  const inputs = Object.keys(metaOut[f]?.inputs ?? {});
+  const bad = inputs.filter((i) => /@noble[\\/]|src[\\/]store[\\/]/.test(i));
+  if (bad.length) fail(`P6: ${f} (tải lần đầu) chứa mô-đun lưu trữ/mật mã: ${bad.slice(0, 3).join(", ")}`);
+}
 
 // ---------- 3. Tệp tĩnh ----------
 function copyDir(src, dst) {
@@ -293,13 +314,17 @@ function listFiles(dir, base = dir) {
     return statSync(p).isDirectory() ? listFiles(p, base) : [relative(base, p).split("\\").join("/")];
   });
 }
-const precache = ["./", ...listFiles(DIST).filter((f) => f !== ".nojekyll" && f !== VERSION_JSON).map((f) => "./" + f)].sort();
+const lazySet = new Set(lazyJs);
+const precache = ["./", ...listFiles(DIST).filter((f) => f !== ".nojekyll" && f !== VERSION_JSON && !lazySet.has(f)).map((f) => "./" + f)].sort();
+const lazyList = lazyJs.map((f) => "./" + f);
+writeFileSync(join(DIST, "lazy-manifest.json"), JSON.stringify({ first_load_js: [...firstLoadJs].sort(), lazy_js: lazyJs }, null, 2) + "\n");
 const hash = createHash("sha256");
-for (const f of precache) if (f !== "./") hash.update(f).update(readFileSync(join(DIST, f.slice(2))));
+for (const f of [...precache, ...lazyList]) if (f !== "./") hash.update(f).update(readFileSync(join(DIST, f.slice(2))));
 const cacheName = `lvhv-v${VERSION}-${hash.digest("hex").slice(0, 10)}`;
 const sw = readFileSync(join(ROOT, "src", "sw.js"), "utf8")
   .replace("%CACHE_NAME%", cacheName)
   .replace("%PRECACHE%", JSON.stringify(precache))
+  .replace("%LAZY%", JSON.stringify(lazyList))
   .replace("%VERSION_JSON%", JSON.stringify("./" + VERSION_JSON));
 writeFileSync(join(DIST, "sw.js"), sw);
 

@@ -14,6 +14,7 @@ và các dòng dưới đây được viết lại thành ghi chú cho người 
 - Màn hình tưởng niệm ngày giỗ: bia, ảnh, mâm lễ, ba nén hương.
 - Dữ liệu chỉ lưu trên máy; sao lưu ra tệp có mật khẩu.
 - (Đợt 1, nội bộ) Lõi tính ngày giỗ, tuổi, lời nhắc và tệp .ics (`memorial/`, `tsport/src/memorial*.ts`), chưa có giao diện.
+- (Nội bộ, đợt 2) Kho dữ liệu SQLite và IndexedDB, tệp sao lưu mã hóa đọc được giữa ứng dụng web và bản cài trên máy.
 
 ## [0.1.2] — 2026-11-06
 

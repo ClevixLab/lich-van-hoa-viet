@@ -1,0 +1,260 @@
+{
+  "corrupt": [
+    {
+      "change": {
+        "xor": [
+          0,
+          1
+        ]
+      },
+      "expect": "not_a_backup",
+      "file": "corrupt/magic.lvhv",
+      "sha256": "4b9326d129a0d5a0ee8380a7c0e81664a1e6ee4794a93ca3e9e9bd0e24002295"
+    },
+    {
+      "change": {
+        "xor": [
+          8,
+          1
+        ]
+      },
+      "expect": "unsupported",
+      "file": "corrupt/file_version-0.lvhv",
+      "sha256": "88af10ce80c5f475991960d53272c6547d1666d6ea14b9055c8f535715af3047"
+    },
+    {
+      "change": {
+        "set_u16": [
+          8,
+          2
+        ]
+      },
+      "expect": "newer_version",
+      "file": "corrupt/file_version-2.lvhv",
+      "sha256": "391e7a36f1195d1545cf5b82ac2760dfb24a0298f2889461a9202810c3bceb5d"
+    },
+    {
+      "change": {
+        "xor": [
+          10,
+          1
+        ]
+      },
+      "expect": "unsupported",
+      "file": "corrupt/kdf_id.lvhv",
+      "sha256": "a1bbba5cdd397f91f5c0d320330517e049e07651e17e78132427496135ce8ba4"
+    },
+    {
+      "change": {
+        "xor": [
+          11,
+          1
+        ]
+      },
+      "expect": "unsupported",
+      "file": "corrupt/aead_id.lvhv",
+      "sha256": "819ac9d6d9dacbf89547eb89c220e17a24d9d7d5ced09181d3d531f9dc78f3f3"
+    },
+    {
+      "change": {
+        "xor": [
+          12,
+          1
+        ]
+      },
+      "expect": "wrong_password_or_corrupt",
+      "file": "corrupt/m_cost_kib.lvhv",
+      "sha256": "e999039a78bb75e563b9a9f5357660c52fccf2455d97440aa73e14c2ab773c73"
+    },
+    {
+      "change": {
+        "set_u32": [
+          12,
+          4194304
+        ]
+      },
+      "expect": "bad_kdf_params",
+      "file": "corrupt/m_cost_kib-4GiB.lvhv",
+      "sha256": "20b1e1d3d40ee948b7f54d9d8f14e9b127da62f3562d835c0e26114388565ebe"
+    },
+    {
+      "change": {
+        "set_u32": [
+          12,
+          65535
+        ]
+      },
+      "expect": "bad_kdf_params",
+      "file": "corrupt/m_cost_kib-low.lvhv",
+      "sha256": "4de342d2847f5ad57192a9f707d0b5217d1d93bf40da531e4717aa1dd4faad67"
+    },
+    {
+      "change": {
+        "xor": [
+          16,
+          1
+        ]
+      },
+      "expect": "wrong_password_or_corrupt",
+      "file": "corrupt/t_cost.lvhv",
+      "sha256": "f3f323af9ad910fafa8bd59de6683e62e435e46aa53532550f63ea3dae48d34f"
+    },
+    {
+      "change": {
+        "set_u32": [
+          16,
+          0
+        ]
+      },
+      "expect": "bad_kdf_params",
+      "file": "corrupt/t_cost-0.lvhv",
+      "sha256": "79485d10e4170aa8478affae15cc3a8f353428703c1846c01277eebde20ad392"
+    },
+    {
+      "change": {
+        "set_u32": [
+          16,
+          11
+        ]
+      },
+      "expect": "bad_kdf_params",
+      "file": "corrupt/t_cost-11.lvhv",
+      "sha256": "6b9d3a2d14f5af9761ad8e57c0aba6df05d84df8eeea1fcfb089ff9309aaa16d"
+    },
+    {
+      "change": {
+        "xor": [
+          20,
+          1
+        ]
+      },
+      "expect": "wrong_password_or_corrupt",
+      "file": "corrupt/p_cost.lvhv",
+      "sha256": "5fe77d634e9b6f903821e9e52aefe068d361fa061cc619e2a3aa917316954c46"
+    },
+    {
+      "change": {
+        "set_u32": [
+          20,
+          9
+        ]
+      },
+      "expect": "bad_kdf_params",
+      "file": "corrupt/p_cost-9.lvhv",
+      "sha256": "c1c4bc590770e45d01f7b3fc25dc1211db10231461ef51a68f12999852aeb94e"
+    },
+    {
+      "change": {
+        "xor": [
+          24,
+          1
+        ]
+      },
+      "expect": "wrong_password_or_corrupt",
+      "file": "corrupt/salt.lvhv",
+      "sha256": "6759f451a58d85348f926a4b4df464809a60afa3d936a0ead50ecc4d222ac7d1"
+    },
+    {
+      "change": {
+        "xor": [
+          40,
+          1
+        ]
+      },
+      "expect": "wrong_password_or_corrupt",
+      "file": "corrupt/nonce.lvhv",
+      "sha256": "84e056f827271aa151f52bbd1dbf929a03811c3872de1ba14d5da528fd8784d4"
+    },
+    {
+      "change": {
+        "xor": [
+          64,
+          1
+        ]
+      },
+      "expect": "bad_length",
+      "file": "corrupt/plaintext_len.lvhv",
+      "sha256": "7fb4c49ab5aa2c528ec3af8a4dd311a864e6daf8a2b5de96c7ce4a0740962ebd"
+    },
+    {
+      "change": {
+        "xor": [
+          72,
+          1
+        ]
+      },
+      "expect": "wrong_password_or_corrupt",
+      "file": "corrupt/ciphertext.lvhv",
+      "sha256": "5849d3139040dabda717d0bc19f095ca47f6d6581a3b95a512516922932afc78"
+    },
+    {
+      "change": {
+        "xor": [
+          -1,
+          128
+        ]
+      },
+      "expect": "wrong_password_or_corrupt",
+      "file": "corrupt/tag.lvhv",
+      "sha256": "ff14fb6ff44840b850f1ccabc5ca9b24e7e5405fe49645f1eb4dde78290122ad"
+    },
+    {
+      "change": {
+        "truncate": 1
+      },
+      "expect": "bad_length",
+      "file": "corrupt/truncated-1.lvhv",
+      "sha256": "d22178441fff9c4d3e6c49ee5f7d101add477f577bb39e96ddaa44f6edb2fe67"
+    },
+    {
+      "change": {
+        "keep": 87
+      },
+      "expect": "not_a_backup",
+      "file": "corrupt/truncated-to-87.lvhv",
+      "sha256": "c82b2c8b199be85550f0bed20975f9dae3cc2333afce604ad2673388c45e6641"
+    },
+    {
+      "change": {
+        "append": [
+          0
+        ]
+      },
+      "expect": "bad_length",
+      "file": "corrupt/appended-1.lvhv",
+      "sha256": "e7fce266c65d834b4f65044e76a0a10ed1c9267ca373a511080039b3cb662b7b"
+    }
+  ],
+  "dataset_r6": {
+    "file": "dataset-r6.json",
+    "fixed_rng_file_len": 293479,
+    "fixed_rng_file_sha256": "75796604c3b22cf473a93ba7a115c3707dcbecf32627c64d1b820c4529bf475d",
+    "photo_bytes": "r6_photo_bytes(i), i = 0..19 (store/examples/gen_test_vectors.rs)",
+    "store_state_sha256": "45f170c27f310eb1d22c278eebf759d910ae4794c0f8c488a1e1228adede7c20"
+  },
+  "example": {
+    "file": "example-v1.lvhv",
+    "json": "example-v1.json",
+    "json_sha256": "e60a9e47f685003d42575566a2ec0e9b74c1b2a90b6c378f675b404502742292",
+    "photo": "photo-0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09.jpg",
+    "photo_sha256": "22a5c04266a6d2e27fa3085bd0623296dfb7e91b5763e8a746c6a4d220dfb7e9",
+    "sha256": "d4cb2ecde5e9fde48f9e2ef0bfdddddbf85d4d92e7e5618a342cea74b820fea0"
+  },
+  "format": "lvhv-backup test vectors, file_version 1 (docs/v0.2/03 §2.5)",
+  "generator": "cargo run --release -p lvhv-store --example gen_test_vectors",
+  "kdf": {
+    "algorithm": "argon2id",
+    "m_cost_kib": 65536,
+    "out_len": 32,
+    "p_cost": 4,
+    "t_cost": 3,
+    "version": 19
+  },
+  "key_hex": "b385e69e04485bcaf6f8b1cd666778aac7a1850ae317ec783c73fc6220755676",
+  "merge_cases": 31,
+  "nonce_hex": "101112131415161718191a1b1c1d1e1f2021222324252627",
+  "password": "mật khẩu thử nghiệm",
+  "password_utf8_nfc_hex": "6de1baad74206b68e1baa975207468e1bbad206e676869e1bb876d",
+  "salt_hex": "000102030405060708090a0b0c0d0e0f",
+  "validation_cases": 63
+}

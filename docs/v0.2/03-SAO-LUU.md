@@ -200,3 +200,98 @@ Quyết định thuộc chủ dự án; tiêu chí S2 đã đăng ký trước c
 - privateinternetaccess.com/blog/2017/08/libsodium-audit-results/.
 - Về `'wasm-unsafe-eval'`: tài liệu CSP của nutrient.io trích MDN ("permits WebAssembly compilation and
   instantiation").
+
+## Bổ sung B1 — triển khai đợt 2 (2026-11-06, ghi khi viết mã; không đổi định dạng tệp, tham số hay tiêu chí)
+
+Bổ sung này **ghi lại** cách đợt 2 cài đặt §2–§4 theo quyết định G1 (`06-BIEN-BAN-G1.md`: O-7 = thư viện
+JavaScript, CSP giữ nguyên 0.1.1, không WebAssembly; O-8 = chấp nhận có điều kiện Argon2 chưa kiểm toán). Định dạng
+tệp phiên bản 1, tham số KDF/AEAD và mọi ngưỡng của `04` **không đổi**.
+
+### B1.1 Phiên bản đã ghim
+
+| Nơi | Thư viện | Ghim | Phát hành | Dùng cho |
+|---|---|---|---|---|
+| Rust `backup/` | `argon2` | `=0.6.0` | 2026-08-27 | Argon2id v0x13 |
+| Rust `backup/` | `chacha20poly1305` | `=0.11.0` | 2026-06-28 | XChaCha20-Poly1305 |
+| Rust `backup/` | `zeroize` | `=1.9.1` | 2026-10-06 | xóa khóa, mật khẩu, bản rõ |
+| Rust `backup/` | `getrandom` | `=0.4.3` | 2026-06-17 | salt, nonce (OS RNG) |
+| Rust `backup/`, `store/` | `unicode-normalization` | `=0.1.26` | 2026-10-16 | NFC mật khẩu, khóa tên loại sự kiện |
+| Rust `store/` | `rusqlite` (`bundled`, SQLite đóng gói) | `=0.41.1` | 2026-10-28 | kho SQLite |
+| Rust `store/` | `sha2` | `=0.11.1` | 2026-10-12 | `sha256` ảnh, băm trạng thái kho |
+| PWA (`pwa/package.json`, `dependencies`) | `@noble/ciphers` | `2.4.0` (chính xác) | 2026-08-27 | `xchacha20poly1305` |
+| PWA | `@noble/hashes` | `2.4.0` (chính xác) | 2026-08-27 | `argon2idAsync` |
+| PWA (chỉ kiểm thử, `devDependencies`) | `fake-indexeddb` | `6.2.6` | 2026-10-16 | IndexedDB trong Node |
+
+Phụ thuộc bắc cầu khóa bằng `Cargo.lock` và `pwa/package-lock.json`. Phiên bản npm và ngày phát hành đọc từ
+registry.npmjs.org ngày 2026-11-06; crates.io cùng ngày. SHA-256 và trạng thái kiểm toán bên dưới chỉ đúng với các
+phiên bản này — mọi nâng phiên bản là PR riêng, chạy lại `scripts/check-store.sh`.
+
+### B1.2 Tình trạng kiểm toán — phần nào đã, phần nào chưa (ghi cho tài liệu phát hành, theo O-8)
+
+| Thành phần dùng trong ứng dụng | Kiểm toán độc lập | Ghi chú |
+|---|---|---|
+| XChaCha20-Poly1305, Rust (`chacha20poly1305` 0.11.0) | **Có, nhưng cho mã cũ**: NCC Group 2020 (mã năm 2019–2020; XChaCha không được nêu trong phạm vi) | §4.2 |
+| XChaCha20-Poly1305, PWA (`@noble/ciphers` 2.4.0) | **Có, nhưng cho bản cũ**: Cure53, 9/2024, bản 1.0.0, phạm vi "everything" (README của gói 2.4.0). Từ 1.0.0 đến 2.4.0 chỉ có tự kiểm của tác giả ("AI-assisted self-audits" từ 4/2026, theo README) | Không có kiểm toán độc lập cho 2.4.0 |
+| Argon2id, Rust (`argon2` 0.6.0) | **Không** — không tìm thấy báo cáo công bố | Rủi ro mở R-CRY-1 |
+| Argon2id, PWA (`@noble/hashes` 2.4.0, mô-đun `argon2`) | **Không** — README ghi rõ: kiểm toán Cure53 1/2022 (bản 1.0.0) "everything, besides `blake3`, `sha3-addons`, `sha1` and `argon2`, which have not been audited" | Rủi ro mở R-CRY-1 |
+| SHA-256 (WebCrypto `crypto.subtle` ở PWA; `sha2` ở Rust) | Không đánh giá — chỉ dùng cho toàn vẹn ảnh và băm kiểm thử, không cho bí mật | — |
+
+Biện pháp bù đã làm (O-8): (i) vector chuẩn chạy qua đúng bản đã ghim ở **cả hai** bản cài đặt — Argon2id RFC 9106
+§5.3 (có secret và AD) và XChaCha20-Poly1305 `draft-irtf-cfrg-xchacha` A.3; (ii) kiểm chéo hai bản cài đặt độc
+lập của Argon2id (RustCrypto ↔ noble): cùng khóa cho tham số của ứng dụng (64 MiB, t = 3, p = 4), tệp do Rust
+xuất mở trong PWA và ngược lại, và tệp xuất với salt/nonce cố định **giống từng byte** giữa hai bản; (iii) ghi rõ
+trong tài liệu phát hành (bảng trên). Bên giải mã độc lập bằng Python (`argon2-cffi` + `PyNaCl`, R6(d) phần thêm
+cho O-7 (B)) do **bên không tham gia xây dựng đặc tả** viết — chưa có trong đợt này.
+
+Nguồn: README trong gói npm đã cài (`node_modules/@noble/ciphers/README.md` mục Security, `@noble/hashes/README.md`
+mục Security), đọc 2026-11-06; §4.2 cho phần Rust.
+
+### B1.3 PWA: tải lười, CSP, bộ nhớ đệm
+
+- Mật mã chạy bằng JavaScript thuần (`@noble/*`), **không WebAssembly**; CSP sinh ra giống từng byte bản 0.1.1
+  (kiểm thử khói so chuỗi, mục S2b).
+- `pwa/src/storage.ts` là cửa vào duy nhất; nó nạp `src/store/` bằng `import()`, và `src/store/db.ts` nạp
+  `backup-crypto.ts` (+ `@noble/*`) bằng `import()` khi xuất/nhập. `build.mjs` bật tách mã (esbuild
+  `splitting`), tính bao đóng import tĩnh của `app-*.js` và **dừng dựng** nếu bao đóng đó chứa `@noble/*` hoặc
+  `src/store/` (P6). Danh sách tệp tải lười ghi ở `dist/lazy-manifest.json`; các tệp này **không** nằm trong
+  precache, service worker cache chúng khi trang nạp lần đầu (để dùng được ngoại tuyến sau đó).
+- Argon2id trong trình duyệt: `argon2idAsync` (nhường luồng chính mỗi 10 ms, có `onProgress`), `maxmem` = m KiB +
+  1 MiB. Xóa khóa/bản rõ trong JS bằng `fill(0)` chỉ là cố gắng (BK-I3), không bảo đảm.
+- `requestPersistentStorage()` gọi `navigator.storage.persist()` (nếu có) khi lưu hồ sơ đầu tiên và ghi kết quả
+  vào kho `meta` (`persist`); giao diện đợt 3 đọc `persistResult()` để hiện cảnh báo 01 §4.1.
+- Hook nhắc sao lưu: `backupReminderDue(now)` = có thay đổi chưa sao lưu (`meta.backup_pending_since`, ghi ở thay
+  đổi đầu tiên sau lần xuất gần nhất) và `now − backup_pending_since ≥ backup_nag_days` ngày; `backup_nag_days = 0`
+  tắt. Xuất thành công đặt `settings.last_backup_at` và xóa `backup_pending_since`. Cùng quy tắc ở Rust
+  (`Store::backup_reminder_due`).
+
+### B1.4 Những điểm đặc tả chưa nói rõ — cách đã cài (cả hai bản như nhau)
+
+1. **Thứ tự kiểm phần đầu** (§2.2): độ dài/`magic` → `file_version` (> 1: "mới hơn"; = 0: không hỗ trợ) →
+   `kdf_id`/`aead_id` → tham số KDF → `plaintext_len`. Mỗi nhánh có mã lỗi ổn định (`not_a_backup`,
+   `newer_version`, `unsupported`, `bad_kdf_params`, `bad_length`, `wrong_password_or_corrupt`,
+   `malformed_plaintext`); thông báo cho người dùng theo §2.2/§2.4.
+2. **Lỗi nội dung sau khi giải mã** (JSON, lược đồ, V2–V8, ảnh): thông báo chung "Sai mật khẩu hoặc tệp bị hỏng";
+   riêng `schema_version` lớn hơn → "Tệp được tạo bởi phiên bản mới hơn…" (01 §7).
+3. **Số nguyên trong JSON**: `2.0` được coi là `2` (như JSON Schema và `JSON.parse`); mọi số nguyên phải ≤ 2^53 − 1
+   (siết thêm duy nhất, để hai bản đọc giống nhau). Chuỗi có nửa cặp thay thế (lone surrogate) bị từ chối ở cả hai.
+4. **`\S` của `ho_ten`/`ten`**: theo định nghĩa `\s` của JavaScript.
+5. **Kiểu loại có sẵn**: `builtin ≠ null` phải dùng đúng id cố định của 01 §3.5; kho mới tạo bốn loại với
+   `created_at = updated_at = 1970-01-01T00:00:00Z`, `rev = 1` (cố định để hai máy trống giống nhau).
+6. **Ngày sinh dương đủ ngày nhưng năm 1000–1899** (ngoài miền đổi lịch): `lunar_year = y`,
+   `lunar_year_approx = true`, `lunar = null`, `solar = input`.
+7. **V5 với `method` khác phương pháp hiện hành**: bỏ qua so `lunar`, `solar`, `method` (giữ giá trị đã lưu); vẫn so
+   `lunar_source`. **V5 với `tuoi.manual = true`**: không tính lại; chỉ kiểm năm âm mất ≥ năm âm sinh.
+8. **Gộp ảnh**: ảnh trên máy giữ nguyên; ảnh nhập chỉ được thêm nếu có hồ sơ (sau gộp) trỏ tới.
+9. **JSON chuẩn của tệp xuất**: khóa sắp theo thứ tự điểm mã, mảng sắp theo `id`, không khoảng trắng — hai bản
+   xuất cùng dữ liệu ra cùng byte (với salt/nonce cố định).
+10. **Trạng thái kho để so "giống hệt"** (R6): SHA-256 của JSON chuẩn toàn kho (bỏ `app`, `exported_at`) nối với
+    `sha256` hex của byte từng ảnh theo thứ tự `id` — `Store::state_hash` (Rust) = `Store.stateHash` (PWA).
+
+### B1.5 Vector kiểm thử (§2.5) và cách chạy
+
+`docs/v0.2/schema/test-vectors/` (sinh tất định bằng `cargo run --release -p lvhv-store --example
+gen_test_vectors`; CI sinh lại và so từng byte): `example-v1.lvhv` (+ `example-v1.json`, ảnh mẫu JPEG không EXIF),
+21 tệp hỏng trong `corrupt/` (sửa từng trường phần đầu, cắt cụt, nối thêm, `m_cost_kib` = 4 194 304,
+`file_version` = 2 …) với mã lỗi mong đợi trong `manifest.json`, `dataset-r6.json` (60 người, 30 sự kiện, 20 ảnh),
+`validation-cases.json` (63 ca V1–V8 + độ sâu JSON), `merge-cases.json` (31 ca gộp, kết quả mong đợi viết tường minh
+và băm kết quả). `scripts/check-store.sh` chạy toàn bộ phía Rust và PWA và kiểm chéo qua tệp thật (job CI `store`).

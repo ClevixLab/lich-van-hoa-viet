@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["core", "ngochap", "ffi", "memorial"]
+members = ["core", "ngochap", "ffi", "memorial", "store", "backup"]
 
 [profile.release]
 opt-level = 3
@@ -8,3 +8,13 @@ codegen-units = 1
 lto = true
 # RS-04: tràn số nguyên ở bản phát hành phải panic (không gói quanh lặng lẽ). Đo: docs/05.
 overflow-checks = true
+
+# Argon2id 64 MiB rất chậm ở mức tối ưu 0 — chỉ tối ưu các crate mật mã khi chạy test/debug.
+[profile.dev.package.argon2]
+opt-level = 3
+[profile.dev.package.blake2]
+opt-level = 3
+[profile.dev.package.chacha20]
+opt-level = 3
+[profile.dev.package.poly1305]
+opt-level = 3
