@@ -64,7 +64,7 @@ người chưa từng dùng mô-đun không mở IndexedDB và không tải tệ
 
 | Thành phần | Mô tả |
 |---|---|
-| **Mục sự kiện** (`.pitem`) | Một nút rộng cả hàng. Trái: ô ngày dương (số ngày lớn, thứ viết tắt "T5", tháng "Th 11"). Giữa: dòng 1 = nhãn + tên ("Giỗ đầu · Ông Nguyễn Văn A"); dòng 2 = "26/11/2026 · 7/10 âm lịch"; dòng 3 (nếu có) = phụ ("Hưởng thọ 86 tuổi", "Kỷ niệm 5 năm"). Phải: biểu tượng loại + "Còn 3 ngày" / "Hôm nay" / "Ngày mai" / "Đã qua 2 ngày". Chạm → mở hồ sơ người đó (sự kiện → hồ sơ của người đầu tiên trong `person_ids`) |
+| **Mục sự kiện** (`.pitem`) | Một nút rộng cả hàng. Trái: ô ngày dương (số ngày lớn, thứ viết tắt "T5", tháng "thg 11" — không viết "Th 11" vì dễ đọc thành Thứ Bảy, TK-07). Giữa: dòng 1 = nhãn + tên ("Giỗ đầu · Ông Nguyễn Văn A"); dòng 2 = "26/11/2026 · 7/10 âm lịch"; dòng 3 (nếu có) = phụ ("Hưởng thọ 86 tuổi", "Kỷ niệm 5 năm"). Phải: biểu tượng loại + "Còn 3 ngày" / "Hôm nay" / "Ngày mai" / "Đã qua 2 ngày". Chạm → mở hồ sơ người đó (sự kiện → hồ sơ của người đầu tiên trong `person_ids`). Trong khung "Lần tới" của trang hồ sơ, mục **không** bấm được (vẽ bằng phần tử thường, TK-08) |
 | **Biểu tượng loại** | Giỗ: ba nén hương; Tiên thường: mâm nhỏ; Sinh nhật (dương và âm): bánh có nến; Sự kiện: ngôi sao. Vẽ nét SVG trong mã, `aria-hidden`; loại luôn có chữ đi kèm (không chỉ dựa vào hình/màu) |
 | **Ô nhập ngày** | Ba ô số Ngày / Tháng / Năm như trang "Đổi ngày" (`input.num`, `inputmode="numeric"`), cộng chọn lịch "Dương lịch / Âm lịch" (nhóm nút radio), với âm lịch thêm hộp "Tháng nhuận"; tùy chỗ thêm "Không rõ năm" hoặc "Chỉ biết năm". Dưới ô có dòng **kết quả đổi lịch trực tiếp** (`aria-live="polite"`) |
 | **Hộp xác nhận** | `<dialog>` của trình duyệt (`showModal`), tiêu đề, nội dung, hai nút: nút chính bên phải (hành động) và "Hủy"/"Giữ lại". `Esc` = hủy. Tiêu điểm vào nút **an toàn** (Hủy) khi mở hộp xóa; vào nút chính khi mở hộp xuất |
@@ -90,7 +90,8 @@ Thứ tự từ trên xuống:
 3. **Thẻ nhắc hôm nay** (§5.5), nếu có.
 4. **Nhắc sao lưu** (§5.6), nếu đến hạn; **cảnh báo lưu trữ** nếu `persist` bị từ chối (01 §4.1).
 5. Khung "30 ngày tới" — danh sách mục sự kiện từ hôm nay đến hôm nay + 30 (cả hai đầu), theo thứ tự 02 §7.2.
-6. Khung "Lời nhắc trên ứng dụng web" (§5.4) — thu gọn được, mở sẵn lần đầu.
+6. Khung "Lời nhắc trên ứng dụng web" (§5.4) — thu gọn được (mũi tên ▸/▾), **mở sẵn** ở mọi trạng thái kể cả trống (TK-12).
+   Mục giỗ của **hôm nay** trong danh sách có thêm nút "Mở trang tưởng niệm" ngay dưới mục (TK-19), kể cả khi hồ sơ tắt nhắc.
 7. Hai nút: "+ Thêm người đã mất", "+ Thêm người đang sống".
 
 Trạng thái:
@@ -114,7 +115,8 @@ Bố cục:
 │ [ Tuần | Tháng | Quý | Năm ]             │  nhóm nút, aria-pressed
 │ [ Tất cả | Người đã mất | Người đang sống ]│
 │  ‹    Quý IV/2026 · 01/10 – 31/12    ›   │  tiêu đề kỳ, aria-live
-│            [ Hôm nay ]                   │  tắt khi kỳ đang xem chứa hôm nay
+│            [ Hôm nay ]                   │  khi kỳ đang xem chứa hôm nay: thay bằng chữ
+│                                          │  "Đang xem kỳ có hôm nay" (không để nút bị tắt, TK-23)
 │ 12 mục                                   │
 │ ┌─────┬───────────────────────────┬────┐ │
 │ │ T2  │ Giỗ · Bà Trần Thị B        │ ✦  │ │
@@ -150,9 +152,11 @@ Bố cục:
 - Hai khung: **"Người đã mất (n)"** và **"Người đang sống (n)"**, mỗi khung có nút "+ Thêm" riêng ở đầu khung.
 - Mỗi dòng (nút rộng): vòng tròn chữ cái đầu của tên (không vẽ ảnh ở danh sách — tránh giải mã nhiều ảnh), tên hiển
   thị, quan hệ (nếu có), và một dòng tóm tắt:
-  - Đã mất: `Giỗ 15/6 âm lịch · lần tới 18/07/2027 (còn 253 ngày)`; không rõ năm mất: `Giỗ 10/3 âm lịch (không rõ năm mất)`.
+  - Đã mất: `Giỗ 15/6 âm lịch · lần tới 18/07/2027 (còn 253 ngày)`; không rõ năm mất vẫn có lần tới (TK-27):
+    `Giỗ 10/3 âm lịch · lần tới 16/04/2027 (còn 265 ngày) (không rõ năm mất)`.
   - Đang sống: `Sinh 20/01/1990 · 36 tuổi` (hoặc `Sinh năm 1990`).
-- Sắp xếp trong mỗi khung: theo `ho_ten` (so sánh tiếng Việt của trình duyệt, `localeCompare(…, "vi")`).
+- Sắp xếp trong mỗi khung: theo **tên** (chữ cuối của họ tên) rồi đến cả họ tên (so sánh tiếng Việt của trình duyệt,
+  `localeCompare(…, "vi")`) — nhiều nhà cùng họ nên xếp theo họ không giúp tìm (TK-30).
 - Trống từng khung: "Chưa có ai." + nút thêm.
 
 ### 3.4 Thêm / sửa người đã mất — `#/nguoi-than/them/da-mat`, `#/nguoi-than/sua/<id>`
@@ -173,6 +177,9 @@ Mọi chuỗi chuẩn hóa NFC và cắt khoảng trắng hai đầu trước kh
 
 **Nhóm "Ngày mất" (bắt buộc)**
 
+- **Kiểm khi gõ và khi rời ô** (TK-03): lỗi hiện khi rời ô (với ba ô ngày: khi rời cả nhóm) và khi bấm Lưu; khi đang có
+  lỗi thì kiểm lại theo từng lần gõ — lỗi tự mất ngay khi đã sửa, khung tóm tắt "Còn n chỗ cần sửa" bỏ dòng tương ứng và
+  ẩn khi hết lỗi. Áp cho mọi biểu mẫu của mô-đun.
 - Chọn: "Nhập theo dương lịch" (mặc định) / "Nhập theo âm lịch".
 - Dương: Ngày / Tháng / Năm (năm 1900–3000). Kết quả trực tiếp: **"Âm lịch: 15/6 nhuận năm Ất Tỵ (2025)"** (đây là
   giá trị sẽ lưu, 02 §1). Thiếu ô → không hiện kết quả.
@@ -234,7 +241,7 @@ lại" (bỏ `manual`). Thiếu năm sinh → "Chưa đủ năm sinh để tính
 | Trường | Điều khiển | Mặc định |
 |---|---|---|
 | Giỗ hết vào | radio "Năm thứ 2 sau năm mất" / "Năm thứ 3" | năm thứ 2 (O-2) |
-| Dòng đầu bia | ô chữ ≤ 60, gợi ý: Hiển khảo, Hiển tỷ, Cố | trống |
+| Dòng đầu bia | ô chữ ≤ 60; dưới ô là dãy gợi ý có nghĩa: **Hiển khảo** · cha, **Hiển tỷ** · mẹ, **Tổ khảo** · ông, **Tổ tỷ** · bà, **Tằng tổ khảo** · cụ ông, **Tằng tổ tỷ** · cụ bà; gợi ý hợp với ô "Quan hệ"/"Danh xưng" được viền vàng và có câu "Gợi ý theo quan hệ: …" (TK-24). Chỉ gợi ý cách gọi đã có nguồn ở `content/memorial/PHONG-TUC.md`; dạng "Hiển tổ khảo"… chưa kiểm chứng nên không gợi ý (người dùng vẫn tự gõ được) | trống |
 | Lời tưởng niệm | ô nhiều dòng ≤ 2000 | trống |
 | Tuổi dưới bao nhiêu ghi "hưởng dương" | ô số 1–150 | 60 (O-3) |
 
@@ -254,7 +261,7 @@ Lỗi khi ghi (hiếm: kho bị khóa ở thẻ khác, hết chỗ): "Chưa lưu
 | Trường | Điều khiển | Bắt buộc | Lỗi |
 |---|---|---|---|
 | Danh xưng, Họ và tên, Quan hệ, Ghi chú | như §3.4 | Họ tên | như §3.4 |
-| Ngày sinh | ô nhập ngày: Dương/Âm × "Biết đủ ngày"/"Chỉ biết năm" | không | như §3.4; sau hôm nay → "Ngày sinh không được sau hôm nay" |
+| Ngày sinh | ô nhập ngày: Dương/Âm × "Biết đủ ngày"/"Chỉ biết năm" (năm 1000–3000, TK-33) | không | như §3.4; sau hôm nay → "Ngày sinh không được sau hôm nay" |
 | Nơi sinh | ô chữ ≤ 300 | không | — |
 | Sinh nhật âm lịch | hộp kiểm "Nhắc cả sinh nhật âm lịch hằng năm" | tắt | Chỉ bật được khi biết đủ ngày sinh; nếu không: hộp mờ, chú thích "Cần biết đủ ngày sinh" |
 | Sinh 29/02 | radio "Năm không nhuận: mừng 28/02" (mặc định) / "… mừng 01/03" | — | chỉ hiện khi ngày sinh dương là 29/02 |
@@ -287,6 +294,9 @@ biểu mẫu ngắn; trang hồ sơ có nút "+ Thêm sự kiện" ngay sau lầ
 └─────────────────────────────────┘
 ```
 
+- Thứ tự khung (TK-08): đầu trang (ảnh, tên, quan hệ, nút) → **"Lần tới"** → "Thông tin" ở cột chính; "Sự kiện", "Nhắc",
+  "Xóa hồ sơ" ở cột phụ (360 px: xếp dưới). "Lần tới" liệt kê **mọi** lần xuất hiện trong 12 tháng tới (giỗ, tiên thường,
+  sinh nhật dương/âm, sự kiện), tối đa 5 mục (TK-34); mục chỉ để xem, không bấm được.
 - Người đã mất: ảnh (canvas), tên, quan hệ, tên hiệu; nút **"Tưởng niệm"** (mở §3.9) và "Sửa"; khung "Lần tới" (giỗ
   kế tiếp, nhãn giỗ đầu/giỗ hết, có tiên thường nếu bật); bảng thông tin: Ngày mất (như đã nhập), Âm lịch (đã lưu,
   nguồn "đổi từ ngày dương" hoặc "nhập theo âm lịch"), Hưởng thọ/dương, Ngày sinh, Năm âm sinh + Can Chi, Nơi sinh, Nơi
@@ -305,11 +315,12 @@ biểu mẫu ngắn; trang hồ sơ có nút "+ Thêm sự kiện" ngay sau lầ
 | Tên loại mới | ô chữ (hiện khi chọn "Loại khác…") ≤ 60 | khi "Loại khác…" | rỗng → "Hãy đặt tên cho loại sự kiện"; trùng tên (không phân biệt hoa thường) → dùng lại loại đã có, không báo lỗi |
 | Tiêu đề | ô chữ ≤ 120, gợi ý "để trống sẽ dùng tên loại" | không | > 120 → "Tiêu đề tối đa 120 ký tự" |
 | Ngày | ô nhập ngày Dương/Âm, Tháng nhuận; với Âm + lặp hằng năm có thêm "Không rõ năm" | có | như §3.4 (không có lỗi "tương lai": sự kiện có thể ở tương lai) |
-| Lặp lại hằng năm | hộp kiểm; mặc định theo loại (Ngày cưới: bật) | — | Không rõ năm mà tắt lặp → "Sự kiện không rõ năm phải lặp hằng năm" |
+| Lặp lại hằng năm | hộp kiểm **trong khung "Ngày"**, ngay dưới ba ô ngày (nó điều khiển ô "Không rõ năm", TK-17); mặc định theo loại (Ngày cưới: bật) | — | Không rõ năm mà tắt lặp → "Sự kiện không rõ năm phải lặp hằng năm" |
 | Nhắc | như §3.4 (không tiên thường) | bật, `[0, 3]`, 07:00 | như §3.4 |
 | Ghi chú | ô nhiều dòng ≤ 2000 | không | — |
 
-`person_ids` = [người đang xem]. Lưu xong → về hồ sơ người đó.
+`person_ids` = [người đang xem]. Lưu xong → về hồ sơ người đó. "Hủy" khi đã sửa → cùng hộp "Bỏ các thay đổi chưa lưu?" như
+biểu mẫu người (TK-09). Kết quả đổi lịch: "Âm lịch: 3/7 năm Bính Ngọ (2026)" — không lặp chữ "âm lịch" (TK-10).
 
 ### 3.8 Sao lưu và lịch điện thoại — `#/nguoi-than/sao-luu`
 
@@ -319,7 +330,7 @@ Ba khung:
 (S10, 02 §8.2):
 ```
 Xuất tệp lịch
-Tệp này chứa tên và ngày giỗ của 3 người. Bất kỳ ai có tệp đều đọc được.
+Tệp này chứa tên, ngày giỗ, sinh nhật và sự kiện của 3 người. Bất kỳ ai có tệp đều đọc được.
 Gồm 41 ngày trong 10 năm tới (từ 07/11/2026 đến 06/11/2036), mỗi ngày có lời nhắc như đã đặt.
 Xem trước:
   • 28/07/2026 — Giỗ đầu Ông Nguyễn Văn A
@@ -339,17 +350,21 @@ Tạo tệp sao lưu
 Tệp sẽ chứa 5 người, 2 sự kiện, 1 ảnh — đã mã hóa bằng mật khẩu.
 Mật khẩu (ít nhất 8 ký tự)      [••••••••••]
 Nhập lại mật khẩu               [••••••••••]
-⚠ Quên mật khẩu là mất dữ liệu trong tệp — không ai lấy lại được, kể cả Clevix Lab.
+[thẻ vàng] Lưu ý: quên mật khẩu là mất dữ liệu trong tệp — không ai lấy lại được, kể cả Clevix Lab.
 Gợi ý: dùng một câu dễ nhớ, ví dụ "nhà ở Hà Đông có cây bàng".
                                [Hủy]  [Tạo và tải tệp]
 ```
-Lỗi: < 8 ký tự → "Mật khẩu cần ít nhất 8 ký tự"; không khớp → "Hai lần nhập mật khẩu chưa giống nhau". Khi chạy: nút
+Lỗi (hiện **ngay dưới ô** tương ứng, ô có `aria-invalid` + `aria-describedby`, TK-14): < 8 ký tự → "Mật khẩu cần ít nhất 8
+ký tự" (dưới ô Mật khẩu); không khớp → "Hai lần nhập mật khẩu chưa giống nhau" (dưới ô Nhập lại). Câu "quên mật khẩu…"
+là thẻ thông báo vàng (lưu ý), không dùng kiểu đỏ của lỗi. Khi chạy: nút
 tắt, thanh tiến độ `<progress>` + "Đang mã hóa… (có thể mất vài giây)". Xong: tải tệp
 `LichVanHoaViet-saoluu-<YYYY-MM-DD>.lvhv`, hộp đóng, thông báo "Đã tạo tệp sao lưu. Hãy cất tệp ở nơi an toàn (ổ đám
 mây, USB) — tệp không tự gửi đi đâu." Ô mật khẩu: `type=password`, `autocomplete="new-password"`,
 `autocapitalize="off"`, `spellcheck="false"`.
 
-**C. "Khôi phục từ tệp sao lưu"** — nút "Chọn tệp sao lưu…" (`accept=".lvhv"`), ô mật khẩu, nút "Mở tệp". Lỗi theo
+**C. "Khôi phục từ tệp sao lưu"** — nút "Chọn tệp sao lưu…" (nút của ứng dụng, cao ≥ 44 px; ô chọn tệp gốc của trình
+duyệt ẩn hẳn, `accept=".lvhv"`), dòng "Đã chọn: <tên tệp>" / "Chưa chọn tệp.", ô mật khẩu, nút phụ "Mở tệp" (mỗi khung
+chỉ một nút chính, TK-06, TK-20). Lỗi theo
 03 §2.2/§2.4, nguyên văn từ lớp lưu trữ: "Đây không phải tệp sao lưu của Lịch và Văn hóa Việt", "Tệp được tạo bởi
 phiên bản mới hơn — hãy cập nhật ứng dụng", "Sai mật khẩu hoặc tệp bị hỏng". Mở được → hộp xem trước:
 ```
@@ -403,6 +418,8 @@ trên mục giỗ của hôm nay ở "Sắp tới".
 └─────────────────────────────────────┘
 ```
 
+- Tên trên bia: khi có dòng đầu bia thì chỉ ghi họ tên, **không** lặp danh xưng ("Tổ khảo / Nguyễn Văn A", không phải
+  "Tổ khảo / Ông Nguyễn Văn A"); không có dòng đầu bia thì ghi tên hiển thị (TK-24).
 - Năm trên bia: `Can Chi năm âm (năm)` cho năm sinh (nếu có) và năm mất (nếu có); thiếu năm sinh → chỉ "Mất năm Ất Tỵ
   (2025)"; không rõ năm mất → "Giỗ ngày 10/3 âm lịch".
 - Tuổi: "Hưởng thọ 86 tuổi" / "Hưởng dương 45 tuổi" (+ "(khoảng)"); không có tuổi → bỏ dòng.
@@ -411,7 +428,7 @@ trên mục giỗ của hôm nay ở "Sắp tới".
 - Khói (R8): ba vệt khói CSS (`@keyframes` dịch lên + mờ dần), **không dùng `requestAnimationFrame`**. Khói chạy khi
   trang hiển thị, **tự dừng sau 2 phút** (sau đó khói đứng yên dạng tĩnh), dừng ngay khi tab ẩn
   (`visibilitychange`) hoặc rời trang; trở lại tab trong 2 phút đầu → chạy tiếp tới hết 2 phút tính từ lúc mở. Nút
-  "Dừng khói"/"Thắp lại" (thắp lại = chạy thêm 2 phút). `prefers-reduced-motion: reduce` → khói tĩnh ngay từ đầu,
+  "Dừng khói"/"Thắp lại" (thắp lại = chạy thêm 2 phút), đặt ngay dưới dòng ngày giỗ để thấy được ở màn hình đầu (TK-25). `prefers-reduced-motion: reduce` → khói tĩnh ngay từ đầu,
   nút ẩn.
 - Công giáo (`tray_style = cong_giao`, chỉ đến từ sao lưu ở bản này): không vẽ bát hương và khói; vẽ hai nến và hoa.
 - Tiêu đề tab trình duyệt: "Tưởng niệm — Lịch và Văn hóa Việt" (**không** có tên người; O-9 tinh thần riêng tư cho
@@ -531,7 +548,10 @@ lịch (.ics) và mở bằng ứng dụng Lịch của máy." + nút "Xuất t�
 
 ### 5.5 Thẻ nhắc
 Tiêu đề và dòng phụ đúng 02 §7.1 (`reminderTextNamed` của lõi). Trong ứng dụng **có** hiện tên (O-9 chỉ áp cho màn hình
-khóa; PWA không có thông báo màn hình khóa). Nhiều thẻ cùng ngày: xếp theo thời điểm nhắc rồi thứ tự 02 §7.2; quá 3 thẻ
+khóa; PWA không có thông báo màn hình khóa). Trên **Tờ lịch** chỉ hiện **một** thẻ; các lời nhắc còn lại gộp
+thành một dòng "Còn n lời nhắc khác hôm nay — Xem" dẫn tới Sắp tới, để tờ lịch không bị đẩy khỏi màn hình đầu (TK-15). Ở
+khổ hẹp, nút chính "Mở trang tưởng niệm" chiếm một hàng riêng. Trên **Sắp tới**: nhiều thẻ cùng ngày xếp theo thời điểm
+nhắc rồi thứ tự 02 §7.2; quá 3 thẻ
 → hiện 3 và "… và n lời nhắc khác" (liên kết tới "Sắp tới").
 
 ### 5.6 Sao lưu và lưu trữ
@@ -555,7 +575,18 @@ khóa; PWA không có thông báo màn hình khóa). Nhiều thẻ cùng ngày: 
 - **Giảm chuyển động**: `prefers-reduced-motion: reduce` → không khói động, không hiệu ứng chuyển trang.
 - **Cỡ chữ A / A+ / A++**: mọi kích thước tính bằng `rem`/`em`; ở A++ và 360 px không tràn ngang (kiểm thử khói đo
   `scrollWidth`); hàng ba ô ngày giữ nguyên, các nhóm nút xuống dòng.
-- **Vùng chạm** ≥ 44 × 44 px.
+- **Vùng chạm** ≥ 44 × 44 px — kiểm thử khói đo mọi nút, liên kết, ô nhập, `summary`, nhãn hộp kiểm trong vùng nội dung của
+  mô-đun ở A và A++ (TK-05). Ô hộp kiểm 24 × 24 px không co khi nhãn xuống dòng; vùng chạm là cả nhãn (TK-04).
+- **Bảng đo tương phản** (WCAG, tính từ biến màu; TK-13):
+
+  | Chữ / nền | Sáng | Tối |
+  |---|---|---|
+  | Dòng quan hệ dưới tên hồ sơ (`--ink-2` trên nền trang) | 5,96:1 | 10,58:1 |
+  | Chữ gợi ý trong ô (`::placeholder`, `--ink-3` trên `--paper`) | 4,95:1 | 6,31:1 |
+  | Dòng phụ `.fine`, "Đang xem kỳ có hôm nay" (`--ink-3` trên `--paper`) | 4,95:1 | 6,31:1 |
+  | Nút đang chọn: chữ trên nền | trắng / `--red-deep` 9,21:1 | `#2a0d0c` / `--red-ink` 7,94:1 |
+  | Nút đang chọn: nền ô so với nền nhóm (≥ 3:1, TK-22) | 8,27:1 | 6,82:1 |
+  | Bia tưởng niệm (chữ vàng đồng trên đá) | ≥ 9:1 | ≥ 9:1 |
 - `lang="vi"` có sẵn ở trang; tên người hiển thị nguyên văn (không viết hoa tự động ngoài dòng đầu bia).
 
 ## 7. Bố cục đáp ứng
@@ -567,7 +598,7 @@ khóa; PWA không có thông báo màn hình khóa). Nhiều thẻ cùng ngày: 
 | Theo kỳ | Hai nhóm nút chồng nhau, tiêu đề kỳ một dòng (có thể xuống 2 dòng ở A++) | Hai nhóm nút cùng hàng; danh sách một cột rộng tối đa 720 px |
 | Hồ sơ (danh sách) | Hai khung chồng | Hai khung cạnh nhau |
 | Biểu mẫu | Một cột; ba ô ngày một hàng | Một cột rộng tối đa 640 px |
-| Hồ sơ một người | Một cột (§3.6) | Hai cột: thông tin trái, "Lần tới" + sự kiện + nhắc phải |
+| Hồ sơ một người | Một cột: "Lần tới" rồi "Thông tin", rồi sự kiện, nhắc (§3.6) | Hai cột: "Lần tới" + "Thông tin" trái; sự kiện + nhắc + xóa phải |
 | Tưởng niệm | Bia rộng 80 % màn hình | Bia rộng 360 px, căn giữa, nền tối phủ cả vùng nội dung |
 | Hộp xác nhận | Rộng `100vw − 24px` | Rộng tối đa 480 px |
 
@@ -611,7 +642,11 @@ Không `blob:` trong `img-src`; ảnh luôn vẽ vào `<canvas>` (`createImageBi
 | L9, L10 | Xuất → xóa → nhập "Thay toàn bộ" → `stateHash` như trước; sai mật khẩu → câu chung |
 | L11 | Trang tưởng niệm có bia, tên, "Hưởng thọ"; có 3 nén hương; 0 `<audio>/<video>` |
 | L12, L13 | Sửa tăng `rev`; xóa có hộp xác nhận, hủy thì còn, đồng ý thì mất |
-| Chung | CSP từng byte (S2b), 0 URL ngoài, 0 lỗi console, P3 < 500 KB, P6 (0 tệp mô-đun ở lần tải đầu), không tràn ngang 360 px A++ ở mọi trang mới, ảnh chụp 360 × 780 và 1280 × 800, sáng và tối |
+| Chung | CSP từng byte (S2b), 0 URL ngoài, 0 lỗi console, P3 < 500 KB, P6 (0 tệp mô-đun ở lần tải đầu), ảnh chụp 360 × 780 và 1280 × 800, sáng và tối |
+| Bố cục (TK-02) | 11 màn hình × 360/1280 px × sáng/tối ở A, và ở A++: `scrollWidth`, `clientWidth`, `visualViewport.width`, `innerWidth` ≤ chiều rộng khung nhìn đã đặt; cạnh phải thanh mục đáy ≤ khung nhìn; mọi ảnh chụp rộng đúng 2 × khung nhìn |
+| Vùng chạm (TK-05) | Mọi phần tử bấm được trong vùng nội dung của mô-đun ≥ 44 × 44 px, ở A (360/1280) và A++ (360) |
+| Biểu mẫu (TK-03, TK-24, TK-35) | Lưu khi trống → gõ tên → lỗi dưới ô mất, khung tóm tắt bỏ dòng; rời ô trống → báo lỗi; quan hệ "ông nội" → gợi ý "Tổ khảo"; ảnh không đọc được → câu lỗi |
+| Hộp thoại (TK-11, TK-14, TK-06, TK-15) | Câu riêng tư .ics đúng loại dữ liệu, xem trước có tên người; lỗi mật khẩu dưới từng ô; nút "Chọn tệp sao lưu…" + "Đã chọn: …"; Tờ lịch chỉ một thẻ nhắc + dòng gộp |
 
 ## 10. Ánh xạ yêu cầu → câu chuyện (07) → trang → kiểm thử
 
@@ -648,7 +683,7 @@ Không `blob:` trong `img-src`; ảnh luôn vẽ vào `<canvas>` (`createImageBi
 - Danh sách theo **tháng/năm âm lịch** (07 §9 câu 3): để đợt sau theo mặc định của chủ dự án.
 - Đo R8 (CPU, số lần rAF) và P4 trạng thái "200 hồ sơ" / "tưởng niệm sau 120 s": chưa có trong kiểm thử khói đợt này.
 
-## 12. Sai khác khi cài đặt (ghi trong cùng PR, 2026-11-07)
+## 12. Sai khác khi cài đặt (ghi trong cùng PR, 2026-11-07; cập nhật sau duyệt thiết kế cùng ngày)
 
 Các điểm dưới đây được đổi hoặc làm rõ khi cài; phần trên đã sửa theo, mô tả PR liệt kê lại.
 
@@ -664,3 +699,23 @@ Các điểm dưới đây được đổi hoặc làm rõ khi cài; phần trê
    định của vai lưu trữ (giữ `last_backup_at` của máy hay của tệp).
 6. **R8 trong kiểm thử khói** chỉ kiểm phần đo được nhanh: khói là CSS (`smokeRise`), nút dừng, 0 lần
    `requestAnimationFrame`, giảm chuyển động → tĩnh, không audio/video. Đo CPU 120 s / 60 s theo 04 R8 chưa làm.
+
+### 12b. Sau duyệt thiết kế (`docs/reviews/DUYET-THIET-KE-DOT3-PWA.md`, PR #18) — đã sửa trong PR #15
+
+| Mã | Việc đã làm |
+|---|---|
+| TK-01 (chặn) | Ô chọn tệp ẩn không còn làm trang tràn: luật chiều rộng chỉ áp cho `input[type=file]:not(.sr-only)`; `.sr-only` bền hơn (`!important`, `clip-path`, `left/top: 0`). Ô chọn ảnh và ô chọn tệp sao lưu đều là ô ẩn + **nút thật** (bàn phím bấm được) |
+| TK-02 (chặn) | Kiểm thử khói đo bố cục so với **chiều rộng cố định** của khung nhìn (`scrollWidth`, `clientWidth`, `visualViewport.width`, `innerWidth`), cạnh phải của thanh mục đáy, và **chiều rộng ảnh chụp** = 2 × khung nhìn; chạy cho 11 màn hình × 360/1280 px × sáng/tối ở A, và ở A++. Đã chứng minh phép kiểm mới **bắt được** TK-01 trước khi sửa (bản dựng `dbf215b`: phép cũ báo đạt, phép mới báo 395/401/1594 px) |
+| TK-03 … TK-15, TK-17 … TK-19 | Như các mục ở §2, §3.1–§3.9, §5.5, §6 đã sửa ở trên (đánh dấu mã TK) |
+| TK-16 | **Chưa làm trong PR này — chuyển vai lưu trữ.** Quyết định của điều phối: sau "Thay toàn bộ", giữ lịch sử sao lưu của máy (`last_backup_at`, `backup_nag_days`) thay vì lấy từ tệp. Không làm được cục bộ ở PWA vì: (1) `lvhv-store` (Rust, `apply_import`) thay cả `settings` bằng tệp — PWA đổi riêng sẽ làm hai bản lệch nhau; (2) R6 (a)/(d) so `stateHash` "giống hệt" giữa kho trước và sau, và giữa Rust và PWA; bộ R6 có `backup_nag_days = 60`, `last_backup_at = 2026-10-01T00:00:00Z` nên quy tắc mới đổi kết quả R6. Cần Bổ sung cho 01 §6.3 / 03 §2.4 và định nghĩa lại R6 (a)/(d), sửa cả hai bản cài đặt |
+| Góp ý đã làm | TK-20 (nút chính hình viên thuốc, một nút chính mỗi khung), TK-21 (chữ quay lại theo đích: "‹ Về danh sách hồ sơ" / "‹ Về hồ sơ"), TK-22 (một kiểu "đang chọn", đủ tương phản ở tối), TK-23, TK-24 (gợi ý dòng đầu bia + PHONG-TUC.md), TK-25, TK-26 (biểu mẫu căn giữa; danh sách Theo kỳ ≤ 760 px), TK-27, TK-30, TK-32 (bỏ tiêu đề "Ngày sinh" lặp — giữ `legend` cho trình đọc màn hình), TK-33 (năm "chỉ biết năm" 1000–3000, có ích cho tổ tiên — §3.4 sửa theo), TK-34 (Lần tới: mọi lần trong 12 tháng, tối đa 5 mục), TK-35 một phần (kiểm thử lỗi ảnh; bảng tương phản §6) |
+| Thêm (do phép kiểm mới) | Ở 1280 px cỡ A+/A++, thanh mục (5 mục, chữ không xuống dòng) đè lên nút cỡ chữ — thanh mục chuyển xuống dòng riêng dưới thanh trên cùng khi A+/A++ |
+
+### 12c. Góp ý chưa làm và lý do
+
+| Mã | Lý do |
+|---|---|
+| TK-28 | Ô "Giờ nhắc" `type=time` hiện 12/24 giờ theo ngôn ngữ trình duyệt, không theo `lang="vi"`; đây là giới hạn của trình duyệt. Thay bằng hai ô số giờ:phút cần thiết kế lại khối nhắc — để đợt sau, ghi vào hướng dẫn sử dụng |
+| TK-29 | Gộp khối "Nhắc sinh nhật âm lịch" thành "giống sinh nhật dương lịch" đổi cách lưu `reminders.sinh_nhat_am` (hiện là một quy tắc riêng có `id` riêng); cần quyết định mô hình — để đợt sau |
+| TK-31 | Đánh dấu ngày giỗ/sinh nhật trên lịch tháng của Tờ lịch chạm vào màn hình v0.1 và tốn tính toán cho mỗi ô — đợt sau |
+| TK-35 (phần còn lại) | Kiểm thử cho nhắc sao lưu đến hạn, cho > 3 thẻ nhắc, cho lỗi kho; khung dây biểu mẫu 1280 px; trạng thái tên rất dài trên bia — chưa làm |

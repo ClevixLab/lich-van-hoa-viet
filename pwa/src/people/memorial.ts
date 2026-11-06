@@ -88,12 +88,16 @@ export async function renderMemorial(root: HTMLElement, id: string): Promise<voi
   const sticks = incense ? h("div", { class: "incense", "aria-hidden": "true" },
     ...[0, 1, 2].map((i) => h("span", { class: `stick s${i}` }, h("i", { class: "smoke" }), h("i", { class: "smoke b" }), h("b", { class: "tip" })))) : null;
 
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const toggle = h("button", { type: "button", class: "btn2 mem-toggle", id: "mem-toggle", hidden: !incense || reduce });
   const scene = h("div", { class: "mem-scene lit", id: "mem-scene" },
     h("p", { class: "mem-day" }, dayLine),
+    h("div", { class: "mem-tools" }, toggle),
     frame,
     h("div", { class: "bia", role: "group", "aria-label": "Bia tưởng niệm" },
       mem.bia_tieu_de ? h("p", { class: "bia-top" }, mem.bia_tieu_de as string) : null,
-      h("h1", { class: "bia-name", tabindex: "-1" }, displayName(p)),
+      // TK-24: khi có dòng đầu bia (Hiển khảo, Tổ tỷ…) thì không lặp danh xưng ("Ông", "Bà").
+      h("h1", { class: "bia-name", tabindex: "-1" }, mem.bia_tieu_de ? (p.ho_ten as string) : displayName(p)),
       p.ten_hieu ? h("p", { class: "bia-hieu" }, p.ten_hieu as string) : null,
       h("p", { class: "bia-years" }, ...years),
       age ? h("p", { class: "bia-age" }, age) : null),
@@ -107,8 +111,6 @@ export async function renderMemorial(root: HTMLElement, id: string): Promise<voi
       h("div", { class: "altar-table" })),
     mem.loi_tuong_niem ? h("blockquote", { class: "mem-loi" }, mem.loi_tuong_niem as string) : null);
 
-  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const toggle = h("button", { type: "button", class: "btn2 mem-toggle", id: "mem-toggle", hidden: !incense || reduce });
   let remaining = SMOKE_MS, startedAt = 0, timer = 0;
   const stopAll = () => { window.clearTimeout(timer); timer = 0; scene.classList.remove("lit"); toggle.textContent = "Thắp lại"; };
   const run = () => {
@@ -137,7 +139,7 @@ export async function renderMemorial(root: HTMLElement, id: string): Promise<voi
   if (reduce || !incense) scene.classList.remove("lit");
 
   root.append(h("div", { class: "mem-page" },
-    backLink("‹ Về hồ sơ", `#/nguoi-than/nguoi/${id}`), scene, h("div", { class: "mem-foot" }, toggle)));
+    backLink("‹ Về hồ sơ", `#/nguoi-than/nguoi/${id}`), scene));
   run();
   (scene.querySelector(".bia-name") as HTMLElement).focus({ preventScroll: true });
 }

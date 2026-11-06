@@ -40,9 +40,24 @@ export async function storageNotices(sn: Snap): Promise<HTMLElement[]> {
       h("p", null, `Dữ liệu người thân đã thay đổi hơn ${n} ngày mà chưa sao lưu. Nếu mất máy hoặc trình duyệt xóa dữ liệu, sẽ không lấy lại được.`),
       h("a", { class: "btnlink main", href: "#/nguoi-than/sao-luu" }, "Sao lưu ngay")));
   }
-  if (sn.persons.length && (await s.persistResult()) === false) {
-    out.push(h("div", { class: "notice", id: "persist-warn" },
-      h("p", null, "Trình duyệt có thể xóa dữ liệu khi máy thiếu chỗ — hãy sao lưu. Trên iPhone, thêm ứng dụng vào Màn hình chính để dữ liệu được giữ lâu hơn.")));
+  // TK-18: cảnh báo lưu trữ có "Sao lưu ngay" và "Đã hiểu"; "Đã hiểu" ẩn 30 ngày (ghi trong kho meta của IndexedDB,
+  // khóa `ui_persist_notice_hidden_at` — không phải localStorage, S4').
+  const hiddenAt = (await s.meta("ui_persist_notice_hidden_at")) as string | undefined;
+  const hiddenFresh = !!hiddenAt && Date.now() - Date.parse(hiddenAt) < 30 * 86_400_000;
+  if (sn.persons.length && (await s.persistResult()) === false && !hiddenFresh) {
+    const box = h("div", { class: "notice", id: "persist-warn" },
+      h("p", null, "Trình duyệt có thể xóa dữ liệu khi máy thiếu chỗ — hãy sao lưu. Trên iPhone, thêm ứng dụng vào Màn hình chính để giữ dữ liệu lâu hơn."),
+      h("div", { class: "notice-acts" },
+        h("a", { class: "btnlink main sm", href: "#/nguoi-than/sao-luu" }, "Sao lưu ngay"),
+        h("button", { type: "button", class: "btn2 sm", id: "persist-ok", onclick: async () => {
+          box.remove();
+          await new Promise<void>((ok) => {
+            const tx = s.db.transaction("meta", "readwrite");
+            tx.objectStore("meta").put(new Date().toISOString().slice(0, 19) + "Z", "ui_persist_notice_hidden_at");
+            tx.oncomplete = () => ok(); tx.onerror = () => ok();
+          });
+        } }, "Đã hiểu")));
+    out.push(box);
   }
   return out;
 }
@@ -64,11 +79,12 @@ export function dueToday(sn: Snap, t: Ymd = today()): Due[] {
 }
 
 const dismissed = new Set<string>();
-export function reminderCards(sn: Snap, nav: Nav, onEmpty?: () => void): HTMLElement | null {
+/** Thẻ nhắc hôm nay. `compact` (Tờ lịch, TK-15): một thẻ, các lời nhắc còn lại gộp thành một dòng dẫn tới Sắp tới. */
+export function reminderCards(sn: Snap, nav: Nav, onEmpty?: () => void, compact = false): HTMLElement | null {
   const due = dueToday(sn).filter((d) => !dismissed.has(`${d.occ.entity_id}:${d.occ.class}:${String(d.t)}`));
   if (!due.length) return null;
-  const box = h("section", { class: "remind", "aria-label": "Lời nhắc hôm nay" });
-  const shown = due.slice(0, 3);
+  const box = h("section", { class: `remind${compact ? " compact" : ""}`, "aria-label": "Lời nhắc hôm nay" });
+  const shown = due.slice(0, compact ? 1 : 3);
   for (const d of shown) {
     const key = `${d.occ.entity_id}:${d.occ.class}:${String(d.t)}`;
     const txt = M.reminderTextNamed(cal(), d.occ, d.t);
@@ -82,7 +98,8 @@ export function reminderCards(sn: Snap, nav: Nav, onEmpty?: () => void): HTMLEle
           h("button", { type: "button", class: "btn2", onclick: () => { dismissed.add(key); card.remove(); if (!box.querySelector(".rcard")) { box.remove(); onEmpty?.(); } } }, "Đã biết"))));
     box.append(card);
   }
-  if (due.length > 3) box.append(h("a", { class: "textlink", href: "#/nguoi-than" }, `… và ${due.length - 3} lời nhắc khác`));
+  const rest = due.length - shown.length;
+  if (rest > 0) box.append(h("a", { class: "textlink rc-more", href: "#/nguoi-than" }, compact ? `Còn ${rest} lời nhắc khác hôm nay — Xem` : `… và ${rest} lời nhắc khác`));
   return box;
 }
 
@@ -92,11 +109,17 @@ export async function renderUpcoming(root: HTMLElement, nav: Nav, openIcs: () =>
   const t = today();
   const notices = await storageNotices(sn);
   if (!sn.persons.length) {
-    root.append(...notices, welcome(), webLimitPanel(openIcs, false));
+    root.append(...notices, welcome(), webLimitPanel(openIcs));
     return;
   }
   const items = M.upcoming(cal(), sn.ds, t, 30);
-  const list = h("div", { class: "plist", id: "upcoming-list" }, ...items.map((u) => occItem(sn, u.occ, openPerson(nav), t)));
+  // TK-19: mục giỗ của hôm nay có lối vào trang tưởng niệm (kể cả khi hồ sơ tắt nhắc).
+  const list = h("div", { class: "plist", id: "upcoming-list" }, ...items.map((u) => {
+    const it = occItem(sn, u.occ, openPerson(nav), t);
+    if (u.occ.class !== "gio" || u.days !== 0) return it;
+    return h("div", { class: "pitem-wrap" }, it,
+      h("a", { class: "btnlink main sm mem-link", href: `#/nguoi-than/tuong-niem/${u.occ.entity_id}` }, "Mở trang tưởng niệm"));
+  }));
   const cards = reminderCards(sn, nav);
   root.append(
     h("div", { class: "pcols" },
@@ -128,16 +151,19 @@ export async function renderPeriod(root: HTMLElement, nav: Nav): Promise<void> {
   if (!sn.persons.length) { root.append(welcome()); return; }
   const t = today();
   pstate.anchor ??= t;
-  const title = h("h2", { class: "ptitle", id: "period-title" });
   const count = h("p", { class: "pcount", id: "period-count" });
   const list = h("div", { class: "plist", id: "period-list" });
-  const todayBtn = h("button", { type: "button", class: "todaybtn sm", id: "period-today", onclick: () => { pstate.anchor = t; draw(); } }, "Hôm nay");
+  const title = h("h2", { class: "ptitle", id: "period-title", tabindex: "-1" });
+  const todayBtn = h("button", { type: "button", class: "todaybtn sm", id: "period-today", onclick: () => { pstate.anchor = t; draw(); title.focus(); } }, "Hôm nay");
+  const curNote = h("p", { class: "pcur", id: "period-current" }, "Đang xem kỳ có hôm nay");
   const draw = () => {
     const r = eventsInPeriod(cal(), sn.ds, pstate.kind, pstate.anchor!, pstate.filter);
     title.textContent = periodTitle(pstate.kind, r.from, r.to);
     count.textContent = `${r.items.length} mục`;
     const b = periodBounds(pstate.kind, t);
-    todayBtn.disabled = M.cmpYmd(b.from, r.from) === 0;
+    // TK-23: không để nút "Hôm nay" bị tắt (trông như hỏng) — khi đang xem kỳ hiện tại thì thay bằng một dòng chữ.
+    const isCur = M.cmpYmd(b.from, r.from) === 0;
+    todayBtn.hidden = isCur; curNote.hidden = !isCur;
     clear(list);
     if (!r.items.length) {
       const isThis = M.cmpYmd(b.from, r.from) === 0;
@@ -159,7 +185,7 @@ export async function renderPeriod(root: HTMLElement, nav: Nav): Promise<void> {
       h("button", { type: "button", class: "iconbtn", id: "period-prev", "aria-label": "Kỳ trước", onclick: () => { pstate.anchor = periodPrev(pstate.kind, pstate.anchor!); draw(); } }, "‹"),
       h("div", { class: "pnav-mid", "aria-live": "polite" }, title, count),
       h("button", { type: "button", class: "iconbtn", id: "period-next", "aria-label": "Kỳ sau", onclick: () => { pstate.anchor = periodNext(pstate.kind, pstate.anchor!); draw(); } }, "›")),
-    h("div", { class: "pnav-today" }, todayBtn),
+    h("div", { class: "pnav-today" }, todayBtn, curNote),
     list));
   draw();
 }
@@ -170,9 +196,10 @@ function personSummary(p: JsonObj, t: Ymd): string {
     const d = p.death as JsonObj;
     const l = d.lunar as JsonObj;
     const base = `Giỗ ${l.day as number}/${l.month as number} âm lịch`;
-    if (l.year === null) return `${base} (không rõ năm mất)`;
-    const nx = M.anniversariesIn(cal(), l.year as number, l.month as number, l.day as number, 2, t, addDays(t, 400))[0];
-    return nx ? `${base} · lần tới ${dmy(nx.solar)} (${relText(daysBetween(t, nx.solar)).toLowerCase()})` : base;
+    // TK-27: không rõ năm mất vẫn có "lần tới" (giỗ lặp hằng năm).
+    const nx = M.anniversariesIn(cal(), l.year as number | null, l.month as number, l.day as number, 2, t, addDays(t, 400))[0];
+    const tail = l.year === null ? " (không rõ năm mất)" : "";
+    return nx ? `${base} · lần tới ${dmy(nx.solar)} (${relText(daysBetween(t, nx.solar)).toLowerCase()})${tail}` : `${base}${tail}`;
   }
   const b = p.birth as JsonObj | null;
   if (!b) return "Chưa có ngày sinh";
@@ -187,7 +214,9 @@ function personSummary(p: JsonObj, t: Ymd): string {
 export async function renderList(root: HTMLElement, nav: Nav): Promise<void> {
   const sn = await snap();
   const t = today();
-  const sorted = sn.persons.slice().sort((a, b) => (a.ho_ten as string).localeCompare(b.ho_ten as string, "vi"));
+  // TK-30: xếp theo tên (chữ cuối của họ tên) rồi đến cả họ tên — nhiều nhà cùng họ.
+  const given = (p: JsonObj) => ((p.ho_ten as string).trim().split(/\s+/).pop() ?? "");
+  const sorted = sn.persons.slice().sort((a, b) => given(a).localeCompare(given(b), "vi") || (a.ho_ten as string).localeCompare(b.ho_ten as string, "vi"));
   const box = (kind: "deceased" | "living", label: string, add: string) => {
     const ps = sorted.filter((p) => p.kind === kind);
     return h("section", { class: "panel plbox", id: `list-${kind}` },
@@ -229,10 +258,8 @@ export async function renderPerson(root: HTMLElement, id: string, nav: Nav): Pro
   // lần tới
   const own = sn.ds.persons.filter((x) => x.id === id);
   const evIds = new Set(sn.events.filter((e) => (e.person_ids as string[]).includes(id)).map((e) => e.id as string));
-  const next = M.occurrencesWithTt(cal(), { ...sn.ds, persons: own, events: sn.ds.events.filter((e) => evIds.has(e.id)) }, t, addDays(t, 400));
-  const firstOf = (pred: (o: M.Occurrence) => boolean) => next.find(pred);
-  const nextList = [firstOf((o) => o.class === "gio" || o.class === "sinh_nhat"), firstOf((o) => o.class === "tien_thuong"), firstOf((o) => o.class === "sinh_nhat_am"), firstOf((o) => o.class.startsWith("su_kien"))].filter(Boolean) as M.Occurrence[];
-  nextList.sort(M.cmpOcc);
+  // TK-34: mọi lần xuất hiện trong 12 tháng tới (giỗ, tiên thường, sinh nhật, sự kiện), tối đa 5 mục, theo thứ tự 02 §7.2.
+  const nextList = M.occurrencesWithTt(cal(), { ...sn.ds, persons: own, events: sn.ds.events.filter((e) => evIds.has(e.id)) }, t, addDays(t, 365)).slice(0, 5);
 
   const d = p.death as JsonObj | null;
   const b = p.birth as JsonObj | null;
@@ -286,18 +313,19 @@ export async function renderPerson(root: HTMLElement, id: string, nav: Nav): Pro
   } }, "Xóa hồ sơ");
 
   root.append(
-    backLink("‹ Hồ sơ", "#/nguoi-than/ho-so"),
+    backLink(),
     h("div", { class: "phead" }, canvas,
-      h("div", { class: "phead-t" }, h1, p.quan_he ? h("p", { class: "muted" }, p.quan_he as string) : null,
+      h("div", { class: "phead-t" }, h1, p.quan_he ? h("p", { class: "phead-rel" }, p.quan_he as string) : null,
         h("div", { class: "phead-acts" },
           dead ? h("a", { class: "btnlink main", href: `#/nguoi-than/tuong-niem/${id}`, id: "open-memorial" }, "Tưởng niệm") : null,
           h("a", { class: "btnlink", href: `#/nguoi-than/sua/${id}`, id: "edit-person" }, "Sửa")))),
     h("div", { class: "pcols" },
+      // TK-08: "Lần tới" ngay dưới đầu trang (trước "Thông tin"); mục chỉ để xem, không phải nút.
       h("div", { class: "pcol-main" },
+        h("section", { class: "panel", id: "next-box" }, h("h2", null, "Lần tới"),
+          nextList.length ? h("div", { class: "plist" }, ...nextList.map((o) => occItem(sn, o, null, t))) : h("p", { class: "empty-hint" }, "Chưa có ngày nào trong năm tới.")),
         h("section", { class: "panel" }, h("h2", null, "Thông tin"), facts)),
       h("div", { class: "pcol-side" },
-        h("section", { class: "panel", id: "next-box" }, h("h2", null, "Lần tới"),
-          nextList.length ? h("div", { class: "plist" }, ...nextList.map((o) => occItem(sn, o, () => {}, t))) : h("p", { class: "empty-hint" }, "Chưa có ngày nào trong năm tới.")),
         h("section", { class: "panel", id: "event-box" },
           h("div", { class: "plhead" }, h("h2", null, "Sự kiện"), h("a", { class: "btnlink sm", href: `#/nguoi-than/su-kien/${id}/moi`, id: "add-event" }, "+ Thêm sự kiện")), evList),
         h("section", { class: "panel" }, h("h2", null, "Nhắc"), remBox),

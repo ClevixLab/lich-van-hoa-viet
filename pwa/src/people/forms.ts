@@ -22,29 +22,32 @@ function textField(id: string, label: string, value: string, max: number, o: { r
     err.hidden = !m; err.textContent = m ?? "";
     if (m) { input.setAttribute("aria-invalid", "true"); input.setAttribute("aria-describedby", err.id); } else { input.removeAttribute("aria-invalid"); input.removeAttribute("aria-describedby"); }
   };
-  return {
-    el, input, showErr,
-    read() {
-      const v = clean(input.value, !!o.multiline);
-      const what = o.what ?? label;
-      if (o.required && v === "") return { v, err: `${what} không được để trống` };
-      if (cpLen(v) > max) return { v, err: `${what} tối đa ${max} ký tự` };
-      return { v, err: null };
-    },
+  const read = () => {
+    const v = clean(input.value, !!o.multiline);
+    const what = o.what ?? label;
+    if (o.required && v === "") return { v, err: `${what} không được để trống` };
+    if (cpLen(v) > max) return { v, err: `${what} tối đa ${max} ký tự` };
+    return { v, err: null };
   };
+  // TK-03 (08 §3.4): báo lỗi khi rời ô; khi đang có lỗi thì kiểm lại theo từng lần gõ để lỗi tự mất khi đã sửa.
+  input.addEventListener("blur", () => showErr(read().err));
+  input.addEventListener("input", () => { if (!err.hidden) showErr(read().err); });
+  return { el, input, showErr, read };
 }
 
 interface Issue { msg: string; focus: () => void }
-function errSummary(): { el: HTMLElement; show(list: Issue[]): void } {
+/** Khung tóm tắt lỗi. `show(list, false)`: cập nhật khi người dùng sửa (không chuyển tiêu điểm); rỗng thì ẩn. */
+function errSummary(): { el: HTMLElement; show(list: Issue[], focus?: boolean): void; visible(): boolean } {
   const el = h("div", { class: "errsum", role: "alert", tabindex: "-1", hidden: true });
   return {
     el,
-    show(list) {
+    visible: () => !el.hidden,
+    show(list, focus = true) {
       clear(el);
       el.hidden = list.length === 0;
       if (!list.length) return;
       el.append(h("p", null, `Còn ${list.length} chỗ cần sửa:`), h("ul", null, ...list.map((i) => h("li", null, h("button", { type: "button", class: "linkbtn", onclick: i.focus }, i.msg)))));
-      el.focus();
+      if (focus) el.focus();
     },
   };
 }
@@ -84,6 +87,43 @@ function birthPreview(v: DateValueJ, living: boolean): { text: string | null; er
   return { text: s, err: null, b };
 }
 
+// ---------------- dòng đầu bia (TK-24; nguồn: content/memorial/PHONG-TUC.md) ----------------
+/** Cách gọi trên bia/văn khấn theo quan hệ — chỉ những cách gọi đã kiểm được nguồn (PHONG-TUC.md §1). */
+export const BIA_TERMS: [string, string, RegExp][] = [
+  ["Hiển khảo", "cha đã khuất", /(^|\s)(bố|cha|ba|thầy|tía)(\s|$)/i],
+  ["Hiển tỷ", "mẹ đã khuất", /(^|\s)(mẹ|má|u|bầm|mạ)(\s|$)/i],
+  ["Tổ khảo", "ông", /(^|\s)ông(\s|$)/i],
+  ["Tổ tỷ", "bà", /(^|\s)bà(\s|$)/i],
+  ["Tằng tổ khảo", "cụ ông", /(^|\s)(cụ ông|cố ông)(\s|$)/i],
+  ["Tằng tổ tỷ", "cụ bà", /(^|\s)(cụ bà|cố bà)(\s|$)/i],
+];
+
+function biaSuggestions(f: TextF, sources: (HTMLInputElement | HTMLTextAreaElement)[], onPick: () => void): HTMLElement {
+  const relation = () => sources.map((x) => x.value).join(" ");
+  const hint = h("p", { class: "fine", id: "pf-bia-hint", "aria-live": "polite" });
+  const chips = h("div", { class: "chips", role: "group", "aria-label": "Gợi ý dòng đầu bia" },
+    ...BIA_TERMS.map(([t, mean]) => h("button", { type: "button", class: "chip sugg", "data-term": t, onclick: () => {
+      f.input.value = t; f.showErr(null); onPick(); sync();
+    } }, h("b", null, t), h("small", null, ` · ${mean}`))));
+  const sync = () => {
+    const rel = relation().normalize("NFC").toLowerCase().trim();
+    // Lấy từ chỉ quan hệ xuất hiện SỚM NHẤT ("bà ngoại bên mẹ" → bà, không phải mẹ); cùng vị trí thì cụm dài hơn
+    // ("cụ ông" trước "ông").
+    let hit: (typeof BIA_TERMS)[number] | undefined, at = Infinity;
+    for (const t of BIA_TERMS) {
+      const m = t[2].exec(rel);
+      if (!m) continue;
+      const i = m.index + m[1].length;
+      if (i < at || (i === at && hit && t[0].length > hit[0].length)) { hit = t; at = i; }
+    }
+    chips.querySelectorAll<HTMLElement>(".sugg").forEach((b) => b.classList.toggle("best", !!hit && b.dataset.term === hit[0]));
+    hint.textContent = hit ? `Gợi ý theo quan hệ: “${hit[0]}” (${hit[1]}). Bạn có thể sửa tùy theo cách gọi của gia đình.` : "Chọn một gợi ý hoặc tự ghi theo cách gọi của gia đình.";
+  };
+  sources.forEach((x) => x.addEventListener("input", sync));
+  sync();
+  return h("div", { class: "bia-sugg" }, hint, chips);
+}
+
 // ======================================================================================================
 export async function renderPersonForm(root: HTMLElement, kindIn: "deceased" | "living" | null, id: string | null, nav: Nav): Promise<void> {
   const sn = await snap();
@@ -120,7 +160,7 @@ export async function renderPersonForm(root: HTMLElement, kindIn: "deceased" | "
   ageIn.addEventListener("input", () => { manual = /^\d{1,3}$/.test(ageIn.value.trim()) ? Number(ageIn.value.trim()) : null; refresh(); });
 
   // ---- ngày sinh ----
-  const birth = dateInput("pf-birth", "Ngày sinh", "birth", false);
+  const birth = dateInput("pf-birth", "Ngày sinh", "birth", false, true);
   const fNoiSinh = textField("pf-noisinh", "Nơi sinh", ((old?.birth as JsonObj | null)?.noi_sinh as string) ?? "", 300);
   const fAnTang = textField("pf-antang", "Nơi an táng", (old?.noi_an_tang as string) ?? "", 300);
 
@@ -136,8 +176,9 @@ export async function renderPersonForm(root: HTMLElement, kindIn: "deceased" | "
   const photo = { pending: null as Processed | null, removed: false, oldId: (old?.photo_id as string | null) ?? null };
   const canvas = h("canvas", { class: "pf-photo", width: "160", height: "200", "aria-label": "Ảnh chân dung" }) as HTMLCanvasElement;
   const photoErr = h("p", { class: "ferr", role: "alert", hidden: true });
-  const file = h("input", { type: "file", id: "pf-file", accept: "image/*", class: "sr-only" }) as HTMLInputElement;
-  const pickLbl = h("label", { for: "pf-file", class: "btn2" }, photo.oldId ? "Đổi ảnh" : "Chọn ảnh");
+  const file = h("input", { type: "file", id: "pf-file", accept: "image/*", class: "sr-only", tabindex: "-1", "aria-hidden": "true" }) as HTMLInputElement;
+  // Nút thật (bàn phím bấm được) mở hộp chọn tệp; ô chọn tệp gốc ẩn hẳn (TK-01, TK-06).
+  const pickLbl = h("button", { type: "button", class: "btn2", id: "pf-pick", onclick: () => file.click() }, photo.oldId ? "Đổi ảnh" : "Chọn ảnh");
   const rmBtn = h("button", { type: "button", class: "btn2", hidden: !photo.oldId, onclick: () => {
     photo.pending = null; photo.removed = true; dirty = true;
     canvas.getContext("2d")!.clearRect(0, 0, canvas.width, canvas.height); delete canvas.dataset.drawn;
@@ -165,8 +206,8 @@ export async function renderPersonForm(root: HTMLElement, kindIn: "deceased" | "
 
   // ---- tưởng niệm ----
   let gioHet = String(mem.gio_het_nam ?? 2);
-  const fBia = textField("pf-bia", "Dòng đầu bia", (mem.bia_tieu_de as string) ?? "", 60, { list: "pf-bia-list", hint: "ví dụ: Hiển khảo, Hiển tỷ" });
-  const biaList = h("datalist", { id: "pf-bia-list" }, ...["Hiển khảo", "Hiển tỷ", "Cố"].map((x) => h("option", { value: x })));
+  const fBia = textField("pf-bia", "Dòng đầu bia", (mem.bia_tieu_de as string) ?? "", 60, { hint: "để trống nếu không cần" });
+  const biaSuggest = biaSuggestions(fBia, [fDx.input, fQh.input], () => { dirty = true; });
   const fLoi = textField("pf-loi", "Lời tưởng niệm", (mem.loi_tuong_niem as string) ?? "", 2000, { multiline: true });
   const nguongIn = h("input", { type: "text", inputmode: "numeric", id: "pf-nguong", class: "num sm", maxlength: "3", value: String(mem.huong_duong_duoi ?? 60) }) as HTMLInputElement;
   const nguongErr = h("p", { class: "ferr", role: "alert", hidden: true });
@@ -217,6 +258,8 @@ export async function renderPersonForm(root: HTMLElement, kindIn: "deceased" | "
           }
         }
       } else { death.setResult(null); tuoiLine.textContent = ""; }
+      // "Sửa tuổi" chỉ có nghĩa khi đã có ngày mất hợp lệ.
+      if (ageBox.hidden) editAge.hidden = !dr.value || !!deathErr;
       ageErr.hidden = !aErr; ageErr.textContent = aErr ?? "";
     }
     return { deathErr, birthErr, ageErr: aErr };
@@ -232,29 +275,36 @@ export async function renderPersonForm(root: HTMLElement, kindIn: "deceased" | "
   birth.onChange(() => { dirty = true; refresh(); });
   snAm.addEventListener("change", () => refresh());
 
-  // ---- lưu ----
-  async function save(): Promise<void> {
+  // ---- kiểm toàn biểu mẫu (dùng khi Lưu, và khi đang có khung tóm tắt lỗi thì sau mỗi lần sửa — TK-03) ----
+  function collect(show: boolean) {
     const issues: Issue[] = [];
-    const tf = (f: TextF) => { const r = f.read(); f.showErr(r.err); if (r.err) issues.push({ msg: r.err, focus: () => f.input.focus() }); return r.v; };
+    const tf = (f: TextF) => { const r = f.read(); if (show) f.showErr(r.err); if (r.err) issues.push({ msg: r.err, focus: () => f.input.focus() }); return r.v; };
     const danh_xung = tf(fDx), ho_ten = tf(fTen), ten_hieu = dead ? tf(fHieu) : "", quan_he = tf(fQh), ghi_chu = tf(fNote);
     const noi_sinh = tf(fNoiSinh), noi_an_tang = dead ? tf(fAnTang) : "";
     const bia = dead ? tf(fBia) : "", loi = dead ? tf(fLoi) : "";
     const st = refresh();
     const br = birth.read();
-    if (st.birthErr) { birth.setResult(st.birthErr, true); issues.push({ msg: `Ngày sinh: ${st.birthErr}`, focus: () => birth.focus() }); }
+    if (st.birthErr) { if (show) birth.setResult(st.birthErr, true); issues.push({ msg: `Ngày sinh: ${st.birthErr}`, focus: () => birth.focus() }); }
     if (!br.value && noi_sinh !== "") issues.push({ msg: "Hãy nhập ngày sinh (ít nhất năm) để ghi nơi sinh", focus: () => birth.focus() });
     let dv: DateValueJ | null = null;
     if (death) {
       const dr = death.read();
-      if (st.deathErr) { death.setResult(st.deathErr, true); issues.push({ msg: `Ngày mất: ${st.deathErr}`, focus: () => death!.focus() }); }
+      if (st.deathErr) { if (show) death.setResult(st.deathErr, true); issues.push({ msg: `Ngày mất: ${st.deathErr}`, focus: () => death!.focus() }); }
       dv = dr.value;
       if (st.ageErr) issues.push({ msg: st.ageErr, focus: () => ageIn.focus() });
       if (nguong() === null) issues.push({ msg: "Ngưỡng hưởng dương phải từ 1 đến 150", focus: () => nguongIn.focus() });
     }
     const rules = [rGio, rSn, snAm.checked ? rSnAm : null].filter(Boolean).map((r) => r!.read());
     rules.forEach((r) => { if (r.error) issues.push({ msg: r.error, focus: () => {} }); });
-    sum.show(issues);
-    if (issues.length) return;
+    return { issues, danh_xung, ho_ten, ten_hieu, quan_he, ghi_chu, noi_sinh, noi_an_tang, bia, loi, br, dv, rules };
+  }
+
+  // ---- lưu ----
+  async function save(): Promise<void> {
+    const c = collect(true);
+    sum.show(c.issues);
+    if (c.issues.length) return;
+    const { danh_xung, ho_ten, ten_hieu, quan_he, ghi_chu, noi_sinh, noi_an_tang, bia, loi, br, dv, rules } = c;
 
     const now = nowTs();
     const pid = old ? (old.id as string) : uuid();
@@ -289,7 +339,8 @@ export async function renderPersonForm(root: HTMLElement, kindIn: "deceased" | "
   }
 
   const form = h("form", { class: "pform", novalidate: true, onsubmit: (e: Event) => { e.preventDefault(); void save(); } });
-  form.addEventListener("input", () => { dirty = true; });
+  form.addEventListener("input", () => { dirty = true; if (sum.visible()) sum.show(collect(false).issues, false); });
+  form.addEventListener("change", () => { if (sum.visible()) sum.show(collect(false).issues, false); });
   append(form, [
     sum.el,
     h("fieldset", { class: "pfs" }, h("legend", null, dead ? "Người đã mất" : "Người thân"),
@@ -304,7 +355,7 @@ export async function renderPersonForm(root: HTMLElement, kindIn: "deceased" | "
       h("summary", null, "Tưởng niệm (giỗ hết, dòng đầu bia, lời tưởng niệm)"),
       h("div", { class: "field" }, h("p", { class: "flabel" }, "Giỗ hết vào"),
         pressGroup("Giỗ hết vào", [["2", "Năm thứ 2 sau năm mất"], ["3", "Năm thứ 3"]], gioHet, (v) => { gioHet = v; dirty = true; }, "pseg two")),
-      fBia.el, biaList, fLoi.el,
+      fBia.el, biaSuggest, fLoi.el,
       h("label", { class: "field inline", for: "pf-nguong" }, h("span", null, "Tuổi dưới bao nhiêu thì ghi “hưởng dương”"), nguongIn), nguongErr) : null,
     h("div", { class: "form-acts" },
       h("button", { type: "button", class: "btn2", onclick: async () => {
@@ -314,7 +365,7 @@ export async function renderPersonForm(root: HTMLElement, kindIn: "deceased" | "
       } }, "Hủy"),
       h("button", { type: "submit", class: "primary" }, "Lưu")),
   ]);
-  root.append(backLink(), h("div", { class: "pagehead" }, h1, old ? h("p", null, displayName(old)) : null), form);
+  root.append(old ? backLink("‹ Về hồ sơ", `#/nguoi-than/nguoi/${old.id as string}`) : backLink(), h("div", { class: "pagehead" }, h1, old ? h("p", null, displayName(old)) : null), form);
   refresh();
   h1.focus();
 }
@@ -364,25 +415,32 @@ export async function renderEventForm(root: HTMLElement, personId: string, event
     if (r.error) date.setResult(date.complete() ? r.error : null, date.complete());
     else if (r.value && r.value.precision === "day") {
       if (r.value.calendar === "lunar") { const so = cal().l2s(r.value.year!, r.value.month!, r.value.day!, r.value.leap); date.setResult(so ? `Dương lịch: ${solarLong(so)}` : null); }
-      else { const l = M.lunarShort(cal(), { y: r.value.year!, m: r.value.month!, d: r.value.day! }); date.setResult(l ? `Âm lịch: ${l[0]} năm ${M.canChiYear(l[1])} (${l[1]})` : null); }
+      else { try { date.setResult(`Âm lịch: ${lunarText(M.convertDeath(cal(), r.value as M.DateValue)[0], true, false)}`); } catch { date.setResult(null); } }
     } else if (r.value) date.setResult(`Hằng năm vào ${r.value.day}/${r.value.month} âm lịch`);
     else date.setResult(null);
   });
   syncType();
 
-  async function save(): Promise<void> {
+  let dirty = false;
+  function collect(show: boolean) {
     const issues: Issue[] = [];
-    const tf = (f: TextF) => { const r = f.read(); f.showErr(r.err); if (r.err) issues.push({ msg: r.err, focus: () => f.input.focus() }); return r.v; };
+    const tf = (f: TextF) => { const r = f.read(); if (show) f.showErr(r.err); if (r.err) issues.push({ msg: r.err, focus: () => f.input.focus() }); return r.v; };
     const tieu_de = tf(fTitle), ghi_chu = tf(fNote);
     let newName = "";
-    if (sel.value === "__new") { newName = tf(fNewType); if (!newName && !issues.length) { fNewType.showErr("Hãy đặt tên cho loại sự kiện"); issues.push({ msg: "Hãy đặt tên cho loại sự kiện", focus: () => fNewType.input.focus() }); } }
+    if (sel.value === "__new") { newName = tf(fNewType); if (!newName && !issues.length) { if (show) fNewType.showErr("Hãy đặt tên cho loại sự kiện"); issues.push({ msg: "Hãy đặt tên cho loại sự kiện", focus: () => fNewType.input.focus() }); } }
     const dr = date.read();
-    if (dr.error) { date.setResult(dr.error, true); issues.push({ msg: `Ngày: ${dr.error}`, focus: () => date.focus() }); }
+    if (dr.error) { if (show) date.setResult(dr.error, true); issues.push({ msg: `Ngày: ${dr.error}`, focus: () => date.focus() }); }
     if (dr.value?.precision === "month_day" && !rec.checked) issues.push({ msg: "Sự kiện không rõ năm phải lặp hằng năm", focus: () => rec.focus() });
     const rr = rule.read();
     if (rr.error) issues.push({ msg: rr.error, focus: () => {} });
-    sum.show(issues);
-    if (issues.length) return;
+    return { issues, tieu_de, ghi_chu, newName, dr, rr };
+  }
+
+  async function save(): Promise<void> {
+    const c = collect(true);
+    sum.show(c.issues);
+    if (c.issues.length) return;
+    const { tieu_de, ghi_chu, newName, dr, rr } = c;
     const now = nowTs();
     let typeId = sel.value;
     try {
@@ -399,20 +457,30 @@ export async function renderEventForm(root: HTMLElement, personId: string, event
       };
       await s.putEvent(ev);
     } catch (e) { sum.show([{ msg: `Chưa lưu được: ${(e as Error).message}`, focus: () => sel.focus() }]); return; }
+    dirty = false;
     toast("Đã lưu sự kiện.");
     nav.go(`#/nguoi-than/nguoi/${personId}`, true);
   }
 
+  // TK-17: hộp "Lặp lại hằng năm" nằm trong khung "Ngày", ngay dưới ba ô ngày (nó điều khiển ô "Không rõ năm").
+  const recLabel = h("label", { class: "check", for: "ef-rec" }, rec, h("span", null, "Lặp lại hằng năm"));
+  date.el.insertBefore(recLabel, date.el.querySelector(".date-opts"));
   const form = h("form", { class: "pform", novalidate: true, onsubmit: (e: Event) => { e.preventDefault(); void save(); } },
     sum.el,
     h("fieldset", { class: "pfs" }, h("legend", null, "Sự kiện"),
       h("div", { class: "field" }, h("label", { for: "ef-type" }, "Loại *"), sel), fNewType.el, fTitle.el, fNote.el),
     date.el,
-    h("label", { class: "check", for: "ef-rec" }, rec, h("span", null, "Lặp lại hằng năm")),
     rule.el,
     h("div", { class: "form-acts" },
-      h("button", { type: "button", class: "btn2", onclick: () => nav.go(`#/nguoi-than/nguoi/${personId}`, true) }, "Hủy"),
+      // TK-09: cùng hộp xác nhận như biểu mẫu người khi đã sửa.
+      h("button", { type: "button", class: "btn2", onclick: async () => {
+        if (!dirty || await confirmDialog({ title: "Bỏ các thay đổi chưa lưu?", body: ["Những gì vừa nhập sẽ không được lưu."], ok: "Bỏ thay đổi", cancel: "Tiếp tục sửa", focusCancel: true })) {
+          dirty = false; nav.go(`#/nguoi-than/nguoi/${personId}`, true);
+        }
+      } }, "Hủy"),
       h("button", { type: "submit", class: "primary" }, "Lưu")));
+  form.addEventListener("input", () => { dirty = true; if (sum.visible()) sum.show(collect(false).issues, false); });
+  form.addEventListener("change", () => { dirty = true; if (sum.visible()) sum.show(collect(false).issues, false); });
   root.append(backLink("‹ Về hồ sơ", `#/nguoi-than/nguoi/${personId}`), h("div", { class: "pagehead" }, h1, h("p", null, displayName(person))), form);
   h1.focus();
 }

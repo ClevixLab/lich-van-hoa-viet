@@ -92,27 +92,33 @@ export function pressGroup<T extends string>(label: string, opts: [T, string][],
 }
 
 // ---------------- mục sự kiện (08 §2) ----------------
-export function occItem(sn: Snap, o: M.Occurrence, open: (personId: string) => void, t: Ymd = today()): HTMLElement {
+/** Dòng chính của một lần xuất hiện: nhãn · tên người ("Giỗ đầu · Ông Nguyễn Văn A", "Tốt nghiệp · Lê Văn C"). */
+export function itemTitle(sn: Snap, o: M.Occurrence): string {
+  const owner = ownerOf(sn, o);
+  return owner ? `${occLabel(o)} · ${displayName(owner)}` : occLabel(o);
+}
+
+/** Mục sự kiện. `open = null` → mục chỉ để xem (không phải nút, 08 §3.6 "Lần tới"). */
+export function occItem(sn: Snap, o: M.Occurrence, open: ((personId: string) => void) | null, t: Ymd = today()): HTMLElement {
   const k = itemKind(o);
   const owner = ownerOf(sn, o);
   const days = daysBetween(t, o.date);
-  const isPerson = k !== "ev";
-  const name = owner ? displayName(owner) : "";
-  const l1 = isPerson ? `${occLabel(o)} · ${name}` : (name ? `${occLabel(o)} · ${name}` : occLabel(o));
+  const l1 = itemTitle(sn, o);
   let l3: string | null = null;
   if (o.class === "gio" && owner) {
     const t2 = (owner.death as JsonObj | null)?.tuoi as JsonObj | undefined;
     if (t2 && t2.value !== null) l3 = `${t2.label === "huong_duong" ? "Hưởng dương" : "Hưởng thọ"} ${t2.value} tuổi`;
   }
   const lunar = lunarOf(o.date);
-  const btn = h("button", {
-    type: "button", class: `pitem k-${k}${days === 0 ? " is-today" : ""}${days < 0 ? " is-past" : ""}`,
-    "data-kind": k, "data-date": M.iso(o.date), "data-class": o.class,
-    onclick: () => { if (owner) open(owner.id as string); },
-    disabled: owner ? null : true,
-  },
+  const cls = `pitem k-${k}${days === 0 ? " is-today" : ""}${days < 0 ? " is-past" : ""}${open ? "" : " static"}`;
+  const attrs = { class: cls, "data-kind": k, "data-date": M.iso(o.date), "data-class": o.class };
+  const btn = open
+    ? h("button", { ...attrs, type: "button", onclick: () => { if (owner) open(owner.id as string); }, disabled: owner ? null : true })
+    : h("div", attrs);
+  // TK-07: dòng dưới ghi "thg 7" (tháng), không "Th 7" — tránh đọc thành Thứ Bảy.
+  btn.append(
     h("span", { class: "pi-date", "aria-hidden": "true" },
-      h("small", null, weekdayShort(o.date)), h("b", null, String(o.date.d)), h("small", null, `Th ${o.date.m}`)),
+      h("small", null, weekdayShort(o.date)), h("b", null, String(o.date.d)), h("small", null, `thg ${o.date.m}`)),
     h("span", { class: "pi-main" },
       h("span", { class: "pi-l1" }, l1),
       h("span", { class: "pi-l2" }, `${dmy(o.date)}${lunar ? ` · ${lunar}` : ""}`),
@@ -152,7 +158,7 @@ export interface DateInput {
   complete(): boolean;
 }
 
-export function dateInput(idp: string, legend: string, mode: DateMode, required: boolean): DateInput {
+export function dateInput(idp: string, legend: string, mode: DateMode, required: boolean, legendHidden = false): DateInput {
   const listeners: (() => void)[] = [];
   const fire = () => { sync(); listeners.forEach((f) => f()); };
   const calSel = { v: "solar" as "solar" | "lunar" };
@@ -179,8 +185,15 @@ export function dateInput(idp: string, legend: string, mode: DateMode, required:
   const dmyRow = h("div", { class: "fields-dmy" }, D.wrap, Mo.wrap, Y.wrap);
   let recurring = true;
   const el = h("fieldset", { class: "pfs date-in", id: idp },
-    h("legend", null, legend + (required ? " *" : "")),
+    h("legend", { class: legendHidden ? "sr-only" : null }, legend + (required ? " *" : "")),
     calGroup, precGroup, dmyRow, h("div", { class: "date-opts" }, leapWrap, unkWrap), leapNote, err, result);
+
+  // TK-03: rời cả nhóm ba ô ngày → coi như đã nhập xong, báo lỗi kể cả khi còn thiếu ô.
+  let touched = false;
+  dmyRow.addEventListener("focusout", (e) => {
+    if (dmyRow.contains((e as FocusEvent).relatedTarget as Node | null)) return;
+    if ([D, Mo, Y].some((f) => f.input.value.trim() !== "")) { touched = true; fire(); }
+  });
 
   function sync(): void {
     const lunar = calSel.v === "lunar";
@@ -268,6 +281,7 @@ export function dateInput(idp: string, legend: string, mode: DateMode, required:
     focus: () => { (calGroup.querySelector("button") as HTMLElement).focus(); },
     setRecurring(on) { recurring = on; sync(); },
     complete() {
+      if (touched) return true;
       return [D, Mo, Y].every((f) => f.wrap.hidden || (f === Y ? f.input.value.trim().length === 4 : f.input.value.trim() !== ""));
     },
   };
@@ -345,9 +359,7 @@ export function ruleSummary(r: JsonObj | null | undefined): string {
   return s.charAt(0).toUpperCase() + s.slice(1) + (r.tien_thuong ? " · có nhắc tiên thường" : "");
 }
 
-/** Liên kết "‹ Quay lại". */
-export function backLink(label = "‹ Quay lại", href?: string): HTMLElement {
-  return h("a", { class: "textlink pback", href: href ?? "#/nguoi-than/ho-so", onclick: (e: Event) => {
-    if (!href && history.length > 1) { e.preventDefault(); history.back(); }
-  } }, label);
+/** Liên kết quay lại (TK-21): chữ theo đích — "‹ Về danh sách hồ sơ" hoặc "‹ Về hồ sơ". */
+export function backLink(label = "‹ Về danh sách hồ sơ", href = "#/nguoi-than/ho-so"): HTMLElement {
+  return h("a", { class: "textlink pback", href }, label);
 }

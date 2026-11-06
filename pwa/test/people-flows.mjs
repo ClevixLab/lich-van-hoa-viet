@@ -20,10 +20,41 @@ export async function runPeople({ browser, BASE, ORIGIN, ROOT, SHOTS, check, met
   page.on("pageerror", (e) => errors.push(`pageerror: ${e.message}`));
   page.on("request", (r) => { const u = r.url(); if (!u.startsWith(ORIGIN) && !u.startsWith("data:") && !u.startsWith("blob:")) external.push(u); });
   const shots = [];
-  const shot = async (name, full = true) => { const f = `v02-${name}.png`; await page.screenshot({ path: join(SHOTS, f), fullPage: full }); shots.push(f); };
+  const DPR = 2;
+  // TK-02: ảnh chụp toàn trang phải rộng đúng DPR × chiều rộng khung nhìn đã đặt (đọc chiều rộng từ phần đầu IHDR của PNG).
+  const shotWidthBad = [];
+  const shot = async (name, full = true) => {
+    const f = `v02-${name}.png`;
+    const buf = await page.screenshot({ path: join(SHOTS, f), fullPage: full });
+    shots.push(f);
+    const w = buf.readUInt32BE(16), want = DPR * page.viewportSize().width;
+    if (w !== want) shotWidthBad.push(`${f}: ${w} px (cần ${want})`);
+  };
   const go = async (hash, sel) => { await page.goto(BASE + hash); await page.waitForSelector(sel ?? ".people-body > *", { timeout: 15000 }); };
   const text = (sel) => page.locator(sel).first().innerText();
-  const overflow = () => page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+  // TK-02: ở chế độ điện thoại, khi trang tràn thì window.innerWidth "nở" theo nội dung, nên phép trừ cũ luôn bằng 0.
+  // Phép kiểm mới so mọi số đo với CHIỀU RỘNG CỐ ĐỊNH của khung nhìn đã đặt, và kiểm cạnh phải của thanh mục đáy.
+  const layout = () => page.evaluate((W) => {
+    const de = document.documentElement;
+    const tab = document.querySelector(".tabbar")?.getBoundingClientRect();
+    const wide = [...document.querySelectorAll("body *")].filter((e) => { const r = e.getBoundingClientRect(); return r.width > 0 && r.right > W + 0.5; })
+      .slice(0, 4).map((e) => `${e.tagName.toLowerCase()}${e.id ? "#" + e.id : ""}${e.className && typeof e.className === "string" ? "." + e.className.split(" ")[0] : ""}→${Math.round(e.getBoundingClientRect().right)}`);
+    return { W, scrollW: de.scrollWidth, clientW: de.clientWidth, vvW: Math.round(window.visualViewport ? window.visualViewport.width : 0), innerW: window.innerWidth, tabRight: tab ? Math.round(tab.right) : 0, wide };
+  }, page.viewportSize().width);
+  const layoutOk = (m) => m.scrollW <= m.W && m.clientW <= m.W && m.vvW <= m.W && m.innerW <= m.W && m.tabRight <= m.W;
+  const layoutTxt = (m) => `scrollWidth ${m.scrollW}, clientWidth ${m.clientW}, visualViewport ${m.vvW}, innerWidth ${m.innerW}, thanh mục phải ${m.tabRight} / khung ${m.W}${m.wide.length ? `; tràn: ${m.wide.join(", ")}` : ""}`;
+  // TK-05: vùng chạm ≥ 44 × 44 px cho mọi phần tử bấm được trong vùng nội dung (thanh mục, chân trang nằm ngoài <main>).
+  const smallTargets = (scopes = ["main", ".remind-host", "dialog[open]"]) => page.evaluate((scopes) => {
+    const parts = ["a[href]", "button", "summary", "label.check", "select", "input:not([type=checkbox]):not([type=radio]):not([type=file])"];
+    const sel = scopes.flatMap((sc) => parts.map((q) => `${sc} ${q}`)).join(", ");
+    const vis = [...document.querySelectorAll(sel)].filter((e) => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0; });
+    window.__targets = (window.__targets ?? 0) + vis.length;
+    return vis.filter((e) => { const r = e.getBoundingClientRect(); return r.height < 43.5 || r.width < 43.5; })
+      .slice(0, 6).map((e) => `${(e.textContent || e.id || e.tagName).trim().slice(0, 24)} ${Math.round(e.getBoundingClientRect().width)}×${Math.round(e.getBoundingClientRect().height)}`);
+  }, scopes);
+  let targetsMeasured = 0;
+  const measureTargets = async (name) => { const bad = await smallTargets(scopesOf(name)); targetsMeasured += await page.evaluate(() => { const n = window.__targets ?? 0; window.__targets = 0; return n; }); return bad; };
+  const scopesOf = (name) => (name === "sheet-reminder" ? [".remind-host"] : undefined); // Tờ lịch (v0.1) ngoài phạm vi mô-đun
   // Biểu thức chuỗi chạy qua CDP (không dùng eval trong trang — CSP chặn eval, đúng như mong muốn).
   const store = (fn) => page.evaluate(`(async () => { const S = await window.__lvhv.storage.loadStore(); const s = await S.openStore(); try { return await (${fn})(s); } finally { s.close(); } })()`);
 
@@ -43,6 +74,11 @@ export async function runPeople({ browser, BASE, ORIGIN, ROOT, SHOTS, check, met
     check(sum0.includes("Họ tên không được để trống") && sum0.includes("Hãy nhập ngày mất"), `L1: lưu khi trống → "Họ tên không được để trống", "Hãy nhập ngày mất" (${sum0.replace(/\n/g, " | ")})`);
     await page.fill("#pf-dx", "Ông");
     await page.fill("#pf-ten", "Nguyễn Văn A");
+    const sum1 = await page.locator(".errsum").innerText();
+    check(await page.locator("#pf-ten-err").isHidden() && !sum1.includes("Họ tên") && sum1.includes("Hãy nhập ngày mất"), `TK-03: gõ tên → lỗi dưới ô mất, khung tóm tắt bỏ dòng "Họ tên" (${sum1.replace(/\n/g, " | ")})`);
+    await page.fill("#pf-ten", ""); await page.locator("#pf-ten").blur();
+    check(!(await page.locator("#pf-ten-err").isHidden()), "TK-03: rời ô Họ tên khi trống → báo lỗi ngay");
+    await page.fill("#pf-ten", "Nguyễn Văn A");
     await page.fill("#pf-qh", "ông nội");
     await page.fill("#pf-death-d", "31"); await page.fill("#pf-death-m", "2"); await page.fill("#pf-death-y", "2025");
     check((await text("#pf-death-err")).includes("Tháng 2 năm 2025 chỉ có 28 ngày"), "L1: 31/02/2025 → \"Tháng 2 năm 2025 chỉ có 28 ngày\"");
@@ -60,10 +96,16 @@ export async function runPeople({ browser, BASE, ORIGIN, ROOT, SHOTS, check, met
     const exif = Buffer.concat([Buffer.from("Exif\0\0", "binary"), Buffer.from("GPS 21.0285N 105.8542E — thông tin vị trí giả", "utf8")]);
     const app1 = Buffer.concat([Buffer.from([0xff, 0xe1, (exif.length + 2) >> 8, (exif.length + 2) & 255]), exif]);
     const withExif = Buffer.concat([jpg.subarray(0, 2), app1, jpg.subarray(2)]);
+    await page.setInputFiles("#pf-file", { name: "khong-phai-anh.jpg", mimeType: "image/jpeg", buffer: Buffer.from("đây không phải ảnh", "utf8") });
+    await page.waitForSelector(".photo-acts .ferr:not([hidden])");
+    check((await text(".photo-acts .ferr")).includes("Không đọc được ảnh này"), "ảnh hỏng → \"Không đọc được ảnh này (định dạng không hỗ trợ)\"");
     await page.setInputFiles("#pf-file", { name: "chan-dung.jpg", mimeType: "image/jpeg", buffer: withExif });
     await page.waitForSelector(".pf-photo[data-drawn]");
     await page.click(".pform details.more > summary");
-    await page.fill("#pf-bia", "Hiển khảo");
+    const biaHint = await text("#pf-bia-hint");
+    check(biaHint.includes("“Tổ khảo” (ông)"), `TK-24: quan hệ "ông nội" → gợi ý dòng đầu bia "Tổ khảo" (${biaHint})`);
+    await page.click(".chip.sugg.best");
+    check((await page.inputValue("#pf-bia")) === "Tổ khảo", "TK-24: chọn gợi ý → ô dòng đầu bia = \"Tổ khảo\" (sửa được)");
     await page.fill("#pf-loi", "Con cháu muôn đời ghi nhớ công ơn ông.");
     await shot("form-deceased-360");
     await page.click(".form-acts .primary");
@@ -198,7 +240,7 @@ export async function runPeople({ browser, BASE, ORIGIN, ROOT, SHOTS, check, met
     await page.click('.pseg.four button[data-v="tuan"]');
     check((await text("#period-title")) === "Tuần 30/03 – 05/04/2026", `L5: đổi sang Tuần giữ ngày neo (${await text("#period-title")})`);
     await page.click("#period-today");
-    check((await text("#period-title")) === "Tuần 20/07 – 26/07/2026" && await page.locator("#period-today").isDisabled(), "L5: Hôm nay → tuần chứa hôm nay, nút Hôm nay tắt");
+    check((await text("#period-title")) === "Tuần 20/07 – 26/07/2026" && await page.locator("#period-today").isHidden() && await page.locator("#period-current").isVisible(), "L5: Hôm nay → tuần chứa hôm nay; thay nút bằng \"Đang xem kỳ có hôm nay\" (TK-23)");
     await page.click("#period-next");
     const wk = await shown();
     check(wk.filter((x) => x.startsWith("gio@2026-07-28")).length === 2, `L5: tuần 27/07 – 02/08 có 2 giỗ đầu ngày 28/07 (${wk.join(",")})`);
@@ -231,9 +273,10 @@ export async function runPeople({ browser, BASE, ORIGIN, ROOT, SHOTS, check, met
     const card = await text(".remind-host .rcard");
     check(card.includes("Còn 3 ngày: Giỗ đầu Ông Nguyễn Văn A") && card.includes("Thứ Ba, 28/07/2026 — 15/6 âm lịch"), `L7: mở ứng dụng ngày D−3 → thẻ nhắc trên Tờ lịch (02 §7.1) (${card.replace(/\n/g, " | ")})`);
     await shot("reminder-card-360", false);
-    const nCards = await page.locator(".remind-host .rcard").count();
+    const more = await text(".remind-host .rc-more");
+    check(await page.locator(".remind-host .rcard").count() === 1 && more === "Còn 1 lời nhắc khác hôm nay — Xem", `TK-15: Tờ lịch chỉ một thẻ, lời nhắc còn lại gộp một dòng (${more})`);
     await page.locator('.remind-host .rcard button:has-text("Đã biết")').first().click();
-    check(await page.locator(".remind-host .rcard").count() === nCards - 1, `L7: "Đã biết" ẩn một thẻ (${nCards} → ${nCards - 1})`);
+    check(await page.locator(".remind-host .rcard").count() === 0, "L7: \"Đã biết\" ẩn thẻ");
 
     // ---------- L12: sửa ----------
     await go(`#/nguoi-than/sua/${idA}`, "#pf-ten");
@@ -248,7 +291,7 @@ export async function runPeople({ browser, BASE, ORIGIN, ROOT, SHOTS, check, met
     await page.click("#open-memorial");
     await page.waitForSelector(".bia-name");
     const bia = (await page.locator(".bia").textContent()).replace(/\s+/g, " ");
-    check(bia.includes("Hiển khảo") && bia.includes("Ông Nguyễn Văn A") && bia.includes("Canh Thìn 1940 — Ất Tỵ 2025") && bia.includes("Hưởng thọ 86 tuổi"), `L11: bia có dòng đầu, tên, năm Can Chi, hưởng thọ (${bia.replace(/\n/g, " | ")})`);
+    check(bia.includes("Tổ khảo") && bia.includes("Nguyễn Văn A") && !bia.includes("Ông Nguyễn") && bia.includes("Canh Thìn 1940 — Ất Tỵ 2025") && bia.includes("Hưởng thọ 86 tuổi"), `L11: bia có dòng đầu "Tổ khảo", tên (không lặp danh xưng), năm Can Chi, hưởng thọ (${bia})`);
     check(await page.locator(".incense .stick").count() === 3, "L11: ba nén hương");
     check(await page.locator("audio, video").count() === 0, "R8 (e): không có audio/video");
     check(!(await page.title()).includes("Nguyễn"), "O-9: tiêu đề tab tưởng niệm không có tên người");
@@ -262,7 +305,7 @@ export async function runPeople({ browser, BASE, ORIGIN, ROOT, SHOTS, check, met
     await page.click("#ics-open");
     await page.waitForSelector(".ics-dialog[open]");
     const icsTxt = await text(".ics-dialog");
-    check(/Tệp này chứa tên và ngày giỗ của 4 người\. Bất kỳ ai có tệp đều đọc được\./.test(icsTxt) && icsTxt.includes("Xem trước"), `L8 (S10): hộp xác nhận ghi số người + xem trước (${icsTxt.split("\n")[1]})`);
+    check(icsTxt.includes("Tệp này chứa tên, ngày giỗ, sinh nhật và sự kiện của 4 người. Bất kỳ ai có tệp đều đọc được.") && icsTxt.includes("Xem trước") && icsTxt.includes("Tốt nghiệp · Lê Văn C"), `L8 (S10, TK-11): câu riêng tư đúng nội dung tệp, xem trước có tên người (${icsTxt.split("\n")[1]})`);
     await shot("ics-dialog-360", false);
     const [dl] = await Promise.all([page.waitForEvent("download"), page.click('.ics-dialog .dbtn.main')]);
     const ics = readFileSync(await dl.path(), "utf8");
@@ -283,22 +326,17 @@ export async function runPeople({ browser, BASE, ORIGIN, ROOT, SHOTS, check, met
 
     // ---------- L9/L10: sao lưu xuất → nhập ----------
     await go("#/nguoi-than/sao-luu", "#bk-export");
-    const ovBk = await page.evaluate(() => {
-      const over = document.documentElement.scrollWidth - window.innerWidth;
-      const wide = [...document.querySelectorAll("main *")].filter((e) => e.getBoundingClientRect().right > window.innerWidth + 0.5).slice(0, 3).map((e) => `${e.tagName}.${e.className}#${e.id} ${Math.round(e.getBoundingClientRect().right)}`);
-      return { over, wide };
-    });
-    check(ovBk.over <= 0, `Sao lưu 360 px không tràn ngang (${ovBk.over}px ${ovBk.wide.join(", ")})`);
+    check((await text("#bk-in")).includes("Chọn tệp sao lưu…") && !(await text("#bk-in")).includes("Choose File"), "TK-06: khôi phục có nút \"Chọn tệp sao lưu…\" tiếng Việt");
     const h1 = await store(`async (s) => s.stateHash()`);
     await page.click("#bk-export");
     await page.fill("#bk-pw1", "ngắn");
     await page.fill("#bk-pw2", "ngắn");
     await page.click(".bk-dialog .dbtn.main");
-    check((await text(".bk-dialog .ferr")).includes("Mật khẩu cần ít nhất 8 ký tự"), "L9: mật khẩu ngắn → báo lỗi");
+    check((await text("#bk-pw1-err")) === "Mật khẩu cần ít nhất 8 ký tự" && (await page.getAttribute("#bk-pw1", "aria-invalid")) === "true", "L9 (TK-14): mật khẩu ngắn → lỗi ngay dưới ô, ô được đánh dấu");
     await page.fill("#bk-pw1", "nhà có cây bàng");
     await page.fill("#bk-pw2", "nhà có cây bàng khác");
     await page.click(".bk-dialog .dbtn.main");
-    check((await text(".bk-dialog .ferr")).includes("Hai lần nhập mật khẩu chưa giống nhau"), "L9: hai lần nhập khác nhau → báo lỗi");
+    check((await text("#bk-pw2-err")) === "Hai lần nhập mật khẩu chưa giống nhau" && await page.locator("#bk-pw1-err").isHidden(), "L9 (TK-14): hai lần nhập khác nhau → lỗi dưới ô nhập lại");
     await page.fill("#bk-pw2", "nhà có cây bàng");
     await shot("backup-dialog-360", false);
     const [bk] = await Promise.all([page.waitForEvent("download", { timeout: 120000 }), page.click(".bk-dialog .dbtn.main")]);
@@ -309,6 +347,7 @@ export async function runPeople({ browser, BASE, ORIGIN, ROOT, SHOTS, check, met
     check(lastOk, `L9: ghi lần sao lưu gần nhất (${await text("#bk-last")})`);
     await store(`async (s) => { await s.deletePerson("${idC}"); }`);
     await page.setInputFiles("#bk-file", { name: bk.suggestedFilename(), mimeType: "application/octet-stream", buffer: bkBytes });
+    check((await text("#bk-file-name")) === `Đã chọn: ${bk.suggestedFilename()}`, "TK-06: hiện tên tệp đã chọn");
     await page.fill("#bk-ipw", "sai mật khẩu");
     await page.click("#bk-open");
     await page.waitForSelector("#bk-imp-err:not([hidden])", { timeout: 120000 });
@@ -326,7 +365,7 @@ export async function runPeople({ browser, BASE, ORIGIN, ROOT, SHOTS, check, met
     const h2 = await store(`async (s) => s.stateHash()`);
     check(h1 === h2, "L9/L10: xuất → xóa một hồ sơ → nhập \"Thay toàn bộ\" → dữ liệu giống hệt (stateHash)");
 
-    // ---------- Ảnh chụp mọi màn hình mới: 360/1280 × sáng/tối; A++ không tràn ----------
+    // ---------- Ảnh chụp mọi màn hình mới: 360/1280 × sáng/tối; bố cục (TK-02) và vùng chạm (TK-05) ở A và A++ ----------
     const screens = [
       ["upcoming", "#/nguoi-than", "#upcoming-list"],
       ["period", "#/nguoi-than/theo-ky", "#period-list"],
@@ -334,26 +373,52 @@ export async function runPeople({ browser, BASE, ORIGIN, ROOT, SHOTS, check, met
       ["backup", "#/nguoi-than/sao-luu", "#bk-export"],
       ["person", `#/nguoi-than/nguoi/${idA}`, "#person-name"],
       ["form-deceased", `#/nguoi-than/sua/${idA}`, "#pf-ten"],
+      ["form-deceased-new", "#/nguoi-than/them/da-mat", "#pf-ten"],
       ["form-living", "#/nguoi-than/them/dang-song", "#pf-ten"],
       ["form-event", `#/nguoi-than/su-kien/${idC}/moi`, "#ef-type"],
       ["memorial", `#/nguoi-than/tuong-niem/${idA}`, ".bia-name"],
       ["sheet-reminder", `#/ngay/${TODAY}`, ".remind-host .rcard"],
     ];
+    const layoutBad = [], targetBad = [];
+    const open = async (hash, sel) => {
+      await page.goto(BASE + hash);
+      await page.reload(); // mở như lần đầu (thẻ nhắc chạy lại ở bước khởi động)
+      await page.waitForSelector(sel, { timeout: 15000 });
+      if (/form-deceased|person|memorial/.test(hash) || /sua|nguoi\/|tuong-niem/.test(hash)) await page.waitForSelector("canvas[data-drawn]", { timeout: 3000 }).catch(() => {});
+    };
     for (const [w, hgt] of [[360, 780], [1280, 800]]) {
       await page.setViewportSize({ width: w, height: hgt });
       for (const scheme of ["light", "dark"]) {
         await page.emulateMedia({ colorScheme: scheme });
         for (const [name, hash, sel] of screens) {
-          await page.goto(BASE + hash);
-          await page.reload(); // mở như lần đầu (thẻ nhắc chạy lại ở bước khởi động)
-          await page.waitForSelector(sel, { timeout: 15000 });
-          if (name === "memorial" || name === "person" || name === "form-deceased") await page.waitForSelector("canvas[data-drawn]", { timeout: 5000 }).catch(() => {});
+          await open(hash, sel);
           await shot(`${name}-${w}-${scheme}`, name !== "sheet-reminder");
-          const ov = await overflow();
-          if (ov > 0) check(false, `${name} ${w}px ${scheme}: tràn ngang ${ov}px`);
+          const m = await layout();
+          if (!layoutOk(m)) layoutBad.push(`${name} ${w}px ${scheme} A: ${layoutTxt(m)}`);
+          if (scheme === "light") for (const t of await measureTargets(name)) targetBad.push(`${name} ${w}px A: ${t}`);
         }
       }
     }
+    // A++ (360 px và 1280 px, sáng)
+    await page.emulateMedia({ colorScheme: "light" });
+    for (const [w, hgt] of [[360, 780], [1280, 800]]) {
+      await page.setViewportSize({ width: w, height: hgt });
+      await page.goto(BASE + "#/nguoi-than"); await page.reload(); await page.waitForSelector(".sizes");
+      await page.click('.sizes button[data-v="3"]');
+      for (const [name, hash, sel] of screens) {
+        await open(hash, sel);
+        const m = await layout();
+        if (!layoutOk(m)) layoutBad.push(`${name} ${w}px A++: ${layoutTxt(m)}`);
+        if (w === 360) for (const t of await measureTargets(name)) targetBad.push(`${name} 360px A++: ${t}`);
+        if (w === 360 && (name === "period" || name === "form-deceased" || name === "upcoming" || name === "person")) await shot(`${name}-360-xl`);
+      }
+      await page.click('.sizes button[data-v="1"]');
+    }
+    check(layoutBad.length === 0, `TK-02: mọi màn hình mới (${screens.length} × 360/1280 × sáng/tối ở A, và A++) không tràn ngang, thanh mục đáy trong khung nhìn${layoutBad.length ? " — " + layoutBad.slice(0, 6).join(" | ") : ""}`);
+    check(shotWidthBad.length === 0, `TK-02: mọi ảnh chụp rộng đúng ${DPR} × khung nhìn (${shots.length} ảnh)${shotWidthBad.length ? " — " + shotWidthBad.slice(0, 6).join(" | ") : ""}`);
+    check(targetBad.length === 0 && targetsMeasured > 200, `TK-05: mọi vùng chạm ≥ 44 × 44 px (A ở 360/1280 px, A++ ở 360 px; đã đo ${targetsMeasured} phần tử)${targetBad.length ? " — " + targetBad.slice(0, 8).join(" | ") : ""}`);
+    metrics.people_layout = { layout_failures: layoutBad, screenshot_width_failures: shotWidthBad, small_targets: targetBad };
+
     await page.setViewportSize({ width: 360, height: 780 });
     await page.emulateMedia({ colorScheme: "light", reducedMotion: "no-preference" });
     // R8 (phần kiểm được trong kiểm thử khói): khói chạy bằng CSS khi hiển thị, nút Dừng khói / Thắp lại, không rAF.
@@ -367,19 +432,6 @@ export async function runPeople({ browser, BASE, ORIGIN, ROOT, SHOTS, check, met
     const raf = await page.evaluate(() => window.__raf);
     check(anim === "smokeRise" && stopped && raf === 0, `R8: khói CSS chạy khi mở (${anim}), "Dừng khói" dừng ngay, 0 lần requestAnimationFrame (${raf})`);
     await page.emulateMedia({ reducedMotion: "reduce" });
-    await page.click('.sizes button[data-v="3"]');
-    let worst = 0;
-    for (const [name, hash, sel] of screens) {
-      await page.goto(BASE + hash);
-      await page.reload();
-      await page.waitForSelector(sel, { timeout: 15000 });
-      const ov = await overflow();
-      worst = Math.max(worst, ov);
-      if (ov > 0) check(false, `A++ 360 px ${name}: tràn ngang ${ov}px`);
-      if (name === "period" || name === "form-deceased" || name === "upcoming") await shot(`${name}-360-xl`);
-    }
-    check(worst <= 0, `A++ 360 px: mọi màn hình mới không tràn ngang (${worst}px)`);
-    await page.click('.sizes button[data-v="1"]');
 
     const realErrors = errors.filter((e) => !/Failed to load resource/.test(e));
     check(realErrors.length === 0, `Người thân: không có lỗi console (${realErrors.join(" | ") || "0"})`);

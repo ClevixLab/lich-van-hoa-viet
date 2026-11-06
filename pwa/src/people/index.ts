@@ -53,7 +53,7 @@ export async function renderPeople(root: HTMLElement, sub: string, nav: Nav): Pr
 export async function startupCards(host: HTMLElement, nav: Nav): Promise<boolean> {
   const sn = await snap();
   clear(host);
-  const c = reminderCards(sn, nav, () => { host.hidden = true; });
+  const c = reminderCards(sn, nav, () => { host.hidden = true; }, true);
   if (c) host.append(c);
   return !!c;
 }

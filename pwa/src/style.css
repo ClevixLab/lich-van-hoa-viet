@@ -810,6 +810,82 @@ h1[tabindex="-1"]:focus { outline: none; }
 .altar { margin-top: 6.2rem; }
 .incense { height: 104px; }
 /* Ô chọn tệp và mọi ô nhập trong mô-đun không được rộng hơn khung (phông dự phòng của máy khác có thể rộng hơn). */
-.people input[type="file"] { width: 100%; max-width: 100%; min-width: 0; font-size: .9rem; }
+.people input[type="file"]:not(.sr-only) { width: 100%; max-width: 100%; min-width: 0; font-size: .9rem; }
 .people .panel, .people .pfs, .people .field { min-width: 0; max-width: 100%; }
 .people select, .people .tin { max-width: 100%; }
+
+/* ---------- Vòng duyệt thiết kế đợt 3 (docs/reviews/DUYET-THIET-KE-DOT3-PWA.md) ---------- */
+/* TK-01: phần tử ẩn cho trình đọc màn hình không bao giờ chiếm chỗ (luật khác không ghi đè được). */
+.sr-only {
+  position: absolute !important; width: 1px !important; height: 1px !important; min-width: 0 !important; max-width: 1px !important;
+  padding: 0 !important; margin: -1px !important; border: 0 !important; overflow: hidden !important;
+  clip: rect(0 0 0 0) !important; clip-path: inset(50%) !important; white-space: nowrap !important; left: 0; top: 0;
+}
+/* TK-04: ô kiểm không co khi nhãn xuống dòng; cùng cỡ, cùng màu ở hai giao diện. */
+.check input { flex: none; width: 24px; height: 24px; accent-color: var(--red-deep); }
+.check { align-items: flex-start; }
+.check > span { padding-top: .1rem; }
+/* TK-05: vùng chạm ≥ 44 × 44 px. */
+.btnlink.sm, .btn2.sm, .rc-acts .btnlink, .rc-acts .btn2 { min-height: 44px; min-width: 44px; }
+.notice-web > summary, .more > summary { min-height: 44px; }
+.pback { display: inline-flex; align-items: center; min-height: 44px; }
+.errsum .linkbtn { min-height: 44px; }
+.people .textlink { display: inline-flex; align-items: center; min-height: 44px; }
+.filebtn { justify-self: start; }
+/* TK-12: phần gấp/mở có mũi tên. */
+.notice-web > summary, .more > summary { list-style: none; gap: .6rem; }
+.notice-web > summary::-webkit-details-marker, .more > summary::-webkit-details-marker { display: none; }
+.notice-web > summary::after, .more > summary::after {
+  content: ""; flex: none; margin-left: auto; width: .55rem; height: .55rem; border-right: 2px solid var(--ink-3); border-bottom: 2px solid var(--ink-3);
+  transform: rotate(45deg) translate(-2px, -2px); transition: transform .15s ease;
+}
+.notice-web[open] > summary::after, .more[open] > summary::after { transform: rotate(-135deg) translate(-2px, -2px); }
+.sum-hint { font-family: var(--sans); font-size: .8rem; font-weight: 600; color: var(--ink-3); }
+details[open] .sum-hint { display: none; }
+/* TK-13: tương phản. */
+.phead-rel { color: var(--ink-2); }
+.people ::placeholder { color: var(--ink-3); opacity: 1; }
+/* TK-14: lưu ý trong hộp thoại là thẻ thông báo (vàng), không phải lỗi. */
+.pd-note { margin: 0; font-weight: 600; }
+/* TK-15: thẻ nhắc — nút chính chiếm một hàng riêng ở khổ hẹp. */
+@media (max-width: 560px) { .rc-acts .btnlink.main { flex-basis: 100%; } }
+.rc-more { padding-left: .2rem; }
+.remind.compact .rcard { padding: .6rem .8rem; }
+/* TK-18, TK-19 */
+.notice-acts { display: flex; flex-wrap: wrap; gap: .5rem; }
+.pitem-wrap { display: grid; gap: .4rem; }
+.mem-link { justify-self: start; margin-left: 4.1rem; }
+/* TK-08: mục chỉ để xem. */
+.pitem.static { cursor: default; }
+.pitem.static:hover { border-color: var(--rule); }
+/* TK-20: một hình dạng nút chính (viên thuốc) trong mô-đun. */
+.people .primary { border-radius: 999px; }
+/* TK-22: một kiểu "đang chọn" cho mọi nhóm nút trong mô-đun, đủ tương phản ở giao diện tối. */
+.pseg button[aria-pressed="true"] { background: var(--red-deep); color: #fff; box-shadow: none; }
+/* TK-23 */
+.pcur { min-height: 44px; display: flex; align-items: center; color: var(--ink-3); font-size: .9rem; font-weight: 600; }
+/* TK-26: biểu mẫu căn giữa; danh sách Theo kỳ tối đa 720 px. */
+.page.wide .pform { margin-left: auto; margin-right: auto; }
+.period { max-width: 760px; margin-left: auto; margin-right: auto; }
+/* Gợi ý dòng đầu bia (TK-24) */
+.bia-sugg { display: grid; gap: .4rem; }
+.bia-sugg .fine { margin: 0; }
+.chip.sugg { font-weight: 600; padding: 0 .75rem; }
+.chip.sugg small { font-weight: 400; color: inherit; opacity: .85; }
+.chip.sugg.best { border-color: var(--gold); box-shadow: 0 0 0 2px var(--gold-tint); }
+.more .field + .field, .more .bia-sugg { margin-top: .2rem; }
+/* TK-25 */
+.mem-tools { display: flex; justify-content: center; margin-top: -.3rem; }
+.mem-tools .btn2 { background: rgba(0,0,0,.25); color: #f3e6d0; border-color: rgba(232, 198, 122, .5); }
+/* Cỡ chữ A+ / A++ trên máy tính: thanh mục không đè lên nút cỡ chữ (5 mục, chữ không xuống dòng). */
+@media (min-width: 1100px) {
+  :root[data-size="2"] .tabbar, :root[data-size="3"] .tabbar { position: static; transform: none; left: auto; width: 100%; max-width: 1120px; margin: 0 auto; padding: .2rem 16px 1rem; flex-wrap: wrap; }
+}
+/* TK-22: ở giao diện tối, nền ô đang chọn phải khác rõ nền nhóm (≥ 3:1) — dùng đỏ sáng, chữ sẫm. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .pseg button[aria-pressed="true"], :root:not([data-theme="light"]) .chip[aria-pressed="true"] { background: var(--red-ink); border-color: var(--red-ink); color: #2a0d0c; }
+}
+:root[data-theme="dark"] .pseg button[aria-pressed="true"], :root[data-theme="dark"] .chip[aria-pressed="true"] { background: var(--red-ink); border-color: var(--red-ink); color: #2a0d0c; }
+.more > *:not(summary) { margin-top: .9rem; }
+.more > summary + * { margin-top: .4rem; }
+.people-body:has(> .pform) { max-width: 680px; margin-left: auto; margin-right: auto; }

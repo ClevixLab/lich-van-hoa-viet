@@ -1,17 +1,17 @@
 {
-  "date": "2026-11-06T20:13:24.036Z",
+  "date": "2026-11-06T21:13:29.928Z",
   "machine": "linux x64, Node v22.23.4, Chromium 153.0.8010.12",
   "viewports": {
     "360x780": {
-      "first_load_transfer_gzip_bytes": 375959,
-      "first_load_transfer_gzip_kb": 367.1,
-      "first_load_cdp_encoded_bytes": 164732,
+      "first_load_transfer_gzip_bytes": 377444,
+      "first_load_transfer_gzip_kb": 368.6,
+      "first_load_cdp_encoded_bytes": 165477,
       "first_load_files_page_and_sw_precache": 32,
       "first_load_paths": [
         "/",
         "/fonts/lichviet-serif-L7TTONUT.woff2",
-        "/style-MN2ZRHEL.css",
-        "/app-3TBKLY54.js",
+        "/style-T7O3GSVB.css",
+        "/app-5C44F3J6.js",
         "/chunks/chunk-GCT5PKCM.js",
         "/chunks/chunk-SOTKI7RH.js",
         "/chunks/chunk-MR2SPORM.js",
@@ -21,13 +21,13 @@
         "/sw.js",
         "/version.json",
         "/",
-        "/app-3TBKLY54.js",
+        "/app-5C44F3J6.js",
         "/chunks/chunk-GCT5PKCM.js",
         "/chunks/chunk-MR2SPORM.js",
         "/chunks/chunk-SOTKI7RH.js",
-        "/fonts/OFL.txt",
         "/fonts/lichviet-serif-L7TTONUT.woff2",
         "/fonts/lichviet-serif-italic-OSFARGPO.woff2",
+        "/fonts/OFL.txt",
         "/icons/clevix-logo-144.png",
         "/icons/clevix-logo-216.png",
         "/icons/clevix-logo-72.png",
@@ -38,23 +38,23 @@
         "/icons/icon.svg",
         "/index.html",
         "/manifest.webmanifest",
-        "/style-MN2ZRHEL.css",
+        "/style-T7O3GSVB.css",
         "/sw.js"
       ],
-      "js_heap_used_bytes": 2616156,
+      "js_heap_used_bytes": 2615892,
       "js_heap_used_mb": 2.49,
       "js_heap_total_mb": 3.12,
-      "render_ms_max": 3.7,
-      "render_ms_median": 1.4,
+      "render_ms_max": 3.6,
+      "render_ms_median": 1.5,
       "service_worker_active": true,
       "offline_second_visit": true,
       "console_errors": [],
       "external_requests": []
     },
     "1280x800": {
-      "first_load_transfer_gzip_bytes": 371727,
-      "first_load_transfer_gzip_kb": 363,
-      "js_heap_used_bytes": 2576616,
+      "first_load_transfer_gzip_bytes": 373212,
+      "first_load_transfer_gzip_kb": 364.5,
+      "js_heap_used_bytes": 2576172,
       "js_heap_used_mb": 2.46,
       "console_errors": [],
       "external_requests": []
@@ -64,13 +64,13 @@
     "lazy_js": [
       "chunks/backup-crypto-75PICIGF.js",
       "chunks/chunk-L5CAGYFE.js",
-      "chunks/people-L45ZM2UV.js",
+      "chunks/people-HRNEIVOG.js",
       "chunks/store-J6TBOBFA.js"
     ],
-    "lazy_js_gzip_bytes": 56006,
-    "lazy_js_gzip_kb": 54.7,
-    "argon2id_export_ms_chromium": 1066,
-    "argon2id_import_ms_chromium": 892,
+    "lazy_js_gzip_bytes": 57561,
+    "lazy_js_gzip_kb": 56.2,
+    "argon2id_export_ms_chromium": 870,
+    "argon2id_import_ms_chromium": 970,
     "persist_granted_headless": false,
     "roundtrip_identical": true,
     "csp_violations": []
@@ -83,6 +83,11 @@
       "nam": "Năm 2026 · 01/01 – 31/12"
     },
     "all_match": true
+  },
+  "people_layout": {
+    "layout_failures": [],
+    "screenshot_width_failures": [],
+    "small_targets": []
   },
   "people": {
     "screenshots": [
@@ -107,6 +112,7 @@
       "v02-backup-360-light.png",
       "v02-person-360-light.png",
       "v02-form-deceased-360-light.png",
+      "v02-form-deceased-new-360-light.png",
       "v02-form-living-360-light.png",
       "v02-form-event-360-light.png",
       "v02-memorial-360-light.png",
@@ -117,6 +123,7 @@
       "v02-backup-360-dark.png",
       "v02-person-360-dark.png",
       "v02-form-deceased-360-dark.png",
+      "v02-form-deceased-new-360-dark.png",
       "v02-form-living-360-dark.png",
       "v02-form-event-360-dark.png",
       "v02-memorial-360-dark.png",
@@ -127,6 +134,7 @@
       "v02-backup-1280-light.png",
       "v02-person-1280-light.png",
       "v02-form-deceased-1280-light.png",
+      "v02-form-deceased-new-1280-light.png",
       "v02-form-living-1280-light.png",
       "v02-form-event-1280-light.png",
       "v02-memorial-1280-light.png",
@@ -137,15 +145,17 @@
       "v02-backup-1280-dark.png",
       "v02-person-1280-dark.png",
       "v02-form-deceased-1280-dark.png",
+      "v02-form-deceased-new-1280-dark.png",
       "v02-form-living-1280-dark.png",
       "v02-form-event-1280-dark.png",
       "v02-memorial-1280-dark.png",
       "v02-sheet-reminder-1280-dark.png",
       "v02-upcoming-360-xl.png",
       "v02-period-360-xl.png",
+      "v02-person-360-xl.png",
       "v02-form-deceased-360-xl.png"
     ],
-    "heap_upcoming_mb": 4.06,
+    "heap_upcoming_mb": 4.15,
     "adapter": "pwa/src/people/period.ts (bộ chuyển tạm, chờ tsport eventsInPeriod)"
   },
   "update_simulation": {
@@ -156,7 +166,7 @@
   },
   "criteria": {
     "P3_first_load_gzip_under_500KB": {
-      "value_kb": 367.1,
+      "value_kb": 368.6,
       "pass": true
     },
     "P4_js_heap_under_30MB": {
@@ -174,7 +184,7 @@
       "pass": true
     },
     "P6_crypto_lazy_loaded": {
-      "lazy_js_gzip_kb": 54.7,
+      "lazy_js_gzip_kb": 56.2,
       "pass": true
     },
     "S4_no_personal_data_stored": {
@@ -184,8 +194,8 @@
   },
   "dist": {
     "files": 26,
-    "raw_bytes": 824000,
-    "gzip_bytes_all_files": 267425
+    "raw_bytes": 832385,
+    "gzip_bytes_all_files": 269724
   },
   "engine": "tsport",
   "method": "jpl",

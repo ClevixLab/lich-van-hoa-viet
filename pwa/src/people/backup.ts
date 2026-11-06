@@ -3,7 +3,7 @@
 import { clear, h } from "../dom";
 import { APP_VERSION } from "../gen/content";
 import { M, cal, dmy, nowTs, snap, store, today, type JsonObj } from "./core";
-import { confirmDialog, toast } from "./ui";
+import { confirmDialog, itemTitle, toast } from "./ui";
 import { openBackup, type VerifiedBackup } from "../store/index";
 
 const iso = (d: M.Ymd) => M.iso(d);
@@ -35,11 +35,17 @@ export async function openIcsDialog(): Promise<void> {
     else people.add(o.entity_id);
   }
   const end = M.ymdFromJdn(M.ymdJdn(M.tenYearsEnd(t)) - 1);
-  const preview = occ.slice(0, 5).map(([o]) => h("li", null, `${dmy(o.date)} — ${o.headline}`));
+  const preview = occ.slice(0, 5).map(([o]) => h("li", null, `${dmy(o.date)} — ${itemTitle(sn, o)}`));
+  // TK-11: câu riêng tư nói đúng loại dữ liệu có trong tệp.
+  const kinds: string[] = [];
+  if (occ.some(([o]) => o.class === "gio" || o.class === "tien_thuong")) kinds.push("ngày giỗ");
+  if (occ.some(([o]) => o.class === "sinh_nhat" || o.class === "sinh_nhat_am")) kinds.push("sinh nhật");
+  if (occ.some(([o]) => o.class.startsWith("su_kien"))) kinds.push("sự kiện");
+  const what = kinds.length > 1 ? `${kinds.slice(0, -1).join(", ")} và ${kinds[kinds.length - 1]}` : kinds[0];
   const ok = await confirmDialog({
     title: "Xuất tệp lịch", ok: "Tải tệp .ics", cls: "ics-dialog",
     body: [
-      h("p", { class: "pd-privacy" }, `Tệp này chứa tên và ngày giỗ của ${people.size} người. Bất kỳ ai có tệp đều đọc được.`),
+      h("p", { class: "pd-privacy" }, `Tệp này chứa tên, ${what} của ${people.size} người. Bất kỳ ai có tệp đều đọc được.`),
       h("p", null, `Gồm ${occ.length} ngày trong 10 năm tới (từ ${dmy(t)} đến ${dmy(end)}), mỗi ngày có lời nhắc như đã đặt.`),
       h("p", { class: "flabel" }, "Xem trước:"),
       h("ul", { class: "dots pd-preview" }, ...preview, occ.length > 5 ? h("li", null, `… và ${occ.length - 5} ngày khác`) : null),
@@ -65,22 +71,31 @@ export async function renderBackup(root: HTMLElement, rerender: () => void): Pro
   async function exportFlow(): Promise<void> {
     const pw1 = h("input", { type: "password", id: "bk-pw1", autocomplete: "new-password", autocapitalize: "off", spellcheck: "false", class: "tin" }) as HTMLInputElement;
     const pw2 = h("input", { type: "password", id: "bk-pw2", autocomplete: "new-password", autocapitalize: "off", spellcheck: "false", class: "tin" }) as HTMLInputElement;
+    const e1 = h("p", { class: "ferr", id: "bk-pw1-err", role: "alert", hidden: true });
+    const e2 = h("p", { class: "ferr", id: "bk-pw2-err", role: "alert", hidden: true });
+    const mark = (inp: HTMLInputElement, el: HTMLElement, msg: string | null) => {
+      el.hidden = !msg; el.textContent = msg ?? "";
+      if (msg) { inp.setAttribute("aria-invalid", "true"); inp.setAttribute("aria-describedby", el.id); } else { inp.removeAttribute("aria-invalid"); inp.removeAttribute("aria-describedby"); }
+    };
+    pw1.addEventListener("input", () => { if (!e1.hidden && [...pw1.value.normalize("NFC")].length >= 8) mark(pw1, e1, null); });
+    pw2.addEventListener("input", () => { if (!e2.hidden && pw1.value.normalize("NFC") === pw2.value.normalize("NFC")) mark(pw2, e2, null); });
     const prog = h("progress", { max: "1", value: "0", hidden: true, id: "bk-prog" }) as HTMLProgressElement;
     const progTxt = h("p", { class: "fine", hidden: true }, "Đang mã hóa… (có thể mất vài giây)");
     const ok = await confirmDialog({
       title: "Tạo tệp sao lưu", ok: "Tạo và tải tệp", cls: "bk-dialog",
       body: [
         h("p", null, `Tệp sẽ chứa ${sn.persons.length} người, ${sn.events.length} sự kiện, ${photos} ảnh — đã mã hóa bằng mật khẩu.`),
-        h("div", { class: "field" }, h("label", { for: "bk-pw1" }, "Mật khẩu (ít nhất 8 ký tự)"), pw1),
-        h("div", { class: "field" }, h("label", { for: "bk-pw2" }, "Nhập lại mật khẩu"), pw2),
-        h("p", { class: "warn" }, "Quên mật khẩu là mất dữ liệu trong tệp — không ai lấy lại được, kể cả Clevix Lab."),
+        h("div", { class: "field" }, h("label", { for: "bk-pw1" }, "Mật khẩu (ít nhất 8 ký tự)"), pw1, e1),
+        h("div", { class: "field" }, h("label", { for: "bk-pw2" }, "Nhập lại mật khẩu"), pw2, e2),
+        h("p", { class: "notice pd-note" }, "Lưu ý: quên mật khẩu là mất dữ liệu trong tệp — không ai lấy lại được, kể cả Clevix Lab."),
         h("p", { class: "fine" }, "Gợi ý: dùng một câu dễ nhớ, ví dụ “nhà ở Hà Đông có cây bàng”."),
         prog, progTxt,
       ],
       onOk: async () => {
         const a = pw1.value, b = pw2.value;
-        if ([...a.normalize("NFC")].length < 8) return "Mật khẩu cần ít nhất 8 ký tự";
-        if (a.normalize("NFC") !== b.normalize("NFC")) return "Hai lần nhập mật khẩu chưa giống nhau";
+        mark(pw1, e1, null); mark(pw2, e2, null);
+        if ([...a.normalize("NFC")].length < 8) { mark(pw1, e1, "Mật khẩu cần ít nhất 8 ký tự"); pw1.focus(); return false; }
+        if (a.normalize("NFC") !== b.normalize("NFC")) { mark(pw2, e2, "Hai lần nhập mật khẩu chưa giống nhau"); pw2.focus(); return false; }
         prog.hidden = false; progTxt.hidden = false;
         const bytes = await s.exportBackup(a, { version: APP_VERSION, platform: "pwa" }, (x) => { prog.value = x; });
         download(`LichVanHoaViet-saoluu-${iso(today())}.lvhv`, bytes, "application/octet-stream");
@@ -91,11 +106,13 @@ export async function renderBackup(root: HTMLElement, rerender: () => void): Pro
   }
 
   // C. nhập
-  const fileIn = h("input", { type: "file", id: "bk-file", accept: ".lvhv,application/octet-stream" }) as HTMLInputElement;
+  const fileIn = h("input", { type: "file", id: "bk-file", accept: ".lvhv,application/octet-stream", class: "sr-only", tabindex: "-1", "aria-hidden": "true" }) as HTMLInputElement;
+  const fileName = h("p", { class: "fine", id: "bk-file-name", "aria-live": "polite" }, "Chưa chọn tệp.");
+  fileIn.addEventListener("change", () => { const f = fileIn.files?.[0]; fileName.textContent = f ? `Đã chọn: ${f.name}` : "Chưa chọn tệp."; });
   const pwIn = h("input", { type: "password", id: "bk-ipw", autocomplete: "current-password", autocapitalize: "off", spellcheck: "false", class: "tin" }) as HTMLInputElement;
   const impErr = h("p", { class: "ferr", role: "alert", hidden: true, id: "bk-imp-err" });
   const impProg = h("progress", { max: "1", value: "0", hidden: true }) as HTMLProgressElement;
-  const impBtn = h("button", { type: "button", class: "primary", id: "bk-open", onclick: () => void importFlow() }, "Mở tệp");
+  const impBtn = h("button", { type: "button", class: "btn2", id: "bk-open", onclick: () => void importFlow() }, "Mở tệp");
   async function importFlow(): Promise<void> {
     impErr.hidden = true;
     const f = fileIn.files?.[0];
@@ -155,7 +172,7 @@ export async function renderBackup(root: HTMLElement, rerender: () => void): Pro
         expBtn)),
     h("div", { class: "pcol-side" },
       h("section", { class: "panel", id: "bk-in" }, h("h2", null, "Khôi phục từ tệp sao lưu"),
-        h("div", { class: "field" }, h("label", { for: "bk-file" }, "Tệp sao lưu (.lvhv)"), fileIn),
+        h("div", { class: "field" }, h("span", { class: "flabel" }, "Tệp sao lưu (.lvhv)"), fileIn, h("button", { type: "button", class: "btn2 filebtn", id: "bk-file-btn", onclick: () => fileIn.click() }, "Chọn tệp sao lưu…"), fileName),
         h("div", { class: "field" }, h("label", { for: "bk-ipw" }, "Mật khẩu của tệp"), pwIn),
         impErr, impProg, impBtn),
       h("section", { class: "panel" }, h("h2", null, "Nhắc sao lưu"),
