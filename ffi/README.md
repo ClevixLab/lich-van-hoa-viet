@@ -31,6 +31,39 @@ Computation → `Unavailable`. Mọi kiểm tra miền do lõi làm; không hàm
 "năm sinh âm lịch" (kèm giải thích: sinh trước Tết thì lấy năm trước). Có ngày sinh đầy đủ thì đổi bằng
 `lunar_year_of_birth`.
 
+## Phần v0.2 — hồ sơ, ngày giỗ, nhắc, sao lưu (`src/v02.rs`)
+
+Cho giao diện native đợt 3 (docs/v0.2/05 §2). Ít hàm, mỗi hàm làm trọn một việc; dữ liệu vào/ra là **JSON** đúng
+lược đồ `docs/v0.2/schema/backup-v1.schema.json` (Person, Event, EventType, AppSettings, tài liệu sao lưu). Lỗi:
+`LvhvDataError` (Kotlin `LvhvDataException.*`, Swift `LvhvDataError.*`) — `Invalid`, `NotFound`, `Storage`,
+`Backup`; thông điệp tiếng Việt. Thời điểm: giây Unix (UTC); giờ đồng hồ thiết bị: `fire_local` dạng
+`YYYY-MM-DDTHH:MM`. Múi giờ thiết bị: `DeviceZone {offset_min, transitions:[{at_unix_s, offset_min}]}`
+(Việt Nam: `{420, []}`). Lịch: phương pháp mặc định của lõi (`jpl`).
+
+| Rust | Việc |
+|---|---|
+| `LvhvStore::open(dir)` | Mở/tạo kho SQLite (`lvhv.sqlite`, `photos/`) trong thư mục riêng của ứng dụng (01 §4.2) |
+| `settings_json()`, `put_settings_json(json)` | `AppSettings` |
+| `persons_json()`, `person_json(id)`, `save_person_json(json)`, `delete_person(id)` | Hồ sơ. `save_person_json` tự tính trường dẫn xuất (02 §1, §4), gắn id/`created_at`/`updated_at`/`rev`, kiểm V1–V8 |
+| `events_json()`, `save_event_json(json)`, `delete_event(id)` | Sự kiện |
+| `event_types_json()`, `save_event_type_json(json)` | Loại sự kiện (tên duy nhất — V7) |
+| `add_photo(id, mime, width, height, bytes)`, `photo_bytes(id)` | Ảnh chân dung (đã mã hóa lại, không EXIF) |
+| `dataset_json()` | Toàn bộ kho dạng tài liệu sao lưu — đầu vào `dataset_json` của các hàm dưới |
+| `backup_reminder_due()`, `export_backup(password, app_version, platform)`, `apply_import(backup, mode)` | Sao lưu (03); `mode` = `Replace` \| `Merge` |
+| `open_backup(file, password)` → `VerifiedBackup` (`preview()`) | Giải mã + kiểm tra toàn bộ, chưa ghi gì; lỗi → "Sai mật khẩu hoặc tệp bị hỏng" |
+| `derive_person_json(json)`, `save_death_json(date_value)`, `derive_birth_json(date_value)` | Tính/kiểm trường dẫn xuất không ghi (xem trước trong màn hình nhập) |
+| `person_summary_json(person, today)` | Tên hiển thị, Can Chi, tuổi dương/tuổi âm (02 §4.3), "Hưởng thọ … tuổi" (02 §4.2), ngày mất âm lịch |
+| `upcoming_json(dataset, today, days)` | Danh sách "Sắp tới" (02 §7.2) |
+| `period_bounds(kind, anchor)`, `period_prev`, `period_next`, `events_in_period_json(dataset, kind, anchor, filter)` | Danh sách theo kỳ (02 §7.6, R13) |
+| `reminders_json(dataset, now, zone, horizon_days, show_names)` | Lời nhắc (02 §7.1), văn bản màn hình khóa theo O-9 |
+| `reschedule_json(dataset, now, zone, pending_json, show_names)`, `sentinel_info()` | Xoay vòng 64 yêu cầu chờ cho iOS/macOS/Windows (02 §7.4) |
+| `android_alarm_step_json(dataset, now, last_run, zone, show_names)` | Một bước chuỗi báo thức Android (02 §7.3): lời nhắc cần đăng ngay + báo thức kế tiếp |
+| `ics_export(dataset, today, now, only_ids)` → `IcsExport {file_name, content, events, persons}` | Tệp .ics 10 năm (02 §8); `persons` cho hộp xác nhận S10 |
+| `new_uuid()` | UUID v4 (01 §1) |
+
+Kotlin: `[bindings.kotlin] android = true` trong `uniffi.toml` để mã dọn đối tượng không dùng
+`java.lang.ref.Cleaner` (API 33) với `minSdk 26`.
+
 ## Dữ liệu nhúng
 
 `include_str!` của `content/cadao/cadao.json`, `content/cadao/SOURCES.md`, `content/ngochap/SOURCES.md`.

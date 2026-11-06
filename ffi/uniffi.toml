@@ -2,6 +2,9 @@
 [bindings.kotlin]
 package_name = "vn.clevix.lichviet.core"
 cdylib_name = "lvhv_ffi"
+# Mã dọn đối tượng (LvhvStore, VerifiedBackup) dùng SystemCleaner khi API ≥ 34, JNA khi thấp hơn —
+# tránh java.lang.ref.Cleaner (API 33) mà minSdk 26 không có (lint NewApi).
+android = true
 
 [bindings.swift]
 # Tên mô-đun Swift của tệp sinh ra (lvhv_ffi.swift) và mô-đun C của phần tiêu đề.

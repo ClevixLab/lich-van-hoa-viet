@@ -30,6 +30,9 @@ import java.nio.CharBuffer
 import java.nio.charset.CodingErrorAction
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.ConcurrentHashMap
+import android.os.Build
+import androidx.annotation.RequiresApi
+import java.util.concurrent.atomic.AtomicBoolean
 
 // This is a helper for safely working with byte buffers returned from the Rust code.
 // A rust-owned buffer is represented by its capacity, its current length, and a
@@ -751,6 +754,80 @@ internal interface UniffiForeignFutureCompleteVoid : com.sun.jna.Callback {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 // For large crates we prevent `MethodTooLargeException` (see #2340)
 // N.B. the name of the extension is very misleading, since it is 
 // rather `InterfaceTooLargeException`, caused by too many methods 
@@ -770,6 +847,8 @@ internal interface IntegrityCheckingUniffiLib : Library {
 ): Short
 fun uniffi_lvhv_ffi_checksum_func_add_days(
 ): Short
+fun uniffi_lvhv_ffi_checksum_func_android_alarm_step_json(
+): Short
 fun uniffi_lvhv_ffi_checksum_func_build_info_json(
 ): Short
 fun uniffi_lvhv_ffi_checksum_func_cadao_attribution(
@@ -788,7 +867,15 @@ fun uniffi_lvhv_ffi_checksum_func_day_rating(
 ): Short
 fun uniffi_lvhv_ffi_checksum_func_days_in_month(
 ): Short
+fun uniffi_lvhv_ffi_checksum_func_derive_birth_json(
+): Short
+fun uniffi_lvhv_ffi_checksum_func_derive_person_json(
+): Short
+fun uniffi_lvhv_ffi_checksum_func_events_in_period_json(
+): Short
 fun uniffi_lvhv_ffi_checksum_func_find_good_days_json(
+): Short
+fun uniffi_lvhv_ffi_checksum_func_ics_export(
 ): Short
 fun uniffi_lvhv_ffi_checksum_func_lunar_method(
 ): Short
@@ -798,13 +885,73 @@ fun uniffi_lvhv_ffi_checksum_func_lunar_year_of_birth(
 ): Short
 fun uniffi_lvhv_ffi_checksum_func_month_lunar_days(
 ): Short
+fun uniffi_lvhv_ffi_checksum_func_new_uuid(
+): Short
 fun uniffi_lvhv_ffi_checksum_func_ngochap_sources_blocks_json(
 ): Short
+fun uniffi_lvhv_ffi_checksum_func_open_backup(
+): Short
+fun uniffi_lvhv_ffi_checksum_func_period_bounds(
+): Short
+fun uniffi_lvhv_ffi_checksum_func_period_next(
+): Short
+fun uniffi_lvhv_ffi_checksum_func_period_prev(
+): Short
+fun uniffi_lvhv_ffi_checksum_func_person_summary_json(
+): Short
+fun uniffi_lvhv_ffi_checksum_func_reminders_json(
+): Short
+fun uniffi_lvhv_ffi_checksum_func_reschedule_json(
+): Short
+fun uniffi_lvhv_ffi_checksum_func_save_death_json(
+): Short
+fun uniffi_lvhv_ffi_checksum_func_sentinel_info(
+): Short
 fun uniffi_lvhv_ffi_checksum_func_solar_to_lunar(
+): Short
+fun uniffi_lvhv_ffi_checksum_func_upcoming_json(
 ): Short
 fun uniffi_lvhv_ffi_checksum_func_weekday(
 ): Short
 fun uniffi_lvhv_ffi_checksum_func_year_can_chi(
+): Short
+fun uniffi_lvhv_ffi_checksum_method_lvhvstore_add_photo(
+): Short
+fun uniffi_lvhv_ffi_checksum_method_lvhvstore_apply_import(
+): Short
+fun uniffi_lvhv_ffi_checksum_method_lvhvstore_backup_reminder_due(
+): Short
+fun uniffi_lvhv_ffi_checksum_method_lvhvstore_dataset_json(
+): Short
+fun uniffi_lvhv_ffi_checksum_method_lvhvstore_delete_event(
+): Short
+fun uniffi_lvhv_ffi_checksum_method_lvhvstore_delete_person(
+): Short
+fun uniffi_lvhv_ffi_checksum_method_lvhvstore_event_types_json(
+): Short
+fun uniffi_lvhv_ffi_checksum_method_lvhvstore_events_json(
+): Short
+fun uniffi_lvhv_ffi_checksum_method_lvhvstore_export_backup(
+): Short
+fun uniffi_lvhv_ffi_checksum_method_lvhvstore_person_json(
+): Short
+fun uniffi_lvhv_ffi_checksum_method_lvhvstore_persons_json(
+): Short
+fun uniffi_lvhv_ffi_checksum_method_lvhvstore_photo_bytes(
+): Short
+fun uniffi_lvhv_ffi_checksum_method_lvhvstore_put_settings_json(
+): Short
+fun uniffi_lvhv_ffi_checksum_method_lvhvstore_save_event_json(
+): Short
+fun uniffi_lvhv_ffi_checksum_method_lvhvstore_save_event_type_json(
+): Short
+fun uniffi_lvhv_ffi_checksum_method_lvhvstore_save_person_json(
+): Short
+fun uniffi_lvhv_ffi_checksum_method_lvhvstore_settings_json(
+): Short
+fun uniffi_lvhv_ffi_checksum_method_verifiedbackup_preview(
+): Short
+fun uniffi_lvhv_ffi_checksum_constructor_lvhvstore_open(
 ): Short
 fun ffi_lvhv_ffi_uniffi_contract_version(
 ): Int
@@ -848,12 +995,64 @@ internal interface UniffiLib : Library {
             lib
         }
         
+        // The Cleaner for the whole library
+        internal val CLEANER: UniffiCleaner by lazy {
+            UniffiCleaner.create()
+        }
     }
 
     // FFI functions
-    fun uniffi_lvhv_ffi_fn_func_activities_json(uniffi_out_err: UniffiRustCallStatus, 
+    fun uniffi_lvhv_ffi_fn_clone_lvhvstore(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+): Pointer
+fun uniffi_lvhv_ffi_fn_free_lvhvstore(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+fun uniffi_lvhv_ffi_fn_constructor_lvhvstore_open(`dir`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): Pointer
+fun uniffi_lvhv_ffi_fn_method_lvhvstore_add_photo(`ptr`: Pointer,`id`: RustBuffer.ByValue,`mime`: RustBuffer.ByValue,`width`: Int,`height`: Int,`bytes`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_lvhv_ffi_fn_method_lvhvstore_apply_import(`ptr`: Pointer,`backup`: Pointer,`mode`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+fun uniffi_lvhv_ffi_fn_method_lvhvstore_backup_reminder_due(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+): Byte
+fun uniffi_lvhv_ffi_fn_method_lvhvstore_dataset_json(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_lvhv_ffi_fn_method_lvhvstore_delete_event(`ptr`: Pointer,`id`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+fun uniffi_lvhv_ffi_fn_method_lvhvstore_delete_person(`ptr`: Pointer,`id`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+fun uniffi_lvhv_ffi_fn_method_lvhvstore_event_types_json(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_lvhv_ffi_fn_method_lvhvstore_events_json(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_lvhv_ffi_fn_method_lvhvstore_export_backup(`ptr`: Pointer,`password`: RustBuffer.ByValue,`appVersion`: RustBuffer.ByValue,`platform`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_lvhv_ffi_fn_method_lvhvstore_person_json(`ptr`: Pointer,`id`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_lvhv_ffi_fn_method_lvhvstore_persons_json(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_lvhv_ffi_fn_method_lvhvstore_photo_bytes(`ptr`: Pointer,`id`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_lvhv_ffi_fn_method_lvhvstore_put_settings_json(`ptr`: Pointer,`json`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+fun uniffi_lvhv_ffi_fn_method_lvhvstore_save_event_json(`ptr`: Pointer,`json`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_lvhv_ffi_fn_method_lvhvstore_save_event_type_json(`ptr`: Pointer,`json`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_lvhv_ffi_fn_method_lvhvstore_save_person_json(`ptr`: Pointer,`json`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_lvhv_ffi_fn_method_lvhvstore_settings_json(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_lvhv_ffi_fn_clone_verifiedbackup(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+): Pointer
+fun uniffi_lvhv_ffi_fn_free_verifiedbackup(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+fun uniffi_lvhv_ffi_fn_method_verifiedbackup_preview(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_lvhv_ffi_fn_func_activities_json(uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_lvhv_ffi_fn_func_add_days(`day`: RustBuffer.ByValue,`n`: Int,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_lvhv_ffi_fn_func_android_alarm_step_json(`datasetJson`: RustBuffer.ByValue,`nowUnixS`: Long,`lastRunUnixS`: RustBuffer.ByValue,`zone`: RustBuffer.ByValue,`showNames`: Byte,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_lvhv_ffi_fn_func_build_info_json(uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
@@ -873,7 +1072,15 @@ fun uniffi_lvhv_ffi_fn_func_day_rating(`score`: Int,uniffi_out_err: UniffiRustCa
 ): RustBuffer.ByValue
 fun uniffi_lvhv_ffi_fn_func_days_in_month(`y`: Int,`m`: Int,uniffi_out_err: UniffiRustCallStatus, 
 ): Int
+fun uniffi_lvhv_ffi_fn_func_derive_birth_json(`dateValueJson`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_lvhv_ffi_fn_func_derive_person_json(`json`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_lvhv_ffi_fn_func_events_in_period_json(`datasetJson`: RustBuffer.ByValue,`kind`: RustBuffer.ByValue,`anchor`: RustBuffer.ByValue,`filter`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
 fun uniffi_lvhv_ffi_fn_func_find_good_days_json(`activity`: RustBuffer.ByValue,`from`: RustBuffer.ByValue,`to`: RustBuffer.ByValue,`birthLunarYear`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_lvhv_ffi_fn_func_ics_export(`datasetJson`: RustBuffer.ByValue,`today`: RustBuffer.ByValue,`nowUnixS`: Long,`onlyIds`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_lvhv_ffi_fn_func_lunar_method(uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
@@ -883,9 +1090,31 @@ fun uniffi_lvhv_ffi_fn_func_lunar_year_of_birth(`birth`: RustBuffer.ByValue,unif
 ): Int
 fun uniffi_lvhv_ffi_fn_func_month_lunar_days(`y`: Int,`m`: Int,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
+fun uniffi_lvhv_ffi_fn_func_new_uuid(uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
 fun uniffi_lvhv_ffi_fn_func_ngochap_sources_blocks_json(uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
+fun uniffi_lvhv_ffi_fn_func_open_backup(`file`: RustBuffer.ByValue,`password`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): Pointer
+fun uniffi_lvhv_ffi_fn_func_period_bounds(`kind`: RustBuffer.ByValue,`anchor`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_lvhv_ffi_fn_func_period_next(`kind`: RustBuffer.ByValue,`anchor`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_lvhv_ffi_fn_func_period_prev(`kind`: RustBuffer.ByValue,`anchor`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_lvhv_ffi_fn_func_person_summary_json(`personJson`: RustBuffer.ByValue,`today`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_lvhv_ffi_fn_func_reminders_json(`datasetJson`: RustBuffer.ByValue,`nowUnixS`: Long,`zone`: RustBuffer.ByValue,`horizonDays`: Int,`showNames`: Byte,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_lvhv_ffi_fn_func_reschedule_json(`datasetJson`: RustBuffer.ByValue,`nowUnixS`: Long,`zone`: RustBuffer.ByValue,`pendingJson`: RustBuffer.ByValue,`showNames`: Byte,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_lvhv_ffi_fn_func_save_death_json(`dateValueJson`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_lvhv_ffi_fn_func_sentinel_info(uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
 fun uniffi_lvhv_ffi_fn_func_solar_to_lunar(`y`: Int,`m`: Int,`d`: Int,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_lvhv_ffi_fn_func_upcoming_json(`datasetJson`: RustBuffer.ByValue,`today`: RustBuffer.ByValue,`days`: Int,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_lvhv_ffi_fn_func_weekday(`y`: Int,`m`: Int,`d`: Int,uniffi_out_err: UniffiRustCallStatus, 
 ): Int
@@ -1023,6 +1252,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_lvhv_ffi_checksum_func_add_days() != 41064.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_lvhv_ffi_checksum_func_android_alarm_step_json() != 30391.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_lvhv_ffi_checksum_func_build_info_json() != 56614.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1050,7 +1282,19 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_lvhv_ffi_checksum_func_days_in_month() != 11945.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_lvhv_ffi_checksum_func_derive_birth_json() != 59472.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_lvhv_ffi_checksum_func_derive_person_json() != 47386.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_lvhv_ffi_checksum_func_events_in_period_json() != 32164.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_lvhv_ffi_checksum_func_find_good_days_json() != 10813.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_lvhv_ffi_checksum_func_ics_export() != 54353.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_lvhv_ffi_checksum_func_lunar_method() != 34114.toShort()) {
@@ -1065,16 +1309,106 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_lvhv_ffi_checksum_func_month_lunar_days() != 40894.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_lvhv_ffi_checksum_func_new_uuid() != 5254.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_lvhv_ffi_checksum_func_ngochap_sources_blocks_json() != 11199.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_lvhv_ffi_checksum_func_open_backup() != 5743.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_lvhv_ffi_checksum_func_period_bounds() != 29895.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_lvhv_ffi_checksum_func_period_next() != 46764.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_lvhv_ffi_checksum_func_period_prev() != 37514.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_lvhv_ffi_checksum_func_person_summary_json() != 36375.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_lvhv_ffi_checksum_func_reminders_json() != 49335.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_lvhv_ffi_checksum_func_reschedule_json() != 38597.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_lvhv_ffi_checksum_func_save_death_json() != 16966.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_lvhv_ffi_checksum_func_sentinel_info() != 18477.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_lvhv_ffi_checksum_func_solar_to_lunar() != 39424.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_lvhv_ffi_checksum_func_upcoming_json() != 31740.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_lvhv_ffi_checksum_func_weekday() != 50804.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_lvhv_ffi_checksum_func_year_can_chi() != 59633.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_lvhv_ffi_checksum_method_lvhvstore_add_photo() != 45983.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_lvhv_ffi_checksum_method_lvhvstore_apply_import() != 38554.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_lvhv_ffi_checksum_method_lvhvstore_backup_reminder_due() != 64715.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_lvhv_ffi_checksum_method_lvhvstore_dataset_json() != 27745.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_lvhv_ffi_checksum_method_lvhvstore_delete_event() != 34738.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_lvhv_ffi_checksum_method_lvhvstore_delete_person() != 23321.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_lvhv_ffi_checksum_method_lvhvstore_event_types_json() != 18706.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_lvhv_ffi_checksum_method_lvhvstore_events_json() != 58435.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_lvhv_ffi_checksum_method_lvhvstore_export_backup() != 56748.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_lvhv_ffi_checksum_method_lvhvstore_person_json() != 48207.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_lvhv_ffi_checksum_method_lvhvstore_persons_json() != 41579.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_lvhv_ffi_checksum_method_lvhvstore_photo_bytes() != 22965.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_lvhv_ffi_checksum_method_lvhvstore_put_settings_json() != 14452.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_lvhv_ffi_checksum_method_lvhvstore_save_event_json() != 16260.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_lvhv_ffi_checksum_method_lvhvstore_save_event_type_json() != 19012.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_lvhv_ffi_checksum_method_lvhvstore_save_person_json() != 47199.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_lvhv_ffi_checksum_method_lvhvstore_settings_json() != 30343.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_lvhv_ffi_checksum_method_verifiedbackup_preview() != 6973.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_lvhv_ffi_checksum_constructor_lvhvstore_open() != 41415.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
 }
@@ -1155,6 +1489,70 @@ inline fun <T : Disposable?, R> T.use(block: (T) -> R) =
  * @suppress
  * */
 object NoPointer
+/**
+ * The cleaner interface for Object finalization code to run.
+ * This is the entry point to any implementation that we're using.
+ *
+ * The cleaner registers objects and returns cleanables, so now we are
+ * defining a `UniffiCleaner` with a `UniffiClenaer.Cleanable` to abstract the
+ * different implmentations available at compile time.
+ *
+ * @suppress
+ */
+interface UniffiCleaner {
+    interface Cleanable {
+        fun clean()
+    }
+
+    fun register(value: Any, cleanUpTask: Runnable): UniffiCleaner.Cleanable
+
+    companion object
+}
+
+// The fallback Jna cleaner, which is available for both Android, and the JVM.
+private class UniffiJnaCleaner : UniffiCleaner {
+    private val cleaner = com.sun.jna.internal.Cleaner.getCleaner()
+
+    override fun register(value: Any, cleanUpTask: Runnable): UniffiCleaner.Cleanable =
+        UniffiJnaCleanable(cleaner.register(value, cleanUpTask))
+}
+
+private class UniffiJnaCleanable(
+    private val cleanable: com.sun.jna.internal.Cleaner.Cleanable,
+) : UniffiCleaner.Cleanable {
+    override fun clean() = cleanable.clean()
+}
+
+
+// We decide at uniffi binding generation time whether we were
+// using Android or not.
+// There are further runtime checks to chose the correct implementation
+// of the cleaner.
+
+
+private fun UniffiCleaner.Companion.create(): UniffiCleaner =
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+        AndroidSystemCleaner()
+    } else {
+        UniffiJnaCleaner()
+    }
+
+// The SystemCleaner, available from API Level 33.
+// Some API Level 33 OSes do not support using it, so we require API Level 34.
+@RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
+private class AndroidSystemCleaner : UniffiCleaner {
+    val cleaner = android.system.SystemCleaner.cleaner()
+
+    override fun register(value: Any, cleanUpTask: Runnable): UniffiCleaner.Cleanable =
+        AndroidSystemCleanable(cleaner.register(value, cleanUpTask))
+}
+
+@RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
+private class AndroidSystemCleanable(
+    private val cleanable: java.lang.ref.Cleaner.Cleanable,
+) : UniffiCleaner.Cleanable {
+    override fun clean() = cleanable.clean()
+}
 
 /**
  * @suppress
@@ -1222,6 +1620,29 @@ public object FfiConverterInt: FfiConverter<Int, Int> {
 
     override fun write(value: Int, buf: ByteBuffer) {
         buf.putInt(value)
+    }
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterLong: FfiConverter<Long, Long> {
+    override fun lift(value: Long): Long {
+        return value
+    }
+
+    override fun read(buf: ByteBuffer): Long {
+        return buf.getLong()
+    }
+
+    override fun lower(value: Long): Long {
+        return value
+    }
+
+    override fun allocationSize(value: Long) = 8UL
+
+    override fun write(value: Long, buf: ByteBuffer) {
+        buf.putLong(value)
     }
 }
 
@@ -1305,6 +1726,920 @@ public object FfiConverterString: FfiConverter<String, RustBuffer.ByValue> {
     }
 }
 
+/**
+ * @suppress
+ */
+public object FfiConverterByteArray: FfiConverterRustBuffer<ByteArray> {
+    override fun read(buf: ByteBuffer): ByteArray {
+        val len = buf.getInt()
+        val byteArr = ByteArray(len)
+        buf.get(byteArr)
+        return byteArr
+    }
+    override fun allocationSize(value: ByteArray): ULong {
+        return 4UL + value.size.toULong()
+    }
+    override fun write(value: ByteArray, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        buf.put(value)
+    }
+}
+
+
+// This template implements a class for working with a Rust struct via a Pointer/Arc<T>
+// to the live Rust struct on the other side of the FFI.
+//
+// Each instance implements core operations for working with the Rust `Arc<T>` and the
+// Kotlin Pointer to work with the live Rust struct on the other side of the FFI.
+//
+// There's some subtlety here, because we have to be careful not to operate on a Rust
+// struct after it has been dropped, and because we must expose a public API for freeing
+// theq Kotlin wrapper object in lieu of reliable finalizers. The core requirements are:
+//
+//   * Each instance holds an opaque pointer to the underlying Rust struct.
+//     Method calls need to read this pointer from the object's state and pass it in to
+//     the Rust FFI.
+//
+//   * When an instance is no longer needed, its pointer should be passed to a
+//     special destructor function provided by the Rust FFI, which will drop the
+//     underlying Rust struct.
+//
+//   * Given an instance, calling code is expected to call the special
+//     `destroy` method in order to free it after use, either by calling it explicitly
+//     or by using a higher-level helper like the `use` method. Failing to do so risks
+//     leaking the underlying Rust struct.
+//
+//   * We can't assume that calling code will do the right thing, and must be prepared
+//     to handle Kotlin method calls executing concurrently with or even after a call to
+//     `destroy`, and to handle multiple (possibly concurrent!) calls to `destroy`.
+//
+//   * We must never allow Rust code to operate on the underlying Rust struct after
+//     the destructor has been called, and must never call the destructor more than once.
+//     Doing so may trigger memory unsafety.
+//
+//   * To mitigate many of the risks of leaking memory and use-after-free unsafety, a `Cleaner`
+//     is implemented to call the destructor when the Kotlin object becomes unreachable.
+//     This is done in a background thread. This is not a panacea, and client code should be aware that
+//      1. the thread may starve if some there are objects that have poorly performing
+//     `drop` methods or do significant work in their `drop` methods.
+//      2. the thread is shared across the whole library. This can be tuned by using `android_cleaner = true`,
+//         or `android = true` in the [`kotlin` section of the `uniffi.toml` file](https://mozilla.github.io/uniffi-rs/kotlin/configuration.html).
+//
+// If we try to implement this with mutual exclusion on access to the pointer, there is the
+// possibility of a race between a method call and a concurrent call to `destroy`:
+//
+//    * Thread A starts a method call, reads the value of the pointer, but is interrupted
+//      before it can pass the pointer over the FFI to Rust.
+//    * Thread B calls `destroy` and frees the underlying Rust struct.
+//    * Thread A resumes, passing the already-read pointer value to Rust and triggering
+//      a use-after-free.
+//
+// One possible solution would be to use a `ReadWriteLock`, with each method call taking
+// a read lock (and thus allowed to run concurrently) and the special `destroy` method
+// taking a write lock (and thus blocking on live method calls). However, we aim not to
+// generate methods with any hidden blocking semantics, and a `destroy` method that might
+// block if called incorrectly seems to meet that bar.
+//
+// So, we achieve our goals by giving each instance an associated `AtomicLong` counter to track
+// the number of in-flight method calls, and an `AtomicBoolean` flag to indicate whether `destroy`
+// has been called. These are updated according to the following rules:
+//
+//    * The initial value of the counter is 1, indicating a live object with no in-flight calls.
+//      The initial value for the flag is false.
+//
+//    * At the start of each method call, we atomically check the counter.
+//      If it is 0 then the underlying Rust struct has already been destroyed and the call is aborted.
+//      If it is nonzero them we atomically increment it by 1 and proceed with the method call.
+//
+//    * At the end of each method call, we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+//    * When `destroy` is called, we atomically flip the flag from false to true.
+//      If the flag was already true we silently fail.
+//      Otherwise we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+// Astute readers may observe that this all sounds very similar to the way that Rust's `Arc<T>` works,
+// and indeed it is, with the addition of a flag to guard against multiple calls to `destroy`.
+//
+// The overall effect is that the underlying Rust struct is destroyed only when `destroy` has been
+// called *and* all in-flight method calls have completed, avoiding violating any of the expectations
+// of the underlying Rust code.
+//
+// This makes a cleaner a better alternative to _not_ calling `destroy()` as
+// and when the object is finished with, but the abstraction is not perfect: if the Rust object's `drop`
+// method is slow, and/or there are many objects to cleanup, and it's on a low end Android device, then the cleaner
+// thread may be starved, and the app will leak memory.
+//
+// In this case, `destroy`ing manually may be a better solution.
+//
+// The cleaner can live side by side with the manual calling of `destroy`. In the order of responsiveness, uniffi objects
+// with Rust peers are reclaimed:
+//
+// 1. By calling the `destroy` method of the object, which calls `rustObject.free()`. If that doesn't happen:
+// 2. When the object becomes unreachable, AND the Cleaner thread gets to call `rustObject.free()`. If the thread is starved then:
+// 3. The memory is reclaimed when the process terminates.
+//
+// [1] https://stackoverflow.com/questions/24376768/can-java-finalize-an-object-when-it-is-still-in-scope/24380219
+//
+
+
+/**
+ * Kho SQLite của ứng dụng (01 §4.2) trên một thư mục riêng của ứng dụng. Mọi lệnh ghi kiểm V1–V8.
+ */
+public interface LvhvStoreInterface {
+    
+    /**
+     * Thêm ảnh chân dung (byte **đã** được nền tảng giải mã và mã hóa lại, không còn EXIF — 01 §3.8).
+     * Trả bản ghi `Photo`; gắn vào người bằng `photo_id` rồi `save_person_json`.
+     */
+    fun `addPhoto`(`id`: kotlin.String, `mime`: kotlin.String, `width`: kotlin.UInt, `height`: kotlin.UInt, `bytes`: kotlin.ByteArray): kotlin.String
+    
+    /**
+     * Ghi tệp đã kiểm tra (Thay toàn bộ / Gộp) trong một giao dịch; lỗi → không ghi gì.
+     */
+    fun `applyImport`(`backup`: VerifiedBackup, `mode`: BackupImportMode)
+    
+    /**
+     * Có nên nhắc người dùng sao lưu không (01 §3.9 `backup_nag_days`).
+     */
+    fun `backupReminderDue`(): kotlin.Boolean
+    
+    /**
+     * Toàn bộ kho dạng tài liệu sao lưu v1 (01 §5, chưa có byte ảnh) — đầu vào `dataset_json` của các
+     * hàm ngày giỗ / nhắc / danh sách / .ics bên dưới.
+     */
+    fun `datasetJson`(): kotlin.String
+    
+    /**
+     * Xóa một sự kiện.
+     */
+    fun `deleteEvent`(`id`: kotlin.String)
+    
+    /**
+     * Xóa một người (gỡ id khỏi mọi sự kiện, xóa ảnh không còn ai dùng).
+     */
+    fun `deletePerson`(`id`: kotlin.String)
+    
+    /**
+     * Mọi `EventType` (mảng JSON).
+     */
+    fun `eventTypesJson`(): kotlin.String
+    
+    /**
+     * Mọi `Event` (mảng JSON, sắp theo id).
+     */
+    fun `eventsJson`(): kotlin.String
+    
+    /**
+     * Xuất tệp sao lưu mã hóa (03 §2). `platform`: "android" | "ios" | "macos" | "windows";
+     * `app_version` dạng X.Y.Z. Ứng dụng ghi byte qua hộp thoại lưu tệp của hệ điều hành.
+     */
+    fun `exportBackup`(`password`: kotlin.String, `appVersion`: kotlin.String, `platform`: kotlin.String): kotlin.ByteArray
+    
+    /**
+     * Một `Person`.
+     */
+    fun `personJson`(`id`: kotlin.String): kotlin.String
+    
+    /**
+     * Mọi `Person` (mảng JSON, sắp theo id).
+     */
+    fun `personsJson`(): kotlin.String
+    
+    /**
+     * Byte của một ảnh (kiểm `sha256` khi đọc).
+     */
+    fun `photoBytes`(`id`: kotlin.String): kotlin.ByteArray
+    
+    /**
+     * Ghi `AppSettings` (đủ trường, kiểm V1/V8).
+     */
+    fun `putSettingsJson`(`json`: kotlin.String)
+    
+    /**
+     * Lưu một `Event` (thêm hoặc sửa); gắn id/`created_at`/`updated_at`/`rev`, kiểm rồi ghi. Trả bản đã lưu.
+     */
+    fun `saveEventJson`(`json`: kotlin.String): kotlin.String
+    
+    /**
+     * Lưu một `EventType` (tên duy nhất — V7); gắn id/thời điểm/rev. Trả bản đã lưu.
+     */
+    fun `saveEventTypeJson`(`json`: kotlin.String): kotlin.String
+    
+    /**
+     * Lưu một `Person` (thêm hoặc sửa): tính lại trường dẫn xuất (ngày âm/dương của ngày mất và ngày
+     * sinh, Can Chi, hưởng thọ/hưởng dương trừ khi `tuoi.manual`), gắn id/`created_at`/`updated_at`/`rev`,
+     * kiểm V1–V8 rồi ghi. Trả bản đã lưu.
+     */
+    fun `savePersonJson`(`json`: kotlin.String): kotlin.String
+    
+    /**
+     * `AppSettings` (01 §3.9).
+     */
+    fun `settingsJson`(): kotlin.String
+    
+    companion object
+}
+
+/**
+ * Kho SQLite của ứng dụng (01 §4.2) trên một thư mục riêng của ứng dụng. Mọi lệnh ghi kiểm V1–V8.
+ */
+open class LvhvStore: Disposable, AutoCloseable, LvhvStoreInterface
+{
+
+    constructor(pointer: Pointer) {
+        this.pointer = pointer
+        this.cleanable = UniffiLib.CLEANER.register(this, UniffiCleanAction(pointer))
+    }
+
+    /**
+     * This constructor can be used to instantiate a fake object. Only used for tests. Any
+     * attempt to actually use an object constructed this way will fail as there is no
+     * connected Rust object.
+     */
+    @Suppress("UNUSED_PARAMETER")
+    constructor(noPointer: NoPointer) {
+        this.pointer = null
+        this.cleanable = UniffiLib.CLEANER.register(this, UniffiCleanAction(pointer))
+    }
+
+    protected val pointer: Pointer?
+    protected val cleanable: UniffiCleaner.Cleanable
+
+    private val wasDestroyed = AtomicBoolean(false)
+    private val callCounter = AtomicLong(1)
+
+    override fun destroy() {
+        // Only allow a single call to this method.
+        // TODO: maybe we should log a warning if called more than once?
+        if (this.wasDestroyed.compareAndSet(false, true)) {
+            // This decrement always matches the initial count of 1 given at creation time.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable.clean()
+            }
+        }
+    }
+
+    @Synchronized
+    override fun close() {
+        this.destroy()
+    }
+
+    internal inline fun <R> callWithPointer(block: (ptr: Pointer) -> R): R {
+        // Check and increment the call counter, to keep the object alive.
+        // This needs a compare-and-set retry loop in case of concurrent updates.
+        do {
+            val c = this.callCounter.get()
+            if (c == 0L) {
+                throw IllegalStateException("${this.javaClass.simpleName} object has already been destroyed")
+            }
+            if (c == Long.MAX_VALUE) {
+                throw IllegalStateException("${this.javaClass.simpleName} call counter would overflow")
+            }
+        } while (! this.callCounter.compareAndSet(c, c + 1L))
+        // Now we can safely do the method call without the pointer being freed concurrently.
+        try {
+            return block(this.uniffiClonePointer())
+        } finally {
+            // This decrement always matches the increment we performed above.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable.clean()
+            }
+        }
+    }
+
+    // Use a static inner class instead of a closure so as not to accidentally
+    // capture `this` as part of the cleanable's action.
+    private class UniffiCleanAction(private val pointer: Pointer?) : Runnable {
+        override fun run() {
+            pointer?.let { ptr ->
+                uniffiRustCall { status ->
+                    UniffiLib.INSTANCE.uniffi_lvhv_ffi_fn_free_lvhvstore(ptr, status)
+                }
+            }
+        }
+    }
+
+    fun uniffiClonePointer(): Pointer {
+        return uniffiRustCall() { status ->
+            UniffiLib.INSTANCE.uniffi_lvhv_ffi_fn_clone_lvhvstore(pointer!!, status)
+        }
+    }
+
+    
+    /**
+     * Thêm ảnh chân dung (byte **đã** được nền tảng giải mã và mã hóa lại, không còn EXIF — 01 §3.8).
+     * Trả bản ghi `Photo`; gắn vào người bằng `photo_id` rồi `save_person_json`.
+     */
+    @Throws(LvhvDataException::class)override fun `addPhoto`(`id`: kotlin.String, `mime`: kotlin.String, `width`: kotlin.UInt, `height`: kotlin.UInt, `bytes`: kotlin.ByteArray): kotlin.String {
+            return FfiConverterString.lift(
+    callWithPointer {
+    uniffiRustCallWithError(LvhvDataException) { _status ->
+    UniffiLib.INSTANCE.uniffi_lvhv_ffi_fn_method_lvhvstore_add_photo(
+        it, FfiConverterString.lower(`id`),FfiConverterString.lower(`mime`),FfiConverterUInt.lower(`width`),FfiConverterUInt.lower(`height`),FfiConverterByteArray.lower(`bytes`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Ghi tệp đã kiểm tra (Thay toàn bộ / Gộp) trong một giao dịch; lỗi → không ghi gì.
+     */
+    @Throws(LvhvDataException::class)override fun `applyImport`(`backup`: VerifiedBackup, `mode`: BackupImportMode)
+        = 
+    callWithPointer {
+    uniffiRustCallWithError(LvhvDataException) { _status ->
+    UniffiLib.INSTANCE.uniffi_lvhv_ffi_fn_method_lvhvstore_apply_import(
+        it, FfiConverterTypeVerifiedBackup.lower(`backup`),FfiConverterTypeBackupImportMode.lower(`mode`),_status)
+}
+    }
+    
+    
+
+    
+    /**
+     * Có nên nhắc người dùng sao lưu không (01 §3.9 `backup_nag_days`).
+     */
+    @Throws(LvhvDataException::class)override fun `backupReminderDue`(): kotlin.Boolean {
+            return FfiConverterBoolean.lift(
+    callWithPointer {
+    uniffiRustCallWithError(LvhvDataException) { _status ->
+    UniffiLib.INSTANCE.uniffi_lvhv_ffi_fn_method_lvhvstore_backup_reminder_due(
+        it, _status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Toàn bộ kho dạng tài liệu sao lưu v1 (01 §5, chưa có byte ảnh) — đầu vào `dataset_json` của các
+     * hàm ngày giỗ / nhắc / danh sách / .ics bên dưới.
+     */
+    @Throws(LvhvDataException::class)override fun `datasetJson`(): kotlin.String {
+            return FfiConverterString.lift(
+    callWithPointer {
+    uniffiRustCallWithError(LvhvDataException) { _status ->
+    UniffiLib.INSTANCE.uniffi_lvhv_ffi_fn_method_lvhvstore_dataset_json(
+        it, _status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Xóa một sự kiện.
+     */
+    @Throws(LvhvDataException::class)override fun `deleteEvent`(`id`: kotlin.String)
+        = 
+    callWithPointer {
+    uniffiRustCallWithError(LvhvDataException) { _status ->
+    UniffiLib.INSTANCE.uniffi_lvhv_ffi_fn_method_lvhvstore_delete_event(
+        it, FfiConverterString.lower(`id`),_status)
+}
+    }
+    
+    
+
+    
+    /**
+     * Xóa một người (gỡ id khỏi mọi sự kiện, xóa ảnh không còn ai dùng).
+     */
+    @Throws(LvhvDataException::class)override fun `deletePerson`(`id`: kotlin.String)
+        = 
+    callWithPointer {
+    uniffiRustCallWithError(LvhvDataException) { _status ->
+    UniffiLib.INSTANCE.uniffi_lvhv_ffi_fn_method_lvhvstore_delete_person(
+        it, FfiConverterString.lower(`id`),_status)
+}
+    }
+    
+    
+
+    
+    /**
+     * Mọi `EventType` (mảng JSON).
+     */
+    @Throws(LvhvDataException::class)override fun `eventTypesJson`(): kotlin.String {
+            return FfiConverterString.lift(
+    callWithPointer {
+    uniffiRustCallWithError(LvhvDataException) { _status ->
+    UniffiLib.INSTANCE.uniffi_lvhv_ffi_fn_method_lvhvstore_event_types_json(
+        it, _status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Mọi `Event` (mảng JSON, sắp theo id).
+     */
+    @Throws(LvhvDataException::class)override fun `eventsJson`(): kotlin.String {
+            return FfiConverterString.lift(
+    callWithPointer {
+    uniffiRustCallWithError(LvhvDataException) { _status ->
+    UniffiLib.INSTANCE.uniffi_lvhv_ffi_fn_method_lvhvstore_events_json(
+        it, _status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Xuất tệp sao lưu mã hóa (03 §2). `platform`: "android" | "ios" | "macos" | "windows";
+     * `app_version` dạng X.Y.Z. Ứng dụng ghi byte qua hộp thoại lưu tệp của hệ điều hành.
+     */
+    @Throws(LvhvDataException::class)override fun `exportBackup`(`password`: kotlin.String, `appVersion`: kotlin.String, `platform`: kotlin.String): kotlin.ByteArray {
+            return FfiConverterByteArray.lift(
+    callWithPointer {
+    uniffiRustCallWithError(LvhvDataException) { _status ->
+    UniffiLib.INSTANCE.uniffi_lvhv_ffi_fn_method_lvhvstore_export_backup(
+        it, FfiConverterString.lower(`password`),FfiConverterString.lower(`appVersion`),FfiConverterString.lower(`platform`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Một `Person`.
+     */
+    @Throws(LvhvDataException::class)override fun `personJson`(`id`: kotlin.String): kotlin.String {
+            return FfiConverterString.lift(
+    callWithPointer {
+    uniffiRustCallWithError(LvhvDataException) { _status ->
+    UniffiLib.INSTANCE.uniffi_lvhv_ffi_fn_method_lvhvstore_person_json(
+        it, FfiConverterString.lower(`id`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Mọi `Person` (mảng JSON, sắp theo id).
+     */
+    @Throws(LvhvDataException::class)override fun `personsJson`(): kotlin.String {
+            return FfiConverterString.lift(
+    callWithPointer {
+    uniffiRustCallWithError(LvhvDataException) { _status ->
+    UniffiLib.INSTANCE.uniffi_lvhv_ffi_fn_method_lvhvstore_persons_json(
+        it, _status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Byte của một ảnh (kiểm `sha256` khi đọc).
+     */
+    @Throws(LvhvDataException::class)override fun `photoBytes`(`id`: kotlin.String): kotlin.ByteArray {
+            return FfiConverterByteArray.lift(
+    callWithPointer {
+    uniffiRustCallWithError(LvhvDataException) { _status ->
+    UniffiLib.INSTANCE.uniffi_lvhv_ffi_fn_method_lvhvstore_photo_bytes(
+        it, FfiConverterString.lower(`id`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Ghi `AppSettings` (đủ trường, kiểm V1/V8).
+     */
+    @Throws(LvhvDataException::class)override fun `putSettingsJson`(`json`: kotlin.String)
+        = 
+    callWithPointer {
+    uniffiRustCallWithError(LvhvDataException) { _status ->
+    UniffiLib.INSTANCE.uniffi_lvhv_ffi_fn_method_lvhvstore_put_settings_json(
+        it, FfiConverterString.lower(`json`),_status)
+}
+    }
+    
+    
+
+    
+    /**
+     * Lưu một `Event` (thêm hoặc sửa); gắn id/`created_at`/`updated_at`/`rev`, kiểm rồi ghi. Trả bản đã lưu.
+     */
+    @Throws(LvhvDataException::class)override fun `saveEventJson`(`json`: kotlin.String): kotlin.String {
+            return FfiConverterString.lift(
+    callWithPointer {
+    uniffiRustCallWithError(LvhvDataException) { _status ->
+    UniffiLib.INSTANCE.uniffi_lvhv_ffi_fn_method_lvhvstore_save_event_json(
+        it, FfiConverterString.lower(`json`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Lưu một `EventType` (tên duy nhất — V7); gắn id/thời điểm/rev. Trả bản đã lưu.
+     */
+    @Throws(LvhvDataException::class)override fun `saveEventTypeJson`(`json`: kotlin.String): kotlin.String {
+            return FfiConverterString.lift(
+    callWithPointer {
+    uniffiRustCallWithError(LvhvDataException) { _status ->
+    UniffiLib.INSTANCE.uniffi_lvhv_ffi_fn_method_lvhvstore_save_event_type_json(
+        it, FfiConverterString.lower(`json`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Lưu một `Person` (thêm hoặc sửa): tính lại trường dẫn xuất (ngày âm/dương của ngày mất và ngày
+     * sinh, Can Chi, hưởng thọ/hưởng dương trừ khi `tuoi.manual`), gắn id/`created_at`/`updated_at`/`rev`,
+     * kiểm V1–V8 rồi ghi. Trả bản đã lưu.
+     */
+    @Throws(LvhvDataException::class)override fun `savePersonJson`(`json`: kotlin.String): kotlin.String {
+            return FfiConverterString.lift(
+    callWithPointer {
+    uniffiRustCallWithError(LvhvDataException) { _status ->
+    UniffiLib.INSTANCE.uniffi_lvhv_ffi_fn_method_lvhvstore_save_person_json(
+        it, FfiConverterString.lower(`json`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * `AppSettings` (01 §3.9).
+     */
+    @Throws(LvhvDataException::class)override fun `settingsJson`(): kotlin.String {
+            return FfiConverterString.lift(
+    callWithPointer {
+    uniffiRustCallWithError(LvhvDataException) { _status ->
+    UniffiLib.INSTANCE.uniffi_lvhv_ffi_fn_method_lvhvstore_settings_json(
+        it, _status)
+}
+    }
+    )
+    }
+    
+
+    
+
+    
+    companion object {
+        
+    /**
+     * Mở (hoặc tạo) kho trong thư mục `dir` (tạo `lvhv.sqlite` và `photos/`), chuyển đổi phiên bản nếu cần.
+     */
+    @Throws(LvhvDataException::class) fun `open`(`dir`: kotlin.String): LvhvStore {
+            return FfiConverterTypeLvhvStore.lift(
+    uniffiRustCallWithError(LvhvDataException) { _status ->
+    UniffiLib.INSTANCE.uniffi_lvhv_ffi_fn_constructor_lvhvstore_open(
+        FfiConverterString.lower(`dir`),_status)
+}
+    )
+    }
+    
+
+        
+    }
+    
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeLvhvStore: FfiConverter<LvhvStore, Pointer> {
+
+    override fun lower(value: LvhvStore): Pointer {
+        return value.uniffiClonePointer()
+    }
+
+    override fun lift(value: Pointer): LvhvStore {
+        return LvhvStore(value)
+    }
+
+    override fun read(buf: ByteBuffer): LvhvStore {
+        // The Rust code always writes pointers as 8 bytes, and will
+        // fail to compile if they don't fit.
+        return lift(Pointer(buf.getLong()))
+    }
+
+    override fun allocationSize(value: LvhvStore) = 8UL
+
+    override fun write(value: LvhvStore, buf: ByteBuffer) {
+        // The Rust code always expects pointers written as 8 bytes,
+        // and will fail to compile if they don't fit.
+        buf.putLong(Pointer.nativeValue(lower(value)))
+    }
+}
+
+
+// This template implements a class for working with a Rust struct via a Pointer/Arc<T>
+// to the live Rust struct on the other side of the FFI.
+//
+// Each instance implements core operations for working with the Rust `Arc<T>` and the
+// Kotlin Pointer to work with the live Rust struct on the other side of the FFI.
+//
+// There's some subtlety here, because we have to be careful not to operate on a Rust
+// struct after it has been dropped, and because we must expose a public API for freeing
+// theq Kotlin wrapper object in lieu of reliable finalizers. The core requirements are:
+//
+//   * Each instance holds an opaque pointer to the underlying Rust struct.
+//     Method calls need to read this pointer from the object's state and pass it in to
+//     the Rust FFI.
+//
+//   * When an instance is no longer needed, its pointer should be passed to a
+//     special destructor function provided by the Rust FFI, which will drop the
+//     underlying Rust struct.
+//
+//   * Given an instance, calling code is expected to call the special
+//     `destroy` method in order to free it after use, either by calling it explicitly
+//     or by using a higher-level helper like the `use` method. Failing to do so risks
+//     leaking the underlying Rust struct.
+//
+//   * We can't assume that calling code will do the right thing, and must be prepared
+//     to handle Kotlin method calls executing concurrently with or even after a call to
+//     `destroy`, and to handle multiple (possibly concurrent!) calls to `destroy`.
+//
+//   * We must never allow Rust code to operate on the underlying Rust struct after
+//     the destructor has been called, and must never call the destructor more than once.
+//     Doing so may trigger memory unsafety.
+//
+//   * To mitigate many of the risks of leaking memory and use-after-free unsafety, a `Cleaner`
+//     is implemented to call the destructor when the Kotlin object becomes unreachable.
+//     This is done in a background thread. This is not a panacea, and client code should be aware that
+//      1. the thread may starve if some there are objects that have poorly performing
+//     `drop` methods or do significant work in their `drop` methods.
+//      2. the thread is shared across the whole library. This can be tuned by using `android_cleaner = true`,
+//         or `android = true` in the [`kotlin` section of the `uniffi.toml` file](https://mozilla.github.io/uniffi-rs/kotlin/configuration.html).
+//
+// If we try to implement this with mutual exclusion on access to the pointer, there is the
+// possibility of a race between a method call and a concurrent call to `destroy`:
+//
+//    * Thread A starts a method call, reads the value of the pointer, but is interrupted
+//      before it can pass the pointer over the FFI to Rust.
+//    * Thread B calls `destroy` and frees the underlying Rust struct.
+//    * Thread A resumes, passing the already-read pointer value to Rust and triggering
+//      a use-after-free.
+//
+// One possible solution would be to use a `ReadWriteLock`, with each method call taking
+// a read lock (and thus allowed to run concurrently) and the special `destroy` method
+// taking a write lock (and thus blocking on live method calls). However, we aim not to
+// generate methods with any hidden blocking semantics, and a `destroy` method that might
+// block if called incorrectly seems to meet that bar.
+//
+// So, we achieve our goals by giving each instance an associated `AtomicLong` counter to track
+// the number of in-flight method calls, and an `AtomicBoolean` flag to indicate whether `destroy`
+// has been called. These are updated according to the following rules:
+//
+//    * The initial value of the counter is 1, indicating a live object with no in-flight calls.
+//      The initial value for the flag is false.
+//
+//    * At the start of each method call, we atomically check the counter.
+//      If it is 0 then the underlying Rust struct has already been destroyed and the call is aborted.
+//      If it is nonzero them we atomically increment it by 1 and proceed with the method call.
+//
+//    * At the end of each method call, we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+//    * When `destroy` is called, we atomically flip the flag from false to true.
+//      If the flag was already true we silently fail.
+//      Otherwise we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+// Astute readers may observe that this all sounds very similar to the way that Rust's `Arc<T>` works,
+// and indeed it is, with the addition of a flag to guard against multiple calls to `destroy`.
+//
+// The overall effect is that the underlying Rust struct is destroyed only when `destroy` has been
+// called *and* all in-flight method calls have completed, avoiding violating any of the expectations
+// of the underlying Rust code.
+//
+// This makes a cleaner a better alternative to _not_ calling `destroy()` as
+// and when the object is finished with, but the abstraction is not perfect: if the Rust object's `drop`
+// method is slow, and/or there are many objects to cleanup, and it's on a low end Android device, then the cleaner
+// thread may be starved, and the app will leak memory.
+//
+// In this case, `destroy`ing manually may be a better solution.
+//
+// The cleaner can live side by side with the manual calling of `destroy`. In the order of responsiveness, uniffi objects
+// with Rust peers are reclaimed:
+//
+// 1. By calling the `destroy` method of the object, which calls `rustObject.free()`. If that doesn't happen:
+// 2. When the object becomes unreachable, AND the Cleaner thread gets to call `rustObject.free()`. If the thread is starved then:
+// 3. The memory is reclaimed when the process terminates.
+//
+// [1] https://stackoverflow.com/questions/24376768/can-java-finalize-an-object-when-it-is-still-in-scope/24380219
+//
+
+
+/**
+ * Tệp sao lưu đã giải mã và kiểm tra xong (chưa ghi gì). Dùng `preview()` rồi `LvhvStore.apply_import`.
+ */
+public interface VerifiedBackupInterface {
+    
+    fun `preview`(): BackupPreview
+    
+    companion object
+}
+
+/**
+ * Tệp sao lưu đã giải mã và kiểm tra xong (chưa ghi gì). Dùng `preview()` rồi `LvhvStore.apply_import`.
+ */
+open class VerifiedBackup: Disposable, AutoCloseable, VerifiedBackupInterface
+{
+
+    constructor(pointer: Pointer) {
+        this.pointer = pointer
+        this.cleanable = UniffiLib.CLEANER.register(this, UniffiCleanAction(pointer))
+    }
+
+    /**
+     * This constructor can be used to instantiate a fake object. Only used for tests. Any
+     * attempt to actually use an object constructed this way will fail as there is no
+     * connected Rust object.
+     */
+    @Suppress("UNUSED_PARAMETER")
+    constructor(noPointer: NoPointer) {
+        this.pointer = null
+        this.cleanable = UniffiLib.CLEANER.register(this, UniffiCleanAction(pointer))
+    }
+
+    protected val pointer: Pointer?
+    protected val cleanable: UniffiCleaner.Cleanable
+
+    private val wasDestroyed = AtomicBoolean(false)
+    private val callCounter = AtomicLong(1)
+
+    override fun destroy() {
+        // Only allow a single call to this method.
+        // TODO: maybe we should log a warning if called more than once?
+        if (this.wasDestroyed.compareAndSet(false, true)) {
+            // This decrement always matches the initial count of 1 given at creation time.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable.clean()
+            }
+        }
+    }
+
+    @Synchronized
+    override fun close() {
+        this.destroy()
+    }
+
+    internal inline fun <R> callWithPointer(block: (ptr: Pointer) -> R): R {
+        // Check and increment the call counter, to keep the object alive.
+        // This needs a compare-and-set retry loop in case of concurrent updates.
+        do {
+            val c = this.callCounter.get()
+            if (c == 0L) {
+                throw IllegalStateException("${this.javaClass.simpleName} object has already been destroyed")
+            }
+            if (c == Long.MAX_VALUE) {
+                throw IllegalStateException("${this.javaClass.simpleName} call counter would overflow")
+            }
+        } while (! this.callCounter.compareAndSet(c, c + 1L))
+        // Now we can safely do the method call without the pointer being freed concurrently.
+        try {
+            return block(this.uniffiClonePointer())
+        } finally {
+            // This decrement always matches the increment we performed above.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable.clean()
+            }
+        }
+    }
+
+    // Use a static inner class instead of a closure so as not to accidentally
+    // capture `this` as part of the cleanable's action.
+    private class UniffiCleanAction(private val pointer: Pointer?) : Runnable {
+        override fun run() {
+            pointer?.let { ptr ->
+                uniffiRustCall { status ->
+                    UniffiLib.INSTANCE.uniffi_lvhv_ffi_fn_free_verifiedbackup(ptr, status)
+                }
+            }
+        }
+    }
+
+    fun uniffiClonePointer(): Pointer {
+        return uniffiRustCall() { status ->
+            UniffiLib.INSTANCE.uniffi_lvhv_ffi_fn_clone_verifiedbackup(pointer!!, status)
+        }
+    }
+
+    override fun `preview`(): BackupPreview {
+            return FfiConverterTypeBackupPreview.lift(
+    callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_lvhv_ffi_fn_method_verifiedbackup_preview(
+        it, _status)
+}
+    }
+    )
+    }
+    
+
+    
+
+    
+    
+    companion object
+    
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeVerifiedBackup: FfiConverter<VerifiedBackup, Pointer> {
+
+    override fun lower(value: VerifiedBackup): Pointer {
+        return value.uniffiClonePointer()
+    }
+
+    override fun lift(value: Pointer): VerifiedBackup {
+        return VerifiedBackup(value)
+    }
+
+    override fun read(buf: ByteBuffer): VerifiedBackup {
+        // The Rust code always writes pointers as 8 bytes, and will
+        // fail to compile if they don't fit.
+        return lift(Pointer(buf.getLong()))
+    }
+
+    override fun allocationSize(value: VerifiedBackup) = 8UL
+
+    override fun write(value: VerifiedBackup, buf: ByteBuffer) {
+        // The Rust code always expects pointers written as 8 bytes,
+        // and will fail to compile if they don't fit.
+        buf.putLong(Pointer.nativeValue(lower(value)))
+    }
+}
+
+
+
+/**
+ * Xem trước tệp sao lưu (01 §6.3).
+ */
+data class BackupPreview (
+    var `persons`: kotlin.UInt, 
+    var `events`: kotlin.UInt, 
+    var `photos`: kotlin.UInt, 
+    var `exportedAt`: kotlin.String, 
+    var `platform`: kotlin.String
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeBackupPreview: FfiConverterRustBuffer<BackupPreview> {
+    override fun read(buf: ByteBuffer): BackupPreview {
+        return BackupPreview(
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: BackupPreview) = (
+            FfiConverterUInt.allocationSize(value.`persons`) +
+            FfiConverterUInt.allocationSize(value.`events`) +
+            FfiConverterUInt.allocationSize(value.`photos`) +
+            FfiConverterString.allocationSize(value.`exportedAt`) +
+            FfiConverterString.allocationSize(value.`platform`)
+    )
+
+    override fun write(value: BackupPreview, buf: ByteBuffer) {
+            FfiConverterUInt.write(value.`persons`, buf)
+            FfiConverterUInt.write(value.`events`, buf)
+            FfiConverterUInt.write(value.`photos`, buf)
+            FfiConverterString.write(value.`exportedAt`, buf)
+            FfiConverterString.write(value.`platform`, buf)
+    }
+}
+
 
 
 /**
@@ -1343,6 +2678,98 @@ public object FfiConverterTypeDayRating: FfiConverterRustBuffer<DayRating> {
     override fun write(value: DayRating, buf: ByteBuffer) {
             FfiConverterString.write(value.`label`, buf)
             FfiConverterUByte.write(value.`level`, buf)
+    }
+}
+
+
+
+/**
+ * Múi giờ thiết bị: `offset_min` áp dụng trước lần chuyển đầu tiên; `transitions` tăng dần. Việt Nam:
+ * `{offset_min: 420, transitions: []}`. Ứng dụng lấy các lần chuyển sắp tới (≤ 401 ngày) từ hệ điều hành
+ * (`ZoneRules.nextTransition` / `TimeZone.nextDaylightSavingTimeTransition`).
+ */
+data class DeviceZone (
+    var `offsetMin`: kotlin.Int, 
+    var `transitions`: List<ZoneTransition>
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeDeviceZone: FfiConverterRustBuffer<DeviceZone> {
+    override fun read(buf: ByteBuffer): DeviceZone {
+        return DeviceZone(
+            FfiConverterInt.read(buf),
+            FfiConverterSequenceTypeZoneTransition.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: DeviceZone) = (
+            FfiConverterInt.allocationSize(value.`offsetMin`) +
+            FfiConverterSequenceTypeZoneTransition.allocationSize(value.`transitions`)
+    )
+
+    override fun write(value: DeviceZone, buf: ByteBuffer) {
+            FfiConverterInt.write(value.`offsetMin`, buf)
+            FfiConverterSequenceTypeZoneTransition.write(value.`transitions`, buf)
+    }
+}
+
+
+
+/**
+ * Tệp .ics đã sinh.
+ */
+data class IcsExport (
+    /**
+     * `LichVanHoaViet-ngay-gio-<YYYY-MM-DD>.ics`.
+     */
+    var `fileName`: kotlin.String, 
+    /**
+     * Nội dung (UTF-8, CRLF); kiểu `text/calendar; charset=utf-8`.
+     */
+    var `content`: kotlin.String, 
+    /**
+     * Số VEVENT.
+     */
+    var `events`: kotlin.UInt, 
+    /**
+     * Số người khác nhau có tên trong tệp (cho hộp xác nhận S10: "Tệp này chứa tên và ngày giỗ của … người").
+     */
+    var `persons`: kotlin.UInt
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeIcsExport: FfiConverterRustBuffer<IcsExport> {
+    override fun read(buf: ByteBuffer): IcsExport {
+        return IcsExport(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: IcsExport) = (
+            FfiConverterString.allocationSize(value.`fileName`) +
+            FfiConverterString.allocationSize(value.`content`) +
+            FfiConverterUInt.allocationSize(value.`events`) +
+            FfiConverterUInt.allocationSize(value.`persons`)
+    )
+
+    override fun write(value: IcsExport, buf: ByteBuffer) {
+            FfiConverterString.write(value.`fileName`, buf)
+            FfiConverterString.write(value.`content`, buf)
+            FfiConverterUInt.write(value.`events`, buf)
+            FfiConverterUInt.write(value.`persons`, buf)
     }
 }
 
@@ -1399,6 +2826,41 @@ public object FfiConverterTypeLunarDay: FfiConverterRustBuffer<LunarDay> {
 
 
 /**
+ * Biên một kỳ.
+ */
+data class PeriodRange (
+    var `from`: SolarDay, 
+    var `to`: SolarDay
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypePeriodRange: FfiConverterRustBuffer<PeriodRange> {
+    override fun read(buf: ByteBuffer): PeriodRange {
+        return PeriodRange(
+            FfiConverterTypeSolarDay.read(buf),
+            FfiConverterTypeSolarDay.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: PeriodRange) = (
+            FfiConverterTypeSolarDay.allocationSize(value.`from`) +
+            FfiConverterTypeSolarDay.allocationSize(value.`to`)
+    )
+
+    override fun write(value: PeriodRange, buf: ByteBuffer) {
+            FfiConverterTypeSolarDay.write(value.`from`, buf)
+            FfiConverterTypeSolarDay.write(value.`to`, buf)
+    }
+}
+
+
+
+/**
  * Ngày dương lịch.
  */
 data class SolarDay (
@@ -1433,6 +2895,164 @@ public object FfiConverterTypeSolarDay: FfiConverterRustBuffer<SolarDay> {
             FfiConverterInt.write(value.`m`, buf)
             FfiConverterInt.write(value.`d`, buf)
     }
+}
+
+
+
+/**
+ * Một lần chuyển độ lệch giờ (ví dụ vào/ra giờ mùa hè).
+ */
+data class ZoneTransition (
+    /**
+     * Thời điểm chuyển (giây Unix, UTC).
+     */
+    var `atUnixS`: kotlin.Long, 
+    /**
+     * Độ lệch so với UTC từ thời điểm đó (phút, ví dụ 420 = +07:00).
+     */
+    var `offsetMin`: kotlin.Int
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeZoneTransition: FfiConverterRustBuffer<ZoneTransition> {
+    override fun read(buf: ByteBuffer): ZoneTransition {
+        return ZoneTransition(
+            FfiConverterLong.read(buf),
+            FfiConverterInt.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: ZoneTransition) = (
+            FfiConverterLong.allocationSize(value.`atUnixS`) +
+            FfiConverterInt.allocationSize(value.`offsetMin`)
+    )
+
+    override fun write(value: ZoneTransition, buf: ByteBuffer) {
+            FfiConverterLong.write(value.`atUnixS`, buf)
+            FfiConverterInt.write(value.`offsetMin`, buf)
+    }
+}
+
+
+
+/**
+ * Cách nhập sao lưu (01 §6.3).
+ */
+
+enum class BackupImportMode {
+    
+    /**
+     * Thay toàn bộ dữ liệu trên máy.
+     */
+    REPLACE,
+    /**
+     * Gộp theo id / rev / updated_at.
+     */
+    MERGE;
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeBackupImportMode: FfiConverterRustBuffer<BackupImportMode> {
+    override fun read(buf: ByteBuffer) = try {
+        BackupImportMode.values()[buf.getInt() - 1]
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: BackupImportMode) = 4UL
+
+    override fun write(value: BackupImportMode, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+
+
+/**
+ * Lỗi của phần dữ liệu v0.2. Thông điệp tiếng Việt, hiển thị được.
+ */
+sealed class LvhvDataException(message: String): kotlin.Exception(message) {
+        
+    /**
+     * Dữ liệu nhập sai (ngày không tồn tại, trường thiếu, vi phạm V1–V8…).
+     */
+        class Invalid(message: String) : LvhvDataException(message)
+        
+    /**
+     * Không tìm thấy bản ghi.
+     */
+        class NotFound(message: String) : LvhvDataException(message)
+        
+    /**
+     * Lỗi kho (SQLite, tệp ảnh).
+     */
+        class Storage(message: String) : LvhvDataException(message)
+        
+    /**
+     * Tệp sao lưu sai mật khẩu / hỏng / phiên bản mới hơn (03 §2.4: thông báo chung).
+     */
+        class Backup(message: String) : LvhvDataException(message)
+        
+
+    companion object ErrorHandler : UniffiRustCallStatusErrorHandler<LvhvDataException> {
+        override fun lift(error_buf: RustBuffer.ByValue): LvhvDataException = FfiConverterTypeLvhvDataError.lift(error_buf)
+    }
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeLvhvDataError : FfiConverterRustBuffer<LvhvDataException> {
+    override fun read(buf: ByteBuffer): LvhvDataException {
+        
+            return when(buf.getInt()) {
+            1 -> LvhvDataException.Invalid(FfiConverterString.read(buf))
+            2 -> LvhvDataException.NotFound(FfiConverterString.read(buf))
+            3 -> LvhvDataException.Storage(FfiConverterString.read(buf))
+            4 -> LvhvDataException.Backup(FfiConverterString.read(buf))
+            else -> throw RuntimeException("invalid error enum value, something is very wrong!!")
+        }
+        
+    }
+
+    override fun allocationSize(value: LvhvDataException): ULong {
+        return 4UL
+    }
+
+    override fun write(value: LvhvDataException, buf: ByteBuffer) {
+        when(value) {
+            is LvhvDataException.Invalid -> {
+                buf.putInt(1)
+                Unit
+            }
+            is LvhvDataException.NotFound -> {
+                buf.putInt(2)
+                Unit
+            }
+            is LvhvDataException.Storage -> {
+                buf.putInt(3)
+                Unit
+            }
+            is LvhvDataException.Backup -> {
+                buf.putInt(4)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+
 }
 
 
@@ -1561,6 +3181,38 @@ public object FfiConverterOptionalInt: FfiConverterRustBuffer<kotlin.Int?> {
 /**
  * @suppress
  */
+public object FfiConverterOptionalLong: FfiConverterRustBuffer<kotlin.Long?> {
+    override fun read(buf: ByteBuffer): kotlin.Long? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterLong.read(buf)
+    }
+
+    override fun allocationSize(value: kotlin.Long?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterLong.allocationSize(value)
+        }
+    }
+
+    override fun write(value: kotlin.Long?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterLong.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterOptionalTypeSolarDay: FfiConverterRustBuffer<SolarDay?> {
     override fun read(buf: ByteBuffer): SolarDay? {
         if (buf.get().toInt() == 0) {
@@ -1593,6 +3245,66 @@ public object FfiConverterOptionalTypeSolarDay: FfiConverterRustBuffer<SolarDay?
 /**
  * @suppress
  */
+public object FfiConverterOptionalSequenceString: FfiConverterRustBuffer<List<kotlin.String>?> {
+    override fun read(buf: ByteBuffer): List<kotlin.String>? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterSequenceString.read(buf)
+    }
+
+    override fun allocationSize(value: List<kotlin.String>?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterSequenceString.allocationSize(value)
+        }
+    }
+
+    override fun write(value: List<kotlin.String>?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterSequenceString.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceString: FfiConverterRustBuffer<List<kotlin.String>> {
+    override fun read(buf: ByteBuffer): List<kotlin.String> {
+        val len = buf.getInt()
+        return List<kotlin.String>(len) {
+            FfiConverterString.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<kotlin.String>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterString.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<kotlin.String>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterString.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceTypeLunarDay: FfiConverterRustBuffer<List<LunarDay>> {
     override fun read(buf: ByteBuffer): List<LunarDay> {
         val len = buf.getInt()
@@ -1611,6 +3323,34 @@ public object FfiConverterSequenceTypeLunarDay: FfiConverterRustBuffer<List<Luna
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeLunarDay.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeZoneTransition: FfiConverterRustBuffer<List<ZoneTransition>> {
+    override fun read(buf: ByteBuffer): List<ZoneTransition> {
+        val len = buf.getInt()
+        return List<ZoneTransition>(len) {
+            FfiConverterTypeZoneTransition.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<ZoneTransition>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeZoneTransition.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<ZoneTransition>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeZoneTransition.write(it, buf)
         }
     }
 }
@@ -1634,6 +3374,25 @@ public object FfiConverterSequenceTypeLunarDay: FfiConverterRustBuffer<List<Luna
     uniffiRustCallWithError(LvhvException) { _status ->
     UniffiLib.INSTANCE.uniffi_lvhv_ffi_fn_func_add_days(
         FfiConverterTypeSolarDay.lower(`day`),FfiConverterInt.lower(`n`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Một bước của chuỗi báo thức Android (02 §7.3): gọi khi báo thức chạy, khi khởi động lại, đổi giờ/múi
+         * giờ, mở ứng dụng, lưu dữ liệu, nhập sao lưu. `last_run_unix_s`: lần gọi trước (đã đăng thông báo tới
+         * thời điểm đó; `null` = chưa có). Kết quả
+         * `{"post":[R],"dropped_late":n,"next_at_unix_s":t|null,"next_fire_local":s|null}`:
+         * `post` = lời nhắc có thời điểm trong `(max(last_run, now − 24 giờ), now]` (đăng ngay; trễ hơn 24 giờ
+         * thì bỏ và đếm ở `dropped_late`), `next_*` = lời nhắc sớm nhất sau `now` (đặt **một** báo thức
+         * `setAndAllowWhileIdle(RTC_WAKEUP, next_at_unix_s × 1000)`). `R` như `reminders_json`.
+         */
+    @Throws(LvhvDataException::class) fun `androidAlarmStepJson`(`datasetJson`: kotlin.String, `nowUnixS`: kotlin.Long, `lastRunUnixS`: kotlin.Long?, `zone`: DeviceZone, `showNames`: kotlin.Boolean): kotlin.String {
+            return FfiConverterString.lift(
+    uniffiRustCallWithError(LvhvDataException) { _status ->
+    UniffiLib.INSTANCE.uniffi_lvhv_ffi_fn_func_android_alarm_step_json(
+        FfiConverterString.lower(`datasetJson`),FfiConverterLong.lower(`nowUnixS`),FfiConverterOptionalLong.lower(`lastRunUnixS`),FfiConverterTypeDeviceZone.lower(`zone`),FfiConverterBoolean.lower(`showNames`),_status)
 }
     )
     }
@@ -1757,6 +3516,49 @@ public object FfiConverterSequenceTypeLunarDay: FfiConverterRustBuffer<List<Luna
     
 
         /**
+         * Ngày sinh (02 §4.1): `DateValue` → `{lunar_year, lunar_year_approx, can_chi, lunar, solar}`.
+         */
+    @Throws(LvhvDataException::class) fun `deriveBirthJson`(`dateValueJson`: kotlin.String): kotlin.String {
+            return FfiConverterString.lift(
+    uniffiRustCallWithError(LvhvDataException) { _status ->
+    UniffiLib.INSTANCE.uniffi_lvhv_ffi_fn_func_derive_birth_json(
+        FfiConverterString.lower(`dateValueJson`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Tính trường dẫn xuất của một `Person` (như `save_person_json`, không ghi) và kiểm V1–V8; trả bản
+         * đã tính. Dùng để xem trước trong màn hình nhập. Lỗi nhập liệu có thông báo theo 01 §6.1.
+         */
+    @Throws(LvhvDataException::class) fun `derivePersonJson`(`json`: kotlin.String): kotlin.String {
+            return FfiConverterString.lift(
+    uniffiRustCallWithError(LvhvDataException) { _status ->
+    UniffiLib.INSTANCE.uniffi_lvhv_ffi_fn_func_derive_person_json(
+        FfiConverterString.lower(`json`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * `events_in_period` (02 §7.6, R13). `filter` ∈ "tat_ca", "da_mat", "dang_song". JSON
+         * `{"kind","anchor","filter","from","to","items":[…]}`; mỗi mục có các trường của 02 Phụ lục A.6
+         * (`date, lunar, class, entity_id, person_ids, name, key, n, label`) cộng `class_text`, `headline`,
+         * `date_line` để hiển thị.
+         */
+    @Throws(LvhvDataException::class) fun `eventsInPeriodJson`(`datasetJson`: kotlin.String, `kind`: kotlin.String, `anchor`: SolarDay, `filter`: kotlin.String): kotlin.String {
+            return FfiConverterString.lift(
+    uniffiRustCallWithError(LvhvDataException) { _status ->
+    UniffiLib.INSTANCE.uniffi_lvhv_ffi_fn_func_events_in_period_json(
+        FfiConverterString.lower(`datasetJson`),FfiConverterString.lower(`kind`),FfiConverterTypeSolarDay.lower(`anchor`),FfiConverterString.lower(`filter`),_status)
+}
+    )
+    }
+    
+
+        /**
          * Chọn ngày tốt cho việc `activity` trong khoảng [`from`, `to`] (`to − from ≤ 366` ngày) —
          * `lvhv_core::find_good_days`. `birth_lunar_year`: năm ÂM lịch của ngày sinh (xem
          * `lunar_year_of_birth`). JSON là mảng `GoodDay::to_json` của lõi:
@@ -1768,6 +3570,20 @@ public object FfiConverterSequenceTypeLunarDay: FfiConverterRustBuffer<List<Luna
     uniffiRustCallWithError(LvhvException) { _status ->
     UniffiLib.INSTANCE.uniffi_lvhv_ffi_fn_func_find_good_days_json(
         FfiConverterString.lower(`activity`),FfiConverterTypeSolarDay.lower(`from`),FfiConverterTypeSolarDay.lower(`to`),FfiConverterOptionalInt.lower(`birthLunarYear`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Sinh tệp .ics 10 năm từ `today` (02 §8). `only_ids`: chỉ xuất các hồ sơ/sự kiện này; `null` = mặc
+         * định (mọi mục có quy tắc nhắc bật). `now_unix_s` cho `DTSTAMP`.
+         */
+    @Throws(LvhvDataException::class) fun `icsExport`(`datasetJson`: kotlin.String, `today`: SolarDay, `nowUnixS`: kotlin.Long, `onlyIds`: List<kotlin.String>?): IcsExport {
+            return FfiConverterTypeIcsExport.lift(
+    uniffiRustCallWithError(LvhvDataException) { _status ->
+    UniffiLib.INSTANCE.uniffi_lvhv_ffi_fn_func_ics_export(
+        FfiConverterString.lower(`datasetJson`),FfiConverterTypeSolarDay.lower(`today`),FfiConverterLong.lower(`nowUnixS`),FfiConverterOptionalSequenceString.lower(`onlyIds`),_status)
 }
     )
     }
@@ -1828,11 +3644,153 @@ public object FfiConverterSequenceTypeLunarDay: FfiConverterRustBuffer<List<Luna
     
 
         /**
+         * UUID v4 ngẫu nhiên (01 §1), chữ thường có gạch.
+         */
+    @Throws(LvhvDataException::class) fun `newUuid`(): kotlin.String {
+            return FfiConverterString.lift(
+    uniffiRustCallWithError(LvhvDataException) { _status ->
+    UniffiLib.INSTANCE.uniffi_lvhv_ffi_fn_func_new_uuid(
+        _status)
+}
+    )
+    }
+    
+
+        /**
          * Danh mục nguồn quy tắc Ngọc Hạp (content/ngochap/SOURCES.md) dạng khối như trên.
          */ fun `ngochapSourcesBlocksJson`(): kotlin.String {
             return FfiConverterString.lift(
     uniffiRustCall() { _status ->
     UniffiLib.INSTANCE.uniffi_lvhv_ffi_fn_func_ngochap_sources_blocks_json(
+        _status)
+}
+    )
+    }
+    
+
+        /**
+         * Giải mã + kiểm tra toàn bộ một tệp sao lưu (03 §2, 01 §6.3) — **không** ghi gì. Sai mật khẩu, tệp
+         * hỏng hay bị sửa → `Backup("Sai mật khẩu hoặc tệp bị hỏng")`.
+         */
+    @Throws(LvhvDataException::class) fun `openBackup`(`file`: kotlin.ByteArray, `password`: kotlin.String): VerifiedBackup {
+            return FfiConverterTypeVerifiedBackup.lift(
+    uniffiRustCallWithError(LvhvDataException) { _status ->
+    UniffiLib.INSTANCE.uniffi_lvhv_ffi_fn_func_open_backup(
+        FfiConverterByteArray.lower(`file`),FfiConverterString.lower(`password`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Biên kỳ chứa `anchor` (02 §7.6): `kind` ∈ "tuan" (Thứ Hai → Chủ nhật), "thang", "quy", "nam".
+         */
+    @Throws(LvhvDataException::class) fun `periodBounds`(`kind`: kotlin.String, `anchor`: SolarDay): PeriodRange {
+            return FfiConverterTypePeriodRange.lift(
+    uniffiRustCallWithError(LvhvDataException) { _status ->
+    UniffiLib.INSTANCE.uniffi_lvhv_ffi_fn_func_period_bounds(
+        FfiConverterString.lower(`kind`),FfiConverterTypeSolarDay.lower(`anchor`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Kỳ liền sau kỳ chứa `anchor`.
+         */
+    @Throws(LvhvDataException::class) fun `periodNext`(`kind`: kotlin.String, `anchor`: SolarDay): PeriodRange {
+            return FfiConverterTypePeriodRange.lift(
+    uniffiRustCallWithError(LvhvDataException) { _status ->
+    UniffiLib.INSTANCE.uniffi_lvhv_ffi_fn_func_period_next(
+        FfiConverterString.lower(`kind`),FfiConverterTypeSolarDay.lower(`anchor`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Kỳ liền trước kỳ chứa `anchor`.
+         */
+    @Throws(LvhvDataException::class) fun `periodPrev`(`kind`: kotlin.String, `anchor`: SolarDay): PeriodRange {
+            return FfiConverterTypePeriodRange.lift(
+    uniffiRustCallWithError(LvhvDataException) { _status ->
+    UniffiLib.INSTANCE.uniffi_lvhv_ffi_fn_func_period_prev(
+        FfiConverterString.lower(`kind`),FfiConverterTypeSolarDay.lower(`anchor`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Tóm tắt hiển thị của một `Person` (đã có trường dẫn xuất) tại ngày `today`:
+         * `{"display_name","can_chi","lunar_year","tuoi_duong","tuoi_am","tuoi_mat_text","death_lunar_text"}`
+         * (`null` khi không xác định). `tuoi_duong`/`tuoi_am` chỉ cho người đang sống (02 §4.3);
+         * `tuoi_mat_text` ("Hưởng thọ 86 tuổi", "(khoảng)") cho người đã khuất (02 §4.2).
+         */
+    @Throws(LvhvDataException::class) fun `personSummaryJson`(`personJson`: kotlin.String, `today`: SolarDay): kotlin.String {
+            return FfiConverterString.lift(
+    uniffiRustCallWithError(LvhvDataException) { _status ->
+    UniffiLib.INSTANCE.uniffi_lvhv_ffi_fn_func_person_summary_json(
+        FfiConverterString.lower(`personJson`),FfiConverterTypeSolarDay.lower(`today`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Mọi lời nhắc (02 §7.1) có thời điểm trong `(now, now + horizon_days ngày]`, sắp theo (thời điểm, id):
+         * `[{"id","at_unix_s","fire_local","type","title","body","occ"}]`. `show_names = false` (mặc định O-9)
+         * → tiêu đề không có tên ("Sắp đến ngày giỗ" …). Tôn trọng công tắc chung và `rule.enabled`.
+         */
+    @Throws(LvhvDataException::class) fun `remindersJson`(`datasetJson`: kotlin.String, `nowUnixS`: kotlin.Long, `zone`: DeviceZone, `horizonDays`: kotlin.UInt, `showNames`: kotlin.Boolean): kotlin.String {
+            return FfiConverterString.lift(
+    uniffiRustCallWithError(LvhvDataException) { _status ->
+    UniffiLib.INSTANCE.uniffi_lvhv_ffi_fn_func_reminders_json(
+        FfiConverterString.lower(`datasetJson`),FfiConverterLong.lower(`nowUnixS`),FfiConverterTypeDeviceZone.lower(`zone`),FfiConverterUInt.lower(`horizonDays`),FfiConverterBoolean.lower(`showNames`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * `reschedule(now)` (02 §7.4) cho iOS/macOS (`UNUserNotificationCenter`) và Windows
+         * (`ScheduledToastNotification`), giới hạn 64 yêu cầu chờ. `pending_json`: các yêu cầu đang chờ do hệ
+         * điều hành trả về, `[{"id","at_unix_s","content"}]` (`content` = `title + "\n" + body` đã đặt lần trước;
+         * thiếu → ""). Kết quả `{"keep":[P],"remove":[id],"add":[P],"replace":[P]}`, `P` =
+         * `{"id","at_unix_s","fire_local","title","body","content"}`; ứng dụng gỡ `remove`, thêm `add`, thay
+         * `replace` (trigger theo `fire_local`, không gắn múi giờ). Có > 64 lời nhắc → 63 sớm nhất + thông báo
+         * nhắc mở ứng dụng (`id = "lvhv:sentinel"`) cùng phút với cái thứ 63.
+         */
+    @Throws(LvhvDataException::class) fun `rescheduleJson`(`datasetJson`: kotlin.String, `nowUnixS`: kotlin.Long, `zone`: DeviceZone, `pendingJson`: kotlin.String, `showNames`: kotlin.Boolean): kotlin.String {
+            return FfiConverterString.lift(
+    uniffiRustCallWithError(LvhvDataException) { _status ->
+    UniffiLib.INSTANCE.uniffi_lvhv_ffi_fn_func_reschedule_json(
+        FfiConverterString.lower(`datasetJson`),FfiConverterLong.lower(`nowUnixS`),FfiConverterTypeDeviceZone.lower(`zone`),FfiConverterString.lower(`pendingJson`),FfiConverterBoolean.lower(`showNames`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * `save_death` (02 §1): `DateValue` của ngày mất → `{lunar, solar, lunar_source, method}`. Đổi dương → âm
+         * (hoặc âm → dương) khi lưu.
+         */
+    @Throws(LvhvDataException::class) fun `saveDeathJson`(`dateValueJson`: kotlin.String): kotlin.String {
+            return FfiConverterString.lift(
+    uniffiRustCallWithError(LvhvDataException) { _status ->
+    UniffiLib.INSTANCE.uniffi_lvhv_ffi_fn_func_save_death_json(
+        FfiConverterString.lower(`dateValueJson`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Mã và nội dung của thông báo nhắc mở ứng dụng (02 §7.4).
+         */ fun `sentinelInfo`(): List<kotlin.String> {
+            return FfiConverterSequenceString.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_lvhv_ffi_fn_func_sentinel_info(
         _status)
 }
     )
@@ -1847,6 +3805,21 @@ public object FfiConverterSequenceTypeLunarDay: FfiConverterRustBuffer<List<Luna
     uniffiRustCallWithError(LvhvException) { _status ->
     UniffiLib.INSTANCE.uniffi_lvhv_ffi_fn_func_solar_to_lunar(
         FfiConverterInt.lower(`y`),FfiConverterInt.lower(`m`),FfiConverterInt.lower(`d`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Danh sách "Sắp tới" (02 §7.2): mọi lần xuất hiện trong `[today, today + days]` (gồm hai đầu), đúng
+         * thứ tự hiển thị. Mảng `[{"days","days_text","date","lunar","class","class_text","entity_id",
+         * "person_ids","name","key","n","label","headline","date_line"}]`. Không phụ thuộc công tắc nhắc.
+         */
+    @Throws(LvhvDataException::class) fun `upcomingJson`(`datasetJson`: kotlin.String, `today`: SolarDay, `days`: kotlin.UInt): kotlin.String {
+            return FfiConverterString.lift(
+    uniffiRustCallWithError(LvhvDataException) { _status ->
+    UniffiLib.INSTANCE.uniffi_lvhv_ffi_fn_func_upcoming_json(
+        FfiConverterString.lower(`datasetJson`),FfiConverterTypeSolarDay.lower(`today`),FfiConverterUInt.lower(`days`),_status)
 }
     )
     }

@@ -494,7 +494,11 @@ dependencies = [
 name = "lvhv-ffi"
 version = "0.1.0"
 dependencies = [
+ "getrandom",
+ "lvhv-backup",
  "lvhv-core",
+ "lvhv-memorial",
+ "lvhv-store",
  "serde",
  "serde_json",
  "uniffi",
