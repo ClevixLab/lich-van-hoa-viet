@@ -370,7 +370,7 @@ pub fn lunar_method() -> String {
 }
 
 /// Thông tin phiên bản, JSON
-/// `{"ffi":"0.1.0","method":"hnd","cadao_count":427,"activities":16,"min_year":2000,"max_year":3000}`.
+/// `{"ffi":"0.1.0","method":"jpl","cadao_count":427,"activities":16,"min_year":2000,"max_year":3000}`.
 #[uniffi::export]
 pub fn build_info_json() -> String {
     format!(

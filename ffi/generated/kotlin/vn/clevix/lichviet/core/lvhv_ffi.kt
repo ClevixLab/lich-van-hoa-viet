@@ -1023,7 +1023,7 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_lvhv_ffi_checksum_func_add_days() != 41064.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_lvhv_ffi_checksum_func_build_info_json() != 6414.toShort()) {
+    if (lib.uniffi_lvhv_ffi_checksum_func_build_info_json() != 56614.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_lvhv_ffi_checksum_func_cadao_attribution() != 3849.toShort()) {
@@ -1053,7 +1053,7 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_lvhv_ffi_checksum_func_find_good_days_json() != 10813.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_lvhv_ffi_checksum_func_lunar_method() != 5251.toShort()) {
+    if (lib.uniffi_lvhv_ffi_checksum_func_lunar_method() != 34114.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_lvhv_ffi_checksum_func_lunar_to_solar() != 30635.toShort()) {
@@ -1641,7 +1641,7 @@ public object FfiConverterSequenceTypeLunarDay: FfiConverterRustBuffer<List<Luna
 
         /**
          * Thông tin phiên bản, JSON
-         * `{"ffi":"0.1.0","method":"hnd","cadao_count":427,"activities":16,"min_year":2000,"max_year":3000}`.
+         * `{"ffi":"0.1.0","method":"jpl","cadao_count":427,"activities":16,"min_year":2000,"max_year":3000}`.
          */ fun `buildInfoJson`(): kotlin.String {
             return FfiConverterString.lift(
     uniffiRustCall() { _status ->
@@ -1774,7 +1774,7 @@ public object FfiConverterSequenceTypeLunarDay: FfiConverterRustBuffer<List<Luna
     
 
         /**
-         * Phương pháp âm lịch mặc định của lõi: "hnd" hoặc "precise" (docs/03 §15).
+         * Phương pháp âm lịch mặc định của lõi: "hnd", "precise" hoặc "jpl" (docs/03 §15, §17).
          */ fun `lunarMethod`(): kotlin.String {
             return FfiConverterString.lift(
     uniffiRustCall() { _status ->

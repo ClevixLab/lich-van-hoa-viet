@@ -1,7 +1,10 @@
 // Giới thiệu và Nguồn quy tắc — cùng nội dung với pwa/src/ui/about.ts.
 import SwiftUI
 
+private let methodNote = "Với những năm rất xa, kết quả kém chắc chắn hơn vì không ai dự báo chính xác được tốc độ quay của Trái Đất (ΔT). Sau năm 2077, vài ngày có trăng mới hoặc tiết khí rơi sát nửa đêm có thể lệch một ngày so với các lịch khác."
+
 private let methodLabel = [
+    "jpl": "lịch thiên văn JPL DE441 của NASA JPL, với ΔT theo Morrison và Stephenson",
     "hnd": "thuật toán Hồ Ngọc Đức (phổ biến trong các lịch Việt)",
     "precise": "mô hình thiên văn chính xác hơn (Meeus đầy đủ)",
 ]
@@ -40,6 +43,7 @@ struct AboutView: View {
                         H2("Về ứng dụng")
                         P("Lịch âm dương Việt Nam theo múi giờ UTC+7, từ năm 2000 đến năm 3000: ngày âm, Can Chi, tiết khí, giờ hoàng đạo, chọn ngày tốt, và một câu ca dao, tục ngữ cho mỗi ngày.")
                         P("Ngày âm lịch tính theo \(methodLabel[Lich.method] ?? Lich.method).")
+                        if Lich.method == "jpl" { P(methodNote) }
                         P("Phần xem ngày (sao tốt, sao xấu, việc nên làm và nên tránh, trực, hoàng đạo, hắc đạo) được biên soạn theo quan niệm truyền thống trong sách Ngọc Hạp Thông Thư. Đây là nét văn hóa dân gian, chỉ có giá trị tham khảo; những quyết định quan trọng xin cân nhắc thêm hoàn cảnh thực tế. Điểm số là quy ước của ứng dụng, không có trong sách.")
                         Button("Nguồn quy tắc xem ngày") { showRules = true }.buttonStyle(.plain).foregroundStyle(C.redInk)
                     }

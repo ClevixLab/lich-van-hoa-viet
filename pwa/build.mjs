@@ -99,18 +99,18 @@ function ngochapSources(md) {
   return { intro: intro.join(" "), rows, limits };
 }
 
-/** DEFAULT_METHOD sao chép từ lõi Rust; tsport phải cùng giá trị. LVHV_METHOD=hnd|precise để chọn khác khi build. */
+/** DEFAULT_METHOD sao chép từ lõi Rust; tsport phải cùng giá trị. LVHV_METHOD=hnd|precise|jpl để chọn khác khi build. */
 function defaultMethod() {
   const m = /pub const DEFAULT_METHOD: Method = Method::(\w+);/.exec(readFileSync(RUST_LUNAR, "utf8"));
   if (!m) fail("không tìm thấy DEFAULT_METHOD trong core/src/lunar.rs");
-  const rust = { Hnd: "hnd", Precise: "precise" }[m[1]];
+  const rust = { Hnd: "hnd", Precise: "precise", Jpl: "jpl" }[m[1]];
   if (!rust) fail(`DEFAULT_METHOD lạ: ${m[1]}`);
   if (existsSync(TS_LUNAR)) {
     const t = /export const DEFAULT_METHOD: Method = "(\w+)";/.exec(readFileSync(TS_LUNAR, "utf8"));
     if (!t || t[1] !== rust) fail(`DEFAULT_METHOD của tsport (${t?.[1]}) khác lõi Rust (${rust})`);
   }
   const env = process.env.LVHV_METHOD;
-  if (env && env !== "hnd" && env !== "precise") fail(`LVHV_METHOD không hợp lệ: ${env}`);
+  if (env && env !== "hnd" && env !== "precise" && env !== "jpl") fail(`LVHV_METHOD không hợp lệ: ${env}`);
   return { method: env || rust, rust };
 }
 

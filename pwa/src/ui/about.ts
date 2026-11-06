@@ -13,6 +13,7 @@ export const RULES_HREF = "#/nguon-quy-tac";
 
 /** Câu mô tả phương pháp âm lịch đang dùng (hằng sinh lúc build, giống mặc định của lõi Rust). */
 const METHOD_TEXT: Record<string, string> = {
+  jpl: "Ngày âm lịch tính từ lịch thiên văn JPL DE441 của NASA JPL (thời điểm trăng mới và tiết khí), với ΔT theo Morrison và Stephenson, rồi quy ra ngày theo múi giờ của từng giai đoạn nêu trên. Với những năm rất xa, kết quả kém chắc chắn hơn vì không ai dự báo chính xác được tốc độ quay của Trái Đất (ΔT). Sau năm 2077, vài ngày có trăng mới hoặc tiết khí rơi sát nửa đêm có thể lệch một ngày so với các lịch khác.",
   precise: "Ngày âm lịch tính theo mô hình thiên văn chính xác (Meeus): thời điểm trăng mới và vị trí Mặt Trời được tính đầy đủ, rồi quy ra ngày theo múi giờ của từng giai đoạn nêu trên. Thuật toán Hồ Ngọc Đức, phổ biến trong nhiều lịch Việt, vẫn được giữ trong ứng dụng để đối chiếu; hai cách cho cùng kết quả ở gần như mọi ngày.",
   hnd: "Ngày âm lịch tính theo thuật toán Hồ Ngọc Đức (phổ biến trong các lịch Việt), quy ra ngày theo múi giờ của từng giai đoạn nêu trên.",
 };

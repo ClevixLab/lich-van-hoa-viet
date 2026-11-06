@@ -56,6 +56,7 @@ memorial_parity() {
     "gio-dates unknown 1900 3000"
     "--gio-het 3 gio-dates solar 2000-01-01 2030-12-31 10"
     "--method hnd gio-dates solar 2020-01-01 2030-12-31 10"
+    "--method precise gio-dates solar 2070-01-01 2090-12-31 10"
     "reminders configs"
     "reminders $DS"
     "upcoming $DS 2026-01-01 2036-12-31"

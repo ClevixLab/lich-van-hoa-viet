@@ -144,10 +144,11 @@ fn roundtrip_2000_2100() {
     roundtrip(Method::Hnd, (2000, 1, 1), (2100, 12, 31));
 }
 
-/// Bổ sung A3 (docs/02): mặc định là Precise; Hnd giữ để đối chiếu.
+/// Bổ sung A4 (docs/02, mục 4; biên bản docs/reports/BIEN-BAN-CONG-A4-JPL.md): mặc định là Jpl; Precise, Hnd giữ để
+/// đối chiếu.
 #[test]
-fn default_method_is_precise() {
-    assert_eq!(DEFAULT_METHOD, Method::Precise);
+fn default_method_is_jpl() {
+    assert_eq!(DEFAULT_METHOD, Method::Jpl);
 }
 
 #[test]

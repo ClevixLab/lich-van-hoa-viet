@@ -16,6 +16,13 @@ và các dòng dưới đây được viết lại thành ghi chú cho người 
 - (Đợt 1, nội bộ) Lõi tính ngày giỗ, tuổi, lời nhắc và tệp .ics (`memorial/`, `tsport/src/memorial*.ts`), chưa có giao diện.
 - (Nội bộ, đợt 2) Kho dữ liệu SQLite và IndexedDB, tệp sao lưu mã hóa đọc được giữa ứng dụng web và bản cài trên máy.
 
+## [0.1.4] — 2026-11-07
+
+- Lịch tính theo lịch thiên văn JPL DE441 của NASA — chính xác nhất hiện nay; một số ngày sau năm 2077 có thể khác lịch cũ.
+- Từ năm 1900 đến năm 2076, ngày âm, Can Chi và tiết khí không thay đổi so với bản trước.
+- Trang Giới thiệu ghi rõ nguồn tính lịch và vì sao các năm rất xa kém chắc chắn hơn.
+- Bản web: sửa lỗi nút "Cập nhật ngay" có thể mất tiêu điểm bàn phím.
+
 ## [0.1.3] — 2026-11-06
 
 - Windows: chữ đẹp và rõ hơn — phông chữ có đủ dấu tiếng Việt được nhúng sẵn, vẽ chữ sắc nét ở mọi tỉ lệ màn hình.

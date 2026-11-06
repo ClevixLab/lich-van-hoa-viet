@@ -110,7 +110,7 @@
           "d": 8
         },
         "lunar_source": "converted",
-        "method": "precise",
+        "method": "jpl",
         "tuoi": {
           "value": 86,
           "label": "huong_tho",

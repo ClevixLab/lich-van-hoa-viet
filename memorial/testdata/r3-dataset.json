@@ -119,7 +119,7 @@
           "d": 8
         },
         "lunar_source": "converted",
-        "method": "precise",
+        "method": "jpl",
         "tuoi": {
           "value": 86,
           "label": "huong_tho",
@@ -187,7 +187,7 @@
           "d": 21
         },
         "lunar_source": "converted",
-        "method": "precise",
+        "method": "jpl",
         "tuoi": {
           "value": null,
           "label": "huong_tho",
@@ -251,7 +251,7 @@
         },
         "solar": null,
         "lunar_source": "entered",
-        "method": "precise",
+        "method": "jpl",
         "tuoi": {
           "value": null,
           "label": "huong_tho",
@@ -335,7 +335,7 @@
           "d": 9
         },
         "lunar_source": "converted",
-        "method": "precise",
+        "method": "jpl",
         "tuoi": {
           "value": 74,
           "label": "huong_tho",
@@ -403,7 +403,7 @@
           "d": 19
         },
         "lunar_source": "entered",
-        "method": "precise",
+        "method": "jpl",
         "tuoi": {
           "value": null,
           "label": "huong_tho",
@@ -471,7 +471,7 @@
           "d": 5
         },
         "lunar_source": "entered",
-        "method": "precise",
+        "method": "jpl",
         "tuoi": {
           "value": null,
           "label": "huong_tho",
@@ -540,7 +540,7 @@
           "d": 27
         },
         "lunar_source": "entered",
-        "method": "precise",
+        "method": "jpl",
         "tuoi": {
           "value": null,
           "label": "huong_tho",
@@ -609,7 +609,7 @@
           "d": 1
         },
         "lunar_source": "entered",
-        "method": "precise",
+        "method": "jpl",
         "tuoi": {
           "value": null,
           "label": "huong_tho",
@@ -701,7 +701,7 @@
           "d": 1
         },
         "lunar_source": "entered",
-        "method": "precise",
+        "method": "jpl",
         "tuoi": {
           "value": 41,
           "label": "huong_duong",
@@ -765,7 +765,7 @@
         },
         "solar": null,
         "lunar_source": "entered",
-        "method": "precise",
+        "method": "jpl",
         "tuoi": {
           "value": null,
           "label": "huong_tho",
@@ -828,7 +828,7 @@
         },
         "solar": null,
         "lunar_source": "entered",
-        "method": "precise",
+        "method": "jpl",
         "tuoi": {
           "value": null,
           "label": "huong_tho",
@@ -920,7 +920,7 @@
           "d": 15
         },
         "lunar_source": "converted",
-        "method": "precise",
+        "method": "jpl",
         "tuoi": {
           "value": 60,
           "label": "huong_tho",
@@ -988,7 +988,7 @@
           "d": 5
         },
         "lunar_source": "converted",
-        "method": "precise",
+        "method": "jpl",
         "tuoi": {
           "value": null,
           "label": "huong_tho",
@@ -1055,7 +1055,7 @@
           "d": 1
         },
         "lunar_source": "converted",
-        "method": "precise",
+        "method": "jpl",
         "tuoi": {
           "value": null,
           "label": "huong_tho",
@@ -1123,7 +1123,7 @@
           "d": 31
         },
         "lunar_source": "converted",
-        "method": "precise",
+        "method": "jpl",
         "tuoi": {
           "value": null,
           "label": "huong_tho",
@@ -1191,7 +1191,7 @@
           "d": 10
         },
         "lunar_source": "converted",
-        "method": "precise",
+        "method": "jpl",
         "tuoi": {
           "value": null,
           "label": "huong_tho",
@@ -1250,7 +1250,7 @@
           "d": 25
         },
         "lunar_source": "converted",
-        "method": "precise",
+        "method": "jpl",
         "tuoi": {
           "value": null,
           "label": "huong_tho",
@@ -1318,7 +1318,7 @@
           "d": 27
         },
         "lunar_source": "converted",
-        "method": "precise",
+        "method": "jpl",
         "tuoi": {
           "value": null,
           "label": "huong_tho",

@@ -13,10 +13,8 @@ import { jplNewMoonDay, jplTermAtMidnight } from "./jpl.ts";
 /** Rust `Method` (`Method::Hnd` = "hnd", `Method::Precise` = "precise", `Method::Jpl` = "jpl"). */
 export type Method = "hnd" | "precise" | "jpl";
 
-/** Rust `DEFAULT_METHOD` (currently `Method::Precise`, docs/02 Bổ sung A3). */
-export const DEFAULT_METHOD: Method = "precise";
-// Switch to "jpl" ONLY after L14–L17 PASS and L12, P1, P3 still PASS (docs/02 A4 item 4), together with Rust:
-// export const DEFAULT_METHOD: Method = "jpl";
+/** Rust `DEFAULT_METHOD` (currently `Method::Jpl`, docs/02 Bổ sung A4; before 0.1.4 it was "precise"). */
+export const DEFAULT_METHOD: Method = "jpl";
 
 export function isMethod(v: unknown): v is Method {
   return v === "hnd" || v === "precise" || v === "jpl";

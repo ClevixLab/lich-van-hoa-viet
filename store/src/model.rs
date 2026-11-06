@@ -66,7 +66,7 @@ pub enum LunarSource {
     Converted,
 }
 
-/// `"precise"` | `"hnd"` | `"jpl"` (`jpl` chưa được lược đồ sao lưu v1 chấp nhận — `validate.rs`).
+/// `"precise"` | `"hnd"` | `"jpl"` (`jpl` là mặc định từ 0.1.4; hai giá trị kia của bản ghi cũ vẫn hợp lệ).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum MethodName {

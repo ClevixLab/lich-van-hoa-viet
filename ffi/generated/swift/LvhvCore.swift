@@ -999,7 +999,7 @@ public func addDays(day: SolarDay, n: Int32)throws  -> SolarDay  {
 }
 /**
  * Thông tin phiên bản, JSON
- * `{"ffi":"0.1.0","method":"hnd","cadao_count":427,"activities":16,"min_year":2000,"max_year":3000}`.
+ * `{"ffi":"0.1.0","method":"jpl","cadao_count":427,"activities":16,"min_year":2000,"max_year":3000}`.
  */
 public func buildInfoJson() -> String  {
     return try!  FfiConverterString.lift(try! rustCall() {
@@ -1111,7 +1111,7 @@ public func findGoodDaysJson(activity: String, from: SolarDay, to: SolarDay, bir
 })
 }
 /**
- * Phương pháp âm lịch mặc định của lõi: "hnd" hoặc "precise" (docs/03 §15).
+ * Phương pháp âm lịch mặc định của lõi: "hnd", "precise" hoặc "jpl" (docs/03 §15, §17).
  */
 public func lunarMethod() -> String  {
     return try!  FfiConverterString.lift(try! rustCall() {
@@ -1223,7 +1223,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_lvhv_ffi_checksum_func_add_days() != 41064) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_lvhv_ffi_checksum_func_build_info_json() != 6414) {
+    if (uniffi_lvhv_ffi_checksum_func_build_info_json() != 56614) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_lvhv_ffi_checksum_func_cadao_attribution() != 3849) {
@@ -1253,7 +1253,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_lvhv_ffi_checksum_func_find_good_days_json() != 10813) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_lvhv_ffi_checksum_func_lunar_method() != 5251) {
+    if (uniffi_lvhv_ffi_checksum_func_lunar_method() != 34114) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_lvhv_ffi_checksum_func_lunar_to_solar() != 30635) {

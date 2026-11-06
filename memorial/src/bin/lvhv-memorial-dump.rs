@@ -10,7 +10,7 @@ use lvhv_memorial::{ics, Cal};
 use std::io::{self, BufWriter, Write};
 use std::process::ExitCode;
 
-const USAGE: &str = "Cách dùng: lvhv-memorial-dump [--method hnd|precise] LỆNH ...  (mặc định: precise)
+const USAGE: &str = "Cách dùng: lvhv-memorial-dump [--method hnd|precise|jpl] LỆNH ...  (mặc định: jpl)
   gio-dates solar FROM TO [N]          mọi ngày mất dương FROM…TO (YYYY-MM-DD), N năm giỗ (mặc định 10)
   gio-dates lunar FROM_Y TO_Y [N]      mọi ngày mất âm có năm (mọi tháng nhuận, mọi ngày 30), N năm giỗ
   gio-dates unknown FROM_Y TO_Y        mọi (tháng, ngày 1–30, nhuận) không rõ năm × Y = FROM_Y…TO_Y
@@ -68,6 +68,7 @@ fn run(args: &[String]) -> Result<(), String> {
                 method = match args[1].as_str() {
                     "hnd" => Method::Hnd,
                     "precise" => Method::Precise,
+                    "jpl" => Method::Jpl,
                     v => return Err(format!("phương pháp không hợp lệ: {v}")),
                 };
                 args.drain(..2);

@@ -100,10 +100,12 @@ nguồn quy tắc xem ngày, nguồn ca dao (ghi công theo giấy phép CC BY-S
 - **Phần xem ngày** (sao, trực, hoàng đạo, nên/kỵ, điểm) theo quan niệm truyền thống trong *Ngọc Hạp Thông
   Thư*. Đây là nét văn hóa dân gian, **chỉ để tham khảo**. Điểm số là quy ước của ứng dụng, không có trong
   sách.
-- Ngày âm lịch tính theo mô hình thiên văn chính xác (Meeus); thuật toán Hồ Ngọc Đức được giữ để đối chiếu.
-  Từ 1968 lịch tính theo giờ Việt Nam (UTC+7); trước đó theo quy ước lịch sử (xem mục Giới thiệu). Rất hiếm khi trăng mới hoặc tiết khí rơi sát nửa đêm (trong vài
-  phút). Khi đó các lịch khác nhau có thể lệch nhau một ngày. Trong thế kỷ 21 có vài trường hợp như vậy
-  (ví dụ tháng 12/2072, 11/2077); xem báo cáo kiểm định.
+- Từ bản 0.1.4, ngày âm lịch tính từ **lịch thiên văn JPL DE441 của NASA JPL** (thời điểm trăng mới và tiết
+  khí), với ΔT (chênh lệch giữa giờ thiên văn và giờ đồng hồ) theo Morrison và Stephenson. Từ 1968 lịch tính theo
+  giờ Việt Nam (UTC+7); trước đó theo quy ước lịch sử (xem mục Giới thiệu).
+- Với những năm rất xa, kết quả kém chắc chắn hơn vì không ai dự báo chính xác được tốc độ quay của Trái Đất
+  (ΔT). Rất hiếm khi trăng mới hoặc tiết khí rơi sát nửa đêm; khi đó các lịch khác nhau có thể lệch nhau một
+  ngày. Sau năm 2077 có một số ngày như vậy so với cách tính cũ của ứng dụng (báo cáo `docs/reports/BAO-CAO-JPL-L16.md`).
 - **Quyền riêng tư:** ứng dụng không thu thập hay gửi dữ liệu nào. Máy chỉ ghi nhớ cỡ chữ và chế độ
   sáng/tối bạn chọn. Máy chủ lưu trang có thể ghi nhật ký truy cập thông thường như mọi trang web.
 - **Pin và dung lượng:** ứng dụng chiếm khoảng 1 MB trên máy và không chạy ngầm khi bạn không mở nó.

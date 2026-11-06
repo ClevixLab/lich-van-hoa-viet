@@ -340,7 +340,7 @@ Ngày âm (năm, tháng, ngày, nhuận) khác nhau:
   nhất quán nội bộ thì đổi `DEFAULT_METHOD` sang `Precise`; nếu ưu tiên khớp lịch HND phổ biến
   thì giữ `Hnd` và ghi 6 năm vi phạm thành sai lệch đã biết. Cả hai lựa chọn đều không làm L6 ĐẠT.
 
-### 15.7 Phương pháp mặc định: `Precise` (bổ sung A3, 2026-11-06)
+### 15.7 Phương pháp mặc định: `Precise` (bổ sung A3, 2026-11-06) — thay bằng `Jpl` từ 0.1.4 (§17, bổ sung A4)
 
 Chủ dự án chọn `Precise` (docs/02 "Bổ sung A3", ghi rõ là quyết định sau khi thấy kết quả). Căn cứ ghi
 trong A3: L2 và L10 ĐẠT với `Precise` (0 sai lệch so với bên kiểm định độc lập, 2000–2100 và 1900–1999),
@@ -517,8 +517,9 @@ văn bản này và các tài liệu công bố được dẫn, **không đọc 
 đến ≤ 2 giây (L14), ngày âm/Can Chi/tiết khí đến 0 sai lệch (L15). Từ "phải" dưới đây là bắt buộc; mọi lựa
 chọn có thể gây khác biệt > 0,01 s đều được ghi ra.
 
-`Method::Jpl` **chưa** là phương pháp mặc định (`DEFAULT_METHOD` vẫn là `Precise`, §15.7). Chỉ đổi khi
-L14–L17 ĐẠT và L12, P1, P3 vẫn ĐẠT (A4 mục 4).
+**Cập nhật 2026-11-07 (bản 0.1.4):** `Method::Jpl` **là phương pháp mặc định** (`DEFAULT_METHOD = Method::Jpl`),
+sau khi L12, L14–L17, P1, P3 đều ĐẠT — biên bản `docs/reports/BIEN-BAN-CONG-A4-JPL.md`. `Precise` (§15.7, mặc định
+trước đó) và `Hnd` giữ trong mã để đối chiếu. (Văn bản đặc tả bên dưới viết lúc `Jpl` chưa là mặc định, giữ nguyên.)
 
 ### 17.1 Tóm tắt
 

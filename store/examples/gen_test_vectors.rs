@@ -453,6 +453,16 @@ pub fn validation_cases(base: &Value) -> Vec<Value> {
             json!("hnd"),
         ),
         (
+            "V5 precise method (pre-0.1.4 record) keeps stored lunar",
+            format!("{p0}/death/method"),
+            json!("precise"),
+        ),
+        (
+            "V1 unknown method",
+            format!("{p0}/death/method"),
+            json!("meeus"),
+        ),
+        (
             "V6 cong_giao incense",
             format!("{p0}/memorial/tray_style"),
             json!("cong_giao"),

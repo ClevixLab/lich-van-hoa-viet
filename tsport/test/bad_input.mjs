@@ -46,7 +46,7 @@ async function expectVal(expr, want) {
 
 const BAD_YEARS = ["-2147483648", "-1e6", "-14621", "-1", "0", "1", "1899", "3001", "35650", "100000", "1e6", "1e9", "2147483647", "2**53"];
 for (const y of BAD_YEARS) {
-  for (const m of ['"hnd"', '"precise"']) {
+  for (const m of ['"hnd"', '"precise"', '"jpl"']) {
     await expectErr(`L.solarToLunarWith(${m}, ${y}, 1, 1)`, "OutOfRange");
     await expectErr(`L.dayInfoJson(${y}, 12, 31, ${m})`, "OutOfRange");
     await expectErr(`L.tetWith(${m}, ${y})`, "OutOfRange");

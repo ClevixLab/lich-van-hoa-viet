@@ -1,5 +1,5 @@
 // Trường dẫn xuất (docs/v0.2/01 §3.2, §3.3; 02 §1, §4) và kiểm tra V5 — bản TypeScript của
-// store/src/derive.rs. Đổi lịch bằng lõi tsport (cùng phương pháp mặc định "precise" với lõi Rust).
+// store/src/derive.rs. Đổi lịch bằng lõi tsport (cùng phương pháp mặc định "jpl" với lõi Rust; bản ghi cũ "precise"/"hnd" vẫn đọc được).
 import * as core from "#engine-impl";
 import type { Json, JsonObj } from "./json";
 import { ValidationError, int } from "./validate";
