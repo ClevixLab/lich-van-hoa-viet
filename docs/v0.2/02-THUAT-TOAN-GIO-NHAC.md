@@ -1,0 +1,340 @@
+# Đặc tả thuật toán ngày giỗ, tuổi, nhắc việc và .ics — v0.2
+
+Trạng thái: **KHÓA (G1) — 2026-11-06, chờ chủ dự án ký.** Đây là đặc tả duy nhất cho cả lõi Rust, bản TypeScript và
+bản cài đặt độc lập dùng để kiểm định (tiêu chí R1–R4 trong `04-TIEU-CHI-NGHIEM-THU-V02.md`). Bên cài đặt độc lập
+chỉ đọc tài liệu này và `01-MO-HINH-DU-LIEU.md`, không đọc mã lõi.
+
+Ký hiệu: `L2S(y, m, d, leap)` = `lunar_to_solar` của lõi (trả `None` nếu ngày không tồn tại); `S2L(y, m, d)` =
+`solar_to_lunar`; `LYOB(y, m, d)` = `lunar_year_of_birth` (năm âm chứa ngày dương đó); `len(y, m, leap)` = số ngày
+của tháng âm (29 hoặc 30). Phương pháp lịch: mặc định của lõi (`Precise`). Mọi phép cộng/trừ ngày là trên ngày
+dương (số ngày Julian), không trên giờ.
+
+Ví dụ trong tài liệu được tính bằng `tsport` ngày 2026-11-06 (phương pháp `Precise`); chúng cũng là ca kiểm thử cố
+định (§9).
+
+## 1. Ngày mất: lưu và đổi lịch
+
+```
+save_death(input):
+  if input.calendar == "solar":                       # precision phải là "day"
+      L := S2L(input.year, input.month, input.day)     # lỗi nếu ngoài 1900–3000
+      death.lunar  := {year: L.y, month: L.m, day: L.d, leap: L.leap}
+      death.solar  := {y, m, d của input}
+      death.lunar_source := "converted"
+  else:                                                # âm
+      death.lunar  := {year: input.year (hoặc null), month, day, leap}
+      death.solar  := (input.precision == "day" và năm trong miền) ? L2S(...) : null
+      death.lunar_source := "entered"
+  death.method := DEFAULT_METHOD
+```
+
+Ngày âm được **đổi một lần khi lưu** và lưu lại. Sửa ngày mất thì đổi lại. Đổi phương pháp mặc định ở bản sau
+không tự sửa ngày đã lưu (01 §3.2).
+
+Ví dụ: mất 2025-08-08 (dương) → 15/6 **nhuận** năm Ất Tỵ 2025.
+
+## 2. Ngày giỗ hằng năm
+
+### 2.1 Quy tắc (chủ dự án đã duyệt 06/11/2026)
+
+1. Ngày giỗ là **ngày âm của ngày mất**, lặp mỗi năm âm.
+2. Mất trong **tháng nhuận** → giỗ vào tháng **thường** cùng số (tháng nhuận hiếm khi lặp lại).
+3. Mất ngày **30** mà tháng đó trong năm giỗ chỉ có 29 ngày → giỗ ngày **29**.
+4. Không biết năm mất → vẫn tính được ngày giỗ mỗi năm từ (tháng, ngày); không gắn nhãn giỗ đầu/giỗ hết.
+
+### 2.2 Thuật toán
+
+```
+anniversary(death, Y) -> {lunar: (Y, m, d', false), solar, n, label} | None
+  m  := death.lunar.month            # bỏ qua death.lunar.leap (quy tắc 2)
+  d  := death.lunar.day
+  if death.lunar.year != null and Y <= death.lunar.year: return None   # chưa có giỗ
+  d' := (d == 30 and len(Y, m, false) == 29) ? 29 : d                  # quy tắc 3
+  if Y < 1899 or Y > 3000: return None
+  S  := L2S(Y, m, d', false)          # tháng m thường luôn tồn tại; d' ≤ len(Y, m) theo quy tắc 3
+  if S == None: return None           # chỉ xảy ra ở biên miền (ngày dương ngoài 1900–3000)
+  n  := (death.lunar.year != null) ? Y - death.lunar.year : null        # giỗ lần thứ n
+  label := label_of(n, memorial.gio_het_nam)                            # §3
+  return {lunar: (Y, m, d', false), solar: S, n, label}
+```
+
+Năm có cả tháng m thường và tháng m nhuận: giỗ luôn ở tháng m **thường** (tháng đứng trước).
+
+### 2.3 Các lần giỗ rơi trong một khoảng ngày dương
+
+```
+anniversaries_in(death, from, to):     # from, to: ngày dương, from <= to
+  out := []
+  for Y in LYOB(from) - 1 .. LYOB(to) + 1:     # năm âm có thể lệch năm dương tới ~2 tháng
+      a := anniversary(death, Y)
+      if a != None and from <= a.solar <= to: out.append(a)
+  return out sắp theo a.solar
+```
+
+### 2.4 Ví dụ (ca kiểm thử cố định)
+
+| Ca | Ngày mất | Năm giỗ (âm) | Ngày giỗ âm | Ngày giỗ dương |
+|---|---|---|---|---|
+| G-A | 2025-08-08 = 15/6 nhuận Ất Tỵ | 2026 (n=1) | 15/6/2026 | 2026-07-28 |
+| G-A | | 2027 (n=2) | 15/6/2027 | 2027-07-18 |
+| G-B | 2025-09-21 = 30/7/2025 (tháng 7/2025 đủ 30 ngày) | 2026 (n=1) | tháng 7/2026 chỉ 29 ngày → **29/7/2026** | 2026-09-10 |
+| G-B | | 2027 (n=2) | 30/7/2027 | 2027-08-31 |
+| G-C | âm 10/3, không rõ năm | 2026 | 10/3/2026 | 2026-04-26 |
+| G-C | | 2027 | 10/3/2027 | 2027-04-16 |
+| G-D | 2024-02-09 = 30/12/2023 | 2024 (n=1) | tháng 12/2024 chỉ 29 ngày → 29/12/2024 | **2025**-01-28 |
+| G-D | | 2025 (n=2) | 29/12/2025 | 2026-02-16 |
+| G-E | âm 15/5 năm 2027 (giả định) | 2028 (năm có tháng 5 nhuận) | 15/5/2028 **thường** | 2028-06-07 (không phải 2028-07-07 của tháng nhuận) |
+
+G-D cho thấy năm giỗ âm 2024 rơi vào năm dương 2025: mọi danh sách và tệp .ics phải dùng §2.3, không được giả
+định "năm âm = năm dương".
+
+## 3. Nhãn giỗ đầu / giỗ hết, tiên thường
+
+```
+label_of(n, gio_het_nam):
+  if n == null:            return "gio"          # "Ngày giỗ"
+  if n == 1:               return "gio_dau"      # "Giỗ đầu" (tiểu tường)
+  if n == gio_het_nam:     return "gio_het"      # "Giỗ hết" (đại tường), mặc định n = 2
+  return "gio"             # "Giỗ" (có thể ghi thêm "lần thứ n")
+```
+
+- `gio_het_nam` mặc định 2; cho chọn 3 vì nhiều nơi làm giỗ hết vào năm thứ ba (mục mở O-2). Với `gio_het_nam = 3`,
+  lần n = 2 là "Giỗ" thường.
+- **Tiên thường** (lễ chiều hôm trước ngày giỗ): ngày dương = `a.solar − 1 ngày`. Chỉ khi `ReminderRule.tien_thuong
+  = true` (mặc định **tắt**, mục mở O-1). Khi bật, sinh thêm **một** lời nhắc đúng ngày tiên thường vào giờ
+  `time_local`, với nội dung "Hôm nay lễ tiên thường — ngày mai giỗ …". Các mốc nhắc trước (`offsets_days`) luôn
+  tính theo **ngày giỗ**, không theo ngày tiên thường. Nếu một mốc trước trùng ngày tiên thường (offset 1), vẫn
+  gửi hai lời nhắc riêng (khác nội dung).
+
+## 4. Tuổi âm, hưởng thọ / hưởng dương, Can Chi năm sinh
+
+### 4.1 Năm âm của ngày sinh
+
+| Ngày sinh nhập | `lunar_year` | `lunar_year_approx` |
+|---|---|---|
+| Dương đủ ngày | `LYOB(y, m, d)` (sinh trước Tết → năm âm trước) | `false` |
+| Âm đủ ngày, hoặc âm chỉ năm | năm âm đã nhập | `false` |
+| Dương chỉ năm `y` | `y` | `true` (nếu sinh trước Tết năm `y` thì năm âm thật là `y − 1`) |
+| Không nhập | `null` | — |
+
+`can_chi = can_chi_year(lunar_year)` theo hợp đồng kiến trúc §3 (`can = (Y + 6) mod 10`, `chi = (Y + 8) mod 12`).
+Ví dụ: sinh 1990-01-20 → 24/12 năm âm 1989 → **Kỷ Tỵ** (không phải Canh Ngọ 1990).
+
+### 4.2 Hưởng thọ / hưởng dương (tuổi âm, cách tính truyền thống)
+
+```
+tuoi_mat(birth, death, nguong):
+  if birth.lunar_year == null or death.lunar.year == null: value := null
+  else: value := death.lunar.year - birth.lunar_year + 1     # tuổi mụ: tính cả năm sinh
+  approx := birth.lunar_year_approx
+  label  := (value != null and value < nguong) ? "huong_duong" : "huong_tho"   # nguong mặc định 60 (O-3)
+```
+
+- Kết quả lưu ở `death.tuoi`. Người dùng sửa được; khi sửa đặt `manual = true` và không tính lại nữa (trừ khi bấm
+  "Tính lại").
+- Hiển thị: "Hưởng thọ 86 tuổi" / "Hưởng dương 45 tuổi"; khi `approx = true` thêm "(khoảng)".
+- `value < 1` (dữ liệu mâu thuẫn) → lỗi nhập liệu (01 §3.2), không lưu.
+
+Ví dụ: sinh 1940-05-01 (năm âm 1940 Canh Thìn), mất 2025-08-08 (năm âm 2025) → 2025 − 1940 + 1 = **86**, hưởng thọ.
+
+### 4.3 Tuổi của người đang sống
+
+- Tuổi dương (hiển thị chính): số lần sinh nhật dương đã qua tính đến hôm nay (dùng ngày đã quy đổi ở §6 cho 29/02).
+- Tuổi âm (hiển thị phụ): `năm âm hôm nay − lunar_year + 1`.
+- Ví dụ: sinh 1990-01-20, ngày 2026-11-06 (năm âm 2026) → tuổi dương 36, tuổi âm 38.
+
+## 5. Sinh nhật âm và sự kiện âm lặp hằng năm
+
+Dùng đúng `anniversary` của §2.2 với `(month, day)` của ngày gốc, cùng hai quy tắc nhuận → thường và 30 → 29. Năm
+lần thứ n: `n = Y − năm âm gốc` (sinh nhật âm: tuổi âm = n + 1). Sự kiện âm không lặp: chỉ một lần, ngày dương
+`L2S(...)` của chính ngày nhập.
+
+## 6. Sinh nhật dương, sự kiện dương lặp hằng năm, quy tắc 29/02
+
+```
+solar_occurrence(orig (Y0, M, D), Y, feb29_rule):
+  if Y < Y0: None            # sinh nhật: Y == Y0 là ngày sinh, không nhắc; lần nhắc đầu là Y0 + 1
+  if (M, D) == (2, 29) and not is_leap(Y):
+      return feb29_rule == "feb28" ? (Y, 2, 28) : (Y, 3, 1)     # mặc định "feb28"
+  return (Y, M, D)
+```
+
+- Năm nhuận Gregory: chia hết cho 4 và (không chia hết cho 100 hoặc chia hết cho 400).
+- Sự kiện dương không lặp: một lần, ngày đã nhập.
+- Sự kiện "Ngày cưới" mặc định lặp hằng năm (01 §3.5), hiển thị "Kỷ niệm n năm ngày cưới".
+
+## 7. Sinh lời nhắc
+
+### 7.1 Lời nhắc một lần xuất hiện
+
+```
+reminders_for(rule, occ, now, tz):          # occ: một lần xuất hiện (ngày dương D, loại, người…)
+  if not settings.reminders_enabled or not rule.enabled: return []
+  out := []
+  for k in rule.offsets_days:                       # k = 0 là đúng ngày
+      day := D - k ngày
+      t   := local_instant(day, rule.time_local, tz)
+      if t > now: out.append({id: notif_id(rule.id, occ, k), at: t, k, occ})
+  if rule.tien_thuong and occ.kind == "gio":
+      t := local_instant(D - 1 ngày, rule.time_local, tz)
+      if t > now: out.append({id: notif_id(rule.id, occ, "tt"), at: t, kind: "tien_thuong", occ})
+  return out
+```
+
+- `local_instant(day, "HH:MM", tz)`: giờ đồng hồ trên **múi giờ hiện tại của thiết bị**. Giờ không tồn tại (bước
+  nhảy giờ mùa hè) → dời sau đúng khoảng nhảy; giờ lặp (lùi giờ) → lấy lần đầu. Việt Nam không đổi giờ mùa hè; quy
+  tắc chỉ có tác dụng khi người dùng ở nước khác.
+- Đổi múi giờ thiết bị → lập lịch lại toàn bộ (§7.4).
+- `notif_id(rule_id, occ, k)` = `"lvhv:" + rule_id + ":" + occ.key + ":" + k`, trong đó `occ.key` là năm âm Y (giỗ,
+  sinh nhật âm, sự kiện âm) hoặc năm dương Y (sinh nhật dương, sự kiện dương) hoặc `"once"`. Mã này ổn định: sửa giờ
+  nhắc không đổi mã, nên thay thế đúng thông báo cũ.
+- Nội dung (không có số liệu ngoài hồ sơ): tiêu đề "Còn 3 ngày: Giỗ đầu Ông Nguyễn Văn A" hoặc "Hôm nay: …"; dòng
+  phụ "Thứ Ba, 28/07/2026 — 15/6 âm lịch". Tên hiển thị = `danh_xung + " " + ho_ten`. Tùy chọn khóa màn hình ở mục
+  mở O-9.
+- Ví dụ: G-A năm 2026, `[0, 3]`, `07:00` → 2026-07-25 07:00 và 2026-07-28 07:00 (giờ thiết bị).
+
+### 7.2 Danh sách "Sắp tới" (30 ngày)
+
+Mọi lần xuất hiện (giỗ, tiên thường nếu bật, sinh nhật dương, sinh nhật âm, sự kiện) có ngày dương trong
+`[hôm nay, hôm nay + 30 ngày]` (gồm cả hai đầu), sắp theo ngày, cùng ngày thì theo thứ tự giỗ → tiên thường →
+sinh nhật → sự kiện, rồi theo `ho_ten` (so sánh theo quy tắc chữ tiếng Việt của nền tảng; kiểm thử dùng so sánh
+điểm mã sau NFC để xác định). Danh sách **không phụ thuộc** công tắc nhắc: tắt nhắc vẫn thấy trong "Sắp tới".
+Hiển thị: "Hôm nay", "Ngày mai", "Còn n ngày".
+
+### 7.3 Lập lịch trên Android (đề xuất, chờ O-6)
+
+- Quyền cần khai báo: `POST_NOTIFICATIONS` (Android 13+, hỏi người dùng lúc bật nhắc lần đầu) và
+  `RECEIVE_BOOT_COMPLETED` (đặt lại báo thức sau khi khởi động lại — tài liệu Android ghi rõ mọi báo thức bị hủy
+  khi tắt máy). **Không** có `INTERNET`. CI hiện tại cấm mọi `uses-permission` (`android.yml`) → phải đổi thành
+  danh sách cho phép đúng các quyền này (S6).
+- Cơ chế: **một chuỗi báo thức** — chỉ đặt **một** báo thức cho thời điểm nhắc sớm nhất; khi báo thức chạy, đăng
+  mọi thông báo đã đến hạn (kể cả những cái bị trễ do máy tắt, nếu trễ ≤ 24 giờ; trễ hơn thì bỏ, vì "Sắp tới" vẫn
+  hiển thị) rồi đặt báo thức kế tiếp. Không có giới hạn số lượng lời nhắc.
+- Loại báo thức mặc định (không cần quyền đặc biệt): `setAndAllowWhileIdle(RTC_WAKEUP, t)` — không bao giờ chạy sớm
+  hơn `t`; từ Android 12 hệ thống giao trong vòng một giờ nếu không có hạn chế tiết kiệm pin. Lời nhắc giỗ lúc 07:00
+  đến muộn tối đa khoảng một giờ là chấp nhận được cho việc "nhắc trước".
+- Tùy chọn (O-6): nếu chủ dự án muốn đúng giờ, khai báo `SCHEDULE_EXACT_ALARM`, gọi `canScheduleExactAlarms()`,
+  dùng `setExactAndAllowWhileIdle` khi được cấp, quay về loại không chính xác khi bị từ chối, và lắng nghe
+  `ACTION_SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED`. **Không** dùng `USE_EXACT_ALARM` trừ khi chủ dự án xác
+  nhận ứng dụng đủ điều kiện chính sách Google Play (xem 05 §7 R-AND-1).
+- Đặt lại chuỗi khi: `BOOT_COMPLETED`, `MY_PACKAGE_REPLACED`, `TIME_SET`, `TIMEZONE_CHANGED`, mở ứng dụng, lưu dữ
+  liệu, nhập sao lưu.
+
+### 7.4 Lập lịch trên iOS / macOS: xoay vòng 64 thông báo chờ
+
+Giới hạn: mỗi ứng dụng chỉ có tối đa **64** yêu cầu thông báo cục bộ đang chờ; đây là giới hạn hệ thống (xác nhận
+của kỹ sư Apple trên diễn đàn nhà phát triển, 05 §7 R-IOS-1). Thuật toán:
+
+```
+CAP := 64
+reschedule(now):
+  desired := mọi lời nhắc (§7.1) có at > now, trong cửa sổ [now, now + 400 ngày], sắp theo (at, id)
+  if len(desired) > CAP:
+      keep := desired[0 .. CAP-2]                          # 63 lời nhắc sớm nhất
+      last := keep[CAP-2].at
+      sentinel := {id: "lvhv:sentinel", at: last + 1 phút,
+                   nội dung: "Mở Lịch Việt để tiếp tục nhận lời nhắc giỗ và sinh nhật"}
+      keep.append(sentinel)
+  else: keep := desired
+  pending := getPendingNotificationRequests()
+  remove(pending.id ∖ keep.id)                             # chỉ gỡ cái không còn cần
+  add(keep ∖ pending)                                      # UNCalendarNotificationTrigger(dateMatching: y-m-d h:m, repeats: false)
+  thay thế những cái cùng id nhưng khác at hoặc nội dung
+```
+
+- Gọi `reschedule` khi: mở ứng dụng / trở lại tiền cảnh, lưu dữ liệu, nhập sao lưu, đổi múi giờ
+  (`NSSystemTimeZoneDidChange`), người dùng bấm vào một thông báo, và trong tác vụ nền `BGAppRefreshTask` (iOS tự
+  quyết định có chạy hay không; không dựa vào nó).
+- Bảo đảm: tại mọi thời điểm, nếu có ≥ 64 lời nhắc tương lai thì 63 cái sớm nhất đều đang chờ và thông báo nhắc mở
+  ứng dụng nằm ngay sau cái thứ 63. Người dùng không mở ứng dụng trong thời gian dài (ví dụ 63 lời nhắc ≈ vài tháng
+  với 10 hồ sơ × 2 mốc) sẽ thấy thông báo nhắc mở ứng dụng thay vì mất lời nhắc lặng lẽ.
+- Trigger dùng `DateComponents` (năm, tháng, ngày, giờ, phút) **không** gắn múi giờ → chạy theo giờ đồng hồ của thiết
+  bị, khớp §7.1.
+
+### 7.5 Windows và PWA
+
+- Windows: thông báo hệ thống đặt lịch trước (`ScheduledToastNotification`); dùng cùng thuật toán xoay vòng §7.4 với
+  `CAP = 64` để có một cài đặt chung; lập lại khi mở ứng dụng. Ứng dụng không chạy nền thường trực (giữ ngưỡng 0
+  lần đánh thức nền của v0.1). Chi tiết thành phần (ứng dụng chưa đóng gói cần AppUserModelID qua lối tắt Start
+  Menu) quyết định ở đợt 3; nếu không đặt lịch được khi ứng dụng tắt thì ghi là giới hạn, không giả lập bằng tiến
+  trình nền.
+- PWA: **không có** thông báo đặt lịch khi trang đóng — API Notification Triggers đã ngừng phát triển (05 §7
+  R-PWA-2), Web Push cần máy chủ (ngoài phạm vi). PWA có: danh sách "Sắp tới" trong ứng dụng; khi người dùng mở
+  ứng dụng vào ngày có lời nhắc đến hạn, hiện thẻ nhắc trong trang (không cần quyền); và xuất **.ics** (§8) để lịch
+  của hệ điều hành nhắc thay. Giao diện nói rõ giới hạn này.
+
+## 8. Tệp .ics (RFC 5545)
+
+### 8.1 Phạm vi và cấu trúc
+
+- Nội dung: mọi lần xuất hiện có ngày dương trong `[hôm nay, hôm nay + 10 năm)` của các mục người dùng chọn xuất
+  (mặc định: tất cả có nhắc bật). Mỗi lần xuất hiện là **một VEVENT riêng với ngày cụ thể**; **không dùng RRULE**
+  (lịch âm không biểu diễn được bằng RRULE; sinh nhật 29/02 cũng vậy).
+- Tên tệp: `LichVanHoaViet-ngay-gio-<YYYY-MM-DD>.ics`; kiểu `text/calendar; charset=utf-8`; dòng kết thúc CRLF.
+
+```
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Clevix Lab//Lich va Van hoa Viet 0.2.0//VI
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+X-WR-CALNAME:Ngày giỗ và sinh nhật
+X-WR-TIMEZONE:Asia/Ho_Chi_Minh
+BEGIN:VTIMEZONE
+TZID:Asia/Ho_Chi_Minh
+BEGIN:STANDARD
+DTSTART:19700101T000000
+TZOFFSETFROM:+0700
+TZOFFSETTO:+0700
+TZNAME:+07
+END:STANDARD
+END:VTIMEZONE
+BEGIN:VEVENT
+UID:0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e01-gio-2026@lich.clevix.vn
+DTSTAMP:20261106T031500Z
+SEQUENCE:1
+DTSTART;VALUE=DATE:20260728
+DTEND;VALUE=DATE:20260729
+SUMMARY:Giỗ đầu Ông Nguyễn Văn A
+DESCRIPTION:15/6 âm lịch năm Bính Ngọ (2026). Hưởng thọ 86 tuổi.
+TRANSP:TRANSPARENT
+CATEGORIES:Ngày giỗ
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Còn 3 ngày: Giỗ đầu Ông Nguyễn Văn A
+TRIGGER;RELATED=START:-P2DT17H
+END:VALARM
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Hôm nay: Giỗ đầu Ông Nguyễn Văn A
+TRIGGER;RELATED=START:PT7H
+END:VALARM
+END:VEVENT
+END:VCALENDAR
+```
+
+### 8.2 Quy tắc từng trường
+
+| Trường | Quy tắc |
+|---|---|
+| `DTSTART`/`DTEND` | Sự kiện cả ngày: `VALUE=DATE`, `DTEND` = ngày kế tiếp (RFC 5545 §3.6.1: DTEND không tính vào sự kiện) |
+| `TZID` | RFC 5545 **không cho phép** tham số `TZID` trên giá trị `DATE` (§3.2.19). Vì vậy tệp mang `VTIMEZONE` `Asia/Ho_Chi_Minh` và `X-WR-TIMEZONE` để các ứng dụng lịch đặt múi giờ mặc định cho lịch nhập vào, còn các ngày giỗ là ngày "trôi" (theo ngày, đúng bản chất ngày âm). Phương án khác — sự kiện có giờ `DTSTART;TZID=Asia/Ho_Chi_Minh:20260728T070000` — là mục mở **O-5** |
+| `UID` | `<id thực thể>-<loại>-<khóa năm>@lich.clevix.vn`; loại ∈ `gio`, `tt` (tiên thường), `sn` (sinh nhật dương), `sna` (sinh nhật âm), `ev` (sự kiện); khóa năm = năm âm Y hoặc năm dương Y như `occ.key` (§7.1). **Ổn định**: xuất lại sau khi sửa hồ sơ cho cùng UID, nên ứng dụng lịch cập nhật thay vì nhân đôi. UID chỉ chứa UUID ngẫu nhiên, không chứa tên |
+| `SEQUENCE` | `rev` của bản ghi nguồn (Person hoặc Event) |
+| `DTSTAMP` | Thời điểm xuất, UTC |
+| `VALARM` | Một khối cho mỗi phần tử `offsets_days`; `ACTION:DISPLAY` + `DESCRIPTION` + `TRIGGER` (đủ ba trường bắt buộc). Trigger tương đối với đầu ngày: `dur = time_local − k × 24h`, viết dạng chuẩn `[-]P{d}DT{h}H{m}M` bỏ phần bằng 0 (k=3, 07:00 → `-P2DT17H`; k=0, 07:00 → `PT7H`; k=1, 00:00 → `-P1D`) |
+| Tiên thường | Nếu bật: VEVENT cả ngày riêng (UID loại `tt`) vào ngày `D − 1`, một VALARM `PT{time_local}` |
+| Văn bản | Thoát `\` → `\\`, `;` → `\;`, `,` → `\,`, xuống dòng → `\n` (RFC 5545 §3.3.11) |
+| Gấp dòng | Mỗi dòng ≤ 75 **octet** (không tính CRLF); dòng tiếp theo bắt đầu bằng một dấu cách; không cắt giữa một ký tự UTF-8 nhiều byte (§3.1) |
+| Riêng tư | Tệp chứa tên và ngày; trước khi xuất hiện hộp xác nhận "Tệp này chứa tên và ngày giỗ của … người. Bất kỳ ai có tệp đều đọc được." |
+
+Giới hạn đã biết: một số ứng dụng lịch bỏ qua `VALARM` khi nhập tệp và áp lời nhắc mặc định của chúng — chưa kiểm
+chứng ở G1, sẽ đo ở R6 (`04`).
+
+## 9. Dữ liệu kiểm thử cố định
+
+- Các ca G-A … G-E (§2.4), ví dụ §4.1–§4.3, §7.1 và tệp `schema/example-backup-v1.json`.
+- Ca biên bắt buộc thêm: mất ngày 29 hoặc 30 của tháng 12 (giỗ rơi sang năm dương sau); mất ngày đầu/cuối miền
+  (1900-01-01, 3000-12-31 — giỗ có ngày dương ngoài miền trả `None`, không lỗi); sinh 29/02/2000 (năm 2100 không nhuận →
+  28/02/2100); nhắc 15 ngày trước một giỗ đầu tháng Giêng (rơi vào năm dương trước); offset 60 qua ranh giới năm;
+  `time_local = "00:00"` và `"23:59"`.
