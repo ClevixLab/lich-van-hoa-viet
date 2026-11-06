@@ -1,0 +1,14 @@
+{
+ "rows": 2286,
+ "periods": {
+  "tuan": 575,
+  "thang": 132,
+  "quy": 44,
+  "nam": 11
+ },
+ "c_comparisons": 561,
+ "c_violations": [],
+ "d_violations": [],
+ "d_periods_with_items_on_first_day": 115,
+ "d_periods_with_items_on_last_day": 98
+}
