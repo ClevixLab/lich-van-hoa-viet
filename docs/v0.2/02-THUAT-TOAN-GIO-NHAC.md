@@ -1,7 +1,7 @@
 # Đặc tả thuật toán ngày giỗ, tuổi, nhắc việc và .ics — v0.2
 
 Trạng thái: **KHÓA (G1) — 2026-11-06, chờ chủ dự án ký.** Đây là đặc tả duy nhất cho cả lõi Rust, bản TypeScript và
-bản cài đặt độc lập dùng để kiểm định (tiêu chí R1–R4 trong `04-TIEU-CHI-NGHIEM-THU-V02.md`). Bên cài đặt độc lập
+bản cài đặt độc lập dùng để kiểm định (tiêu chí R1–R3, R10–R12 trong `04-TIEU-CHI-NGHIEM-THU-V02.md`). Bên cài đặt độc lập
 chỉ đọc tài liệu này và `01-MO-HINH-DU-LIEU.md`, không đọc mã lõi.
 
 Ký hiệu: `L2S(y, m, d, leap)` = `lunar_to_solar` của lõi (trả `None` nếu ngày không tồn tại); `S2L(y, m, d)` =
@@ -207,7 +207,7 @@ Hiển thị: "Hôm nay", "Ngày mai", "Còn n ngày".
   `RECEIVE_BOOT_COMPLETED` (đặt lại báo thức sau khi khởi động lại — tài liệu Android ghi rõ mọi báo thức bị hủy
   khi tắt máy). **Không** có `INTERNET`. CI hiện tại cấm mọi `uses-permission` (`android.yml`) → phải đổi thành
   danh sách cho phép đúng các quyền này (S6).
-- Cơ chế: **một chuỗi báo thức** — chỉ đặt **một** báo thức cho thời điểm nhắc sớm nhất; khi báo thức chạy, đăng
+- Cơ chế (kiểm ở R5): **một chuỗi báo thức** — chỉ đặt **một** báo thức cho thời điểm nhắc sớm nhất; khi báo thức chạy, đăng
   mọi thông báo đã đến hạn (kể cả những cái bị trễ do máy tắt, nếu trễ ≤ 24 giờ; trễ hơn thì bỏ, vì "Sắp tới" vẫn
   hiển thị) rồi đặt báo thức kế tiếp. Không có giới hạn số lượng lời nhắc.
 - Loại báo thức mặc định (không cần quyền đặc biệt): `setAndAllowWhileIdle(RTC_WAKEUP, t)` — không bao giờ chạy sớm
@@ -245,7 +245,7 @@ reschedule(now):
 - Gọi `reschedule` khi: mở ứng dụng / trở lại tiền cảnh, lưu dữ liệu, nhập sao lưu, đổi múi giờ
   (`NSSystemTimeZoneDidChange`), người dùng bấm vào một thông báo, và trong tác vụ nền `BGAppRefreshTask` (iOS tự
   quyết định có chạy hay không; không dựa vào nó).
-- Bảo đảm: tại mọi thời điểm, nếu có ≥ 64 lời nhắc tương lai thì 63 cái sớm nhất đều đang chờ và thông báo nhắc mở
+- Bảo đảm (kiểm ở R12 bằng mô phỏng, ở R5 trên iPhone thật): tại mọi thời điểm, nếu có ≥ 64 lời nhắc tương lai thì 63 cái sớm nhất đều đang chờ và thông báo nhắc mở
   ứng dụng nằm ngay sau cái thứ 63. Người dùng không mở ứng dụng trong thời gian dài (ví dụ 63 lời nhắc ≈ vài tháng
   với 10 hồ sơ × 2 mốc) sẽ thấy thông báo nhắc mở ứng dụng thay vì mất lời nhắc lặng lẽ.
 - Trigger dùng `DateComponents` (năm, tháng, ngày, giờ, phút) **không** gắn múi giờ → chạy theo giờ đồng hồ của thiết
@@ -329,7 +329,7 @@ END:VCALENDAR
 | Riêng tư | Tệp chứa tên và ngày; trước khi xuất hiện hộp xác nhận "Tệp này chứa tên và ngày giỗ của … người. Bất kỳ ai có tệp đều đọc được." |
 
 Giới hạn đã biết: một số ứng dụng lịch bỏ qua `VALARM` khi nhập tệp và áp lời nhắc mặc định của chúng — chưa kiểm
-chứng ở G1, sẽ đo ở R6 (`04`).
+chứng ở G1, sẽ đo ở R4 (`04`).
 
 ## 9. Dữ liệu kiểm thử cố định
 

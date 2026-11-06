@@ -109,7 +109,7 @@ import(file, password):
   sửa 1 byte ở mỗi trường phần đầu, cắt cụt, `m_cost_kib` = 4 194 304, `file_version` = 2.
 - Thành phần mật mã được kiểm bằng vector chuẩn: Argon2id theo RFC 9106 §5.3; XChaCha20-Poly1305 theo vector của
   bản nháp IETF `draft-irtf-cfrg-xchacha` (phụ lục A.3). Hai bản cài đặt (Rust và bản dùng trong PWA nếu khác, xem
-  O-7) phải giải mã được tệp của nhau (tiêu chí R9 trong `04`).
+  O-7) phải giải mã được tệp của nhau (tiêu chí R6 trong `04`).
 
 ## 3. Mô hình đe dọa của tệp sao lưu (STRIDE)
 
@@ -168,7 +168,7 @@ G1 không truy cập được rustsec.org. Mọi nâng phiên bản là một PR
 
 Kết luận cho chủ dự án (không phải quyết định thay): **chưa có lựa chọn nào mà cả Argon2id lẫn XChaCha20-Poly1305 đều
 có kiểm toán độc lập hiện hành.** Đề xuất O-8 (A): dùng hai crate RustCrypto đã ghim, bù bằng (i) vector RFC 9106 và
-bản nháp XChaCha, (ii) kiểm tra chéo với một bản cài đặt độc lập khác (tiêu chí R9), (iii) ghi rõ trong tài liệu phát
+bản nháp XChaCha, (ii) kiểm tra chéo với một bản cài đặt độc lập khác (tiêu chí R6), (iii) ghi rõ trong tài liệu phát
 hành rằng Argon2 chưa được kiểm toán độc lập. (B): dùng libsodium (đổi lấy mã C/FFI). (C): đổi KDF sang thuật toán có
 kiểm toán — chưa tìm được ứng viên vừa chống GPU vừa có kiểm toán hiện hành, nên không đề xuất.
 
@@ -179,7 +179,7 @@ không có XChaCha20-Poly1305. Hai phương án:
 
 | | (A) WebAssembly từ `lvhv-backup` | (B) Thư viện JavaScript `@noble/ciphers` + `@noble/hashes` |
 |---|---|---|
-| Một bản cài đặt cho mọi nền tảng | Có | Không (hai bản; R9 kiểm chéo) |
+| Một bản cài đặt cho mọi nền tảng | Có | Không (hai bản; R6 kiểm chéo) |
 | CSP | Phải thêm `'wasm-unsafe-eval'` vào `script-src` (yêu cầu của trình duyệt để biên dịch WebAssembly) — **trái tiêu chí "CSP không đổi"** trừ khi chủ dự án duyệt ngoại lệ ghi trong `04` S2 | Không đổi |
 | Kiểm toán | Như §4.2 (Rust) | ChaCha: có (bản cũ); Argon2: không |
 | Hiệu năng Argon2id 64 MiB | Tốt hơn | Chậm hơn đáng kể trên điện thoại (đo ở P8) |
