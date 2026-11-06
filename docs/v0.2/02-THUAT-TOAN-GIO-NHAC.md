@@ -150,7 +150,8 @@ Ví dụ: sinh 1940-05-01 (năm âm 1940 Canh Thìn), mất 2025-08-08 (năm âm
 
 Dùng đúng `anniversary` của §2.2 với `(month, day)` của ngày gốc, cùng hai quy tắc nhuận → thường và 30 → 29. Năm
 lần thứ n: `n = Y − năm âm gốc` (sinh nhật âm: tuổi âm = n + 1). Sự kiện âm không lặp: chỉ một lần, ngày dương
-`L2S(...)` của chính ngày nhập.
+`L2S(...)` của chính ngày nhập. (Bổ sung B4, 2026-11-07) Chỉ áp dụng cho người **không có ngày mất** và cho sự kiện
+không gắn với người đã mất — xem §6.1.
 
 ## 6. Sinh nhật dương, sự kiện dương lặp hằng năm, quy tắc 29/02
 
@@ -167,6 +168,28 @@ solar_occurrence(orig (Y0, M, D), Y, feb29_rule):
 - Sự kiện "Ngày cưới" mặc định lặp hằng năm (01 §3.5), hiển thị "Kỷ niệm n năm ngày cưới".
 - (Bổ sung B2, 2026-11-07) Sự kiện dương lặp hằng năm có ngày gốc 29/02: ở năm không nhuận rơi vào **28/02**
   (`solar_occurrence` với `feb29_rule = "feb28"`; sự kiện không có trường `feb29_rule` riêng).
+
+### 6.1 Ai có lần xuất hiện nào (Bổ sung B4, 2026-11-07 — quyết định của chủ dự án, 04 Bổ sung B4)
+
+```
+occurrences(ds, from, to):                    # tập lần xuất hiện dùng cho §7.1–§7.6 và §8
+  for p in ds.persons:
+      if p.death != null:                     # hồ sơ có ngày mất
+          giỗ (§2.3) của p                    # + tiên thường (§3) khi rule_gio.tien_thuong (§7.2)
+          # KHÔNG sinh nhật dương, KHÔNG sinh nhật âm (kể cả khi còn dữ liệu birth / sinh_nhat_am)
+      else:
+          sinh nhật dương (§6) nếu biết đủ ngày sinh; sinh nhật âm (§5) nếu sinh_nhat_am
+  for e in ds.events:
+      if có ít nhất một id trong e.person_ids trỏ tới hồ sơ có ngày mất: bỏ qua e   # không lần xuất hiện nào
+      else: lần xuất hiện của e (§5, §6)      # gắn người đang sống, id không trỏ tới hồ sơ nào, hoặc không gắn ai
+```
+
+- Dữ liệu bị loại (sinh nhật, sự kiện của người đã mất) **vẫn được lưu**, hiển thị trên trang hồ sơ và có trong sao
+  lưu; chỉ không sinh lần xuất hiện, nên không có lời nhắc (§7.1), không vào "Sắp tới" (§7.2), danh sách theo kỳ
+  (§7.6) hay tệp .ics (§8).
+- Chuyển trạng thái: khi một người đang sống được cập nhật ngày mất, các lời nhắc sinh nhật và sự kiện của người đó
+  biến mất khỏi tập này, nên bị gỡ ở lần lập lịch kế tiếp (§7.3 bước kế tiếp của chuỗi báo thức, §7.4/§7.5
+  `reschedule`: các id không còn trong `keep` bị `remove`).
 
 ## 7. Sinh lời nhắc
 
@@ -206,7 +229,8 @@ reminders_for(rule, occ, now, tz):          # occ: một lần xuất hiện (ng
 
 ### 7.2 Danh sách "Sắp tới" (30 ngày)
 
-Mọi lần xuất hiện (giỗ, tiên thường nếu bật, sinh nhật dương, sinh nhật âm, sự kiện) có ngày dương trong
+Mọi lần xuất hiện (giỗ, tiên thường nếu bật, sinh nhật dương, sinh nhật âm, sự kiện — theo tập của §6.1, Bổ sung
+B4) có ngày dương trong
 `[hôm nay, hôm nay + 30 ngày]` (gồm cả hai đầu), sắp theo ngày, cùng ngày thì theo thứ tự giỗ → tiên thường →
 sinh nhật → sự kiện, rồi theo `ho_ten` (so sánh theo quy tắc chữ tiếng Việt của nền tảng; kiểm thử dùng so sánh
 điểm mã sau NFC để xác định). Danh sách **không phụ thuộc** công tắc nhắc: tắt nhắc vẫn thấy trong "Sắp tới".
@@ -285,6 +309,10 @@ reschedule(now):
 - Trigger dùng `DateComponents` (năm, tháng, ngày, giờ, phút) **không** gắn múi giờ → chạy theo giờ đồng hồ của thiết
   bị, khớp §7.1.
 
+- (Bổ sung B4, 2026-11-07) Mọi cách lập lịch ở §7.3–§7.5 dùng tập lần xuất hiện của §6.1: khi một người được cập
+  nhật ngày mất, lời nhắc sinh nhật và sự kiện của người đó bị gỡ ở lần `reschedule` / bước chuỗi báo thức kế tiếp
+  (gọi khi lưu dữ liệu), không cần thao tác riêng.
+
 ### 7.5 Windows và PWA
 
 - Windows: thông báo hệ thống đặt lịch trước (`ScheduledToastNotification`); dùng cùng thuật toán xoay vòng §7.4 với
@@ -324,17 +352,15 @@ next(kind, anchor) := period_bounds(kind, to + 1 ngày)      # kỳ liền sau
   nhật dương; sinh nhật âm khi `sinh_nhat_am = true`; sự kiện (dương lặp, âm lặp, một lần). Mỗi lần xuất hiện thuộc
   kỳ theo **ngày dương của chính nó**: lễ tiên thường (ngày `D − 1`) của một giỗ ngày đầu kỳ sau thuộc kỳ trước.
   Giống §7.2, danh sách **không phụ thuộc** công tắc nhắc chung, `rule.enabled` hay `offsets_days`.
-- Bộ lọc `filter`:
-  - `"tat_ca"`: mọi phần tử của `L`.
-  - `"da_mat"`: lần xuất hiện của một hồ sơ **có ngày mất** (`death ≠ null`: giỗ, tiên thường); và sự kiện mà
-    `person_ids` **không rỗng** và **mọi** id trỏ tới hồ sơ có ngày mất.
-  - `"dang_song"`: phần còn lại — lần xuất hiện của hồ sơ không có ngày mất (sinh nhật dương, sinh nhật âm); sự
-    kiện có ít nhất một người không có ngày mất (hoặc id không trỏ tới hồ sơ nào), hoặc không gắn với ai
-    (`person_ids` rỗng).
+- Bộ lọc `filter` (**Bổ sung B4, 2026-11-07**, thay quy tắc B2 bên dưới):
+  - `"tat_ca"`: mọi phần tử của `L` (tập §6.1).
+  - `"da_mat"`: lần xuất hiện có `class` ∈ {`gio`, `tien_thuong`}.
+  - `"dang_song"`: mọi lần xuất hiện còn lại (sinh nhật dương, sinh nhật âm, sự kiện).
   - Hệ quả (kiểm ở R13(c)): `da_mat` và `dang_song` rời nhau và hợp lại đúng bằng `tat_ca`, giữ thứ tự.
-  - Ghi chú: R13 viết "sự kiện theo trạng thái của hồ sơ chứa nó". Sự kiện gắn với nhiều người có trạng thái khác
-    nhau, hoặc không gắn với ai, không được R13 nói tới; quy tắc trên là lựa chọn của đặc tả này để hai bộ lọc là
-    một phân hoạch, chờ chủ dự án xác nhận.
+  - Theo §6.1, sự kiện gắn với người đã mất (dù chỉ một người) không có lần xuất hiện nào, nên không có trong bộ lọc
+    nào.
+  - (Quy tắc cũ của B2, **không còn hiệu lực**: "đã mất" gồm cả sự kiện có `person_ids` không rỗng và mọi người đã
+    mất; sự kiện hỗn hợp vào "đang sống".)
 - Mỗi phần tử `items[i]`:
 
 | Trường | Nội dung |
@@ -358,7 +384,8 @@ next(kind, anchor) := period_bounds(kind, to + 1 ngày)      # kỳ liền sau
 ### 8.1 Phạm vi và cấu trúc
 
 - Nội dung: mọi lần xuất hiện có ngày dương trong `[hôm nay, hôm nay + 10 năm)` của các mục người dùng chọn xuất
-  (mặc định: tất cả có nhắc bật). Mỗi lần xuất hiện là **một VEVENT riêng với ngày cụ thể**; **không dùng RRULE**
+  (mặc định: tất cả có nhắc bật). (Bổ sung B4, 2026-11-07) Tập lần xuất hiện theo §6.1: sinh nhật và sự kiện của
+  người đã mất không vào tệp, kể cả khi người dùng chọn đích danh mục đó. Mỗi lần xuất hiện là **một VEVENT riêng với ngày cụ thể**; **không dùng RRULE**
   (lịch âm không biểu diễn được bằng RRULE; sinh nhật 29/02 cũng vậy).
 - Tên tệp: `LichVanHoaViet-ngay-gio-<YYYY-MM-DD>.ics`; kiểu `text/calendar; charset=utf-8`; dòng kết thúc CRLF.
 
@@ -514,6 +541,9 @@ TO = 2036-12-31). JSONL, **một dòng cho mỗi (kỳ, bộ lọc)**:
   hỗn hợp đã mất + sống; không gắn ai; sự kiện âm lặp không rõ năm gắn người đã mất, cùng ngày với giỗ của người đó;
   ngày cưới 29/02 của hai người đã mất với quy tắc nhắc tắt; sự kiện không tiêu đề (hiện tên loại) không có quy tắc
   nhắc; sự kiện một lần đã qua. Mọi `person_ids` trỏ tới hồ sơ có thật (V3).
+- (Bổ sung B4, 2026-11-07) Theo §6.1, mọi sự kiện của bộ bổ sung có ít nhất một người đã mất **không** xuất hiện ở
+  bộ lọc nào (bộ này nay kiểm phần loại trừ); sự kiện chỉ gắn người sống hoặc không gắn ai vẫn ở "đang sống".
+  `"da_mat"` chỉ còn giỗ và tiên thường.
 
 **A.7 .ics — `ics DATASET TODAY DTSTAMP`** (trước Bổ sung B2 đánh số A.6): tệp §8 cho mọi mục có quy tắc nhắc bật, `[TODAY, TODAY + 10 năm)`. Chi
 tiết đã chọn trong phạm vi §8: thứ tự VEVENT theo §7.2; VALARM theo `offsets_days` giảm dần (như ví dụ §8.1);
