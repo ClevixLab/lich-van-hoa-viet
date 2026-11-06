@@ -4,7 +4,7 @@ use crate::canchi::*;
 use crate::error::{checked_jdn, DateError, MIN_YEAR};
 use crate::jd::{date_from_jdn, weekday};
 use crate::lunar::{jdn_to_lunar_with, LunarDate, Method, DEFAULT_METHOD};
-use crate::terms::{term_index_of_day, tiet_month_chi_of_term, TERM_NAMES};
+use crate::terms::{term_index_of_day_with, tiet_month_chi_of_term, TERM_NAMES};
 
 /// Ngữ cảnh số của một ngày — dành cho bộ quy tắc Ngọc Hạp.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -55,7 +55,7 @@ pub fn day_ctx_jdn_with(method: Method, jdn: i64) -> Result<DayCtx, DateError> {
     let dcan = day_can(jdn);
     let dchi = day_chi(jdn);
     let ycan = year_can(l.year);
-    let term = term_index_of_day(jdn);
+    let term = term_index_of_day_with(method, jdn)?;
     let mchi_tiet = tiet_month_chi_of_term(term);
     Ok(DayCtx {
         jdn,

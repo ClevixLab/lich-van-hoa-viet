@@ -3,7 +3,7 @@ use lvhv_core::astro::{local_day_of, tz_of_day, TZ_1929_JDN, TZ_BEIJING, TZ_SWIT
 use lvhv_core::jd::{date_from_jdn, jdn_from_date};
 use lvhv_core::*;
 
-const METHODS: [Method; 2] = [Method::Hnd, Method::Precise];
+const METHODS: [Method; 3] = [Method::Hnd, Method::Precise, Method::Jpl];
 
 #[test]
 fn switch_constants() {
@@ -227,7 +227,9 @@ fn tk20_month_starts_1900_1999() {
             }
         }
         match method {
-            Method::Precise => assert!(bad.is_empty(), "Precise lệch TK20: {bad:?}"),
+            Method::Precise | Method::Jpl => {
+                assert!(bad.is_empty(), "{method:?} lệch TK20: {bad:?}")
+            }
             Method::Hnd => assert_eq!(
                 bad,
                 [

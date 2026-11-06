@@ -1,17 +1,22 @@
 //! Kiểm tra theo phương pháp: tự nhất quán tháng nhuận ↔ tiết khí hiển thị; fixture cho Precise.
 use lvhv_core::jd::{date_from_jdn, jdn_from_date};
 use lvhv_core::lunar::YearTable;
-use lvhv_core::terms::term_index_of_day;
+use lvhv_core::terms::term_index_of_day_with;
 use lvhv_core::*;
 
 /// Các tháng nhuận (năm âm, tháng, ngày đầu ISO) chứa ít nhất một Trung khí theo tiết khí
-/// HIỂN THỊ (`term_index_of_day`), xét mọi tuế có tháng nằm trong 2000–3000.
+/// HIỂN THỊ (`term_index_of_day_with`: Hnd/Precise dùng mô hình §6, Jpl dùng bảng DE441), xét mọi tuế có
+/// tháng nằm trong `from_year`–3000.
 fn leap_months_with_trung_khi(method: Method) -> Vec<(i32, u32, String)> {
-    let lo = jdn_from_date(2000, 1, 1);
+    leap_months_with_trung_khi_from(method, 2000)
+}
+
+fn leap_months_with_trung_khi_from(method: Method, from_year: i32) -> Vec<(i32, u32, String)> {
+    let lo = jdn_from_date(from_year, 1, 1);
     let hi = jdn_from_date(3000, 12, 31);
     let mut bad = Vec::new();
     let mut checked = 0;
-    for yy in 2000..=3001 {
+    for yy in from_year..=3001 {
         let t = YearTable::new(method, yy).unwrap();
         for i in 0..t.n {
             if !t.leap[i] {
@@ -24,8 +29,8 @@ fn leap_months_with_trung_khi(method: Method) -> Vec<(i32, u32, String)> {
             checked += 1;
             // Trung khí bắt đầu vào ngày j ⇔ chỉ số tiết khí của j chẵn và khác ngày j−1.
             let has = (s..e).any(|j| {
-                let a = term_index_of_day(j);
-                a.is_multiple_of(2) && a != term_index_of_day(j - 1)
+                let a = term_index_of_day_with(method, j).unwrap();
+                a.is_multiple_of(2) && a != term_index_of_day_with(method, j - 1).unwrap()
             });
             if has {
                 let (y, m, d) = date_from_jdn(s);
@@ -48,6 +53,43 @@ fn self_consistency_precise() {
     assert!(
         bad.is_empty(),
         "Precise: tháng nhuận chứa Trung khí: {bad:?}"
+    );
+}
+
+/// Jpl (docs/03 §17): tháng nhuận và tiết khí hiển thị cùng một bảng DE441 → tự nhất quán, 1900–3000.
+#[test]
+#[ignore = "chạy bằng: cargo test --release -- --ignored"]
+fn self_consistency_jpl() {
+    let bad = leap_months_with_trung_khi_from(Method::Jpl, 1900);
+    assert!(bad.is_empty(), "Jpl: tháng nhuận chứa Trung khí: {bad:?}");
+}
+
+/// Jpl ngoài phạm vi bảng: lỗi rõ ràng, không rơi về Precise (docs/03 §17.6.6).
+#[test]
+fn jpl_out_of_table_is_error() {
+    let t = lvhv_core::jpl::table().expect("bảng Jpl");
+    assert_eq!(lvhv_core::jpl::new_moon_ut(t.k0 - 1), None);
+    assert_eq!(
+        lvhv_core::jpl::new_moon_ut(t.k0 + t.soc_ut.len() as i64),
+        None
+    );
+    assert_eq!(lvhv_core::jpl::term_at(t.tk_ut[0] - 1e-9), None);
+    assert_eq!(lvhv_core::jpl::term_at(*t.tk_ut.last().unwrap()), None);
+    assert!(matches!(
+        YearTable::new(Method::Jpl, 1899),
+        Err(DateError::OutOfRange { .. })
+    ));
+    assert!(matches!(
+        YearTable::new(Method::Jpl, 3002),
+        Err(DateError::OutOfRange { .. })
+    ));
+    // Miền công khai vẫn đủ: hai đầu.
+    assert!(day_info_with(Method::Jpl, 1900, 1, 1).is_ok());
+    assert!(day_info_with(Method::Jpl, 3000, 12, 31).is_ok());
+    assert!(lunar_to_solar_with(Method::Jpl, 3000, 11, 1, false).is_some());
+    assert_eq!(
+        day_info_with(Method::Jpl, 3001, 1, 1),
+        Err(DateError::OUT_OF_RANGE)
     );
 }
 

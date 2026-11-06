@@ -5,7 +5,7 @@ use lvhv_core::astro::{tz_of_instant, TZ_SWITCH_JDN};
 use lvhv_core::jd::{date_from_jdn, fmt_date, jd_to_datetime, jdn_from_date};
 use lvhv_core::lunar::new_moons_between;
 use lvhv_core::{
-    activities, day_ctx_jdn_with, day_info_with, find_good_days_with, solar_terms_of_year,
+    activities, day_ctx_jdn_with, day_info_with, find_good_days_with, solar_terms_of_year_with,
     tet_with, DateError, Method, SolarDate, DEFAULT_METHOD, MAX_SPAN_DAYS, MAX_YEAR, MIN_YEAR,
     TERM_NAMES,
 };
@@ -13,7 +13,7 @@ use std::io::{self, BufWriter, Write};
 use std::process::ExitCode;
 use std::time::Instant;
 
-const USAGE: &str = "Cách dùng: lvhv-dump [--method hnd|precise] LỆNH ...  (mặc định: precise)
+const USAGE: &str = "Cách dùng: lvhv-dump [--method hnd|precise|jpl] LỆNH ...  (mặc định: precise)
   lvhv-dump lunar-csv FROM TO          (ngày dạng YYYY-MM-DD)
   lvhv-dump dayinfo-jsonl FROM TO
   lvhv-dump tet FROM_YEAR TO_YEAR
@@ -23,6 +23,9 @@ const USAGE: &str = "Cách dùng: lvhv-dump [--method hnd|precise] LỆNH ...  (
         (JSONL; \"all\" = mọi việc; khoảng dài hơn 366 ngày được chia khúc 366 ngày,
          mỗi khúc sắp riêng; BIRTH_LUNAR_YEAR là năm ÂM lịch của ngày sinh)
   lvhv-dump bench
+`terms`: hnd và precise cùng mô hình Mặt Trời (docs/03 §6); jpl theo bảng DE441 (docs/03 §17).
+`lunar-csv` (mọi phương pháp) là kết xuất hộp đen: ngày dương, năm/tháng/ngày âm, nhuận, Can Chi
+năm/tháng/ngày, tiết khí đang hiệu lực (docs/03 §17.9).
 Ngày/năm hợp lệ: 1900-01-01 … 3000-12-31.
 Giờ trong `terms`/`newmoons` là giờ lịch: +07:45:40 (Bắc Kinh) trước 1929, +08:00 1929–1967,
 +07:00 từ 1968-01-01 (docs/03 §16);
@@ -164,14 +167,14 @@ fn tet_csv(out: &mut impl Write, mt: Method, a: i32, b: i32) -> io::Result<()> {
     Ok(())
 }
 
-fn terms_csv(out: &mut impl Write, a: i32, b: i32) -> io::Result<()> {
+fn terms_csv(out: &mut impl Write, mt: Method, a: i32, b: i32) -> io::Result<()> {
     if jdn_from_date(a, 1, 1) < TZ_SWITCH_JDN {
         writeln!(out, "year,term_name,date_local,datetime_local")?;
     } else {
         writeln!(out, "year,term_name,date_utc7,datetime_utc7")?;
     }
     for y in a..=b {
-        for t in solar_terms_of_year(y).map_err(core_err)? {
+        for t in solar_terms_of_year_with(mt, y).map_err(core_err)? {
             let (yy, mm, dd) = date_from_jdn(t.local_jdn());
             writeln!(
                 out,
@@ -269,6 +272,7 @@ fn run(args: &[String]) -> Result<(), String> {
             let mt = match v.as_str() {
                 "hnd" => Method::Hnd,
                 "precise" => Method::Precise,
+                "jpl" => Method::Jpl,
                 _ => return Err(format!("phương pháp không hợp lệ: {v}\n{USAGE}")),
             };
             (mt, rest)
@@ -289,7 +293,7 @@ fn run(args: &[String]) -> Result<(), String> {
             tet_csv(&mut out, mt, parse_year(a)?, parse_year(b)?).map_err(io_err)
         }
         [c, a, b] if c == "terms" => {
-            terms_csv(&mut out, parse_year(a)?, parse_year(b)?).map_err(io_err)
+            terms_csv(&mut out, mt, parse_year(a)?, parse_year(b)?).map_err(io_err)
         }
         [c, a, b] if c == "newmoons" => {
             newmoons_csv(&mut out, mt, parse_year(a)?, parse_year(b)?).map_err(io_err)

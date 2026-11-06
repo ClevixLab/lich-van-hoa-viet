@@ -2,7 +2,7 @@
 # Chặn trôi dạt Rust ↔ TypeScript (L7, L12, RS-12, DUYET-MA §4) và kiểm L13.
 #
 # 1. Build lvhv-dump (release) từ lõi HIỆN TẠI.
-# 2. Sinh MỚI vào thư mục tạm (không đọc tệp vàng core/out/ đã commit), cho cả hai phương pháp:
+# 2. Sinh MỚI vào thư mục tạm (không đọc tệp vàng core/out/ đã commit), cho cả ba phương pháp (hnd, precise, jpl):
 #      dayinfo-jsonl 1900-01-01 … 3000-12-31, tet 1900 … 1999 và 2000 … 3000,
 #      gooddays mẫu: mọi việc × 2026-01-01 … 2026-12-31 × (không tuổi, năm âm 1976).
 # 3. Build tsport và so từng byte (tsport/test/compare.mjs với LVHV_GOLDEN_DIR) + test đầu vào xấu.
@@ -15,7 +15,7 @@
 #    upcoming 2026–2036 (R11), r10 a–d, r12 --steps, ics (bộ R3 và tệp ví dụ), derive; + test đơn vị TS.
 # Thoát khác 0 nếu có bất kỳ sai lệch nào.
 #
-# Cách dùng (từ bất kỳ đâu):  scripts/check-parity.sh            # cả hai phương pháp
+# Cách dùng (từ bất kỳ đâu):  scripts/check-parity.sh            # cả ba phương pháp
 #                             scripts/check-parity.sh --method hnd
 #                             KEEP=1 scripts/check-parity.sh     # giữ thư mục tạm để xem
 #                             scripts/check-parity.sh --memorial-only   # chỉ phần 6 (~6 phút)
@@ -26,7 +26,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-METHODS=(hnd precise)
+METHODS=(hnd precise jpl)
 MEMORIAL_ONLY=""
 if [[ "${1:-}" == "--method" ]]; then METHODS=("${2:?thiếu tên phương pháp}"); fi
 if [[ "${1:-}" == "--memorial-only" ]]; then MEMORIAL_ONLY=1; fi
@@ -104,6 +104,7 @@ for m in "${METHODS[@]}"; do
   case "$m" in
     hnd) dir="$TMP" ;;
     precise) dir="$TMP/precise" ;;
+    jpl) dir="$TMP/jpl" ;;
     *) echo "[parity] phương pháp không hợp lệ: $m" >&2; exit 2 ;;
   esac
   log "sinh dữ liệu Rust ($m) → $dir"
@@ -134,7 +135,8 @@ fi
 # L13: số dòng của 1900-01-01 … 1999-12-31 = JDN(2000-01-01) − JDN(1900-01-01) = 36524.
 PRE2000_LINES=36524
 for m in "${METHODS[@]}"; do
-  case "$m" in hnd) dir="$TMP" ;; precise) dir="$TMP/precise" ;; esac
+  # L13 không áp dụng cho Jpl (docs/02 A4 mục 4; L16 thay thế — docs/reports/BAO-CAO-JPL-L16.md).
+  case "$m" in hnd) dir="$TMP" ;; precise) dir="$TMP/precise" ;; jpl) continue ;; esac
   base="core/out/baseline-2000-3000/$m.jsonl.gz"
   log "L13: 2000–3000 ($m) so với $base"
   if [[ ! -f "$base" ]]; then

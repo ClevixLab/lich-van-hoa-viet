@@ -194,7 +194,7 @@ function parsePerson(v: JValue): Person {
     const ls = fStr(d, "lunar_source");
     if (ls !== "entered" && ls !== "converted") bad("lunar_source");
     const me = fStr(d, "method");
-    if (me !== "precise" && me !== "hnd") bad("method");
+    if (me !== "precise" && me !== "hnd" && me !== "jpl") bad("method");
     const lb = fStr(t, "label");
     if (lb !== "huong_tho" && lb !== "huong_duong") bad("label");
     death = {

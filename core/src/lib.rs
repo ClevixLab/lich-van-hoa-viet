@@ -16,6 +16,7 @@ pub mod dayinfo;
 pub mod error;
 pub mod gooddays;
 pub mod jd;
+pub mod jpl;
 pub mod lunar;
 pub mod terms;
 
@@ -35,7 +36,7 @@ pub use lunar::{
     lunar_to_solar_with, lunar_year_of_birth, lunar_year_of_birth_with, solar_to_lunar,
     solar_to_lunar_with, LunarDate, Method, SolarDate, DEFAULT_METHOD,
 };
-pub use terms::{solar_terms_of_year, SolarTerm, TERM_NAMES};
+pub use terms::{solar_terms_of_year, solar_terms_of_year_with, SolarTerm, TERM_NAMES};
 
 /// Ngày Tết Nguyên đán (mùng 1 tháng 1 âm, không nhuận) của năm âm `ly`.
 /// `Err(OutOfRange)` nếu `ly` ngoài 1900–3000 (Tết của năm âm 1900…3000 đều nằm trong miền;

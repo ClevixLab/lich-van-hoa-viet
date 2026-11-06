@@ -56,9 +56,11 @@ impl Cal {
     pub fn get(method: Method) -> &'static Cal {
         static HND: OnceLock<Cal> = OnceLock::new();
         static PRECISE: OnceLock<Cal> = OnceLock::new();
+        static JPL: OnceLock<Cal> = OnceLock::new();
         match method {
             Method::Hnd => HND.get_or_init(|| Cal::build(Method::Hnd)),
             Method::Precise => PRECISE.get_or_init(|| Cal::build(Method::Precise)),
+            Method::Jpl => JPL.get_or_init(|| Cal::build(Method::Jpl)),
         }
     }
 

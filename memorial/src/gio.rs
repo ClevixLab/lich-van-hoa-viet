@@ -491,10 +491,11 @@ pub fn default_cal() -> &'static Cal {
     Cal::get(DEFAULT_METHOD)
 }
 
-/// Phương pháp từ tên (`"precise"`/`"hnd"`).
+/// Phương pháp từ tên (`"precise"`/`"hnd"`/`"jpl"`).
 pub fn method_name(m: Method) -> &'static str {
     match m {
         Method::Precise => "precise",
         Method::Hnd => "hnd",
+        Method::Jpl => "jpl",
     }
 }

@@ -2,24 +2,27 @@
 // Rust: "hnd" (Hồ Ngọc Đức, kept for comparison) and "precise" (default since A3) (Meeus ch.49 full + ΔT Espenak–Meeus; Trung khí
 // from the apparent solar longitude used for the displayed solar terms).
 
-import { apparentSunLongitudeUt, hndNewMoon, hndNewMoonDay, hndSunSector, localDayOf, localMidnightUt, preciseNewMoonUt } from "./astro.ts";
+import { apparentSunLongitudeUt, hndNewMoon, hndSunSector, localDayOf, localMidnightUt, preciseNewMoonUt } from "./astro.ts";
 import {
   BIRTH_MIN_YEAR, INTERNAL_MAX_YY, INTERNAL_MIN_YY, MAX_LUNAR_YEAR, MAX_YEAR, MIN_LUNAR_YEAR, MIN_YEAR,
   checkJdn, computation, invalidArgument, invalidDate, jdnInRange, outOfRange,
 } from "./error.ts";
 import { dateFromJdn, isValidSolar, jdnFromDate } from "./jd.ts";
+import { jplNewMoonUt, jplTermAt } from "./jpl.ts";
 
-/** Rust `Method` (`Method::Hnd` = "hnd", `Method::Precise` = "precise"). */
-export type Method = "hnd" | "precise";
+/** Rust `Method` (`Method::Hnd` = "hnd", `Method::Precise` = "precise", `Method::Jpl` = "jpl"). */
+export type Method = "hnd" | "precise" | "jpl";
 
 /** Rust `DEFAULT_METHOD` (currently `Method::Precise`, docs/02 Bổ sung A3). */
 export const DEFAULT_METHOD: Method = "precise";
+// Switch to "jpl" ONLY after L14–L17 PASS and L12, P1, P3 still PASS (docs/02 A4 item 4), together with Rust:
+// export const DEFAULT_METHOD: Method = "jpl";
 
 export function isMethod(v: unknown): v is Method {
-  return v === "hnd" || v === "precise";
+  return v === "hnd" || v === "precise" || v === "jpl";
 }
 
-/** Throws InvalidArgument unless `m` is "hnd" | "precise" (Rust's enum makes this impossible). */
+/** Throws InvalidArgument unless `m` is "hnd" | "precise" | "jpl" (Rust's enum makes this impossible). */
 export function checkMethod(m: unknown): Method {
   if (!isMethod(m)) throw invalidArgument(`phương pháp ${String(m)}`);
   return m;
@@ -27,17 +30,27 @@ export function checkMethod(m: unknown): Method {
 
 /** Day (JDN, UTC+7) containing new moon k (Rust `new_moon_day`). */
 export function newMoonDay(method: Method, k: number): number {
-  return method === "hnd" ? hndNewMoonDay(k) : localDayOf(preciseNewMoonUt(k));
+  return localDayOf(newMoonUtWith(method, k));
 }
 
 /** New moon k as JD UT (Rust `new_moon_ut_with`). */
 export function newMoonUtWith(method: Method, k: number): number {
+  if (method === "jpl") {
+    const t = jplNewMoonUt(k);
+    if (t === null) throw outOfRange();
+    return t;
+  }
   return method === "hnd" ? hndNewMoon(k) : preciseNewMoonUt(k);
 }
 
 /** 30° sector (0..11) of the Sun at 00:00 UTC+7 of `jdn` (Rust `sun_sector`). */
 export function sunSector(method: Method, jdn: number): number {
   if (method === "hnd") return hndSunSector(jdn);
+  if (method === "jpl") {
+    const i = jplTermAt(localMidnightUt(jdn));
+    if (i === null) throw outOfRange();
+    return Math.trunc(i / 2);
+  }
   const l = apparentSunLongitudeUt(localMidnightUt(jdn));
   // Rust: `((l / 30.0).floor() as i32).rem_euclid(12)` (C-6).
   const s = Math.floor(l / 30.0);
