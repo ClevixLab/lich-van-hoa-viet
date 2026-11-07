@@ -280,7 +280,7 @@ pub fn store_open_message(e: &lvhv_ffi::LvhvDataError) -> String {
             .into(),
         _ => format!(
             "Chưa chuyển được dữ liệu Người thân sang bản này. Dữ liệu cũ của bạn vẫn còn nguyên trên máy — ứng dụng \
-             không sửa và không xóa gì, và tạm để mục Người thân ở chế độ chỉ xem. Để giữ một bản dự phòng, hãy bấm \
+             không sửa và không xóa gì, và tạm khóa mục Người thân để không ghi thêm gì cho tới bản sửa. Để giữ một bản dự phòng, hãy bấm \
              \u{201c}Mở thư mục dữ liệu\u{201d} rồi chép cả thư mục sang USB hoặc ổ khác. Lịch vẫn dùng được bình \
              thường. (Chi tiết kỹ thuật: {e})"
         ),

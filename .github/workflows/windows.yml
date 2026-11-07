@@ -102,7 +102,7 @@ jobs:
           Add-Type -AssemblyName System.Drawing
           $shots = Get-ChildItem $out -Filter *.png -ErrorAction SilentlyContinue
           $shots | ForEach-Object { $i = [System.Drawing.Image]::FromFile($_.FullName); "{0}  {1}x{2}  {3:N0} byte" -f $_.Name, $i.Width, $i.Height, $_.Length; $i.Dispose() }
-          if ($shots.Count -lt 188) { Write-Host "::error::Chỉ có $($shots.Count)/188 ảnh"; exit 1 }
+          if ($shots.Count -lt 192) { Write-Host "::error::Chỉ có $($shots.Count)/192 ảnh"; exit 1 }
           $small = $shots | Where-Object { $_.Length -lt 20000 }
           if ($small) { Write-Host "::error::Ảnh quá nhỏ (có thể trống): $($small.Name -join ', ')"; exit 1 }
 
@@ -205,11 +205,19 @@ jobs:
           New-Item -ItemType Directory -Force $r | Out-Null
           function Log($s) { Add-Content -Path $out -Value $s -Encoding utf8; Write-Host $s }
           function Fail($s) { Log "R14 Windows: KHÔNG ĐẠT — $s"; Write-Host "::error::R14: $s"; exit 1 }
-          function Arp { @(Get-ChildItem 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall' -ErrorAction SilentlyContinue | ForEach-Object { Get-ItemProperty $_.PSPath } | Where-Object { $_.DisplayName -eq 'Lich va Van hoa Viet' }) }
+          # Sản phẩm đang cài theo UpgradeCode (Windows Installer; MSI theo người dùng không nằm ở khóa Uninstall của HKCU).
+          function Arp {
+            $inst = New-Object -ComObject WindowsInstaller.Installer
+            $list = $inst.GetType().InvokeMember('RelatedProducts', 'GetProperty', $null, $inst, @('{6B1D2C5E-7A0F-4C8B-9E3D-2F4A6B8C1D01}'))
+            $out = @()
+            $n = $list.GetType().InvokeMember('Count', 'GetProperty', $null, $list, $null)
+            for ($k = 0; $k -lt $n; $k++) { $code = $list.GetType().InvokeMember('Item', 'GetProperty', $null, $list, @($k)); $out += [pscustomobject]@{ Code = $code; Version = $inst.GetType().InvokeMember('ProductInfo', 'GetProperty', $null, $inst, @($code, 'VersionString')) } }
+            return ,$out
+          }
           function Msi($verb, $file, $tag) {
             $log = Join-Path $r "$tag.log"
             $p = Start-Process msiexec.exe -ArgumentList $verb, "`"$file`"", '/qn', '/l*v', "`"$log`"" -Wait -PassThru
-            Log "msiexec $verb $(Split-Path $file -Leaf): mã $($p.ExitCode)"
+            Log "msiexec $verb $tag ($(Split-Path $file -Leaf)): mã $($p.ExitCode)"
             if ($p.ExitCode -ne 0 -and $p.ExitCode -ne 3010) { Get-Content $log -Tail 40; Fail "msiexec $verb $tag thoát mã $($p.ExitCode)" }
           }
           function Run($exe, $argv, $tag) {
@@ -232,6 +240,9 @@ jobs:
           if ($LASTEXITCODE -ne 0) { Fail "không tải được LichViet-0.1.4-x64.msi" }
           Msi '/i' (Join-Path $r 'LichViet-0.1.4-x64.msi') 'cai-0.1.4'
           $ov = (Get-Item $prog).VersionInfo.ProductVersion
+          $old = Arp
+          if ($old.Count -ne 1) { Fail "sau khi cài 0.1.4 thấy $($old.Count) sản phẩm" }
+          Log "Sản phẩm 0.1.4: $($old[0].Code) $($old[0].Version)"
           Log "Đã cài bản cũ: LichViet.exe $ov"
           if (-not ($ov -like '0.1.4*')) { Fail "bản cũ có ProductVersion $ov" }
           # Bản 0.1.4 chạy được (8 giây) rồi tắt.
@@ -255,8 +266,9 @@ jobs:
           # 3) Cài MSI mới đè lên (nâng cấp lớn; cùng số phiên bản cũng phải nâng cấp chứ không cài song song).
           Msi '/i' (Resolve-Path "dist\LichViet-$env:VERSION-x64.msi").Path 'cai-moi'
           $a = Arp
-          Log "Mục trong Apps & features: $($a.Count) ($(($a | ForEach-Object { $_.DisplayVersion }) -join ', '))"
+          Log "Sản phẩm đã cài (cùng UpgradeCode): $($a.Count) ($(($a | ForEach-Object { "$($_.Code) $($_.Version)" }) -join ', '))"
           if ($a.Count -ne 1) { Fail "có $($a.Count) bản cài sau khi nâng cấp" }
+          if ($a[0].Code -eq $old[0].Code) { Fail "sản phẩm 0.1.4 chưa bị thay (nâng cấp lớn không chạy)" }
           if ((Get-FileHash $prog).Hash -ne (Get-FileHash $zexe).Hash) { Fail "LichViet.exe đã cài không phải bản mới" }
           Log "LichViet.exe đã cài là bản mới ($((Get-Item $prog).VersionInfo.FileVersion))"
 

@@ -1531,15 +1531,22 @@ component Dialog inherits Rectangle {
     }
 }
 
+// R14: kho không mở được → chỉ còn đầu trang và khung báo (không hiện ô cài đặt hay nút tạo dữ liệu mới).
+component StoreFailedPage inherits PPage {
+    maxw: 1000px;
+    Head { }
+}
+
 export component PeopleView inherits Rectangle {
-    if People.page == "sap-toi": UpcomingPage { }
-    if People.page == "theo-ky": PeriodPage { }
-    if People.page == "ho-so": ListPage { }
-    if People.page == "sao-luu": BackupPage { }
-    if People.page == "nguoi": PersonPage { }
-    if People.page == "form": PersonFormPage { }
-    if People.page == "bao-tu": MarkDeceasedPage { }
-    if People.page == "su-kien": EventFormPage { }
-    if People.page == "tuong-niem": MemorialPage { }
+    if People.store-failed: StoreFailedPage { }
+    if !People.store-failed && People.page == "sap-toi": UpcomingPage { }
+    if !People.store-failed && People.page == "theo-ky": PeriodPage { }
+    if !People.store-failed && People.page == "ho-so": ListPage { }
+    if !People.store-failed && People.page == "sao-luu": BackupPage { }
+    if !People.store-failed && People.page == "nguoi": PersonPage { }
+    if !People.store-failed && People.page == "form": PersonFormPage { }
+    if !People.store-failed && People.page == "bao-tu": MarkDeceasedPage { }
+    if !People.store-failed && People.page == "su-kien": EventFormPage { }
+    if !People.store-failed && People.page == "tuong-niem": MemorialPage { }
     if People.dlg != "": Dialog { }
 }

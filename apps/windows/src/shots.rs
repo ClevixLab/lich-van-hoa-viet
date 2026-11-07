@@ -499,6 +499,25 @@ fn steps(ui: &AppWindow, st: Rc<RefCell<State>>) -> Vec<Step> {
             v.push((format!("_a3-{name}"), Box::new(move |ui: &AppWindow| act(ui))));
         }
     }
+    // R14: khung báo chỉ xem khi chuyển đổi lược đồ lỗi (câu lấy từ people::store_open_message). Bước cuối vì nó bỏ kho.
+    {
+        let ps = st.borrow().people.clone();
+        v.push(("nt-23-chuyen-doi-loi-sang".to_string(), Box::new(move |ui: &AppWindow| {
+            theme(ui, false);
+            Theme::get(ui).set_scale(1.0);
+            ui.set_size(1);
+            ui.set_tab(4);
+            let mut g = ps.borrow_mut();
+            let e = lvhv_ffi::LvhvDataError::Storage("Lỗi lưu trữ: table meta already exists".into());
+            g.store = None;
+            g.store_failed = Some(people::store_open_message(&e));
+            people::go(ui, &mut g, "sap-toi");
+            let p = People::get(ui);
+            p.set_has_any(false);
+            p.set_scroll_frac(0.0);
+        })));
+        v.push(("nt-23-chuyen-doi-loi-toi".to_string(), Box::new(|ui: &AppWindow| theme(ui, true))));
+    }
     let _ = ui;
     v
 }
