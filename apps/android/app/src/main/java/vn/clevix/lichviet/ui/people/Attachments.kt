@@ -89,12 +89,21 @@ fun readPdf(ctx: Context, uri: Uri): PendingAtt {
     return PendingAtt("application/pdf", displayName(ctx, uri), bytes)
 }
 
-/** `%PDF-` ở đầu tệp, 1 byte … 10 MB. */
+/**
+ * Như `media::check_attachment` của lõi (lõi kiểm lại khi lưu): `%PDF-` ở đầu, `%%EOF` trong 1 024 byte cuối (tệp không
+ * bị cụt — MA3C-24-03), 1 byte … 10 MB. Kiểm ngay khi chọn để báo lỗi sớm.
+ */
 fun checkPdf(bytes: ByteArray) {
     if (bytes.isEmpty() || bytes.size > MAX_PDF) throw Photos.PhotoError("Tệp PDF lớn hơn 10 MB — hãy chọn tệp nhỏ hơn")
     val head = String(bytes, 0, minOf(5, bytes.size), Charsets.ISO_8859_1)
     if (head != "%PDF-") throw Photos.PhotoError("Tệp này không phải PDF hợp lệ")
+    val from = maxOf(0, bytes.size - PDF_EOF_WINDOW)
+    val tail = String(bytes, from, bytes.size - from, Charsets.ISO_8859_1)
+    if (!tail.contains("%%EOF")) throw Photos.PhotoError("Tệp PDF này bị thiếu phần cuối (có thể tải chưa xong) — hãy chọn lại tệp đầy đủ")
 }
+
+/** `%%EOF` phải nằm trong ngần này byte cuối (= `PDF_EOF_WINDOW` của lõi). */
+const val PDF_EOF_WINDOW = 1024
 
 /** Ảnh đính kèm: giải mã + xoay + thu cạnh dài ≤ 2048 + JPEG ≤ 2 MB, bỏ siêu dữ liệu (01 §3.8a, S9). */
 fun readImageAtt(ctx: Context, uri: Uri): PendingAtt {

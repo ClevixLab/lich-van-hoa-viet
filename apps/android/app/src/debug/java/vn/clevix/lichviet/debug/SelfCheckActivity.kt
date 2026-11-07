@@ -36,8 +36,9 @@ import vn.clevix.lichviet.people.s
  * - verify-migrated: CI đã chép kho thật của bản 0.2-dev (bộ mẫu đóng băng `0.2-dev-before-attachments`, phiên bản 1) và
  *   tệp kỳ vọng `files/r14-expected.json` vào máy; mở bằng bản này → `migrated`, dữ liệu đúng từng trường như tệp kỳ
  *   vọng (cùng tệp bản Rust và bản web phải ra), từng tệp đính kèm đúng sha256, có bản sao dữ liệu cũ (R14 (c)).
- * - verify-readonly: kho phiên bản 1 có một hồ sơ không qua được kiểm tra sau chuyển đổi → `read_only`: dữ liệu cũ
- *   còn nguyên và xem được, mọi thao tác ghi bị từ chối, vẫn tạo được tệp sao lưu (B5 mục 3).
+ * - verify-readonly: bước chuyển 1 → 2 lỗi (CI thêm trigger chặn ghi bảng `meta`) → `read_only`: dữ liệu cũ xem được,
+ *   mọi thao tác ghi bị từ chối; tệp sao lưu xuất ra mở lại được trọn vẹn và nhập vào kho trống cho đúng trạng thái kỳ
+ *   vọng (B5 mục 3, MA3C-24-01). CI so thêm từng dòng mọi bảng và từng ảnh của kho trước/sau.
  */
 class SelfCheckActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -244,12 +245,36 @@ class SelfCheckActivity : Activity() {
             if (n == 0) return "FAIL không xem được dữ liệu cũ"
             val write = runCatching { repo.putSettings(repo.settings()) }
             if (write.isSuccess) return "FAIL ghi được khi chỉ đọc"
+            val photos = parseObj(repo.datasetJson()).objs("photos").size
             val bytes = runCatching { repo.exportBackup("mật khẩu thử nghiệm", "r14") }
             if (bytes.isFailure) return "FAIL không xuất được sao lưu: ${bytes.exceptionOrNull()?.message}"
-            val b = bytes.getOrThrow()
-            val head = runCatching { PeopleRepo.checkBackupHeader(b.copyOf(72), b.size.toLong()) }
-            if (head.isFailure) return "FAIL tệp sao lưu hỏng phần đầu: ${head.exceptionOrNull()?.message}"
-            return "OK read_only: $n người xem được, ghi bị từ chối, tạo được tệp sao lưu ${b.size} byte; ${st.message}"
+            // MA3C-24-01: mở lại trọn vẹn tệp vừa xuất (giải mã + kiểm toàn bộ qua lõi), nhập vào một kho trống của bản này
+            // rồi so từng hồ sơ, sự kiện, loại sự kiện với tệp kỳ vọng chung và từng tệp đính kèm theo sha256.
+            val (v, pv) = runCatching { PeopleRepo.openBackupFile(bytes.getOrThrow(), "mật khẩu thử nghiệm") }
+                .getOrElse { return "FAIL tệp sao lưu xuất từ chế độ chỉ đọc không mở được: ${it.message}" }
+            if (pv.persons.toInt() != n || pv.photos.toInt() != photos) {
+                v.destroy()
+                return "FAIL tệp sao lưu có ${pv.persons} người, ${pv.photos} ảnh; kho có $n người, $photos ảnh"
+            }
+            val dir = File(ctx.cacheDir, "r14-import").apply { deleteRecursively(); mkdirs() }
+            val fresh = PeopleRepo(vn.clevix.lichviet.core.LvhvStore.open(dir.absolutePath))
+            runCatching { fresh.applyImport(v, true) }.also { v.destroy() }
+                .onFailure { return "FAIL không nhập được tệp sao lưu vào kho trống: ${it.message}" }
+            val exp = File(ctx.filesDir, "r14-expected.json")
+            if (!exp.exists()) return "FAIL thiếu tệp kỳ vọng"
+            val want = parseObj(exp.readText()).o("state") ?: return "FAIL tệp kỳ vọng hỏng"
+            val got = parseObj(fresh.datasetJson())
+            for (k in listOf("persons", "events", "event_types")) diff(want[k], got[k], "/$k")?.let { return "FAIL sao lưu → nhập khác kỳ vọng tại $it" }
+            val wantSha = want.objs("attachments").map { it.s("sha256") }.sorted()
+            val gotAtt = got.objs("attachments")
+            if (gotAtt.map { it.s("sha256") }.sorted() != wantSha) return "FAIL tệp đính kèm sau nhập khác kỳ vọng"
+            for (a in gotAtt) {
+                val b = fresh.attachmentBytes(a.s("id")) ?: return "FAIL mất tệp đính kèm ${a.s("id")} sau nhập"
+                if (sha(b) != a.s("sha256")) return "FAIL sha256 tệp đính kèm ${a.s("id")} sau nhập"
+            }
+            dir.deleteRecursively()
+            return "OK read_only: $n người xem được, ghi bị từ chối; tệp sao lưu mở lại được ($n người, $photos ảnh), " +
+                "nhập vào kho trống khớp kỳ vọng (${gotAtt.size} tệp đính kèm đúng sha256); ${st.message}"
         }
 
         /** Giá trị CI ghi vào shared_prefs/hien_thi.xml trước khi cài đè (cỡ chữ A++, giao diện tối, "Để sau"). */

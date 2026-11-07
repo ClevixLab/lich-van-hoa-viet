@@ -32,19 +32,36 @@ class MigrationTest {
             return d
         }
 
+        /** Trigger chặn ghi bảng `meta` (như Windows `upgrade.rs`): bước chuyển 1 → 2 lỗi ở câu SQL cuối giao dịch. */
+        const val FAIL_TRIGGER =
+            "CREATE TRIGGER kiem_dinh_loi_chuyen_doi BEFORE INSERT ON meta BEGIN SELECT RAISE(ABORT, 'kiểm định: lỗi chuyển đổi'); END;"
+
         /**
-         * Làm hỏng một hồ sơ trong kho phiên bản 1 như store/tests/released.rs: chuỗi chưa cắt khoảng trắng → bước kiểm
-         * 01 §6.2 sau chuyển đổi thất bại (cần công cụ sqlite3 của máy dựng).
+         * Làm bước chuyển đổi lỗi thật mà dữ liệu cũ vẫn hợp lệ (`force_migration_failure` của lõi không có qua FFI) —
+         * cần công cụ sqlite3 của máy dựng.
          */
-        fun breakOnePerson(dir: File) {
-            val p = runCatching {
-                ProcessBuilder(
-                    "sqlite3", File(dir, "lvhv.sqlite").path,
-                    "UPDATE person SET json = json_set(json, '$.death.notice.place', '  Quê nhà') WHERE id = '0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e02';",
-                ).redirectErrorStream(true).start()
-            }.getOrNull()
+        fun breakMigration(dir: File) = sqlite(dir, FAIL_TRIGGER)
+
+        fun sqlite(dir: File, sql: String): String {
+            val p = runCatching { ProcessBuilder("sqlite3", File(dir, "lvhv.sqlite").path, sql).redirectErrorStream(true).start() }.getOrNull()
+            val out = p?.inputStream?.bufferedReader()?.readText() ?: ""
             assumeTrue("cần công cụ sqlite3", p != null && p.waitFor() == 0)
+            return out
         }
+
+        /** Bản sao JSON với khóa đối tượng được sắp (so sánh không phụ thuộc thứ tự khóa); số → Double. */
+        fun sorted(v: Any?): Any? = when (v) {
+            is Map<*, *> -> java.util.TreeMap<String, Any?>().apply { v.forEach { (k, x) -> put(k.toString(), sorted(x)) } }
+            is List<*> -> v.map { sorted(it) }
+            is Number -> v.toDouble()
+            else -> v
+        }
+
+        /** Nội dung mọi bảng dữ liệu của kho (như `db_content` của Windows / `.dump` của các bảng). */
+        fun content(dir: File): String =
+            listOf("settings", "photo", "person", "event_type", "event", "event_person", "meta").joinToString("\n") { t ->
+                "## $t\n" + sqlite(dir, "SELECT * FROM $t ORDER BY 1;")
+            } + "\nuser_version=" + sqlite(dir, "PRAGMA user_version;")
     }
 
     @Test
@@ -67,7 +84,9 @@ class MigrationTest {
     @Test
     fun failedMigrationIsReadOnly() {
         val dir = copyFixture()
-        breakOnePerson(dir)
+        breakMigration(dir)
+        val before = content(dir)
+        val photosBefore = File(dir, "photos").listFiles()!!.associate { it.name to it.readBytes().contentHashCode() }
         val repo = PeopleRepo(LvhvStore.open(dir.absolutePath))
         val st = repo.migration()
         assertEquals("read_only", st.state)
@@ -75,10 +94,37 @@ class MigrationTest {
         assertTrue(!st.message.isNullOrBlank())
         assertEquals(3, repo.persons().size)
         assertTrue("ghi phải bị từ chối", runCatching { repo.putSettings(repo.settings()) }.isFailure)
-        // Vẫn tạo được tệp sao lưu (phần đầu hợp lệ). Như store/tests/released.rs: hồ sơ hỏng vẫn bị kiểm khi nhập, nên
-        // mở lại tệp này báo lỗi cho tới khi dữ liệu được sửa.
+        // Kho cũ giữ nguyên từng dòng mọi bảng, từng ảnh; không có tệp đính kèm mồ côi.
+        assertEquals(before, content(dir))
+        assertEquals(photosBefore, File(dir, "photos").listFiles()!!.associate { it.name to it.readBytes().contentHashCode() })
+        assertTrue(File(dir, "attachments").listFiles().isNullOrEmpty())
+        // Tệp sao lưu xuất từ chế độ chỉ đọc mở lại được trọn vẹn; nhập vào kho trống của bản mới → đúng trạng thái kỳ vọng.
         val bytes = repo.exportBackup("mật khẩu thử nghiệm", "0.0.0")
-        PeopleRepo.checkBackupHeader(bytes.copyOf(72), bytes.size.toLong())
-        assertTrue(runCatching { PeopleRepo.openBackupFile(bytes, "mật khẩu thử nghiệm") }.isFailure)
+        val (v, pv) = PeopleRepo.openBackupFile(bytes, "mật khẩu thử nghiệm")
+        assertEquals(3, pv.persons.toInt())
+        assertEquals(2, pv.photos.toInt())
+        val fresh = PeopleRepo(LvhvStore.open(Files.createTempDirectory("lvhv-r14-import").toFile().absolutePath))
+        fresh.applyImport(v, replace = true)
+        v.destroy()
+        val exp = parseObj(File(FIX, "../../expected/0.2-dev-before-attachments.json").readText()).o("state")!!
+        val got = parseObj(fresh.datasetJson())
+        for (k in listOf("persons", "events", "event_types")) assertEquals(k, JsonW.write(sorted(exp[k])), JsonW.write(sorted(got[k])))
+        val att = got.objs("attachments")
+        assertEquals(exp.objs("attachments").map { it.s("sha256") }.sorted(), att.map { it.s("sha256") }.sorted())
+        for (a in att) {
+            val b = fresh.attachmentBytes(a.s("id"))!!
+            val sha = java.security.MessageDigest.getInstance("SHA-256").digest(b).joinToString("") { "%02x".format(it) }
+            assertEquals(a.s("sha256"), sha)
+        }
+    }
+
+    @Test
+    fun truncatedPdfIsRejected() {
+        val repo = Seed.newRepo()
+        val cut = Seed.PDF.copyOf(Seed.PDF.size - 7) // mất "%%EOF\n"
+        assertTrue(runCatching { vn.clevix.lichviet.ui.people.checkPdf(cut) }.isFailure)
+        vn.clevix.lichviet.ui.people.checkPdf(Seed.PDF)
+        // Lõi cũng từ chối khi lưu (media::check_attachment).
+        assertTrue(runCatching { repo.addAttachment("application/pdf", null, cut) }.isFailure)
     }
 }

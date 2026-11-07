@@ -9,7 +9,8 @@
 # Ca dữ liệu người thân: bản có mô-đun tạo đủ loại dữ liệu bằng màn tự kiểm (chỉ có ở bản debug), hủy báo
 #   thức, cài đè, rồi kiểm từng bản ghi, từng ảnh/tệp đính kèm và báo thức đã được ứng dụng tự đặt lại.
 # Ca chuyển đổi: kho SQLite thật của bản 0.2-dev (bộ mẫu đóng băng, phiên bản 1) → bản này: đúng tệp kỳ vọng chung.
-# Ca chuyển đổi lỗi: kho phiên bản 1 có hồ sơ không hợp lệ → quay lui, chỉ đọc, xem được, xuất sao lưu được.
+# Ca chuyển đổi lỗi (trigger chặn ghi `meta`): quay lui, chỉ đọc, kho giống hệt từng dòng/từng ảnh, tệp sao lưu mở lại
+#   được và nhập vào kho trống cho đúng trạng thái kỳ vọng.
 set -uo pipefail
 PKG=vn.clevix.lichviet.debug
 MAIN="$PKG/vn.clevix.lichviet.MainActivity"
@@ -104,21 +105,37 @@ adb logcat -d -s AndroidRuntime:E | grep -q "vn.clevix.lichviet" && fail "ứng 
 end
 
 say "Ca chuyển đổi lỗi: quay lui, chế độ chỉ đọc, vẫn xuất sao lưu"
-# Lõi chỉ có tùy chọn buộc lỗi ở API Rust (OpenOptions::force_migration_failure, không qua FFI). Ở đây làm lỗi bằng dữ
-# liệu như store/tests/released.rs: một chuỗi chưa cắt khoảng trắng trong kho phiên bản 1 → kiểm 01 §6.2 sau chuyển đổi lỗi.
+# Lõi chỉ có tùy chọn buộc lỗi ở API Rust (OpenOptions::force_migration_failure, không qua FFI). Như Windows (upgrade.rs):
+# thêm trigger chặn ghi bảng `meta` → bước chuyển 1 → 2 lỗi thật ở câu SQL cuối giao dịch, dữ liệu cũ vẫn hợp lệ.
 BAD="$(mktemp -d)"; cp -r "$FIX/store/." "$BAD/"
-sqlite3 "$BAD/lvhv.sqlite" "UPDATE person SET json = json_set(json, '\$.death.notice.place', '  Quê nhà') WHERE id = '0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e02';" \
+sqlite3 "$BAD/lvhv.sqlite" "CREATE TRIGGER kiem_dinh_loi_chuyen_doi BEFORE INSERT ON meta BEGIN SELECT RAISE(ABORT, 'kiểm định: lỗi chuyển đổi'); END;" \
   || fail "không sửa được bản sao bộ mẫu"
-BEFORE="$(sha256sum "$BAD/lvhv.sqlite" | cut -c1-64)"
+# Nội dung từng dòng mọi bảng + phiên bản (như db_content của Windows) và băm từng ảnh — trước khi mở.
+content() {
+  local db="$1"
+  for t in settings photo person event_type event event_person meta; do echo "## $t"; sqlite3 "$db" "SELECT * FROM $t ORDER BY 1;"; done
+  echo "user_version=$(sqlite3 "$db" 'PRAGMA user_version;')"
+}
+content "$BAD/lvhv.sqlite" > "$BAD/before.txt"
+(cd "$BAD/photos" && sha256sum * | sort) > "$BAD/photos-before.txt"
 seed_store "$BAD"
-run_main
+put "$EXPECTED" files/r14-expected.json
 R="$(self_check verify-readonly)"; echo "$R"
 case "$R" in OK*) ;; *) fail "chỉ đọc: $R" ;; esac
-# Dữ liệu cũ còn nguyên từng byte (kho không đổi sau khi quay lui).
-adb exec-out run-as "$PKG" cat files/lvhv.sqlite > "$BAD/after.sqlite"
-sqlite3 "$BAD/after.sqlite" "PRAGMA user_version;" | grep -qx 1 || fail "chỉ đọc: kho không còn ở phiên bản 1"
-echo "sha256 trước: $BEFORE — sau: $(sha256sum "$BAD/after.sqlite" | cut -c1-64) (WAL có thể gộp trang; so nội dung bằng user_version + số hồ sơ)"
-[ "$(sqlite3 "$BAD/after.sqlite" 'SELECT count(*) FROM person;')" = "3" ] || fail "chỉ đọc: số hồ sơ đổi"
+run_main
+R="$(self_check verify-readonly)"; echo "lần mở thứ hai: $R"
+case "$R" in OK*) ;; *) fail "chỉ đọc (lần mở thứ hai): $R" ;; esac
+# Kho cũ trên máy giống hệt trước khi mở: từng dòng mọi bảng, từng ảnh; không có tệp đính kèm mồ côi.
+mkdir -p "$BAD/after"
+adb exec-out run-as "$PKG" cat files/lvhv.sqlite > "$BAD/after/lvhv.sqlite"
+adb exec-out run-as "$PKG" sh -c 'cat files/lvhv.sqlite-wal 2>/dev/null' > "$BAD/after/lvhv.sqlite-wal"
+[ -s "$BAD/after/lvhv.sqlite-wal" ] || rm -f "$BAD/after/lvhv.sqlite-wal"
+content "$BAD/after/lvhv.sqlite" > "$BAD/after.txt"
+if diff -u "$BAD/before.txt" "$BAD/after.txt"; then echo "kho cũ: $(wc -l < "$BAD/before.txt") dòng giống hệt"; else fail "chỉ đọc: nội dung kho đổi sau khi mở"; fi
+adb exec-out run-as "$PKG" sh -c 'cd files/photos && sha256sum *' | tr -d '\r' | sort > "$BAD/photos-after.txt"
+diff -u "$BAD/photos-before.txt" "$BAD/photos-after.txt" || fail "chỉ đọc: ảnh đổi hoặc mất"
+N_ATT="$(adb shell run-as "$PKG" sh -c 'ls files/attachments 2>/dev/null | wc -l' | tr -d '\r ')"
+[ "${N_ATT:-0}" = "0" ] || fail "chỉ đọc: còn $N_ATT tệp đính kèm mồ côi sau chuyển đổi lỗi"
 end
 
 adb logcat -d -s LvhvR14:I LvhvNhac:W AndroidRuntime:E | tail -50
