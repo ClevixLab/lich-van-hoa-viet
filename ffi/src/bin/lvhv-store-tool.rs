@@ -15,7 +15,15 @@
 //! lvhv-store-tool check-media <photo|attachment> <mime> <tệp> [width height]
 //! lvhv-store-tool export <thư-mục> <mật-khẩu> <tệp-ra> [--now <unix_s>]
 //! lvhv-store-tool inspect-export <tệp-sao-lưu> <mật-khẩu>
+//! lvhv-store-tool add-photo <thư-mục> <mime> <tệp> <width> <height> [--id <uuid>]
+//! lvhv-store-tool delete-person <thư-mục> <id>
+//! lvhv-store-tool scenario tray_photo <thư-mục-làm-việc>
 //! ```
+//!
+//! `add-photo` gọi `LvhvStore::add_photo` (ảnh chân dung hay ảnh mâm lễ — YC-2026-10 — đều là `Photo`); gắn vào hồ sơ
+//! bằng `save-person` với `photo_id` / `memorial.tray_photo_id`. `delete-person` gọi `LvhvStore::delete_person`.
+//! `scenario tray_photo` chạy kịch bản R15 (c)(d)(e)(f) cố định (04 Bổ sung B8) trên kho mới trong thư mục làm việc và in
+//! kết quả đã chuẩn hóa (không có thời điểm, không có byte ngẫu nhiên) — bản TS in đúng cùng JSON (R15 (g)).
 //!
 //! `--force-migration-failure`, `--now` dùng `lvhv_store::OpenOptions { force_migration_failure, now_unix }`.
 //! `export` gọi `Store::export_backup` — hàm mà `LvhvStore::export_backup` của ứng dụng bọc lại (cùng tài liệu, cùng mã
@@ -39,7 +47,10 @@ const USAGE: &str = "dùng:
   lvhv-store-tool display-capitalize <chuỗi>
   lvhv-store-tool check-media <photo|attachment> <mime> <tệp> [width height]
   lvhv-store-tool export <thư-mục> <mật-khẩu> <tệp-ra> [--now <unix_s>]
-  lvhv-store-tool inspect-export <tệp-sao-lưu> <mật-khẩu>";
+  lvhv-store-tool inspect-export <tệp-sao-lưu> <mật-khẩu>
+  lvhv-store-tool add-photo <thư-mục> <mime> <tệp> <width> <height> [--id <uuid>]
+  lvhv-store-tool delete-person <thư-mục> <id>
+  lvhv-store-tool scenario tray_photo <thư-mục-làm-việc>";
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -52,6 +63,9 @@ fn main() -> ExitCode {
         Some("check-media") => cmd_check_media(&args[1..]),
         Some("export") => cmd_export(&args[1..]),
         Some("inspect-export") => cmd_inspect_export(&args[1..]),
+        Some("add-photo") => cmd_add_photo(&args[1..]),
+        Some("delete-person") => cmd_delete_person(&args[1..]),
+        Some("scenario") => cmd_scenario(&args[1..]),
         _ => Err(Usage(String::new())),
     };
     match r {
@@ -663,6 +677,449 @@ fn cmd_inspect_export(a: &[String]) -> Out {
             "blobs": blobs,
             "legacy_paths": legacy,
         }),
+        true,
+    ))
+}
+
+// ------------------------------------------------------------------------------------------------
+// add-photo, delete-person (YC-2026-10)
+// ------------------------------------------------------------------------------------------------
+
+fn new_uuid_v4() -> String {
+    let mut b = [0u8; 16];
+    getrandom::fill(&mut b).expect("getrandom");
+    b[6] = (b[6] & 0x0f) | 0x40;
+    b[8] = (b[8] & 0x3f) | 0x80;
+    lvhv_backup::uuid_to_string(&b)
+}
+
+fn open_ffi(command: &str, dir: &str) -> Result<std::sync::Arc<lvhv_ffi::LvhvStore>, Value> {
+    lvhv_ffi::LvhvStore::open(dir.to_owned()).map_err(
+        |e| json!({ "command": command, "ok": false, "stage": "open", "error": ffi_err_json(&e) }),
+    )
+}
+
+fn cmd_add_photo(a: &[String]) -> Out {
+    let mut pos = Vec::new();
+    let mut id = None;
+    let mut it = a.iter();
+    while let Some(x) = it.next() {
+        match x.as_str() {
+            "--id" => match it.next() {
+                Some(v) => id = Some(v.clone()),
+                None => return usage("--id cần <uuid>"),
+            },
+            s if s.starts_with("--") => return usage(&format!("tùy chọn lạ: {s}")),
+            s => pos.push(s.to_owned()),
+        }
+    }
+    let [dir, mime, file, w, h] = pos.as_slice() else {
+        return usage("cần <thư-mục> <mime> <tệp> <width> <height>");
+    };
+    let (Ok(w), Ok(h)) = (w.parse::<u32>(), h.parse::<u32>()) else {
+        return usage("width/height phải là số nguyên không âm");
+    };
+    let bytes = match std::fs::read(file) {
+        Ok(b) => b,
+        Err(e) => return fail("add-photo", "read_file", &StoreError::Io(e)),
+    };
+    let st = match open_ffi("add-photo", dir) {
+        Ok(s) => s,
+        Err(v) => return Ok((v, false)),
+    };
+    let id = id.unwrap_or_else(new_uuid_v4);
+    match st.add_photo(id, mime.clone(), w, h, bytes) {
+        Ok(t) => Ok((
+            json!({ "command": "add-photo", "ok": true, "photo": serde_json::from_str::<Value>(&t).unwrap_or(Value::Null) }),
+            true,
+        )),
+        Err(e) => Ok((
+            json!({ "command": "add-photo", "ok": false, "stage": "add_photo", "error": ffi_err_json(&e),
+                    "outcome": ffi_outcome(&e) }),
+            false,
+        )),
+    }
+}
+
+fn cmd_delete_person(a: &[String]) -> Out {
+    let [dir, id] = a else {
+        return usage("cần <thư-mục> <id>");
+    };
+    let st = match open_ffi("delete-person", dir) {
+        Ok(s) => s,
+        Err(v) => return Ok((v, false)),
+    };
+    match st.delete_person(id.clone()) {
+        Ok(()) => Ok((
+            json!({ "command": "delete-person", "ok": true, "id": id }),
+            true,
+        )),
+        Err(e) => Ok((
+            json!({ "command": "delete-person", "ok": false, "stage": "delete_person", "error": ffi_err_json(&e),
+                    "outcome": ffi_outcome(&e) }),
+            false,
+        )),
+    }
+}
+
+// ------------------------------------------------------------------------------------------------
+// scenario tray_photo (04 Bổ sung B8, R15 (c)–(g))
+// ------------------------------------------------------------------------------------------------
+
+/// "V3 /person/x" trong thông điệp lỗi (dạng `ValidationError` hiển thị: "<mã> <đường dẫn>: <câu>").
+fn v_code(msg: &str) -> Option<String> {
+    let b = msg.as_bytes();
+    for i in 0..b.len().saturating_sub(3) {
+        if b[i] == b'V'
+            && b[i + 1].is_ascii_digit()
+            && b[i + 2] == b' '
+            && b[i + 3] == b'/'
+            && (i == 0 || b[i - 1] == b' ')
+        {
+            let rest = &msg[i..];
+            let end = rest.find(": ").unwrap_or(rest.len());
+            return Some(rest[..end].to_owned());
+        }
+    }
+    None
+}
+
+/// Kết quả chuẩn hóa của một thao tác qua FFI — cùng dạng với bản TS: "ok" | "invalid <mã> <đường dẫn>" | "input" |
+/// "not_found" | "backup" | "storage".
+fn ffi_outcome(e: &lvhv_ffi::LvhvDataError) -> String {
+    use lvhv_ffi::LvhvDataError as E;
+    match e {
+        E::Invalid(m) => v_code(m).map_or_else(|| "input".into(), |c| format!("invalid {c}")),
+        E::NotFound(_) => "not_found".into(),
+        E::Backup(_) => "backup".into(),
+        E::Storage(_) => "storage".into(),
+    }
+}
+
+fn outcome<T>(r: &Result<T, lvhv_ffi::LvhvDataError>) -> String {
+    match r {
+        Ok(_) => "ok".into(),
+        Err(e) => ffi_outcome(e),
+    }
+}
+
+fn store_outcome<T>(r: &lvhv_store::Result<T>) -> String {
+    match r {
+        Ok(_) => "ok".into(),
+        Err(StoreError::Invalid(v)) => format!("invalid {} {}", v.code, v.path),
+        Err(StoreError::Input(_)) => "input".into(),
+        Err(StoreError::NotFound) => "not_found".into(),
+        Err(StoreError::Backup(_) | StoreError::NewerSchema(_)) => "backup".into(),
+        Err(_) => "storage".into(),
+    }
+}
+
+const TP: &str = "mật khẩu thử nghiệm";
+const T1: &str = "0b8e4f52-3c1a-4d2e-9f60-0000000000a1";
+const T2: &str = "0b8e4f52-3c1a-4d2e-9f60-0000000000a2";
+const T3: &str = "0b8e4f52-3c1a-4d2e-9f60-0000000000a3";
+const T4: &str = "0b8e4f52-3c1a-4d2e-9f60-0000000000a4";
+const TX: &str = "0b8e4f52-3c1a-4d2e-9f60-0000000000af";
+const D1: &str = "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e01";
+const D2: &str = "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e02";
+const L3: &str = "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e03";
+const PORTRAIT: &str = "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09";
+
+fn tv() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../docs/v0.2/schema/test-vectors")
+}
+
+struct Tray {
+    st: std::sync::Arc<lvhv_ffi::LvhvStore>,
+    dir: PathBuf,
+}
+
+impl Tray {
+    fn doc(&self) -> Value {
+        serde_json::from_str(&self.st.dataset_json().unwrap()).unwrap()
+    }
+    fn person(&self, id: &str) -> Value {
+        serde_json::from_str(&self.st.person_json(id.into()).unwrap()).unwrap()
+    }
+    fn save(&self, p: &Value) -> String {
+        outcome(&self.st.save_person_json(p.to_string()))
+    }
+    fn with_tray(&self, id: &str, tray: Value) -> String {
+        let mut p = self.person(id);
+        p["memorial"]["tray_photo_id"] = tray;
+        self.save(&p)
+    }
+    fn add(&self, id: &str, file: &str, w: u32, h: u32) -> String {
+        let b = std::fs::read(tv().join(file)).unwrap();
+        outcome(&self.st.add_photo(id.into(), "image/jpeg".into(), w, h, b))
+    }
+    /// Ảnh: bản ghi (id sắp), tệp `photos/*.img`, ảnh mồ côi (bản ghi không hồ sơ nào dùng; tệp không có bản ghi).
+    fn photos(&self) -> Value {
+        let d = self.doc();
+        let mut ids: Vec<String> = d["photos"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|p| p["id"].as_str().unwrap().to_owned())
+            .collect();
+        ids.sort();
+        let used: std::collections::HashSet<String> = d["persons"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .flat_map(lvhv_store::validate::person_photo_refs)
+            .collect();
+        let files: std::collections::BTreeSet<String> = std::fs::read_dir(self.dir.join("photos"))
+            .map(|rd| {
+                rd.flatten()
+                    .filter_map(|e| {
+                        e.file_name()
+                            .to_string_lossy()
+                            .strip_suffix(".img")
+                            .map(str::to_owned)
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
+        let orphan_records = ids.iter().filter(|i| !used.contains(*i)).count();
+        let orphan_files = files.iter().filter(|f| !ids.contains(f)).count()
+            + ids.iter().filter(|i| !files.contains(*i)).count();
+        json!({ "ids": ids, "orphan_records": orphan_records, "orphan_files": orphan_files })
+    }
+    fn tray_of(&self, id: &str) -> Value {
+        let p = self.person(id);
+        match p["memorial"].as_object() {
+            None => json!("no_memorial"),
+            Some(m) if !m.contains_key("tray_photo_id") => json!("absent"),
+            Some(m) => m["tray_photo_id"].clone(),
+        }
+    }
+    fn photo_sha(&self, id: &str) -> Value {
+        self.st
+            .photo_bytes(id.into())
+            .map(|b| json!(sha256_hex(&b)))
+            .unwrap_or(Value::Null)
+    }
+}
+
+fn fresh(dir: &Path) -> Tray {
+    let _ = std::fs::remove_dir_all(dir);
+    Tray {
+        st: lvhv_ffi::LvhvStore::open(dir.to_string_lossy().into_owned()).unwrap(),
+        dir: dir.to_owned(),
+    }
+}
+
+fn tray_import(t: &Tray, file: &[u8], mode: lvhv_ffi::BackupImportMode) -> String {
+    match lvhv_ffi::open_backup(file.to_vec(), TP.into()) {
+        Ok(v) => outcome(&t.st.apply_import(v, mode)),
+        Err(e) => ffi_outcome(&e),
+    }
+}
+
+/// Tài liệu (bỏ `app`, `exported_at`) + danh sách khối của kho — để dựng tệp sao lưu sửa tay.
+fn contents_of(t: &Tray) -> (Value, Vec<(String, Vec<u8>)>) {
+    let mut d = t.doc();
+    d["app"] = json!({ "name": "Lịch và Văn hóa Việt", "version": "0.2.0", "platform": "android" });
+    d["exported_at"] = json!("2026-11-07T00:00:00Z");
+    let blobs = d["photos"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|p| {
+            let id = p["id"].as_str().unwrap().to_owned();
+            let b = t.st.photo_bytes(id.clone()).unwrap();
+            (id, b)
+        })
+        .collect();
+    (d, blobs)
+}
+
+/// Kiểm tài liệu sửa tay như khi nhập: (kết quả mở tệp mã hóa — thông báo chung, kết quả kiểm chi tiết).
+fn crafted(doc: &Value, blobs: &[(String, Vec<u8>)]) -> Value {
+    let photos: Vec<lvhv_backup::PhotoBlob> = blobs
+        .iter()
+        .map(|(id, b)| lvhv_backup::PhotoBlob {
+            id: lvhv_backup::uuid_from_str(id).unwrap(),
+            bytes: b.clone(),
+        })
+        .collect();
+    let json = canonical_json(doc);
+    let detail = store_outcome(&lvhv_store::verify_contents(&lvhv_backup::Contents {
+        json: json.clone(),
+        photos: photos.clone(),
+    }));
+    let file =
+        lvhv_backup::export_with_fixed_rng(TP, &json, &photos, [0x11; 16], [0x22; 24]).unwrap();
+    let open = match lvhv_ffi::open_backup(file, TP.into()) {
+        Ok(_) => "ok".to_owned(),
+        Err(e) => ffi_outcome(&e),
+    };
+    json!({ "open_backup": open, "verify": detail })
+}
+
+fn cmd_scenario(a: &[String]) -> Out {
+    let [name, work] = a else {
+        return usage("cần tray_photo <thư-mục-làm-việc>");
+    };
+    if name != "tray_photo" {
+        return usage(&format!("kịch bản lạ: {name}"));
+    }
+    let work = PathBuf::from(work);
+    let mut out = Map::new();
+    let example = std::fs::read(tv().join("example-v1.lvhv")).unwrap();
+    let example_doc: Value =
+        serde_json::from_slice(&std::fs::read(tv().join("example-v1.json")).unwrap()).unwrap();
+    let strip = |mut d: Value| {
+        let o = d.as_object_mut().unwrap();
+        o.remove("app");
+        o.remove("exported_at");
+        o.remove("settings");
+        d
+    };
+
+    // (e) R14: tệp sao lưu của bản trước (không có trường) mở được, không đổi gì; tài liệu không có khóa mới.
+    let t = fresh(&work.join("a"));
+    let r = tray_import(&t, &example, lvhv_ffi::BackupImportMode::Replace);
+    let got = strip(t.doc());
+    let unchanged = canonical_json(&got["persons"]) == canonical_json(&example_doc["persons"])
+        && canonical_json(&got["photos"]) == canonical_json(&example_doc["photos"])
+        && canonical_json(&got["events"]) == canonical_json(&example_doc["events"]);
+    out.insert(
+        "e_old_backup".into(),
+        json!({ "import": r, "unchanged": unchanged, "has_tray_key": canonical_json(&got).contains("tray_photo_id"),
+                "tray_d1": t.tray_of(D1) }),
+    );
+
+    // (c) phía lõi: ảnh còn siêu dữ liệu, quá 1 MiB → từ chối; ảnh hợp lệ → nhận.
+    let exif = t.add(TX, "media/jpeg-exif-gps.jpg", 768, 1024);
+    let mut big = std::fs::read(tv().join("media/jpeg-ok.jpg")).unwrap();
+    big.resize(1_048_577, 0);
+    let too_big = outcome(
+        &t.st
+            .add_photo(TX.into(), "image/jpeg".into(), 768, 1024, big),
+    );
+    let add1 = t.add(T1, "r6v2/photo-00.jpg", 300, 400);
+    out.insert(
+        "c_add_photo".into(),
+        json!({ "exif": exif, "over_1mib": too_big, "ok": add1 }),
+    );
+
+    // Gắn ảnh mâm lễ; V3: ảnh không tồn tại, dùng chung giữa hai người, trùng ảnh chân dung → từ chối.
+    let set = t.with_tray(D1, json!(T1));
+    let mut l3 = t.person(L3);
+    l3["photo_id"] = json!(T1);
+    let v3 = json!({
+        "dangling": t.with_tray(D2, json!("0b8e4f52-3c1a-4d2e-9f60-0000000000ee")),
+        "shared_tray": t.with_tray(D2, json!(T1)),
+        "tray_is_other_portrait": t.with_tray(D2, json!(PORTRAIT)),
+        "tray_is_own_portrait": t.with_tray(D1, json!(PORTRAIT)),
+        "portrait_is_other_tray": t.save(&l3),
+    });
+    out.insert(
+        "set".into(),
+        json!({ "save": set, "tray_d1": t.tray_of(D1), "photos": t.photos(), "v3": v3 }),
+    );
+
+    // (d) xuất rồi nhập (Thay toàn bộ; Gộp vào kho trống; Gộp vào kho có bản cũ của hồ sơ): ảnh và liên kết giữ nguyên.
+    let file =
+        t.st.export_backup(TP.into(), "0.2.0".into(), "android".into())
+            .unwrap();
+    let sha1 = t.photo_sha(T1);
+    let mut d = Map::new();
+    for (k, mode, seed) in [
+        ("replace", lvhv_ffi::BackupImportMode::Replace, false),
+        ("merge_empty", lvhv_ffi::BackupImportMode::Merge, false),
+        ("merge_over_old", lvhv_ffi::BackupImportMode::Merge, true),
+    ] {
+        let u = fresh(&work.join(format!("d-{k}")));
+        if seed {
+            tray_import(&u, &example, lvhv_ffi::BackupImportMode::Replace);
+        }
+        let r = tray_import(&u, &file, mode);
+        d.insert(
+            k.into(),
+            json!({ "import": r, "tray_d1": u.tray_of(D1), "sha_equal": u.photo_sha(T1) == sha1 && !sha1.is_null(),
+                    "photos": u.photos() }),
+        );
+    }
+    // Tệp sửa tay: ảnh mâm lễ không có (V3), ảnh mâm lễ còn EXIF (B6), ảnh mâm lễ dùng chung (V3).
+    let (doc, blobs) = contents_of(&t);
+    let pos = |d: &Value, id: &str| {
+        d["persons"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .position(|p| p["id"] == id)
+            .unwrap()
+    };
+    let mut dangling = doc.clone();
+    dangling["photos"]
+        .as_array_mut()
+        .unwrap()
+        .retain(|p| p["id"] != T1);
+    let dangling_blobs: Vec<_> = blobs.iter().filter(|(i, _)| i != T1).cloned().collect();
+    let exif_b = std::fs::read(tv().join("media/jpeg-exif-gps.jpg")).unwrap();
+    let mut exif_doc = doc.clone();
+    for ph in exif_doc["photos"].as_array_mut().unwrap() {
+        if ph["id"] == T1 {
+            ph["bytes"] = json!(exif_b.len());
+            ph["sha256"] = json!(sha256_hex(&exif_b));
+            ph["width"] = json!(768);
+            ph["height"] = json!(1024);
+        }
+    }
+    let exif_blobs: Vec<_> = blobs
+        .iter()
+        .map(|(i, b)| (i.clone(), if i == T1 { exif_b.clone() } else { b.clone() }))
+        .collect();
+    let mut shared = doc.clone();
+    let l = pos(&shared, L3);
+    shared["persons"][l]["photo_id"] = json!(T1);
+    d.insert(
+        "crafted".into(),
+        json!({
+            "dangling_tray": crafted(&dangling, &dangling_blobs),
+            "tray_with_exif": crafted(&exif_doc, &exif_blobs),
+            "shared_tray": crafted(&shared, &blobs),
+            "control": crafted(&doc, &blobs),
+        }),
+    );
+    out.insert("d_round_trip".into(), Value::Object(d));
+
+    // (f) đổi ảnh, bỏ ảnh, đổi về đang sống, xóa hồ sơ → ảnh cũ bị xóa (bản ghi và tệp); 0 ảnh mồ côi.
+    let mut f = Map::new();
+    t.add(T2, "r6v2/photo-02.jpg", 302, 402);
+    f.insert(
+        "replace".into(),
+        json!({ "save": t.with_tray(D1, json!(T2)), "photos": t.photos() }),
+    );
+    f.insert(
+        "remove".into(),
+        json!({ "save": t.with_tray(D1, Value::Null), "tray_d1": t.tray_of(D1), "photos": t.photos() }),
+    );
+    t.add(T3, "r6v2/photo-04.jpg", 304, 404);
+    let s3 = t.with_tray(D1, json!(T3));
+    let mut p = t.person(D1);
+    p["kind"] = json!("living");
+    p["death"] = Value::Null;
+    p["memorial"] = Value::Null;
+    p["reminders"]["gio"] = Value::Null;
+    p["noi_an_tang"] = json!("");
+    f.insert(
+        "to_living".into(),
+        json!({ "set": s3, "save": t.save(&p), "tray_d1": t.tray_of(D1), "photos": t.photos() }),
+    );
+    t.add(T4, "r6v2/photo-06.jpg", 306, 406);
+    let s4 = t.with_tray(D2, json!(T4));
+    f.insert(
+        "delete_person".into(),
+        json!({ "set": s4, "delete": outcome(&t.st.delete_person(D2.into())), "photos": t.photos() }),
+    );
+    out.insert("f_cleanup".into(), Value::Object(f));
+    let _ = std::fs::remove_dir_all(&work);
+    Ok((
+        json!({ "command": "scenario", "scenario": "tray_photo", "ok": true, "result": Value::Object(out) }),
         true,
     ))
 }
