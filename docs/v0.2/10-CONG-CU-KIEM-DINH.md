@@ -171,7 +171,7 @@ In `display_capitalize(<chuỗi>)`: quy tắc viết hoa khi hiển thị cách 
 
 Kiểm byte một ảnh hoặc tệp đính kèm như khi nhập (01 §3.8a, Bổ sung B6): Rust `lvhv_store::media::check_photo` /
 `check_attachment`, TS `mediaVerdict`. In `verdict`: `ok` hoặc mã lỗi (`bad_mime`, `mime_mismatch`, `bad_header`,
-`metadata`, `dimensions_mismatch`, `too_large`, `pdf_no_eof`). Với ảnh, `width height` là kích thước khai trong bản
+`metadata`, `dimensions_mismatch`, `too_large`, `pdf_no_eof`, `trailing_data` — rà soát bảo mật vòng 2, BM3-04). Với ảnh, `width height` là kích thước khai trong bản
 ghi; thiếu thì là 0 0.
 
 ### 3.7 `export <thư-mục> <mật-khẩu> <tệp-ra> [--now <unix_s>]`

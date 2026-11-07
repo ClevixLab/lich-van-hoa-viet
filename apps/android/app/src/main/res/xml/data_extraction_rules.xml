@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Không sao lưu, không chuyển dữ liệu (ứng dụng chỉ lưu cỡ chữ và chế độ sáng/tối). -->
+<!-- S5: không sao lưu lên đám mây, không chuyển sang máy mới — gồm cả sổ người thân (files/lvhv.sqlite,
+     files/photos/). Người dùng tự sao lưu bằng tệp .lvhv đã mã hóa (Người thân › Sao lưu). -->
 <data-extraction-rules>
     <cloud-backup>
         <exclude domain="root" />

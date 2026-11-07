@@ -20,6 +20,8 @@ duyệt; nếu duyệt đổi yêu cầu, phần mã đã viết được sửa 
 | YC-2026-08 | 07/11 | "phần mềm phải đảm bảo khi nâng cấp không làm mất dữ liệu đã có của khách hàng và updated vào version mới trên máy tính, hoặc điện thoại của khách hàng nhé" — 04 Bổ sung B5, R14 | Bắt buộc |
 | YC-2026-07 | 07/11 | "trong phần cách gọi, các đại từ nhân xưng như: Ông/Bà/Cụ/Kỵ/Bác/Cô/Chú/Dì/Cậu/Mợ/Thím/Anh/Chị/Cháu/Con/Bạn, Ông Tổ họ, Bà Cô Tổ họ, Bé đỏ... đều phải viết hóa chữ cái đầu tiên để thể hiện sự tôn trọng. Thông tin báo tử nên cho phép người dùng load và lưu file ảnh tin báo tử, hoặc bản scanned giấy chứng tử, hoặc một trường text để có thể note lại. Lưu ý các đại từ nhân xưng như: Cụ, Kỵ, Bà Cô Tổ, Ông Tổ họ, Bé đỏ không xuất hiện trong mục danh xưng người sống nhé (cách gọi đứng trước tên). Trong mục người thân nên có thêm mục giới tính" — xử lý ở 01 §3.1, §3.2a, §3.8a | Cao |
 | YC-2026-06 | 07/11 | Với người đã mất chỉ nhắc ngày giỗ; dùng từ thường ngày (ông/bà/cụ/kỵ…), bỏ "Hiển khảo" (04 Bổ sung B4) | Cao |
+| YC-2026-09 | 07/11 | "truyền thống của người việt nam mâm cơm cúng sẽ có bát cơm quả chứng luộc, một khoanh giò, một con gà luộc, một đĩa xôi, một đĩa hoa quả tổng hợp, và thắp 3 nén nhang trên một bát hương đã có rất nhiều nén hương đã cháy hết và đậu tàn cong đẹp. Lọ hoa thì có thể là hoa ly hoặc hoa cúc vàng. Nên là hình ảnh các thứ đều thật, chỉ là phối cảnh thành một mâm cơm cúng chứ đừng lấy ảnh giả" — ảnh thật, có quyền dùng; chỉ đưa vào ứng dụng khi đạt (YC-2026-10, ADR-V02-01) | Vừa |
+| YC-2026-10 | 07/11 | "anh muốn software có chế độ cập nhật ảnh mâm lễ, với bức ảnh hiện tại anh đánh giá chất lượng thấp, không phù hợp. Khi chưa có ảnh mâm lễ phù hợp thì ngày giỗ sẽ chưa hiện mâm giỗ ra mà chi có bát hương với nến bên dưới bia mộ như đã thiết kế". Trả lời câu hỏi cách cập nhật: "clevix cập nhật qua app, còn từng người dùng có thể tự chụp ảnh mâm lễ của mình để load lên software cho ngày giỗ của người nhà mình" — 01 §3.7 `tray_photo_id`, 04 Bổ sung B8 / R15, 08 §16, ADR-V02-01 | Cao |
 
 ## 2. Câu chuyện người dùng
 
@@ -57,6 +59,12 @@ quen công nghệ); người trẻ muốn nhớ sinh nhật và ngày giỗ ông
 - **US-C-05** Sao lưu ra tệp có mật khẩu và khôi phục trên máy khác. — R2, R6, S10
 - **US-C-06** Sửa, xóa hồ sơ; xóa phải hỏi lại. — S10
 - **US-C-07** Không cần tài khoản, không cần mạng, dữ liệu chỉ ở trên máy. — YC-2026-02, S4', S7
+- **US-M-08** Là người lo giỗ, tôi muốn chụp hoặc chọn ảnh mâm lễ của chính nhà mình cho từng người đã mất, để ngày giỗ
+  trang tưởng niệm hiện đúng mâm nhà mình dâng người đó. — YC-2026-10, R15 (c)–(f)
+- **US-M-09** Là người dùng, khi chưa có ảnh mâm lễ đạt chất lượng, tôi chỉ thấy bát hương và hai nến dưới bia, không
+  thấy hình mâm vẽ hay ảnh kém. — YC-2026-10, R15 (a)
+- **US-C-08** Là Clevix, tôi muốn đưa ảnh mâm lễ thật đã duyệt vào bản cập nhật ứng dụng mà không phải sửa mã, và gỡ
+  ảnh không đạt cũng không phải sửa mã. — YC-2026-09, YC-2026-10, R15 (b)
 
 ## 3. Phạm vi
 
@@ -95,6 +103,8 @@ dùng bản TypeScript trùng từng byte.
 | R-PRIV-2 | Lý do mất và giấy báo tử là thông tin nhạy cảm | Vừa | Cao | Chỉ lưu trên máy; không bao giờ đưa vào thông báo, .ics, màn hình tưởng niệm, tên tệp, URL; có trong sao lưu mã hóa; hộp xác nhận xuất ghi rõ "gồm thông tin báo tử"; ảnh giấy tờ bỏ siêu dữ liệu (S9) | Vai lõi + PWA |
 | R-PDF-1 | Tệp PDF quét giấy chứng tử lưu nguyên bản, có thể còn siêu dữ liệu (tên máy quét, phần mềm) | Vừa | Thấp | Chỉ lưu trên máy và trong sao lưu mã hóa; giao diện báo rõ; ảnh thì luôn bỏ siêu dữ liệu | Vai lõi |
 | R-PERF-1 | Tính danh sách năm cho nhiều hồ sơ chậm trên máy yếu | Thấp | Vừa | Đo với 200 hồ sơ; ngưỡng ghi vào biên bản | Vai lõi |
+| R-CUL-3 | Ảnh mâm lễ kém chất lượng hoặc không có quyền dùng lọt vào ứng dụng (YC-2026-09/10) | Vừa (đã xảy ra ở bản xem trước) | Cao | Gói ảnh chỉ nhận mục `trang_thai = "duyet"` có nguồn, giấy phép, người duyệt; CI kiểm `sha256`, B6, kích thước; gói rỗng → không có mâm (R15 (a)(b)); không bao giờ dùng ảnh lấy từ mạng không rõ quyền | Vai nội dung + điều phối viên |
+| R-PRIV-3 | Ảnh mâm lễ của gia đình có thể lộ nhà cửa, người trong ảnh, vị trí GPS | Vừa | Vừa | Luôn giải mã và mã hóa lại, bỏ mọi siêu dữ liệu; chỉ lưu trên máy và trong sao lưu mã hóa; không đưa vào thông báo, .ics, tên tệp, URL (R15 (c)(f)) | Vai lõi + giao diện |
 
 ## 7. Kế hoạch và phân công
 
@@ -128,3 +138,46 @@ còn lỗi mức chặn; chủ dự án ký.
 2. Tuần bắt đầu Thứ Hai (như lịch Việt Nam thông dụng)? **Mặc định:** Thứ Hai.
 3. Danh sách theo kỳ chỉ dùng tháng/quý/năm **dương lịch**, hay thêm chế độ tháng/năm **âm lịch**? **Mặc định:**
    dương lịch, mỗi mục ghi kèm ngày âm; tháng âm để đợt sau nếu anh muốn.
+
+## 10. YC-2026-10 — ảnh mâm lễ (phân tích, quyết định, phân công; 07/11/2026)
+
+### 10.1 Phân tích
+
+- Ai dùng: người lo giỗ (US-M-08, US-M-09); Clevix cập nhật nội dung (US-C-08).
+- Trong phạm vi: (1) bỏ hình mâm vẽ khỏi màn hình tưởng niệm ngay — chỉ còn bát hương ba nén và hai nến (Công giáo: hai
+  nến và hoa, như cũ); (2) ảnh mâm lễ của gia đình, **mỗi người đã mất một ảnh**; (3) gói ảnh mâm lễ của Clevix đi kèm
+  bản cập nhật ứng dụng, hiện đang **rỗng**.
+- Ngoài phạm vi: tải ảnh qua mạng; nhiều ảnh mâm cho một người; ảnh riêng cho từng năm giỗ; chỉnh sửa ảnh trong ứng dụng.
+- Dữ liệu: ảnh gia đình là một `Photo` (01 §3.8) do `memorial.tray_photo_id` trỏ tới; chỉ trên máy và trong tệp sao lưu
+  mã hóa. Gói của Clevix là tệp tĩnh trong bản dựng, không chứa dữ liệu người dùng.
+- Ảnh hưởng: lược đồ thêm một trường tùy chọn (bỏ khỏi tài liệu khi `null`, `schema_version` không đổi — cùng ngoại lệ
+  với `attachments`, 01 §3.8a, vì v0.2 chưa phát hành); dọn ảnh, gộp, V3 phải xét thêm trường này; dung lượng tải tăng
+  theo số ảnh Clevix duyệt (ngưỡng: mỗi ảnh ≤ 400 KB, cả gói ≤ 2 MB); R8 (khói) không đổi.
+- Phi chức năng: ngoại tuyến, riêng tư (R-PRIV-3), bốn nền tảng, R14.
+
+### 10.2 ADR-V02-01 — Nguồn ảnh mâm lễ và cách cập nhật
+
+- **Bối cảnh:** ảnh mâm ghép ở bản xem trước bị chủ dự án đánh giá chất lượng thấp; ảnh trên mạng mặc định có bản quyền.
+- **Phương án:** (a) ứng dụng tải ảnh từ máy chủ Clevix — cập nhật nhanh, nhưng cần mạng, mở CSP, lộ thời điểm dùng
+  ứng dụng, trái nguyên tắc ngoại tuyến; (b) gói ảnh đi kèm bản cập nhật ứng dụng — ngoại tuyến, được duyệt cùng bản
+  phát hành, đường lùi rõ, nhưng phải phát hành bản mới để đổi ảnh; (c) chỉ ảnh của gia đình — đơn giản nhất, nhưng người
+  chưa chụp thì không bao giờ có mâm.
+- **Quyết định:** (b) + ảnh của gia đình, theo lời chủ dự án: "clevix cập nhật qua app, còn từng người dùng có thể tự
+  chụp ảnh mâm lễ của mình để load lên software cho ngày giỗ của người nhà mình". Thứ tự hiển thị: ảnh của gia đình cho
+  người đó → ảnh Clevix đã duyệt cùng `tray_style` → **không có mâm** (chỉ bát hương và nến).
+- **Hệ quả:** gói hiện rỗng nên mọi nền tảng đều chưa hiện mâm cho tới khi có ảnh đạt; thêm ảnh chỉ cần sửa
+  `content/memorial/trays/manifest.json` và tệp ảnh, không sửa mã.
+- **Ai quyết, ngày:** chủ dự án (nguồn và cách cập nhật), điều phối viên theo ủy quyền "Em thấy cái gì tối ưu nhất thì
+  anh sẽ quyết làm theo hướng đó" (thứ tự hiển thị, định dạng gói, giới hạn) — 07/11/2026.
+
+### 10.3 Phân công
+
+| Việc | Vai | Nhánh | Phụ thuộc | Đầu ra |
+|---|---|---|---|---|
+| T20 Đặc tả: 01 §3.7, 04 B8 / R15, 08 §16, tài liệu này | Điều phối viên | `v02-yc10` | — | PR tài liệu (khóa trước mã) |
+| T21 `tray_photo_id`: lưu trữ, dọn ảnh, V3, gộp, sao lưu, FFI, `lvhv-store-tool` (Rust ≡ TS), kịch bản `tray_photo` | Lõi | `v0.2-yc10-core` | T20 | PR, kiểm thử |
+| T22 Gói ảnh: `content/memorial/trays/` (manifest rỗng, lược đồ, kịch bản kiểm), hướng dẫn duyệt ảnh | Nội dung | `v0.2-yc10-content` | T20 | PR |
+| T23–T26 Giao diện PWA, Android, Apple, Windows: bỏ mâm vẽ; mục "Ảnh mâm lễ ngày giỗ" trong biểu mẫu; hiển thị theo thứ tự ADR-V02-01; ảnh chụp | Giao diện từng nền tảng | `v0.2-yc10-<nền tảng>` | T20; T21 cho phần lưu ảnh (bỏ mâm vẽ làm ngay) | PR, ảnh chụp |
+| T27 Duyệt thiết kế và duyệt mã | Rà soát (vai riêng) | — | T21–T26 | Phiếu duyệt |
+| T28 Kiểm định R15 (c)(d)(e)(g) bằng `lvhv-store-tool` | Bên kiểm định độc lập | — | T21 | Báo cáo |
+

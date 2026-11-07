@@ -1,11 +1,18 @@
 {
- "description": "04 B6 / BM2-01: ảnh và tệp đính kèm hợp lệ và độc hại; kỳ vọng = mã lỗi của media::check_photo / check_attachment (Rust) và checkPhoto / checkAttachment (TS).",
+ "description": "04 B6 / BM2-01, BM3-04, BM3-05: ảnh và tệp đính kèm hợp lệ và độc hại; kỳ vọng = mã lỗi của media::check_photo / check_attachment (Rust) và checkPhoto / checkAttachment (TS).",
  "files": {
   "html-as-image.html": "938496cf521561518c5bce2fa00f782a233b98d1125d0d21edcf6d7ddb8952f3",
   "jpeg-4000x3000.jpg": "9e5a78168c7fa9207b75f208c98659e07d2104f5db6b51e0d28888af270e9783",
   "jpeg-exif-gps.jpg": "535a967550b8f342e9287abe1c84d8be39666271128a9e0e2e8d71663d6edd56",
   "jpeg-iptc.jpg": "4a9f7b835c5c2128002527f631b86ad7c074e9d0d25e29e8a8c28f30c1f1130b",
+  "jpeg-no-eoi.jpg": "942c5bd29435a840fc6fd2c3c37b8823685a049e9cc492cd8846a6e39e23a444",
   "jpeg-ok.jpg": "22a5c04266a6d2e27fa3085bd0623296dfb7e91b5763e8a746c6a4d220dfb7e9",
+  "jpeg-progressive-app1-between-scans.jpg": "e1cee2974181c538073c7a808d9430ef5d388288b05719803088de0ae7f2ec42",
+  "jpeg-progressive.jpg": "e24b45f807eb2a3708694ad5b1ea8c5e4b8e81937628f88e1598d9b55f34d239",
+  "jpeg-sof-height-0.jpg": "681315b8052d271c38b8be0a61a71d701cf9fe51511c9fd7e2c7da735b02df24",
+  "jpeg-sof-width-0.jpg": "6ab123d0606b8c51f7711f2388e48e58ad054c7b2e1ce05ce1358f677e28a8f0",
+  "jpeg-trailing-exif.jpg": "5a3ff3ed486dc595056e1d95532014cce492dd4ab44c336d08b51719d0b1f415",
+  "jpeg-trailing-zeros.jpg": "4d20bbb09d0b0102e453714a7eee6fbe48088f9c924d6ec473dfb40ae690605e",
   "jpeg-truncated.jpg": "6e510297e545a919f5f180d784225bc03d91e6b92e989c0066fd0ab024a5638b",
   "jpeg-xmp.jpg": "3e0e95c6a0ba827d00ea897f10c16c9c90a82d0ebbcfa264787826352c953c5c",
   "pdf-fake-no-eof.pdf": "49f9d3a3675605abddc50c8305bed959226eeb713d75a5dca396ffec72c3acac",
@@ -14,6 +21,9 @@
   "webp-3000x10.webp": "f9614e4b060b46a22789680e194b29bb0e5c8aa39e382ed6204ea6ddc058a097",
   "webp-exif.webp": "a43791118f31c6b74f7ce3859024f016c7411d528bc147f47be2f0eaaa2cdf6f",
   "webp-ok-16x16.webp": "ff5f1295c880c952f0cceba4ec0cd6e5dea28a6fef5e45e2cdc27c2a11113f56",
+  "webp-riff-slack.webp": "15ff3c6966986e22066b78a38e689483e5468763303205da279a0e32e89e539f",
+  "webp-trailing.webp": "a919d03709389b6bdbc332a0347ef342edfaadd64cb380a3ee880d73f62806c4",
+  "webp-vp8-zero-width.webp": "3afab794c1ae1371bc9b6aab8af46aa0b1764c3ffe927d6cd529bf31edc8a6dd",
   "webp-xmp-chunk.webp": "b56ec6200df0ffbd3574a89345940e5b0e8db9a66f29ce828fb7a12e9d8d990d"
  },
  "cases": [
@@ -216,6 +226,118 @@
    "width": null,
    "height": null,
    "expect": "bad_mime"
+  },
+  {
+   "file": "jpeg-trailing-exif.jpg",
+   "mime": "image/jpeg",
+   "kind": "photo",
+   "width": 768,
+   "height": 1024,
+   "expect": "trailing_data"
+  },
+  {
+   "file": "jpeg-trailing-exif.jpg",
+   "mime": "image/jpeg",
+   "kind": "attachment",
+   "width": null,
+   "height": null,
+   "expect": "trailing_data"
+  },
+  {
+   "file": "jpeg-trailing-zeros.jpg",
+   "mime": "image/jpeg",
+   "kind": "attachment",
+   "width": null,
+   "height": null,
+   "expect": "trailing_data"
+  },
+  {
+   "file": "jpeg-no-eoi.jpg",
+   "mime": "image/jpeg",
+   "kind": "attachment",
+   "width": null,
+   "height": null,
+   "expect": "bad_header"
+  },
+  {
+   "file": "webp-trailing.webp",
+   "mime": "image/webp",
+   "kind": "photo",
+   "width": 16,
+   "height": 16,
+   "expect": "trailing_data"
+  },
+  {
+   "file": "webp-trailing.webp",
+   "mime": "image/webp",
+   "kind": "attachment",
+   "width": null,
+   "height": null,
+   "expect": "trailing_data"
+  },
+  {
+   "file": "webp-riff-slack.webp",
+   "mime": "image/webp",
+   "kind": "attachment",
+   "width": null,
+   "height": null,
+   "expect": "bad_header"
+  },
+  {
+   "file": "jpeg-sof-height-0.jpg",
+   "mime": "image/jpeg",
+   "kind": "attachment",
+   "width": null,
+   "height": null,
+   "expect": "bad_header"
+  },
+  {
+   "file": "jpeg-sof-height-0.jpg",
+   "mime": "image/jpeg",
+   "kind": "photo",
+   "width": 768,
+   "height": 1024,
+   "expect": "bad_header"
+  },
+  {
+   "file": "jpeg-sof-width-0.jpg",
+   "mime": "image/jpeg",
+   "kind": "attachment",
+   "width": null,
+   "height": null,
+   "expect": "bad_header"
+  },
+  {
+   "file": "webp-vp8-zero-width.webp",
+   "mime": "image/webp",
+   "kind": "attachment",
+   "width": null,
+   "height": null,
+   "expect": "bad_header"
+  },
+  {
+   "file": "jpeg-progressive.jpg",
+   "mime": "image/jpeg",
+   "kind": "photo",
+   "width": 96,
+   "height": 128,
+   "expect": "ok"
+  },
+  {
+   "file": "jpeg-progressive.jpg",
+   "mime": "image/jpeg",
+   "kind": "attachment",
+   "width": null,
+   "height": null,
+   "expect": "ok"
+  },
+  {
+   "file": "jpeg-progressive-app1-between-scans.jpg",
+   "mime": "image/jpeg",
+   "kind": "attachment",
+   "width": null,
+   "height": null,
+   "expect": "metadata"
   }
  ]
 }

@@ -30,33 +30,33 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
         with:
           distribution: temurin
           java-version: ${{ env.JAVA_VERSION }}
 
-      - uses: android-actions/setup-android@v3
+      - uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # v3
         with:
           packages: "platforms;android-35 build-tools;35.0.0"
 
-      - uses: nttld/setup-ndk@v1
+      - uses: nttld/setup-ndk@ed92fe6cadad69be94a966a7ee3271275e62f779 # v1
         id: ndk
         with:
           ndk-version: ${{ env.NDK_VERSION }}
           add-to-path: false
           link-to-sdk: true
 
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
         with:
           targets: aarch64-linux-android,armv7-linux-androideabi,x86_64-linux-android
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
         with:
           key: android
 
       - name: Cài cargo-ndk ${{ env.CARGO_NDK_VERSION }}
-        uses: taiki-e/install-action@v2
+        uses: taiki-e/install-action@3a3daafd3b7f23b8f65d9f5ba2db203fb59b79e2 # v2
         with:
           tool: cargo-ndk@${{ env.CARGO_NDK_VERSION }}
 
@@ -67,7 +67,7 @@ jobs:
           apps/android/build-rust.sh
           find apps/android/app/rustJniLibs apps/android/app/build/generated -type f | sort
 
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
         with:
           gradle-version: ${{ env.GRADLE_VERSION }}
 
@@ -95,26 +95,101 @@ jobs:
           LVHV_BUILD_NUMBER: ${{ github.run_number }}
         run: |
           export LVHV_BUILD_DATE="$(date -u +%Y-%m-%d)"
-          gradle --no-daemon --stacktrace :app:testReleaseUnitTest :app:lintRelease :app:assembleRelease :app:bundleRelease
+          # Kiểm thử JVM (logic + giao diện Robolectric) chạy trên biến thể debug (cần ui-test-manifest) và gọi lõi Rust
+          # bản máy tính (target/release/liblvhv_ffi.so, build-rust.sh đã dựng).
+          # testReleaseUnitTest: kiểm thử logic (chuỗi báo thức, dữ liệu) trên biến thể release, trừ kiểm thử giao diện.
+          gradle --no-daemon --stacktrace :app:testDebugUnitTest :app:testReleaseUnitTest :app:lintRelease :app:assembleRelease :app:bundleRelease
 
-      - name: Kiểm tra — không xin quyền nào (đặc biệt INTERNET), có đủ 3 ABI
+      - name: Kiểm tra — quyền đúng danh sách cho phép (S6), không INTERNET; có đủ 3 ABI
         working-directory: apps/android
         run: |
           APK=$(find app/build/outputs/apk/release -name "*.apk" | sort | head -1)
           AAPT2="$ANDROID_HOME/build-tools/35.0.0/aapt2"
           "$AAPT2" dump permissions "$APK" | tee "$RUNNER_TEMP/perms.txt"
-          # Ngoại lệ duy nhất: <app>.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION do androidx.core (≥ 1.9) tự
-          # thêm — quyền mức "signature" do chính ứng dụng định nghĩa để bảo vệ receiver nội bộ; không
-          # cấp truy cập hệ thống/mạng nào và người dùng không thấy. Mọi quyền khác → lỗi.
-          OWN="uses-permission: name='vn.clevix.lichviet.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION'"
-          if grep "uses-permission" "$RUNNER_TEMP/perms.txt" | grep -vxF "$OWN"; then
-            echo "::error::APK có khai báo quyền (uses-permission) — ứng dụng phải không có quyền hệ thống nào."; exit 1
+          # S6 (docs/v0.2/04), O-6 (báo thức không chính xác → KHÔNG có SCHEDULE_EXACT_ALARM): đúng và chỉ
+          #   - POST_NOTIFICATIONS: thông báo nhắc ngày giỗ / sinh nhật;
+          #   - RECEIVE_BOOT_COMPLETED: đặt lại chuỗi báo thức sau khi khởi động lại;
+          #   - <app>.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION: quyền mức "signature" do androidx.core (≥ 1.9) tự
+          #     thêm để bảo vệ receiver nội bộ; không cấp truy cập hệ thống/mạng nào, người dùng không thấy.
+          printf '%s\n' \
+            "uses-permission: name='android.permission.POST_NOTIFICATIONS'" \
+            "uses-permission: name='android.permission.RECEIVE_BOOT_COMPLETED'" \
+            "uses-permission: name='vn.clevix.lichviet.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION'" \
+            | sort > "$RUNNER_TEMP/allowed.txt"
+          grep "^uses-permission" "$RUNNER_TEMP/perms.txt" | sed 's/ maxSdkVersion=.*//' | sort -u > "$RUNNER_TEMP/actual.txt"
+          if ! diff -u "$RUNNER_TEMP/allowed.txt" "$RUNNER_TEMP/actual.txt"; then
+            echo "::error::Danh sách quyền của APK khác danh sách cho phép S6 (xem diff ở trên)."; exit 1
           fi
+          if grep -qi "INTERNET" "$RUNNER_TEMP/perms.txt"; then echo "::error::APK có quyền INTERNET."; exit 1; fi
           for abi in arm64-v8a armeabi-v7a x86_64; do
             unzip -l "$APK" | grep -q "lib/$abi/liblvhv_ffi.so" || { echo "::error::Thiếu lib/$abi/liblvhv_ffi.so"; exit 1; }
             unzip -l "$APK" | grep -q "lib/$abi/libjnidispatch.so" || { echo "::error::Thiếu lib/$abi/libjnidispatch.so (JNA)"; exit 1; }
           done
           ls -la app/build/outputs/apk/release app/build/outputs/bundle/release
+
+      - name: Kiểm tra — S5 (allowBackup=false, có quy tắc trích xuất) trong manifest đã gộp
+        working-directory: apps/android
+        run: |
+          APK=$(find app/build/outputs/apk/release -name "*.apk" | sort | head -1)
+          "$ANDROID_HOME/build-tools/35.0.0/aapt2" dump xmltree --file AndroidManifest.xml "$APK" > "$RUNNER_TEMP/manifest.txt"
+          grep -E 'allowBackup.*=false' "$RUNNER_TEMP/manifest.txt" || { echo "::error::allowBackup phải là false (S5)"; exit 1; }
+          grep -q 'dataExtractionRules' "$RUNNER_TEMP/manifest.txt" || { echo "::error::Thiếu dataExtractionRules (S5)"; exit 1; }
+          # BM2-18: SelfCheckActivity (R14, exported, chỉ ở src/debug) không bao giờ có trong APK release.
+          if grep -q 'SelfCheck' "$RUNNER_TEMP/manifest.txt"; then echo "::error::APK release có SelfCheckActivity (chỉ được ở debug)"; exit 1; fi
+          # Thành phần exported: chỉ MainActivity (LAUNCHER), hoặc thành phần thư viện được bảo vệ bằng quyền hệ thống
+          # (androidx.profileinstaller.ProfileInstallReceiver: android.permission.DUMP — chỉ adb/hệ thống gửi được).
+          python3 - "$RUNNER_TEMP/manifest.txt" <<'PY'
+          import re, sys
+          comps, cur = [], None
+          for line in open(sys.argv[1], encoding="utf-8"):
+              m = re.match(r"\s*E: (activity|activity-alias|receiver|service|provider) ", line)
+              if m:
+                  cur = {"kind": m.group(1)}; comps.append(cur); continue
+              if re.match(r"\s*E: ", line) and cur is not None and re.match(r"\s*E: (intent-filter|action|category|data|meta-data)", line) is None:
+                  cur = None
+              if cur is None: continue
+              for key in ("name", "permission", "exported"):
+                  m = re.search(r":%s\(0x[0-9a-f]+\)=(?:\"([^\"]*)\"|(\S+))" % key, line)
+                  if m and key not in cur: cur[key] = m.group(1) or m.group(2)
+          ok_perm = {"android.permission.DUMP"}
+          bad = [c for c in comps if c.get("exported") == "true"
+                 and c.get("name") != "vn.clevix.lichviet.MainActivity" and c.get("permission") not in ok_perm]
+          for c in comps:
+              if c.get("exported") == "true": print("exported:", c)
+          if bad:
+              print("::error::Thành phần exported không được phép:", bad); sys.exit(1)
+          PY
+
+      - name: Quét lỗ hổng phụ thuộc Gradle (S11, BM2-09) — osv-scanner trên tệp khóa
+        working-directory: apps/android
+        env:
+          OSV_VERSION: "2.3.8"
+          # SHA-256 ghim cứng (osv-scanner_SHA256SUMS của bản v2.3.8), không tin tệp tổng kiểm tải cùng nguồn.
+          OSV_SHA256: "bc98e15319ed0d515e3f9235287ba53cdc5535d576d24fd573978ecfe9ab92dc"
+        run: |
+          # Tệp khóa sinh từ đồ thị phụ thuộc đã phân giải (dependencyLocking trong app/build.gradle.kts).
+          gradle --no-daemon -q :app:dependencies --write-locks > /dev/null
+          test -s app/gradle.lockfile || { echo "::error::Không sinh được app/gradle.lockfile"; exit 1; }
+          wc -l app/gradle.lockfile
+          curl -fsSL -o "$RUNNER_TEMP/osv-scanner" "https://github.com/google/osv-scanner/releases/download/v${OSV_VERSION}/osv-scanner_linux_amd64"
+          echo "${OSV_SHA256}  $RUNNER_TEMP/osv-scanner" | sha256sum -c -
+          chmod +x "$RUNNER_TEMP/osv-scanner"
+          # (1) Phụ thuộc đi vào APK (releaseRuntimeClasspath): lỗ hổng đã biết → CI đỏ.
+          { grep '^#' app/gradle.lockfile; grep -E '^[^#].*=(.*,)?releaseRuntimeClasspath(,|$)' app/gradle.lockfile; echo 'empty='; } > "$RUNNER_TEMP/gradle.lockfile"
+          echo "Phụ thuộc trong APK release: $(grep -c '^[^#e]' "$RUNNER_TEMP/gradle.lockfile")"
+          "$RUNNER_TEMP/osv-scanner" scan source --lockfile "gradle.lockfile:$RUNNER_TEMP/gradle.lockfile"
+          # (2) Công cụ dựng và kiểm thử (lint, AGP, Robolectric, Roborazzi…): không vào APK, chỉ chạy trên máy dựng —
+          # báo cáo để theo dõi, không làm CI đỏ. In cấu hình chứa từng gói bị ảnh hưởng.
+          "$RUNNER_TEMP/osv-scanner" scan source --format markdown --lockfile "gradle.lockfile:app/gradle.lockfile" > "$RUNNER_TEMP/osv-all.md" || true
+          { echo "### osv-scanner: công cụ dựng/kiểm thử Android (không vào APK)"; cat "$RUNNER_TEMP/osv-all.md"; } >> "$GITHUB_STEP_SUMMARY"
+          grep -E '^(io\.netty:netty-handler|org\.bouncycastle:bcprov|com\.google\.guava:guava|com\.google\.protobuf:protobuf-java|commons-io:commons-io):' app/gradle.lockfile | cut -c1-400 || true
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: android-gradle-lockfile
+          path: apps/android/app/gradle.lockfile
+          retention-days: 14
 
       - name: Kiểm tra — versionName/versionCode của APK khớp tệp VERSION
         working-directory: apps/android
@@ -132,7 +207,7 @@ jobs:
         if: always()
         run: rm -f "$RUNNER_TEMP/upload.jks"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: android-release
           path: |
@@ -140,9 +215,182 @@ jobs:
             apps/android/app/build/outputs/bundle/release/*.aab
             apps/android/app/build/outputs/mapping/release/mapping.txt
           retention-days: 30
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
           name: android-lint-report
           path: apps/android/app/build/reports/
           retention-days: 14
+
+  # Giao diện: kiểm thử Robolectric + ảnh chụp màn hình (Roborazzi) với lõi Rust bản máy tính — không cần NDK.
+  # Trên PR từ chính kho này, ảnh được commit ngược vào nhánh của PR (apps/android/screenshots/and-*.png) vì
+  # tạo phẩm (artifact) không tải được ở nơi duyệt. Commit bằng GITHUB_TOKEN không kích hoạt lại CI.
+  ui:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    # Chỉ đọc: job này chạy mã của PR (Gradle). Việc commit ảnh nằm ở job "screenshots" không chạy mã của PR.
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # v3
+        with:
+          packages: "platforms;android-35 build-tools;35.0.0"
+
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
+        with:
+          key: android-host
+
+      - name: Dựng lõi Rust bản máy tính + sinh mã Kotlin UniFFI
+        run: |
+          cargo build -p lvhv-ffi --lib --release
+          cargo build -p lvhv-ffi --features bindgen-cli --bin uniffi-bindgen
+          OUT=apps/android/app/build/generated/uniffi/kotlin
+          rm -rf "$OUT" && mkdir -p "$OUT"
+          target/debug/uniffi-bindgen generate --library target/release/liblvhv_ffi.so \
+            --language kotlin --out-dir "$OUT" --config ffi/uniffi.toml --no-format
+          test -s "$OUT/vn/clevix/lichviet/core/lvhv_ffi.kt"
+
+      - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
+        with:
+          gradle-version: ${{ env.GRADLE_VERSION }}
+
+      - name: Kiểm thử JVM + ảnh chụp màn hình
+        id: tests
+        continue-on-error: true
+        working-directory: apps/android
+        run: |
+          rm -f screenshots/and-*.png
+          gradle --no-daemon --stacktrace -Plvhv.hostOnly=true :app:testDebugUnitTest
+          ls -la screenshots
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: android-screenshots
+          path: apps/android/screenshots/and-*.png
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Kết quả kiểm thử
+        if: steps.tests.outcome != 'success'
+        run: |
+          echo "::error::Kiểm thử JVM / giao diện không đạt (xem bước 'Kiểm thử JVM + ảnh chụp màn hình')."
+          exit 1
+
+  # Commit ảnh vào nhánh PR (MA3N-24-08): có quyền ghi nhưng KHÔNG chạy mã của PR — chỉ lấy tệp PNG từ artifact.
+  screenshots:
+    needs: ui
+    if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.head_ref }}
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        # Dựng lỗi (không có ảnh) thì không có tạo phẩm: bỏ qua, không làm đỏ thêm job này.
+        continue-on-error: true
+        with:
+          name: android-screenshots
+          path: ${{ runner.temp }}/shots
+      - name: Commit ảnh chụp vào nhánh PR
+        run: |
+          shopt -s nullglob
+          files=("$RUNNER_TEMP"/shots/*.png)
+          if [ ${#files[@]} -eq 0 ]; then echo "Không có ảnh."; exit 0; fi
+          rm -f apps/android/screenshots/and-*.png
+          for f in "${files[@]}"; do
+            case "$(basename "$f")" in and-*.png) cp -- "$f" apps/android/screenshots/ ;; esac
+          done
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A apps/android/screenshots
+          if git diff --cached --quiet; then echo "Ảnh không đổi."; exit 0; fi
+          git commit -m "Android: ảnh chụp màn hình mô-đun Người thân (CI, run ${{ github.run_number }})"
+          git pull --rebase origin "${{ github.head_ref }}" || true
+          git push origin "HEAD:${{ github.head_ref }}"
+
+  # R14 (docs/v0.2/04 Bổ sung B5): nâng cấp tại chỗ không mất dữ liệu, trên trình giả lập. Cài bản cũ (v0.1.4 = d9650c7 và
+  # 0.2-dev từ main), tạo dữ liệu, `adb install -r` bản mới, kiểm dữ liệu còn nguyên và chuỗi báo thức được đặt lại.
+  upgrade:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    permissions:
+      contents: read
+    env:
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # v3
+        with:
+          packages: "platforms;android-35 build-tools;35.0.0"
+
+      - uses: nttld/setup-ndk@ed92fe6cadad69be94a966a7ee3271275e62f779 # v1
+        id: ndk
+        with:
+          ndk-version: ${{ env.NDK_VERSION }}
+          add-to-path: false
+          link-to-sdk: true
+
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          targets: x86_64-linux-android
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
+        with:
+          key: android-upgrade
+
+      - name: Cài cargo-ndk ${{ env.CARGO_NDK_VERSION }}
+        uses: taiki-e/install-action@3a3daafd3b7f23b8f65d9f5ba2db203fb59b79e2 # v2
+        with:
+          tool: cargo-ndk@${{ env.CARGO_NDK_VERSION }}
+
+      - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
+        with:
+          gradle-version: ${{ env.GRADLE_VERSION }}
+
+      - name: Dựng APK debug — bản cũ v0.1.4 (d9650c7), 0.2-dev (main) và bản mới (PR)
+        env:
+          ANDROID_NDK_HOME: ${{ steps.ndk.outputs.ndk-path }}
+        run: |
+          set -euo pipefail
+          OUT="$RUNNER_TEMP/apk"; mkdir -p "$OUT"
+          git worktree add "$RUNNER_TEMP/v014" d9650c7
+          git worktree add "$RUNNER_TEMP/main" origin/main
+          apps/android/ci/build-debug-apk.sh "$RUNNER_TEMP/v014" "$OUT/old-v0.1.4.apk"
+          apps/android/ci/build-debug-apk.sh "$RUNNER_TEMP/main" "$OUT/old-main.apk"
+          apps/android/ci/build-debug-apk.sh "$GITHUB_WORKSPACE" "$OUT/new.apk"
+          ls -la "$OUT"
+
+      - name: Bật KVM cho trình giả lập
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: R14 — cài đè trên trình giả lập (API 34)
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          script: apps/android/ci/upgrade-test.sh "$RUNNER_TEMP/apk/new.apk" "$RUNNER_TEMP/apk/old-v0.1.4.apk" "$RUNNER_TEMP/apk/old-main.apk"

@@ -188,6 +188,7 @@ Loại có sẵn (không xóa được, đổi tên được):
 | `loi_tuong_niem` | chuỗi 0–2000 | không | Lời của chính người dùng; cho phép `\n` |
 | `gio_het_nam` | 2 \| 3 | có | Năm thứ mấy sau năm mất là "giỗ hết". Mặc định 2 (mục mở O-2) |
 | `huong_duong_duoi` | số nguyên 1–150 | có | Tuổi âm nhỏ hơn số này ghi "hưởng dương", còn lại "hưởng thọ". Mặc định 60 (mục mở O-3) |
+| `tray_photo_id` | UUID \| `null` | không | Ảnh mâm lễ của gia đình cho người này (YC-2026-10, 07/11/2026). Trỏ tới một `Photo` (§3.8) có sẵn; cạnh dài ≤ 1600 px, ≤ 1 MB, luôn mã hóa lại và bỏ siêu dữ liệu như ảnh chân dung. Thiếu ≡ `null`; khi `null` thì **không ghi** khóa này vào tài liệu (cùng ngoại lệ `schema_version` với `attachments`, §3.8a). Chỉ hiện trên màn hình tưởng niệm và biểu mẫu của chính người đó; không bao giờ đưa vào thông báo, .ics, tên tệp, URL |
 
 ### 3.8 `Photo` — ảnh chân dung (chỉ trên thiết bị)
 
@@ -205,7 +206,7 @@ Dữ liệu ảnh: PWA lưu `Blob` trong kho `photos` của IndexedDB; native l�
 (`files/photos/<id>.jpg` trên Android, `Application Support/photos/` trên Apple, `%LOCALAPPDATA%\ClevixLab\LichVanHoaViet\photos\` trên
 Windows), bảng SQLite chỉ giữ siêu dữ liệu trên. Ảnh **không** nằm trong thư viện ảnh chung của máy.
 
-Ảnh không còn dùng: khi lưu hồ sơ, ảnh mà bản cũ của hồ sơ dùng (`photo_id`) nhưng bản mới
+Ảnh không còn dùng: khi lưu hồ sơ, ảnh mà bản cũ của hồ sơ dùng (`photo_id` hoặc `memorial.tray_photo_id`, YC-2026-10) nhưng bản mới
 bỏ đi bị xóa (bản ghi và tệp) trong cùng giao dịch, nếu không hồ sơ nào khác còn dùng. Ảnh đã thêm mà chưa gắn hồ sơ
 nào (người dùng hủy màn hình nhập) xóa bằng `delete_photo(id)` (PWA `deletePhoto`). Ảnh còn được dùng thì không xóa
 được. Hai bản cài đặt kiểm chéo bằng `scripts/check-store.sh` (kịch bản `photo_gc`).
@@ -275,6 +276,17 @@ Cách cài (cả hai bản như nhau, 2026-11-07):
   động. Hệ quả: mất máy là mất dữ liệu nếu người dùng chưa xuất tệp sao lưu (rủi ro R-DATA-1, 05 §7). Tiêu chí: `04`
   S5.
 - `PRAGMA user_version` = `schema_version`; `PRAGMA foreign_keys = ON`; chế độ `journal_mode = WAL`.
+- `PRAGMA secure_delete = ON` (rà soát bảo mật BM2-11, quyết định 2026-11-07: **bật**). Đặt mỗi lần mở kết nối (thiết
+  lập theo kết nối, không ghi trong tệp). SQLite ghi đè bằng 0 phần nội dung bị xóa trong trang của CSDL (hồ sơ, thông
+  tin báo tử, ghi chú) thay vì để lại trong trang trống. Sau khi xóa hồ sơ và sau lần dọn 7 ngày (§7.1), lõi gọi
+  `PRAGMA wal_checkpoint(TRUNCATE)` để trang đã ghi đè vào tệp chính và `lvhv.sqlite-wal` về 0 byte (bản cũ trong WAL
+  không còn). Kiểm thử `deleted_person_text_not_left_in_database_files`: chuỗi đánh dấu của hồ sơ đã xóa không còn
+  trong `lvhv.sqlite` hay `-wal` (tắt pragma thì kiểm thử này thất bại). Chi phí: chỉ thêm ghi khi xóa; kho cỡ vài MB
+  nên không đáng kể; không đổi định dạng tệp, không đổi dữ liệu đọc ra. Giới hạn (ghi rõ, không hứa hơn): sửa một
+  trường (không xóa hồ sơ) thì bản cũ trong WAL được dọn ở lần gộp tự động kế tiếp hoặc khi đóng kết nối cuối;
+  bộ nhớ flash có thể còn bản cũ ở tầng dưới hệ điều hành (ngoài tầm ứng dụng — mã hóa thiết bị của hệ điều hành mới
+  che được); tệp ảnh và tệp đính kèm bị xóa bằng xóa tệp thông thường; bản web (IndexedDB) do trình duyệt quản lý,
+  không có thiết lập tương đương.
 - Bảng `person`, `event`, `event_person` (n–m), `event_type`, `photo`, `settings`. Các đối tượng nhúng
   (`DeathInfo`, `BirthInfo`, `MemorialSettings`, `ReminderRule`) lưu dạng cột JSON (TEXT) đã kiểm tra theo lược
   đồ ở cùng lớp mã — để một lớp tuần tự hóa duy nhất dùng chung cho SQLite và tệp sao lưu.
@@ -319,7 +331,7 @@ Thông báo lỗi bằng tiếng Việt, chỉ rõ trường. Không cho lưu kh
 |---|---|
 | V1 | Mọi bản ghi khớp lược đồ JSON (§5) |
 | V2 | `kind = "deceased"` ⇔ `death ≠ null` ⇔ `memorial ≠ null` |
-| V3 | `photo_id`, `type_id`, `person_ids[*]` trỏ tới bản ghi tồn tại |
+| V3 | `photo_id`, `memorial.tray_photo_id`, `type_id`, `person_ids[*]` trỏ tới bản ghi tồn tại |
 | V4 | Mọi `DateValue` có năm trong miền đổi lịch là ngày tồn tại (§2.1) |
 | V5 | Trường dẫn xuất khớp kết quả tính lại từ `input` (cho phép khác **chỉ** ở `death.lunar` khi `method` khác phương pháp hiện hành — khi đó giữ giá trị đã lưu) |
 | V6 | `memorial.tray_style = "cong_giao"` ⇒ `memorial.incense = false` |
@@ -335,7 +347,7 @@ hoặc **Gộp** → ghi trong một giao dịch. Bất kỳ lỗi nào → khô
 Gộp: theo `id`; cùng `id` thì giữ bản có `rev` lớn hơn, bằng nhau thì giữ bản có `updated_at` muộn hơn, vẫn bằng
 thì giữ bản trên máy. Loại sự kiện trùng tên (khác id) → gộp về id trên máy và đổi `type_id` của sự kiện nhập vào.
 Ảnh và tệp đính kèm (YC-2026-07, 2026-11-07): giữ mọi bản trên máy; thêm ảnh / tệp đính kèm của bản nhập mà hồ sơ
-sau khi gộp còn dùng (`photo_id`, `death.notice.attachments[].file_id`). Trước đây gộp chỉ xét `photo_id` nên bỏ
+sau khi gộp còn dùng (`photo_id`, `memorial.tray_photo_id`, `death.notice.attachments[].file_id`). Trước đây gộp chỉ xét `photo_id` nên bỏ
 mất ảnh giấy báo tử của bản nhập (PR #30) — đã sửa ở cả hai bản (`merge_docs` / `mergeDocs`), có kiểm thử.
 
 ## 7. Phiên bản lược đồ và chuyển đổi
@@ -369,7 +381,16 @@ mất ảnh giấy báo tử của bản nhập (PR #30) — đã sửa ở cả
   ảnh dùng cho nhiều hồ sơ → một tệp dùng chung.
 - **Khóa `legacy`.** Hồ sơ có chuyển đổi nhận `legacy.certificate_photo_ids` (danh sách gốc) và
   `legacy.certificate_photos` (bản ghi `Photo` gốc, có `width`/`height`). `Person.legacy` là đối tượng tự do, không hiển
-  thị. Không phép chuyển nào xóa tệp ảnh trên máy.
+  thị. Lúc chuyển, không phép chuyển nào xóa tệp ảnh trên máy (bản sao CSDL + thư mục ảnh đủ để quay lui).
+- **Tệp ảnh gốc của ảnh đã chuyển** (rà soát bảo mật vòng 2, BM3-01). Rust: ảnh chỉ là giấy báo tử có byte được chép
+  sang `attachments/<id>.bin` và bản ghi `Photo` bị bỏ, nhưng tệp `photos/<id>.img` gốc còn giữ để quay lui; id của nó
+  được ghi ở `meta.migration_moved_photos`. Tệp gốc bị **xóa** khi (a) dọn sau 7 ngày (mục dưới), hoặc (b) xóa hồ sơ —
+  ngay khi không còn hồ sơ nào giữ ảnh đó trong `legacy` (ảnh dùng chung cho hai hồ sơ còn tới khi xóa hồ sơ thứ hai);
+  trong cả hai trường hợp chỉ khi không còn bản ghi `Photo` nào cùng id. Kho đã chuyển trước khi có danh sách này cũng
+  được dọn (id lấy từ `legacy.certificate_photo_ids`). Kiểm thử `moved_certificate_photos_removed_after_7_days_and_on_delete`:
+  sau 7 ngày không còn tệp `.img` nào không có bản ghi; xóa mọi hồ sơ → 0 tệp `.img`. Web: byte ảnh nằm trong IndexedDB
+  nên ảnh gốc được xóa ngay trong giao dịch nâng cấp (IndexedDB tự quay lui khi lỗi); kiểm thử `pwa/test/store/run.mjs`
+  "BM3-01".
 - **Giữ 7 ngày rồi dọn** (BM2-06, BM2-07; quyết định của điều phối viên 2026-11-07, theo đúng "giữ 1 bản, xóa sau 7
   ngày nếu chuyển đổi thành công" ở trên). Chuyển đổi **thành công** ghi `meta.migrated_at` (và tên bản sao ở
   `meta.migration_backup`); lưu một hồ sơ còn khóa cũ hoặc nhập tài liệu đã chuyển cũng ghi lại `migrated_at`. Mỗi lần
@@ -426,3 +447,12 @@ mất ảnh giấy báo tử của bản nhập (PR #30) — đã sửa ở cả
 - **Bộ mẫu đóng băng.** `schema/test-vectors/released/` (README ở đó): `0.2-dev-before-attachments/` do mã ở commit
   7338f04 tạo; Rust (`store/tests/released.rs`) và PWA (`pwa/test/store/run.mjs`) chuyển nó ra **cùng** tệp kỳ vọng
   `released/expected/0.2-dev-before-attachments.json` (0 bản ghi mất, 0 trường khác ngoài phần chuyển đổi đã định).
+
+### Ghi chú YC-2026-10 (07/11/2026) — ảnh mâm lễ
+
+- `memorial.tray_photo_id` (§3.7) dùng chung kho `Photo`; một ảnh chỉ thuộc một người (không dùng chung giữa hai hồ sơ).
+- Đổi người đã mất thành đang sống thì `memorial` bị xóa nên ảnh mâm lễ bị xóa cùng giao dịch (hộp xác nhận hiện có
+  phải ghi thêm "và ảnh mâm lễ" khi có ảnh). Xóa hồ sơ → xóa ảnh.
+- Dữ liệu và tệp sao lưu của các bản trước không có trường này: đọc như `null`, không cần chuyển đổi (R14, R15 (e)).
+- Gói ảnh của Clevix (`content/memorial/trays/`) **không** thuộc mô hình dữ liệu người dùng và không vào tệp sao lưu.
+

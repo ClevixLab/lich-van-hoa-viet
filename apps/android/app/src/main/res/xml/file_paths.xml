@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Chỉ hai thư mục tạm: cache/ics/ (tệp .ics để chia sẻ) và cache/att/ (một bản tạm của tệp PDF đính kèm báo tử khi người
+  dùng chọn "Mở bằng ứng dụng khác", tên chung TepDinhKem.pdf — RA-SOAT-BAO-MAT-V02 §5.3). Không lộ thư mục dữ liệu, ảnh
+  hay cơ sở dữ liệu. Provider không exported; quyền đọc chỉ cấp cho đúng một Intent.
+-->
+<paths>
+    <cache-path name="ics" path="ics/" />
+    <cache-path name="att" path="att/" />
+</paths>

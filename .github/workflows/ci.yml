@@ -156,6 +156,8 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # R14: kiểm thử nâng cấp dựng bản cũ từ lịch sử (d9650c7, c4d3128)
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - uses: actions/setup-node@v4
@@ -195,6 +197,9 @@ jobs:
       - name: PWA — kiểm thử khói
         working-directory: pwa
         run: npm run test:smoke
+      - name: PWA — nâng cấp tại chỗ không mất dữ liệu (04 B5 / R14)
+        working-directory: pwa
+        run: npm run test:upgrade
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -202,6 +207,7 @@ jobs:
           path: |
             pwa/test/metrics.json
             pwa/test/shots/
+            pwa/test/out-upgrade/result.json
           retention-days: 14
       - uses: actions/upload-artifact@v4
         with:
