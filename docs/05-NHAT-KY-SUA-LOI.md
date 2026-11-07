@@ -312,24 +312,45 @@ việc kích hoạt service worker.
   không thử lại. Kết quả: 20/20 lần đạt.
 - Người đang dùng 0.1.4 có thể còn gặp lỗi này một lần cho tới khi cập nhật lên bản có bản sửa.
 
-## K. MA3-15-03 (Esc trong lúc mã hóa sao lưu) — kiểm thử tất định (PWA, 2026-11-07)
+## K. MA3-15-03 (Esc trong lúc mã hóa / khôi phục) — kiểm thử tất định; không móc kiểm thử nào trong bản phát hành (PWA, 2026-11-07)
 
-**Triệu chứng.** Kiểm tra MA3-15-03 trong `pwa/test/people-flows.mjs` thỉnh thoảng lỗi với `esc: []`. Mã hóa xong trước
-khi kiểm thử kịp nhấn Esc, nên Esc rơi vào lúc không còn hộp nào. Kết quả phụ thuộc tốc độ mã hóa. Đây là lỗi của kiểm
-thử, không phải của ứng dụng: chốt chặn Esc trong `src/people/ui.ts` vẫn đúng.
+**Triệu chứng.** Kiểm tra MA3-15-03 (Esc trong lúc mã hóa sao lưu) thỉnh thoảng lỗi với `esc: []`. Mã hóa xong trước
+khi kiểm thử kịp nhấn Esc. Kiểm tra Esc trong lúc khôi phục thì luôn đạt nhưng không thật sự thử chốt chặn: khôi phục
+xong trước khi nhấn Esc thì Esc không chạm hộp nào. Đây là lỗi của kiểm thử. Chốt chặn Esc trong
+`src/people/ui.ts` vẫn đúng.
 
-**Sửa.**
-- Móc chỉ dành cho kiểm thử: `src/testhooks.ts`, cổng `backup-encrypt` ngay trước bước mã hóa trong `src/people/backup.ts`.
-  Cờ `__LVHV_TEST_HOOKS__` do `build.mjs` thay lúc dựng.
+**Móc chỉ có ở bản dựng kiểm thử.**
+- `src/testhooks.ts` có `testGate(name)` và `testFlag(name)`. Cờ `__LVHV_TEST_HOOKS__` do `build.mjs` thay lúc dựng
+  (khai báo ở `src/globals.d.ts`). Mọi nơi gọi đều bọc `if (__LVHV_TEST_HOOKS__)`.
 - `LVHV_TEST_HOOKS=1` chỉ được nhận cùng `LVHV_OUT_DIR`. Bản dựng chính `dist/` luôn có cờ false, nên esbuild bỏ hẳn
-  lời gọi và tên cổng. Smoke kiểm `dist/` không chứa `__lvhvGates` / `backup-encrypt`.
+  lời gọi và tên móc.
+- Cổng `backup-encrypt` nằm ngay trước bước mã hóa. Cổng `backup-restore` nằm ngay trước `applyImport`.
+- Cờ `__lvhvFailMigration` (R14 ca chuyển đổi lỗi) trước đây có trong bản phát hành. Nay chỉ có ở bản dựng kiểm thử,
+  qua `testFlag`.
+- Smoke kiểm mọi tệp trong `dist/` không chứa `__lvhvGates`, `__lvhvFailMigration`, `backup-encrypt`, `backup-restore`,
+  `testGate`, `testFlag`, `__LVHV_TEST_HOOKS__`.
+
+**Kiểm thử.**
 - Smoke mục 1e dựng bản kiểm thử vào thư mục tạm và chạy `runEscGate()`:
-  1. bấm "Tạo và tải tệp", chờ bước mã hóa tới cổng và bị giữ;
-  2. nhấn Esc, kiểm sự kiện `cancel` bị chặn và hộp vẫn mở, đang bận;
-  3. mở cổng, kiểm tệp vẫn được tải, hộp đóng, có thông báo.
-- Luồng L9 vẫn xuất và tải tệp trên bản dựng chính, chỉ bỏ phần Esc cũ.
+  1. bấm "Tạo và tải tệp", giữ bước mã hóa;
+  2. nhấn Esc, kiểm `cancel` bị chặn và hộp vẫn mở, đang bận;
+  3. mở cổng, kiểm tệp được tải;
+  4. mở lại chính tệp đó, chọn "Thay toàn bộ", giữ bước khôi phục;
+  5. nhấn Esc, kiểm như bước 2;
+  6. mở cổng, kiểm có thông báo "Đã khôi phục".
+- Luồng L9/L10 trên bản dựng chính vẫn xuất và khôi phục thật, chỉ bỏ phần nhấn Esc phụ thuộc thời gian.
+- `upgrade.mjs`:
+  - ca (a) và (b) dùng bản mới dựng chính `dist/`. Ca (b) còn đặt cờ `__lvhvFailMigration`, và bản chính bỏ qua: chuyển
+    đổi bình thường;
+  - chỉ ca (c) phát hành bản mới dựng kiểm thử (`test/out-upgrade/dist-new-testhooks`);
+  - bản cũ (0.1.4, 0.2-dev) vẫn là bản dựng chính của commit cũ.
 
-**Chứng minh kiểm thử bắt lỗi.** Tạm gỡ chốt chặn Esc trong `ui.ts` → MA3-15-03 LỖI
-(`Esc [{"busy":"true","prevented":false}], hộp mở 0`). Trả lại chốt chặn → ĐẠT. Smoke chạy 10 lần liên tiếp cục bộ:
-xem báo cáo PR #30.
+**Chứng minh kiểm thử bắt lỗi.** Tạm gỡ chốt chặn Esc trong `ui.ts` → cả hai kiểm tra LỖI
+(`Esc [{"busy":"true","prevented":false}], hộp mở 0`). Trả lại chốt chặn → ĐẠT.
 
+**Còn lại trong bản phát hành.**
+- `window.__lvhv` (số đo thời gian dựng trang và lối vào mô-đun lưu trữ): các bộ kiểm thử đọc trên bản dựng chính.
+  Đây không phải móc làm đổi hành vi, nhưng là lối vào dữ liệu từ trang. Muốn bỏ thì phải chuyển các kiểm thử đó sang
+  bản dựng kiểm thử. Chưa làm.
+- Tên tùy chọn `forceMigrationFailure` trong mã lưu trữ của lõi (`store/db.ts`, dùng cho `store-tool`). Ứng dụng
+  luôn truyền `{}` nên trang không chạm tới được.

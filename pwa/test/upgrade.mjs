@@ -27,6 +27,17 @@ const OLD = { v014: "d9650c7", v02dev: "c4d3128" };
 const failures = [];
 const check = (ok, msg) => { if (!ok) failures.push(msg); console.log(`${ok ? "  ok " : "FAIL "} ${msg}`); };
 
+/**
+ * Bản MỚI dựng kiểm thử (LVHV_TEST_HOOKS=1) — chỉ dùng cho ca (c) chuyển đổi lỗi: móc `__lvhvFailMigration` chỉ có ở
+ * bản dựng này. Ca (a), (b) dùng bản dựng chính dist/ (không có móc nào). Cùng mã nguồn, cùng VERSION.
+ */
+function buildNewTest() {
+  const dist = join(OUT, "dist-new-testhooks");
+  rmSync(dist, { recursive: true, force: true });
+  execFileSync("node", ["build.mjs"], { cwd: ROOT, env: { ...process.env, LVHV_TEST_HOOKS: "1", LVHV_OUT_DIR: dist }, stdio: "inherit" });
+  return dist;
+}
+
 /** Dựng bản PWA của một commit cũ vào OUT/dist-<commit> (dùng node_modules hiện tại — cùng phiên bản phụ thuộc). */
 function buildOld(commit) {
   const src = join(OUT, `src-${commit}`), dist = join(OUT, `dist-${commit}`);
@@ -99,8 +110,8 @@ async function reopenWithPending(page) {
   return page.evaluate(`(${vjDone})()`);
 }
 /** Phát hành bản mới (thay thư mục phục vụ), đi đúng đường người dùng: thanh cập nhật → "Để sau" → "Cập nhật ngay". */
-async function releaseNew(page, hash) {
-  serveDir = DIST;
+async function releaseNew(page, hash, newDir = DIST) {
+  serveDir = newDir;
   await page.goto(BASE + hash);
   await newWorkerWaiting(page);
   const reports1 = await reopenWithPending(page);
@@ -190,6 +201,8 @@ try {
     const ui = await page.evaluate(() => localStorage.getItem("lvhv.ui"));
     const dbv = await page.evaluate(async () => (await indexedDB.databases()).find((d) => d.name === "lvhv")?.version);
     check(dbv === 1 && old.doc.persons.length === 3 && old.doc.photos.length === 3 && old.doc.events.length === 2, `(b) bản 0.2-dev ghi dữ liệu: kho v${dbv}, 3 hồ sơ, 3 ảnh (1 chân dung + 2 giấy báo tử), 2 sự kiện`);
+    // Bản dựng chính KHÔNG nhận móc kiểm thử: trang đặt cờ làm chuyển đổi lỗi mà dist/ vẫn chuyển đổi bình thường.
+    await page.addInitScript(() => { globalThis.__lvhvFailMigration = true; });
     await releaseNew(page, "#/nguoi-than");
     await page.goto(BASE + `#/nguoi-than/nguoi/${old.A}`);
     await page.waitForSelector("#notice-box", { timeout: 30000 });
@@ -231,6 +244,8 @@ try {
     check(JSON.stringify(got.doc.events) === JSON.stringify(old.doc.events) && JSON.stringify(got.doc.settings) === JSON.stringify(old.doc.settings) && got.doc.event_types.length === old.doc.event_types.length,
       "R14: sự kiện, loại sự kiện, cài đặt (nhắc sao lưu 60 ngày) giữ nguyên từng byte");
     check(got.v === got.idbv && got.ms.state !== "read_only" && got.valid === "OK", `R14: kho nâng lên IndexedDB v${got.v}, không ở chế độ chỉ đọc, toàn bộ dữ liệu qua kiểm tra (${got.valid})`);
+    check(got.v === got.idbv && got.ms.state !== "read_only" && await page.locator("#ro-banner:not([hidden])").count() === 0,
+      "(b) bản dựng chính bỏ qua cờ kiểm thử __lvhvFailMigration (trang đã đặt): chuyển đổi bình thường, không có khung chỉ đọc");
     const uiAfter = JSON.parse(await page.evaluate(() => localStorage.getItem("lvhv.ui")));
     check(Object.entries(JSON.parse(ui)).every(([k, x]) => uiAfter[k] === x) && uiAfter.size === "2", `R14: tùy chọn giao diện (A+) giữ nguyên — chỉ có thể thêm khóa, không đổi khóa cũ (${ui} → ${JSON.stringify(uiAfter)})`);
     await page.click("#notice-box > summary");
@@ -254,7 +269,7 @@ try {
     await controlled(page);
     const old = await page.evaluate(SEED);
     await page.addInitScript(() => { globalThis.__lvhvFailMigration = true; });
-    await releaseNew(page, "#/ngay/2026-07-25");
+    await releaseNew(page, "#/ngay/2026-07-25", buildNewTest()); // bản mới dựng kiểm thử: chỉ bản này có móc
     await page.goto(BASE + "#/nguoi-than/ho-so");
     await page.waitForSelector("#ro-banner", { timeout: 30000 });
     const st = await page.evaluate(async () => {

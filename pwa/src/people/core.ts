@@ -1,5 +1,6 @@
 // Dữ liệu và cách diễn đạt của mô-đun Người thân (docs/v0.2/08). Mọi tính toán giỗ/sinh nhật/nhắc/.ics gọi lõi
 // tsport (memorial*), không viết lại thuật toán ở giao diện (08 §8.1). Mô-đun này chỉ được nạp lười.
+import { testFlag } from "../testhooks";
 import * as M from "../../../tsport/src/memorial.ts";
 import { DEFAULT_METHOD } from "../gen/content";
 import { weekday as coreWeekday } from "../../../tsport/src/jd.ts";
@@ -13,9 +14,10 @@ export type Ymd = M.Ymd;
 let storeP: Promise<Store> | null = null;
 /** Một kết nối kho dùng chung cho cả mô-đun. */
 export function store(): Promise<Store> {
-  // Móc kiểm thử R14 (ca chuyển đổi lỗi, pwa/test/upgrade.mjs): chỉ trang kiểm thử đặt được cờ này.
-  const forceMigrationFailure = (globalThis as { __lvhvFailMigration?: boolean }).__lvhvFailMigration === true;
-  return (storeP ??= openStore(indexedDB, { forceMigrationFailure }).catch((e) => { storeP = null; throw e; }));
+  // Móc kiểm thử R14 (ca chuyển đổi lỗi, pwa/test/upgrade.mjs) — CHỈ ở bản dựng kiểm thử (LVHV_TEST_HOOKS=1,
+  // src/testhooks.ts). Bản dựng chính: __LVHV_TEST_HOOKS__ = false → esbuild bỏ hẳn, trang không đặt được cờ nào.
+  const opts = __LVHV_TEST_HOOKS__ ? { forceMigrationFailure: testFlag("__lvhvFailMigration") } : {};
+  return (storeP ??= openStore(indexedDB, opts).catch((e) => { storeP = null; throw e; }));
 }
 
 /** Hiển thị `danh_xung` / `quan_he` đã lưu: viết hoa chữ đầu bằng hàm của lõi (`display_capitalize`) — tệp khôi phục

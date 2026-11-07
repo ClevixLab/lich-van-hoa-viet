@@ -171,6 +171,7 @@ export async function renderBackup(root: HTMLElement, rerender: () => void): Pro
             body: [`Dữ liệu hiện có trên máy (${n} người) sẽ bị thay bằng dữ liệu trong tệp xuất ngày ${exp}. Không hoàn tác được.`] });
           if (!sure) return false;
         }
+        if (__LVHV_TEST_HOOKS__) await testGate("backup-restore"); // chỉ bản dựng kiểm thử: giữ bước khôi phục (MA3-15-03)
         try { await s.applyImport(v, mode); } catch { return "Chưa khôi phục được — dữ liệu trên máy giữ nguyên."; }
         if (mode === "replace") {
           await new Promise<void>((done) => {

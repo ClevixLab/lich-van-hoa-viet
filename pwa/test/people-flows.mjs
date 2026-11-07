@@ -439,8 +439,7 @@ export async function runPeople({ browser, BASE, ORIGIN, ROOT, SHOTS, check, met
     await page.check("#bk-mode-replace");
     await page.click(".imp-dialog .dbtn.main");
     await page.waitForSelector('.pdialog[open] .dbtn.danger');
-    await page.click('.pdialog[open] .dbtn.danger');
-    await page.keyboard.press("Escape"); // MA3-15-03: đang khôi phục → Esc không đóng hộp; kết quả vẫn được báo
+    await page.click('.pdialog[open] .dbtn.danger'); // MA3-15-03 (Esc trong lúc khôi phục): kiểm tất định ở runEscGate()
     await page.waitForSelector('.toast:has-text("Đã khôi phục: 3 người, 4 sự kiện.")', { timeout: 60000 });
     const h2 = await store(`async (s) => s.stateHash()`);
     check(h1 === h2, "L9/L10: xuất → xóa một hồ sơ → nhập \"Thay toàn bộ\" → dữ liệu giống hệt (stateHash)");
@@ -450,7 +449,7 @@ export async function runPeople({ browser, BASE, ORIGIN, ROOT, SHOTS, check, met
     check(restoredTxt === `Dữ liệu được khôi phục từ bản sao lưu ngày ${TODAY.slice(8, 10)}/${TODAY.slice(5, 7)}/${TODAY.slice(0, 4)}.` && /^(Chưa sao lưu lần nào trên máy này|Lần sao lưu gần nhất: )/.test(lastAfter) && h1 === h2,
       `TK-16: sau khôi phục "${lastAfter}" + "${restoredTxt}"; stateHash không đổi`);
     await shot("backup-restored-360");
-    check((await text(".toast")).startsWith("Đã khôi phục: 3 người") && await page.locator(".pdialog[open]").count() === 0, "MA3-15-03: nhấn Esc trong lúc khôi phục — hộp không bị hủy giữa chừng, có thông báo \"Đã khôi phục\", không còn hộp mở");
+    check((await text(".toast")).startsWith("Đã khôi phục: 3 người") && await page.locator(".pdialog[open]").count() === 0, "L10: khôi phục xong — có thông báo \"Đã khôi phục\", không còn hộp mở");
 
     // ---------- Ảnh chụp mọi màn hình mới: 360/1280 × sáng/tối; bố cục (TK-02) và vùng chạm (TK-05) ở A và A++ ----------
     const screens = [
@@ -796,8 +795,11 @@ export async function runEscGate({ browser, BASE, check }) {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await page.addInitScript(() => {
-    window.__gate = { reached: 0, release: null };
-    window.__lvhvGates = { "backup-encrypt": () => new Promise((ok) => { window.__gate.reached++; window.__gate.release = ok; }) };
+    window.__gate = { reached: 0, release: null, restoreReached: 0, restoreRelease: null };
+    window.__lvhvGates = {
+      "backup-encrypt": () => new Promise((ok) => { window.__gate.reached++; window.__gate.release = ok; }),
+      "backup-restore": () => new Promise((ok) => { window.__gate.restoreReached++; window.__gate.restoreRelease = ok; }),
+    };
     window.__esc = [];
     window.addEventListener("cancel", (e) => { const busy = e.target.getAttribute?.("aria-busy"); setTimeout(() => window.__esc.push({ busy, prevented: e.defaultPrevented })); }, true);
   });
@@ -831,6 +833,30 @@ export async function runEscGate({ browser, BASE, check }) {
     const toast = await page.locator(".toast").first().innerText().catch(() => "");
     check(!!bk && bk.suggestedFilename() === `LichVanHoaViet-saoluu-${TODAY}.lvhv` && await page.locator(".bk-dialog").count() === 0 && toast.startsWith("Đã tạo tệp sao lưu"),
       `MA3-15-03: sau khi mã hóa xong — tệp vẫn được tải (${bk ? bk.suggestedFilename() : "không có"}), hộp đóng, có thông báo`);
+
+    // Esc trong lúc khôi phục: mở chính tệp vừa tải, "Thay toàn bộ", giữ bước khôi phục ở cổng "backup-restore".
+    await page.goto(BASE + "#/nguoi-than/sao-luu");
+    await page.waitForSelector("#bk-file", { state: "attached", timeout: 15000 });
+    await page.setInputFiles("#bk-file", { name: bk.suggestedFilename(), mimeType: "application/octet-stream", buffer: readFileSync(await bk.path()) });
+    await page.fill("#bk-ipw", "nhà có cây bàng");
+    await page.click("#bk-open");
+    await page.waitForSelector(".imp-dialog[open]", { timeout: 60000 });
+    await page.check("#bk-mode-replace");
+    await page.click(".imp-dialog .dbtn.main");
+    await page.waitForSelector(".pdialog[open] .dbtn.danger");
+    await page.click(".pdialog[open] .dbtn.danger");
+    await page.waitForFunction(() => window.__gate.restoreReached === 1, null, { timeout: 15000 });
+    const rBusy = await page.getAttribute(".imp-dialog", "aria-busy");
+    await page.evaluate(() => { window.__esc = []; });
+    await page.keyboard.press("Escape");
+    await page.waitForFunction(() => window.__esc.length >= 1, null, { timeout: 5000 }).catch(() => {});
+    const rEsc = await page.evaluate(() => window.__esc);
+    const rOpen = await page.locator(".imp-dialog[open]").count();
+    check(rBusy === "true" && rEsc.length === 1 && rEsc[0].busy === "true" && rEsc[0].prevented === true && rOpen === 1,
+      `MA3-15-03: nhấn Esc trong lúc khôi phục (bước khôi phục đang giữ) — Esc bị chặn, hộp vẫn mở và đang chạy (busy ${rBusy}, Esc ${JSON.stringify(rEsc)}, hộp mở ${rOpen})`);
+    await page.evaluate(() => window.__gate.restoreRelease());
+    const restored = await page.waitForSelector('.toast:has-text("Đã khôi phục: 1 người")', { timeout: 30000 }).then(() => true, () => false);
+    check(restored && await page.locator(".pdialog[open]").count() === 0, "MA3-15-03: sau khi khôi phục xong — có thông báo \"Đã khôi phục\", không còn hộp mở");
     check(errors.length === 0, `MA3-15-03: không có lỗi trang (${errors.join(" | ") || "0"})`);
   } finally {
     await ctx.close();

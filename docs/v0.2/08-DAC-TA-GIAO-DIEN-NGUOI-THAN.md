@@ -993,7 +993,7 @@ hướng dẫn tạo tệp sao lưu và có nút "Đi tới Sao lưu".
   - sha256 ảnh giấy báo tử = tệp đính kèm;
   - sự kiện, loại sự kiện, cài đặt giữ nguyên;
   - trang hồ sơ hiện 2 tệp "Giấy chứng tử".
-- (c) chuyển đổi lỗi: móc kiểm thử truyền `forceMigrationFailure` của lõi. Kết quả: `stateHash` trước = sau, kho vẫn
+- (c) chuyển đổi lỗi: bản mới dựng KIỂM THỬ (`LVHV_TEST_HOOKS=1`, chỉ cho ca này; 05 mục K), cờ `__lvhvFailMigration` → `forceMigrationFailure` của lõi. Kết quả: `stateHash` trước = sau, kho vẫn
   v1, ghi báo `read_only`, có khung hướng dẫn.
 - Bộ mẫu đóng băng `released/0.2-dev-before-attachments` và vectơ `supplement-yc05` (ảnh + PDF) được kiểm chéo Rust ↔
   PWA trong `scripts/check-store.sh` (kiểm thử lưu trữ của lõi). Lần chạy cho PR này: ĐẠT.

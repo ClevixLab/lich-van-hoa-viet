@@ -3,6 +3,12 @@
 // Chỉ bản dựng kiểm thử (LVHV_TEST_HOOKS=1, vào thư mục riêng) mới có móc.
 // Nơi gọi cũng phải bọc `if (__LVHV_TEST_HOOKS__)` để esbuild bỏ cả lời gọi (khai báo ở src/globals.d.ts).
 
+/** Cờ kiểm thử trang đặt trước khi mở ứng dụng (ví dụ `__lvhvFailMigration`). Luôn false ở bản dựng chính. */
+export function testFlag(name: string): boolean {
+  if (!__LVHV_TEST_HOOKS__) return false;
+  return (globalThis as Record<string, unknown>)[name] === true;
+}
+
 /** Chờ "cổng" kiểm thử `name` nếu trang kiểm thử đặt `window.__lvhvGates[name]` (một hàm trả Promise). */
 export async function testGate(name: string): Promise<void> {
   if (!__LVHV_TEST_HOOKS__) return;

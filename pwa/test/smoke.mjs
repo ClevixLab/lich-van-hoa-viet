@@ -460,12 +460,14 @@ const LAZY = JSON.parse(readFileSync(join(DIST, "lazy-manifest.json"), "utf8"));
 // ---------- 1e. MA3-15-03 tất định: bản dựng kiểm thử có cổng giữ bước mã hóa (LVHV_TEST_HOOKS=1) ----------
 {
   const TMP_T = mkdtempSync(join(tmpdir(), "lvhv-t-"));
+  // Mọi tên móc kiểm thử (src/testhooks.ts và nơi gọi): cổng, cờ, tên hàm. Chỉ được có ở bản dựng LVHV_TEST_HOOKS=1.
+  const HOOK_NAMES = /__lvhvGates|__lvhvFailMigration|backup-encrypt|backup-restore|testGate|testFlag|__LVHV_TEST_HOOKS__/;
   const DIST_T = join(TMP_T, "dist");
   const hooksIn = (d) => (function list(x) { return readdirSync(x).flatMap((n) => { const p = join(x, n); return statSync(p).isDirectory() ? list(p) : [p]; }); })(d)
-    .filter((f) => f.endsWith(".js") && /__lvhvGates|backup-encrypt/.test(readFileSync(f, "utf8"))).length;
-  check(hooksIn(DIST) === 0, "bản dựng chính dist/ không chứa móc kiểm thử (__lvhvGates, backup-encrypt)");
+    .filter((f) => HOOK_NAMES.test(readFileSync(f, "latin1"))).length;
+  check(hooksIn(DIST) === 0, `bản dựng chính dist/ (mọi tệp) không chứa tên móc kiểm thử (${HOOK_NAMES.source})`);
   execFileSync(process.execPath, [join(ROOT, "build.mjs")], { cwd: ROOT, env: { ...process.env, LVHV_TEST_HOOKS: "1", LVHV_OUT_DIR: DIST_T }, stdio: "ignore" });
-  check(hooksIn(DIST_T) > 0, "bản dựng kiểm thử (LVHV_TEST_HOOKS=1) có cổng backup-encrypt");
+  check(hooksIn(DIST_T) > 0, "bản dựng kiểm thử (LVHV_TEST_HOOKS=1) có móc kiểm thử");
   serveDir = DIST_T;
   const { runEscGate } = await import("./people-flows.mjs");
   try { await runEscGate({ browser, BASE, check }); }
