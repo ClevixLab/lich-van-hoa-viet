@@ -171,6 +171,25 @@ pub fn reminders_for(
     out
 }
 
+/// Thẻ nhắc trong ứng dụng hôm nay (02 §7.5): mọi lời nhắc (02 §7.1 — theo công tắc chung và `rule.enabled`)
+/// có giờ đồng hồ thiết bị rơi vào ngày `today`, kể cả giờ đã qua. Sắp theo giờ nhắc, rồi thứ tự 02 §7.2 của lần
+/// xuất hiện, rồi id. Dùng chung cho PWA và ba ứng dụng native (duyệt mã MA3-15-05, MA3N-24-08).
+pub fn due_today(cal: &Cal, ds: &Dataset, today: Ymd, tz: &Zone) -> Vec<Reminder> {
+    let to = Ymd::from_jdn(today.jdn() + 61);
+    let day = today.jdn();
+    let mut v: Vec<Reminder> = all_reminders(cal, ds, today, to, i64::MIN, tz)
+        .into_iter()
+        .filter(|r| r.at_local.div_euclid(1440) == day)
+        .collect();
+    v.sort_by(|a, b| {
+        a.at_local
+            .cmp(&b.at_local)
+            .then_with(|| crate::occ::cmp_occ(&a.occ, &b.occ))
+            .then_with(|| a.id.as_bytes().cmp(b.id.as_bytes()))
+    });
+    v
+}
+
 /// Thứ tự (at, id) của 02 §7.4.
 pub fn sort_reminders(v: &mut [Reminder]) {
     v.sort_by(|a, b| {

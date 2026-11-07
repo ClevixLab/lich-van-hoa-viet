@@ -50,6 +50,8 @@ export interface Occurrence {
   sort_name: string;
   display: string;
   headline: string;
+  /** Như `headline`, sự kiện không kèm tên người (TKN-A-08). Hồ sơ: = `headline`. */
+  headline_plain: string;
   rev: number;
 }
 
@@ -60,7 +62,7 @@ function personOcc(p: Person, cls: OccClass, key: OccKey, date: Ymd, n: number |
   else if (cls === "sinh_nhat") headline = n === null ? `Sinh nhật ${display}` : `Sinh nhật ${display} (${n} tuổi)`;
   else if (cls === "sinh_nhat_am") headline = `Sinh nhật âm lịch ${display}`;
   else headline = display;
-  return { class: cls, entity_id: p.id, key, date, n, gio_label: gioLabel, sort_name: p.ho_ten, display, headline, rev: p.rev };
+  return { class: cls, entity_id: p.id, key, date, n, gio_label: gioLabel, sort_name: p.ho_ten, display, headline, headline_plain: headline, rev: p.rev };
 }
 
 export function eventTitle(ds: Dataset, ev: Event): string {
@@ -77,7 +79,9 @@ function eventOcc(ds: Dataset, ev: Event, cls: OccClass, key: OccKey, date: Ymd,
     else if (isWedding) headline = `Kỷ niệm ${n} năm ngày cưới: ${title}`;
     else headline = `${title} (kỷ niệm ${n} năm)`;
   }
-  return { class: cls, entity_id: ev.id, key, date, n, gio_label: null, sort_name: title, display: title, headline, rev: ev.rev };
+  const names = ev.person_ids.map((id) => ds.persons.find((p) => p.id === id)).filter((p): p is Person => p !== undefined).map(displayName);
+  const named = names.length ? `${headline} · ${names.join(", ")}` : headline;
+  return { class: cls, entity_id: ev.id, key, date, n, gio_label: null, sort_name: title, display: title, headline: named, headline_plain: headline, rev: ev.rev };
 }
 
 export function eventClass(ev: Event): OccClass {
@@ -186,7 +190,7 @@ export function occurrences(cal: Cal, ds: Dataset, from: Ymd, to: Ymd): Occurren
 }
 
 export function tienThuongOf(g: Occurrence): Occurrence {
-  return { ...g, class: "tien_thuong", date: ymdFromJdn(ymdJdn(g.date) - 1), headline: `Tiên thường — ${g.headline}` };
+  return { ...g, class: "tien_thuong", date: ymdFromJdn(ymdJdn(g.date) - 1), headline: `Tiên thường — ${g.headline}`, headline_plain: `Tiên thường — ${g.headline}` };
 }
 
 export function ruleOf(ds: Dataset, occ: Occurrence): ReminderRule | null {

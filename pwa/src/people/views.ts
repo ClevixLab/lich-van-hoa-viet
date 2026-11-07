@@ -75,11 +75,8 @@ export interface Due { occ: M.Occurrence; t: M.RemType; time: number }
 export function dueToday(sn: Snap, t: Ymd = today()): Due[] {
   const zone = M.Zone.fixed(-new Date().getTimezoneOffset());
   const day = M.ymdJdn(t);
-  return M.allReminders(cal(), sn.ds, t, addDays(t, 61), -Infinity, zone)
-    .filter((r) => Math.floor(r.at_local / 1440) === day)
-    .map((r) => ({ occ: r.occ, t: r.rtype, time: r.at_local - day * 1440 }))
-    // 08 §5.5: theo giờ nhắc rồi theo thứ tự 02 §7.2 (allReminders xếp theo mã lời nhắc ngẫu nhiên khi cùng giờ).
-    .sort((a, b) => a.time - b.time || M.cmpOcc(a.occ, b.occ));
+  // 08 §5.5 / 02 §7.5: hàm dueToday của lõi (cùng bản với Rust due_today; giờ nhắc → thứ tự 02 §7.2 → id).
+  return M.dueToday(cal(), sn.ds, t, zone).map((r) => ({ occ: r.occ, t: r.rtype, time: r.at_local - day * 1440 }));
 }
 
 const dismissed = new Set<string>();
@@ -235,7 +232,7 @@ export async function renderList(root: HTMLElement, nav: Nav): Promise<void> {
       h("div", { class: "plhead" }, h("h2", null, `${label} (${ps.length})`), h("a", { class: "btnlink sm", href: add }, "+ Thêm")),
       ps.length ? h("ul", { class: "plrows" }, ...ps.map((p) => h("li", null, h("button", { type: "button", class: "prow", onclick: () => openPerson(nav)(p.id as string) },
         h("span", { class: "avatar", "aria-hidden": "true" }, [...(p.ho_ten as string).trim().split(/\s+/).pop() ?? "?"][0]?.toUpperCase() ?? "?"),
-        h("span", { class: "pr-main" }, h("span", { class: "pr-name" }, displayName(p)), p.quan_he ? h("span", { class: "pr-sub" }, p.quan_he as string) : null,
+        h("span", { class: "pr-main" }, h("span", { class: "pr-name" }, displayName(p)), p.quan_he ? h("span", { class: "pr-sub" }, M.upperFirst(p.quan_he as string)) : null,
           h("span", { class: "pr-sub" }, personSummary(p, t)))))))
         : h("p", { class: "empty-hint" }, "Chưa có ai."));
   };
@@ -319,8 +316,7 @@ export async function renderPerson(root: HTMLElement, id: string, nav: Nav): Pro
       title: "Xóa hồ sơ?", danger: true, focusCancel: true, ok: "Xóa hồ sơ", cancel: "Giữ lại",
       body: [`Xóa hồ sơ của ${name}? ${dead ? "Ngày giỗ, lời nhắc và ảnh" : "Sinh nhật, lời nhắc"} của người này sẽ bị xóa khỏi máy. Sự kiện gắn với người này vẫn còn nếu có người khác cùng tham gia. Không hoàn tác được.`],
       onOk: async () => {
-        await s.deletePerson(id);
-        for (const e of await s.events()) if ((e.person_ids as string[]).length === 0 && evIds.has(e.id as string)) await s.deleteEvent(e.id as string);
+        await s.deletePerson(id, { deleteOrphanEvents: true }); // lõi xóa sự kiện chỉ của người này, cùng giao dịch
       },
     });
     if (ok) { toast("Đã xóa hồ sơ."); nav.go("#/nguoi-than/ho-so", true); }
@@ -329,7 +325,7 @@ export async function renderPerson(root: HTMLElement, id: string, nav: Nav): Pro
   root.append(
     backLink(),
     h("div", { class: "phead" }, canvas,
-      h("div", { class: "phead-t" }, h1, p.quan_he ? h("p", { class: "phead-rel" }, p.quan_he as string) : null,
+      h("div", { class: "phead-t" }, h1, p.quan_he ? h("p", { class: "phead-rel" }, M.upperFirst(p.quan_he as string)) : null,
         h("div", { class: "phead-acts" },
           dead ? h("a", { class: "btnlink main", href: `#/nguoi-than/tuong-niem/${id}`, id: "open-memorial" }, "Tưởng niệm") : null,
           h("a", { class: "btnlink", href: `#/nguoi-than/sua/${id}`, id: "edit-person" }, "Sửa"),

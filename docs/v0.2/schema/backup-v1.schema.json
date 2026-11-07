@@ -24,7 +24,8 @@
     "event_types": { "type": "array", "maxItems": 500, "items": { "$ref": "#/$defs/EventType" } },
     "persons": { "type": "array", "maxItems": 10000, "items": { "$ref": "#/$defs/Person" } },
     "events": { "type": "array", "maxItems": 50000, "items": { "$ref": "#/$defs/Event" } },
-    "photos": { "type": "array", "maxItems": 10000, "items": { "$ref": "#/$defs/Photo" } }
+    "photos": { "type": "array", "maxItems": 10000, "items": { "$ref": "#/$defs/Photo" } },
+    "attachments": { "$comment": "YC-2026-07, 01 §3.8a — khóa tùy chọn, thiếu ≡ []; không ghi khi rỗng", "type": "array", "maxItems": 10000, "items": { "$ref": "#/$defs/Attachment" } }
   },
   "$defs": {
     "uuid": {
@@ -155,7 +156,7 @@
       "$comment": "01 §3.2a — thông tin báo tử. Không bao giờ vào thông báo, .ics, màn hình tưởng niệm, tên tệp, URL.",
       "type": "object",
       "additionalProperties": false,
-      "required": ["reported_by", "place", "reason", "notice_date", "certificate_photo_ids", "note"],
+      "required": ["reported_by", "place", "reason", "notice_date", "attachments", "note"],
       "properties": {
         "reported_by": { "oneOf": [{ "allOf": [{ "$ref": "#/$defs/text" }, { "minLength": 1, "maxLength": 200, "pattern": "\\S" }] }, { "type": "null" }] },
         "place": { "oneOf": [{ "allOf": [{ "$ref": "#/$defs/text" }, { "minLength": 1, "maxLength": 200, "pattern": "\\S" }] }, { "type": "null" }] },
@@ -171,7 +172,21 @@
             { "type": "null" }
           ]
         },
-        "certificate_photo_ids": { "type": "array", "maxItems": 4, "uniqueItems": true, "items": { "$ref": "#/$defs/uuid" } },
+        "attachments": {
+          "$comment": "YC-2026-07 — thay certificate_photo_ids; id và file_id không trùng trong danh sách",
+          "type": "array",
+          "maxItems": 6,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "kind", "file_id"],
+            "properties": {
+              "id": { "$ref": "#/$defs/uuid" },
+              "kind": { "enum": ["tin_bao_tu", "giay_chung_tu", "khac"] },
+              "file_id": { "$ref": "#/$defs/uuid" }
+            }
+          }
+        },
         "note": { "oneOf": [{ "allOf": [{ "$ref": "#/$defs/multiline" }, { "minLength": 1, "maxLength": 2000, "pattern": "\\S" }] }, { "type": "null" }] }
       }
     },
@@ -219,6 +234,8 @@
         "id": { "$ref": "#/$defs/uuid" },
         "kind": { "enum": ["deceased", "living"] },
         "danh_xung": { "allOf": [{ "$ref": "#/$defs/text" }, { "maxLength": 40 }] },
+        "gioi_tinh": { "$comment": "YC-2026-07 — khóa tùy chọn, thiếu ≡ null", "enum": ["nam", "nu", null] },
+        "legacy": { "$comment": "04 B5 — khóa tùy chọn: bản gốc của trường cũ mà phép chuyển đổi (01 §7.1) không đặt được vào trường mới; không hiển thị, không xóa", "type": "object" },
         "ho_ten": { "allOf": [{ "$ref": "#/$defs/text" }, { "minLength": 1, "maxLength": 120, "pattern": "\\S" }] },
         "ten_hieu": { "allOf": [{ "$ref": "#/$defs/text" }, { "maxLength": 120 }] },
         "quan_he": { "allOf": [{ "$ref": "#/$defs/text" }, { "maxLength": 120 }] },
@@ -308,6 +325,26 @@
       },
       "if": { "properties": { "date": { "properties": { "precision": { "const": "month_day" } } } } },
       "then": { "properties": { "recurring": { "const": true } } }
+    },
+    "Attachment": {
+      "$comment": "01 §3.8a (YC-2026-07): ảnh đã mã hóa lại (stripped = true, ≤ 2 MiB) hoặc PDF nguyên bản (stripped = false, ≤ 10 MiB, bắt đầu %PDF-)",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "mime", "bytes", "sha256", "stripped", "file_name", "created_at"],
+      "properties": {
+        "id": { "$ref": "#/$defs/uuid" },
+        "mime": { "enum": ["image/jpeg", "image/webp", "application/pdf"] },
+        "bytes": { "type": "integer", "minimum": 1, "maximum": 10485760 },
+        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "stripped": { "type": "boolean" },
+        "file_name": { "oneOf": [{ "allOf": [{ "$ref": "#/$defs/text" }, { "minLength": 1, "maxLength": 120, "pattern": "\\S" }] }, { "type": "null" }] },
+        "created_at": { "$ref": "#/$defs/timestamp" }
+      },
+      "allOf": [
+        { "if": { "properties": { "mime": { "const": "application/pdf" } } },
+          "then": { "properties": { "stripped": { "const": false } } },
+          "else": { "properties": { "stripped": { "const": true }, "bytes": { "maximum": 2097152 } } } }
+      ]
     },
     "Photo": {
       "type": "object",

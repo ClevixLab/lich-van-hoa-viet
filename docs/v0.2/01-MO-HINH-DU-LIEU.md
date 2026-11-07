@@ -71,11 +71,11 @@ Event   1 ──── 1   ReminderRule     (nhúng)
 |---|---|---|---|
 | `id` | UUID v4 | có | §1 |
 | `kind` | `"deceased"` \| `"living"` | có | Đổi `living` → `deceased` được (thêm `death`); đổi ngược lại phải xóa `death` và `memorial`, có hộp xác nhận |
-| `danh_xung` | chuỗi 0–40 | không | Cách gọi đứng trước tên. **Viết hoa chữ cái đầu** (YC-2026-07): lớp lưu trữ chuẩn hóa chữ cái đầu tiên thành chữ hoa khi lưu (NFC, phần còn lại giữ nguyên như người dùng gõ). Gợi ý cho **người đã mất**: Ông, Bà, Cụ, Kỵ, Bác, Cô, Chú, Dì, Cậu, Mợ, Thím, Anh, Chị, Em, Cháu, Con, Bạn, Bố, Mẹ, Ông Tổ họ, Bà Cô Tổ họ, Bé đỏ. Gợi ý cho **người đang sống**: như trên nhưng **không có** Cụ, Kỵ, Ông Tổ họ, Bà Cô Tổ họ, Bé đỏ. Người dùng gõ tự do được; không kiểm tra theo danh sách |
+| `danh_xung` | chuỗi 0–40 | không | Cách gọi đứng trước tên. **Viết hoa chữ cái đầu** (YC-2026-07; quyết định của điều phối 07/11): chữ cái đầu tiên được viết hoa (NFC, phần còn lại giữ nguyên như người dùng gõ) **khi lưu từ giao diện / API** (`save_person_json`, `mark_deceased_json`; PWA `normalizePersonNames`) và **khi hiển thị** (`display_capitalize`; tên hiển thị trong lời nhắc, .ics, danh sách của lõi). **Không** đổi khi nhập tệp sao lưu: khôi phục giữ nguyên byte, nên băm trạng thái R6 không đổi. Gợi ý cho **người đã mất**: Ông, Bà, Cụ, Kỵ, Bác, Cô, Chú, Dì, Cậu, Mợ, Thím, Anh, Chị, Em, Cháu, Con, Bạn, Bố, Mẹ, Ông Tổ họ, Bà Cô Tổ họ, Bé đỏ. Gợi ý cho **người đang sống**: như trên nhưng **không có** Cụ, Kỵ, Ông Tổ họ, Bà Cô Tổ họ, Bé đỏ. Người dùng gõ tự do được; không kiểm tra theo danh sách |
 | `gioi_tinh` | `"nam"` \| `"nu"` \| `null` | không | Giới tính (YC-2026-07). Hiển thị "Nam" / "Nữ" / "Không ghi". Dùng để gợi ý cách gọi phù hợp (ví dụ Ông/Bà); **không** ảnh hưởng ngày giỗ, tuổi, lời nhắc. Thiếu khóa = `null` (tệp cũ vẫn hợp lệ) |
 | `ho_ten` | chuỗi 1–120 | **có** | Không rỗng sau khi cắt khoảng trắng |
 | `ten_hieu` | chuỗi 0–120 | không | Tên hiệu, pháp danh, tên thánh… (nhãn hiển thị chung "Tên hiệu / pháp danh") |
-| `quan_he` | chuỗi 0–120 | không | Quan hệ gia đình, tự do (ví dụ "Ông nội", "Bà ngoại bên mẹ"). Chữ cái đầu viết hoa khi lưu, như `danh_xung` |
+| `quan_he` | chuỗi 0–120 | không | Quan hệ gia đình, tự do (ví dụ "Ông nội", "Bà ngoại bên mẹ"). Chữ cái đầu viết hoa khi lưu từ giao diện và khi hiển thị, không đổi khi nhập sao lưu — như `danh_xung` |
 | `birth` | `BirthInfo` \| `null` | không | §3.3 |
 | `death` | `DeathInfo` \| `null` | khi `deceased` | §3.2 |
 | `noi_an_tang` | chuỗi 0–300 | không | Chỉ `deceased` |
@@ -113,7 +113,7 @@ hai đầu, rỗng ghi là `null`.
 | `place` | chuỗi ≤ 200 \| `null` | Mất ở đâu (khác nơi an táng ở `Person`) |
 | `reason` | chuỗi ≤ 500 \| `null` | Lý do. **Nhạy cảm**: chỉ hiện trên trang hồ sơ |
 | `notice_date` | `DateValue` \| `null` | Ngày nhận tin (dương), không được sau hôm nay |
-| `attachments` | mảng 0–6 phần tử `{ "id": UUID, "kind": "tin_bao_tu" \| "giay_chung_tu" \| "khac", "file_id": UUID }` | Tệp đính kèm (YC-2026-07, **thay** `certificate_photo_ids`): ảnh tin báo tử, bản chụp/quét giấy chứng tử, hoặc tệp khác. `file_id` trỏ tới một `Attachment` (§3.8a). Thuộc về hồ sơ này; xóa hồ sơ hoặc gỡ khỏi danh sách thì xóa tệp |
+| `attachments` | mảng 0–6 phần tử `{ "id": UUID, "kind": "tin_bao_tu" \| "giay_chung_tu" \| "khac", "file_id": UUID }` (không được có cùng lúc với khóa cũ `certificate_photo_ids` — §7.1, X22) | Tệp đính kèm (YC-2026-07, **thay** `certificate_photo_ids`): ảnh tin báo tử, bản chụp/quét giấy chứng tử, hoặc tệp khác. `file_id` trỏ tới một `Attachment` (§3.8a). Thuộc về hồ sơ này; xóa hồ sơ hoặc gỡ khỏi danh sách thì xóa tệp |
 | `note` | chuỗi ≤ 2000 \| `null` | Ghi chú |
 
 Quy tắc: `notice` chỉ có khi có `DeathInfo`. Không trường nào của `notice` được đưa vào thông báo, tệp .ics, màn hình
@@ -205,6 +205,11 @@ Dữ liệu ảnh: PWA lưu `Blob` trong kho `photos` của IndexedDB; native l�
 (`files/photos/<id>.jpg` trên Android, `Application Support/photos/` trên Apple, `%LOCALAPPDATA%\ClevixLab\LichVanHoaViet\photos\` trên
 Windows), bảng SQLite chỉ giữ siêu dữ liệu trên. Ảnh **không** nằm trong thư viện ảnh chung của máy.
 
+Ảnh không còn dùng: khi lưu hồ sơ, ảnh mà bản cũ của hồ sơ dùng (`photo_id`) nhưng bản mới
+bỏ đi bị xóa (bản ghi và tệp) trong cùng giao dịch, nếu không hồ sơ nào khác còn dùng. Ảnh đã thêm mà chưa gắn hồ sơ
+nào (người dùng hủy màn hình nhập) xóa bằng `delete_photo(id)` (PWA `deletePhoto`). Ảnh còn được dùng thì không xóa
+được. Hai bản cài đặt kiểm chéo bằng `scripts/check-store.sh` (kịch bản `photo_gc`).
+
 ### 3.8a `Attachment` — tệp đính kèm thông tin báo tử (YC-2026-07, 2026-11-07)
 
 | Trường | Kiểu | Kiểm tra / ghi chú |
@@ -219,6 +224,21 @@ Windows), bảng SQLite chỉ giữ siêu dữ liệu trên. Ảnh **không** n�
 
 Lưu trên máy như ảnh (§3.8), thư mục `attachments/`. Có trong tệp sao lưu mã hóa; giới hạn tổng tệp sao lưu (03) giữ nguyên.
 Không bao giờ đưa vào thông báo, .ics, màn hình tưởng niệm.
+
+Cách cài (cả hai bản như nhau, 2026-11-07):
+- Tài liệu sao lưu có khóa gốc `attachments` (mảng `Attachment`, sắp theo `id`) **chỉ khi khác rỗng**; `gioi_tinh`
+  thiếu ≡ `null`. Vì vậy tài liệu không dùng hai trường này giống hệt bản trước và `schema_version` vẫn là 1 (v0.2 chưa
+  phát hành; vector đã khóa của 03 §2.5 không đổi). Đây là ngoại lệ có chủ ý của quy tắc §7 "thêm trường tùy chọn →
+  tăng `schema_version`".
+- Lớp lưu trữ: `add_attachment(id, mime, file_name, bytes)` (PWA `addAttachment`), `attachment_bytes`, `delete_attachment`
+  (chỉ tệp chưa gắn hồ sơ). Lưu hồ sơ mà danh sách bỏ một tệp → tệp bị xóa trong cùng giao dịch; xóa hồ sơ → xóa tệp.
+  Nền tảng giải mã và mã hóa lại ảnh trước khi gọi (cạnh dài ≤ 2048 px, ≤ 2 MB); PDF được kiểm `%PDF-` và cỡ.
+- Viết hoa chữ cái đầu `danh_xung` và `quan_he`: làm ở **bước lưu từ giao diện** (FFI `save_person_json`,
+  `mark_deceased_json`; PWA `normalizePersonNames` trước `buildPerson`) và khi hiển thị (`display_capitalize`, PWA
+  `displayCapitalize`; `display_name` của lõi). Lớp ghi thấp (`put_person`, nhập sao lưu — Thay toàn bộ và Gộp) giữ
+  nguyên giá trị, để tệp cũ và vector đã khóa không đổi. Gợi ý cách gọi và quan hệ: `danh_xung_suggestions(deceased,
+  gioi_tinh)`, `quan_he_suggestions(deceased)` (PWA `danhXungSuggestions`, `quanHeSuggestions`); với `gioi_tinh` =
+  `nam`/`nu` các từ hợp giới tính đứng trước. Hai bản kiểm chéo trong `scripts/check-store.sh`.
 
 ### 3.9 `AppSettings` — cài đặt chung (một bản ghi)
 
@@ -314,6 +334,9 @@ hoặc **Gộp** → ghi trong một giao dịch. Bất kỳ lỗi nào → khô
 
 Gộp: theo `id`; cùng `id` thì giữ bản có `rev` lớn hơn, bằng nhau thì giữ bản có `updated_at` muộn hơn, vẫn bằng
 thì giữ bản trên máy. Loại sự kiện trùng tên (khác id) → gộp về id trên máy và đổi `type_id` của sự kiện nhập vào.
+Ảnh và tệp đính kèm (YC-2026-07, 2026-11-07): giữ mọi bản trên máy; thêm ảnh / tệp đính kèm của bản nhập mà hồ sơ
+sau khi gộp còn dùng (`photo_id`, `death.notice.attachments[].file_id`). Trước đây gộp chỉ xét `photo_id` nên bỏ
+mất ảnh giấy báo tử của bản nhập (PR #30) — đã sửa ở cả hai bản (`merge_docs` / `mergeDocs`), có kiểm thử.
 
 ## 7. Phiên bản lược đồ và chuyển đổi
 
@@ -330,3 +353,53 @@ thì giữ bản trên máy. Loại sự kiện trùng tên (khác id) → gộp
 - Cơ sở dữ liệu hoặc tệp sao lưu có `schema_version` **lớn hơn** phiên bản ứng dụng hiểu: **từ chối** với thông
   báo "Tệp được tạo bởi phiên bản mới hơn — hãy cập nhật ứng dụng". Không cố đọc một phần.
 - Lược đồ cũ được giữ nguyên trong kho (`schema/backup-vN.schema.json`), không sửa sau khi phát hành.
+
+### 7.1 Cách cài (04 Bổ sung B5 / R14, 2026-11-07) — cả hai bản như nhau
+
+- **Hai số phiên bản.** `schema_version` của tài liệu sao lưu vẫn là **1**: các khóa mới của v0.2 (`gioi_tinh`,
+  `attachments`, `legacy`) là khóa tùy chọn, tài liệu cũ hợp lệ, vector đã khóa 03 §2.5 giữ nguyên từng byte (tăng số
+  này sẽ đổi băm R6 đã khóa). **Phiên bản kho trên máy** (`STORE_VERSION`, SQLite `user_version`) là **2**; bản web dùng
+  phiên bản IndexedDB **3** (2 là bản dựng trung gian đã tạo kho `attachments` mà chưa chuyển dữ liệu). Kho mới hơn → từ
+  chối ("Dữ liệu được tạo bởi phiên bản mới hơn — hãy cập nhật ứng dụng").
+- **Hàm thuần.** `lvhv_store::migrate::migrate_1_to_2(doc)` ≡ `pwa/src/store/migrate.ts` `migrate1to2(doc)`, trên tài
+  liệu dạng sao lưu, không I/O, đồng bộ (bản web chạy trong `onupgradeneeded`). 1 → 2 (YC-2026-07):
+  `death.notice.certificate_photo_ids` → `death.notice.attachments`, mỗi ảnh thành một `Attachment` loại `giay_chung_tu`
+  (cùng byte, `stripped = true`, `file_name = null`, `created_at` của ảnh). Ảnh chỉ là giấy báo tử thì bản ghi `Photo` được
+  chuyển hẳn (cùng id); ảnh còn là ảnh chân dung thì giữ `Photo`, tệp đính kèm lấy id thay thế tất định (`alt_id`). Một
+  ảnh dùng cho nhiều hồ sơ → một tệp dùng chung.
+- **Khóa `legacy`, không xóa.** Hồ sơ có chuyển đổi nhận `legacy.certificate_photo_ids` (danh sách gốc) và
+  `legacy.certificate_photos` (bản ghi `Photo` gốc, có `width`/`height`). `Person.legacy` là đối tượng tự do, không hiển
+  thị, có trong sao lưu, đi qua Gộp như mọi trường. Không phép chuyển nào xóa tệp ảnh trên máy.
+- **Tài liệu dị dạng bị từ chối, không chuyển** (báo cáo kiểm định B5, 2026-11-07):
+  - (X22) `death.notice` có **cả** `attachments` lẫn `certificate_photo_ids` (kể cả `certificate_photo_ids: []`) →
+    V1 `/persons/<i>/death/notice`. Một tài liệu chỉ được ở một dạng: cũ hoặc mới.
+  - (M09) id trong `certificate_photo_ids` không có bản ghi `Photo` → V3 `/persons/<i>/death/notice/certificate_photo_ids/<j>`,
+    như mọi tham chiếu treo (§6.2 V3); không giữ lặng lẽ trong `legacy`.
+  - Khi nhập: thông báo chung "Sai mật khẩu hoặc tệp bị hỏng". Khi mở kho: chỉ đọc. Khi lưu (`save_person`): lỗi.
+- **Ảnh dùng chung.** Hai hồ sơ cùng trỏ một ảnh giấy báo tử → sau chuyển đổi cùng trỏ **một** tệp đính kèm (cùng
+  `file_id`; bộ mẫu đóng băng có ca này: 5e0c của hồ sơ 5e01 và 5e02). Xóa hồ sơ, hay gỡ tệp khỏi danh sách, **đếm tham
+  chiếu**: tệp chỉ bị xóa khi không còn hồ sơ nào dùng (kiểm thử `shared_attachment_reference_counted`).
+- **Ứng dụng chưa cập nhật** (BM2-02): `save_person_json` / `put_person` nhận hồ sơ còn `certificate_photo_ids` và chuyển
+  ngay trong cùng giao dịch (cùng hàm thuần, cùng quy tắc trên).
+- **04 B6 trong chuyển đổi.** Byte của mỗi ảnh giấy báo tử được kiểm chặt như tệp đính kèm (§3.8a, 03 §2.3) trước khi
+  ghi; sai → không chuyển, kho mở chỉ đọc.
+- **Bản sao trước khi chuyển.** Rust: `lvhv.sqlite.pre-v2.bak` cạnh kho (không tự xóa; thư mục ảnh không bị đụng tới nên
+  bản sao + ảnh = toàn bộ dữ liệu cũ). Web: giao dịch `versionchange` của IndexedDB — lỗi thì trình duyệt quay lui cả
+  phiên bản lẫn dữ liệu.
+- **Một giao dịch, kiểm 01 §6.2, lỗi → chỉ đọc.** Chuyển đổi và bước kiểm (mọi hồ sơ hợp lệ, tham chiếu tồn tại, bản ghi
+  tệp đính kèm hợp lệ) trong cùng giao dịch. Lỗi → quay lui, kho mở ở chế độ **chỉ đọc**: đọc và xuất sao lưu được, mọi
+  thao tác ghi báo lỗi. `migration_status()` (FFI `LvhvStore.migration_status()` → `MigrationStatus {state, from_version,
+  to_version, backup_path, message}`; PWA `store.migrationStatus()`) cho giao diện biết `ok` / `migrated` / `read_only`.
+- **Tệp sao lưu cũ.** Tài liệu còn `certificate_photo_ids` (bản dựng 0.2 trước YC-2026-07) được chuyển bằng cùng hàm
+  khi nhập, khối ảnh được xếp lại thành ảnh + tệp đính kèm.
+- **`schema_version` của tài liệu sao lưu giữ là 1 tới bản phát hành 0.2.0** (quyết định của điều phối viên,
+  2026-11-07): định dạng sao lưu v1 chưa từng phát hành công khai, nên chưa có tệp nào của khách hàng. Các khóa thêm
+  trong quá trình làm 0.2 (`gioi_tinh`, `attachments`, `legacy`) là tùy chọn và không tăng số. **Từ 0.2.0 trở đi**, quy tắc
+  ở trên (thêm trường, thêm giá trị enum, siết/nới ràng buộc, đổi tên → tăng `schema_version`, có `migrate_N_to_N+1`)
+  áp dụng nghiêm ngặt.
+- **Trường lạ bị từ chối** (lược đồ đóng, V1 "trường lạ") ở mọi đường: lưu, nhập sao lưu, mở kho. Khóa `legacy` **chỉ**
+  dành cho trường mà chính phép chuyển đổi của ứng dụng bỏ hay đổi tên (hiện có: `certificate_photo_ids`); nó không phải
+  chỗ chứa trường lạ từ tệp ngoài.
+- **Bộ mẫu đóng băng.** `schema/test-vectors/released/` (README ở đó): `0.2-dev-before-attachments/` do mã ở commit
+  7338f04 tạo; Rust (`store/tests/released.rs`) và PWA (`pwa/test/store/run.mjs`) chuyển nó ra **cùng** tệp kỳ vọng
+  `released/expected/0.2-dev-before-attachments.json` (0 bản ghi mất, 0 trường khác ngoài phần chuyển đổi đã định).

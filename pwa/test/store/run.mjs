@@ -44,6 +44,7 @@ const ok = (c, msg) => { console.log(`${c ? "  ok " : "FAIL "} ${msg}`); if (!c)
 const hex = (b) => Buffer.from(b).toString("hex");
 const unhex = (s) => Uint8Array.from(Buffer.from(s.replace(/\s+/g, ""), "hex"));
 const sha = (b) => createHash("sha256").update(b).digest("hex");
+const nowRfc3339T = () => new Date().toISOString().slice(0, 19) + "Z";
 const rd = (p) => new Uint8Array(readFileSync(join(TV, p)));
 const json = (p) => JSON.parse(readFileSync(join(TV, p), "utf8"));
 const manifest = json("manifest.json");
@@ -114,7 +115,7 @@ const exPhoto = rd(manifest.example.photo);
   results.corrupt_vectors = { n: manifest.corrupt.length, all_rejected_same_code: allOk };
 }
 
-// ---------- YC-2026-05: vector bổ sung thông tin báo tử (01 §3.2a; không thay vector đã khóa) ----------
+// ---------- YC-2026-05 / YC-2026-07: vector bổ sung thông tin báo tử, tệp đính kèm, giới tính (không thay vector đã khóa) ----------
 {
   const SD = join(TV, "supplement-yc05");
   const sm = JSON.parse(readFileSync(join(SD, "manifest.json"), "utf8"));
@@ -122,22 +123,59 @@ const exPhoto = rd(manifest.example.photo);
   const nText = readFileSync(join(SD, "notice-v1.json"), "utf8");
   const v = await S.openBackup(nFile, sm.password);
   ok(S.canonicalJson(v.doc) === nText, "YC-2026-05: notice-v1.lvhv (Rust) mở trong JS, JSON giống từng byte");
-  const blobs = (v.doc.photos).map((ph) => ({ id: bc.uuidToBytes(ph.id), bytes: exPhoto }));
+  const pdf = new Uint8Array(readFileSync(join(SD, "giay-chung-tu.pdf")));
+  ok(sha(pdf) === sm.pdf.sha256, "YC-2026-07: giay-chung-tu.pdf đúng sha256 của manifest");
+  // Khối: ảnh (theo photos) rồi tệp đính kèm (theo attachments) — 03 §2.3.
+  const attBytes = { [sm.attachment_image_id]: exPhoto, [sm.attachment_pdf_id]: pdf };
+  const blobs = [...v.doc.photos.map((ph) => ({ id: bc.uuidToBytes(ph.id), bytes: exPhoto })),
+    ...v.doc.attachments.map((a) => ({ id: bc.uuidToBytes(a.id), bytes: attBytes[a.id] }))];
   const f = await bc.exportWithFixedRng(sm.password, nText, blobs, unhex(sm.salt_hex), unhex(sm.nonce_hex));
   ok(sha(f) === sm.file.sha256, "YC-2026-05: JS xuất notice-v1 với salt/nonce cố định = tệp của Rust (giống từng byte)");
   const t = await freshStore();
   await t.applyImport(v, "replace");
   ok((await t.stateHash()) === sm.state_sha256, "YC-2026-05: nhập vào IndexedDB → stateHash = state_hash(SQLite) của Rust");
   const pA = await t.person("0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e01");
-  ok(pA.death.notice.certificate_photo_ids[0] === sm.cert_photo_id, "YC-2026-05: báo tử và ảnh giấy báo tử được giữ");
+  ok(pA.gioi_tinh === "nam" && pA.death.notice.attachments.map((a) => a.file_id).join() === `${sm.attachment_image_id},${sm.attachment_pdf_id}`,
+    "YC-2026-05/07: báo tử, tệp đính kèm và giới tính được giữ");
+  ok(sha(await t.attachmentBytes(sm.attachment_pdf_id)) === sm.pdf.sha256, "YC-2026-07: PDF đính kèm lưu nguyên byte");
+  // Gỡ PDF khỏi danh sách → lớp lưu trữ xóa tệp (như Rust put_person).
+  const pA2 = structuredClone(pA);
+  pA2.death.notice.attachments.pop(); pA2.rev += 1;
+  await t.putPerson(pA2);
+  ok((await code(() => t.attachmentBytes(sm.attachment_pdf_id))) === "not_found" && (await t.attachments()).length === 1, "YC-2026-07: gỡ tệp khỏi danh sách → tệp bị xóa");
+  ok((await code(() => t.deleteAttachment(sm.attachment_image_id))) === "input", "YC-2026-07: deleteAttachment tệp đang dùng → input");
+  ok((await code(() => t.addAttachment({ id: "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e1f", mime: "application/pdf", file_name: null, bytes: new TextEncoder().encode("<html>") }))) === "input", "YC-2026-07: PDF thiếu %PDF- → từ chối");
+  ok((await code(() => t.addAttachment({ id: "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e1f", mime: "image/jpeg", file_name: null, bytes: new Uint8Array(2 * 1024 * 1024 + 1) }))) === "invalid", "YC-2026-07: ảnh đính kèm > 2 MB → từ chối");
+  const loose = await t.addAttachment({ id: "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e1f", mime: "application/pdf", file_name: "  Bản quét.pdf ", bytes: pdf });
+  ok(loose.stripped === false && loose.file_name === "Bản quét.pdf", "YC-2026-07: PDF stripped = false, tên tệp được cắt khoảng trắng");
+  await t.deleteAttachment(loose.id);
+  ok((await code(() => t.deleteAttachment(loose.id))) === "not_found", "YC-2026-07: deleteAttachment tệp chưa gắn → xóa được");
   await t.deletePerson("0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e01");
-  const left = (await t.snapshot({ version: "0.2.0", platform: "pwa" }, "2026-01-01T00:00:00Z")).photos.map((x) => x.id);
-  ok(!left.includes(sm.cert_photo_id), "YC-2026-05: xóa hồ sơ → xóa ảnh giấy báo tử");
+  ok((await t.attachments()).length === 0 && !("attachments" in (await t.snapshot({ version: "0.2.0", platform: "pwa" }, "2026-01-01T00:00:00Z"))),
+    "YC-2026-07: xóa hồ sơ → xóa tệp đính kèm; tài liệu không còn khóa attachments");
   const bad = structuredClone(v.doc);
-  bad.photos = bad.photos.filter((x) => x.id !== sm.cert_photo_id);
+  bad.attachments = bad.attachments.filter((x) => x.id !== sm.attachment_image_id);
   let got = "";
   try { S.validate.document(bad); } catch (e) { got = `${e.code} ${e.path}`; }
-  ok(got === "V3 /persons/0/death/notice/certificate_photo_ids/0", "YC-2026-05: ảnh giấy báo tử không tồn tại → V3 (cùng đường dẫn với Rust)");
+  ok(got === "V3 /persons/0/death/notice/attachments/0/file_id", "YC-2026-07: tệp đính kèm không tồn tại → V3 (cùng đường dẫn với Rust)");
+  for (const [k, val] of [["stripped", true], ["mime", "application/zip"], ["bytes", 10 * 1024 * 1024 + 1], ["file_name", ""]]) {
+    const b2 = structuredClone(v.doc); b2.attachments[1][k] = val;
+    let threw = false; try { S.validate.document(b2); } catch { threw = true; }
+    ok(threw, `YC-2026-07: Attachment.${k} sai → từ chối`);
+  }
+  // PR #30: "Gộp" tệp có tệp đính kèm vào kho mới → giữ tệp đính kèm, tài liệu hợp lệ; state hash = Rust.
+  const tm = await freshStore();
+  await tm.applyImport(v, "merge");
+  ok((await tm.attachments()).length === 2 && sha(await tm.attachmentBytes(sm.attachment_pdf_id)) === sm.pdf.sha256, "PR #30: Gộp giữ tệp đính kèm của bản nhập");
+  const hm = await tm.stateHash();
+  const rm = JSON.parse(readFileSync(join(OUT, "notice-merge-rust.json"), "utf8"));
+  ok(hm === rm.state_sha256, "PR #30: Gộp tệp có tệp đính kèm — stateHash = Rust (notice-merge-rust.json)");
+  await tm.applyImport(v, "merge");
+  ok((await tm.stateHash()) === hm, "PR #30: Gộp lần hai cùng tệp → không đổi");
+  // Tệp sao lưu sửa: khối PDF thiếu (chỉ còn ảnh) → từ chối.
+  let rej = "";
+  try { await S.verifyContents(nText, blobs.slice(0, -1).map((b) => ({ id: bc.bytesToUuid(b.id), bytes: b.bytes }))); } catch (e) { rej = e.message; }
+  ok(rej === "Sai mật khẩu hoặc tệp bị hỏng", "YC-2026-07: thiếu khối tệp đính kèm → thông báo chung");
   // "notice": null ≡ vắng khóa (Rust: serde default + skip_serializing_if) → PWA bỏ khóa khi lưu, stateHash như Rust.
   const withNull = structuredClone(v.doc);
   const pB = withNull.persons.find((x) => x.death !== null && !("notice" in x.death));
@@ -215,10 +253,17 @@ let r6File;
   ok(h1 === manifest.dataset_r6.store_state_sha256, "stateHash(IndexedDB) = state_hash(SQLite) của Rust");
   const fixed = await bc.exportWithFixedRng(PW, dsText, dsPhotos.map((p) => ({ id: bc.uuidToBytes(p.id), bytes: p.bytes })), SALT, NONCE);
   ok(sha(fixed) === manifest.dataset_r6.fixed_rng_file_sha256, "tệp R6 salt/nonce cố định: JS = Rust (giống từng byte)");
+  const lastBefore = (await s.settings()).last_backup_at;
   const t0 = performance.now();
   r6File = await s.exportBackup(PW, { version: "0.2.0", platform: "pwa" });
   const exportMs = performance.now() - t0;
-  ok((await s.backupPendingSince()) === null && typeof (await s.settings()).last_backup_at === "string", "sau khi xuất: last_backup_at được đặt, hết trạng thái chờ sao lưu");
+  ok((await s.settings()).last_backup_at === lastBefore && (await s.stateHash()) === h1, "MA3N-23-01: tạo byte sao lưu không đổi last_backup_at (chưa ghi nhận là đã sao lưu), stateHash không đổi");
+  const savedAt = nowRfc3339T();
+  await s.markBackupSaved(savedAt);
+  ok((await s.backupPendingSince()) === null && (await s.settings()).last_backup_at === savedAt, "sau markBackupSaved: last_backup_at = lúc lưu, hết trạng thái chờ sao lưu");
+  let twice = false;
+  try { await s.markBackupSaved(nowRfc3339T()); } catch { twice = true; }
+  ok(twice, "markBackupSaved hai lần cho một lần tạo tệp → lỗi");
   writeFileSync(join(OUT, "r6-from-pwa.lvhv"), r6File);
   const t = await freshStore();
   const t1 = performance.now();
@@ -322,9 +367,240 @@ let r6File;
   ok((await s.eventsOf(p.id)).length === 1, "chỉ mục by_person");
   await s.deletePerson(p.id);
   ok((await s.events())[0].person_ids.length === 0, "xóa người → gỡ khỏi sự kiện (01 §3.4)");
+  // MA3N-24-08: deleteOrphanEvents xóa sự kiện chỉ gắn người đó, giữ sự kiện vốn không gắn ai và sự kiện còn người khác.
+  {
+    const q = S.buildPerson({ ...ex.persons[1], id: "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e71" });
+    const r = S.buildPerson({ ...ex.persons[1], id: "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e72", ho_ten: "Lê Văn D" });
+    await s.putPerson(q); await s.putPerson(r);
+    const ev = (id, rid, pids) => ({ ...ex.events[0], id, reminder: { ...ex.events[0].reminder, id: rid }, person_ids: pids });
+    await s.putEvent(ev("0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e81", "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e91", [q.id]));
+    await s.putEvent(ev("0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e82", "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e92", [q.id, r.id]));
+    const removed = await s.deletePerson(q.id, { deleteOrphanEvents: true });
+    const left = (await s.events()).map((e) => e.id).sort();
+    ok(JSON.stringify(removed) === JSON.stringify(["0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e81"]), "deleteOrphanEvents → trả id sự kiện chỉ của người đó");
+    ok(JSON.stringify(left) === JSON.stringify([ex.events[0].id, "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e82"].sort()), "giữ sự kiện không gắn ai và sự kiện còn người khác");
+    await s.deletePerson(r.id);
+  }
   let bad = p; bad = { ...bad, death: { ...bad.death, lunar: { ...bad.death.lunar, day: 11 } } };
   ok((await code(() => s.putPerson(bad))) === "invalid", "V5: trường dẫn xuất sai → từ chối");
   results.store_api = "ok";
+}
+
+// Dọn ảnh không còn dùng — cùng kịch bản `photo_gc` của store/examples/cross_platform.rs, so với kết quả Rust.
+{
+  const s = await seeded();
+  const ps = (await s.persons()).filter((p) => typeof p.photo_id === "string").sort((x, y) => (x.id < y.id ? -1 : 1));
+  const [a, b] = [structuredClone(ps[0]), structuredClone(ps[1])];
+  const [pa, pb] = [a.photo_id, b.photo_id];
+  const bump = (p) => { p.rev += 1; p.updated_at = "2026-11-07T00:00:00Z"; };
+  a.photo_id = pb; bump(a); await s.putPerson(a);
+  const after1 = (await s.photos()).length;
+  b.photo_id = null; bump(b); await s.putPerson(b);
+  const after2 = (await s.photos()).length;
+  const got = {
+    delete_used: await code(() => s.deletePhoto(pb)),
+    delete_gone: await code(() => s.deletePhoto(pa)),
+    photos_after: [after1, after2],
+    state_sha256: await s.stateHash(),
+  };
+  const rust = JSON.parse(readFileSync(join(OUT, "photo-gc-rust.json"), "utf8"));
+  ok(JSON.stringify(got.photos_after) === "[19,19]" && got.delete_used === "input" && got.delete_gone === "not_found",
+    `dọn ảnh: đổi ảnh xóa ảnh cũ, ảnh còn hồ sơ khác dùng thì giữ; deletePhoto đang dùng → input, đã xóa → not_found (${JSON.stringify(got)})`);
+  ok(JSON.stringify(got, Object.keys(got).sort()) === JSON.stringify(rust, Object.keys(rust).sort()), "dọn ảnh: kết quả và stateHash giống hệt Rust (photo-gc-rust.json)");
+  results.photo_gc = got;
+}
+
+// YC-2026-07: gợi ý cách gọi / quan hệ và viết hoa chữ đầu — giống hệt Rust (names-rust.json do cross_platform write ghi).
+{
+  const rust = JSON.parse(readFileSync(join(OUT, "names-rust.json"), "utf8"));
+  const dx = {};
+  for (const [k, dead] of [["deceased", true], ["living", false]]) for (const g of [null, "nam", "nu"]) dx[`${k}:${g ?? "null"}`] = S.danhXungSuggestions(dead, g);
+  const mine = { capitalize: rust.capitalize.map(([x]) => [x, S.capitalizeFirst(x)]), danh_xung: dx, quan_he: { deceased: S.quanHeSuggestions(true), living: S.quanHeSuggestions(false) } };
+  ok(S.canonicalJson(mine) === S.canonicalJson(rust), "YC-2026-07: gợi ý cách gọi, quan hệ và viết hoa chữ đầu giống hệt Rust");
+  const np = S.normalizePersonNames({ danh_xung: "ông", quan_he: "bà ngoại", gioi_tinh: null, ho_ten: "x" });
+  ok(np.danh_xung === "Ông" && np.quan_he === "Bà ngoại" && !("gioi_tinh" in np), "YC-2026-07: normalizePersonNames (viết hoa, gioi_tinh null → bỏ khóa)");
+  results.names = { same_as_rust: S.canonicalJson(mine) === S.canonicalJson(rust) };
+}
+
+// ---------- 04 B5 / R14: bộ mẫu đóng băng released/0.2-dev-before-attachments ----------
+// Dựng kho IndexedDB phiên bản 1 (như bản dựng 0.2 trước YC-2026-07) từ ảnh chụp kho + byte ảnh của bộ mẫu, mở bằng
+// bản này → chuyển trong onupgradeneeded → so với cùng tệp kỳ vọng mà bản Rust phải ra.
+{
+  const RD = join(TV, "released", "0.2-dev-before-attachments");
+  const rm = JSON.parse(readFileSync(join(RD, "manifest.json"), "utf8"));
+  let frozen = true;
+  for (const [f, h] of Object.entries(rm.files)) if (sha(readFileSync(join(RD, f))) !== h) frozen = false;
+  ok(frozen, "B5: bộ mẫu đóng băng 0.2-dev-before-attachments không bị sửa (sha256 = manifest)");
+  const snapText = readFileSync(join(RD, "store-snapshot.json"), "utf8");
+  const old = JSON.parse(snapText);
+  const exp = JSON.parse(readFileSync(join(TV, "released", "expected", "0.2-dev-before-attachments.json"), "utf8"));
+  const { IDBFactory } = await import("fake-indexeddb");
+  const v1Store = async (mutate) => {
+    const f = new IDBFactory();
+    const doc = structuredClone(old);
+    if (mutate) mutate(doc);
+    await new Promise((okk, ko) => {
+      const r = f.open("lvhv", 1);
+      r.onupgradeneeded = () => {
+        const db = r.result, tx = r.transaction;
+        db.createObjectStore("persons", { keyPath: "id" });
+        db.createObjectStore("events", { keyPath: "id" }).createIndex("by_person", "person_ids", { multiEntry: true });
+        db.createObjectStore("event_types", { keyPath: "id" }).createIndex("by_name_key", "name_key", { unique: true });
+        db.createObjectStore("photos", { keyPath: "id" });
+        db.createObjectStore("settings");
+        db.createObjectStore("meta");
+        tx.objectStore("settings").put(doc.settings, "app");
+        tx.objectStore("meta").put(1, "schema_version");
+        for (const t of doc.event_types) tx.objectStore("event_types").put({ id: t.id, name_key: S.validate.nameKey(t.ten), doc: t });
+        for (const p of doc.persons) tx.objectStore("persons").put(p);
+        for (const e of doc.events) tx.objectStore("events").put(e);
+        for (const ph of doc.photos) tx.objectStore("photos").put({ id: ph.id, meta: ph, blob: new Blob([readFileSync(join(RD, "store", "photos", `${ph.id}.img`))], { type: ph.mime }) });
+      };
+      r.onsuccess = () => { r.result.close(); okk(); };
+      r.onerror = () => ko(r.error);
+    });
+    return f;
+  };
+  const stateDoc = async (st) => { const d = await st.snapshot({ version: "0.0.0", platform: "pwa" }, "1970-01-01T00:00:00Z"); delete d.app; delete d.exported_at; return d; };
+  // Chuyển kho.
+  const f1 = await v1Store();
+  const st = await S.openStore(f1);
+  const ms = st.migrationStatus();
+  ok(ms.state === "migrated" && ms.from_version === 1 && ms.to_version === 3, `B5: kho phiên bản 1 → chuyển đổi (${JSON.stringify(ms)})`);
+  const got = await stateDoc(st);
+  ok(S.canonicalJson(got) === S.canonicalJson(exp.state), "B5/R14: kho IndexedDB sau chuyển đổi = tệp kỳ vọng (giống bản Rust, 0 trường khác)");
+  ok((await st.stateHash()) === exp.state_sha256, "B5/R14: stateHash sau chuyển đổi = state_sha256 của Rust");
+  let bytesOk = true;
+  for (const ph of old.photos) {
+    const orig = sha(readFileSync(join(RD, "store", "photos", `${ph.id}.img`)));
+    const b = await st.photoBytes(ph.id).catch(() => st.attachmentBytes(ph.id));
+    if (sha(b) !== orig) bytesOk = false;
+  }
+  for (const a of exp.state.attachments) if (sha(await st.attachmentBytes(a.id)) !== a.sha256) bytesOk = false;
+  ok(bytesOk, "B5/R14: mọi byte ảnh cũ còn nguyên (ảnh chân dung, tệp đính kèm chuyển từ ảnh giấy báo tử)");
+  st.close();
+  const st2 = await S.openStore(f1);
+  ok(st2.migrationStatus().state === "ok" && (await st2.stateHash()) === exp.state_sha256, "B5: mở lại → không chuyển nữa, không đổi");
+  st2.close();
+  // Tệp sao lưu của bản dựng cũ.
+  const ov = await S.openBackup(new Uint8Array(readFileSync(join(RD, "backup.lvhv"))), rm.password);
+  const ti = await freshStore();
+  await ti.applyImport(ov, "replace");
+  ok((await ti.stateHash()) === exp.state_sha256, "B5 mục 5: tệp sao lưu của bản dựng cũ nhập được → cùng trạng thái với Rust");
+  // Ca lỗi: dữ liệu hỏng → quay lui, chỉ đọc, dữ liệu cũ còn nguyên, vẫn xuất được.
+  const fbad = await v1Store((d) => { d.persons.find((p) => p.id === "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e02").death.notice.place = "  Quê nhà"; });
+  const sb = await S.openStore(fbad);
+  const bs = sb.migrationStatus();
+  ok(bs.state === "read_only" && bs.to_version === 1 && typeof bs.error === "string", `B5: chuyển đổi lỗi → chỉ đọc (${JSON.stringify(bs)})`);
+  ok(sb.db.version === 1 && (await sb.attachments()).length === 0 && (await sb.person("0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e02")).death.notice.certificate_photo_ids.length === 2,
+    "B5: giao dịch nâng cấp quay lui — kho phiên bản 1 và dữ liệu cũ còn nguyên");
+  ok((await code(() => sb.putPerson(old.persons[0]))) === "read_only" && (await code(() => sb.deletePerson(old.persons[0].id))) === "read_only", "B5: chỉ đọc → mọi thao tác ghi báo read_only");
+  const xf = await sb.exportBackup("mật khẩu thử nghiệm", { version: "0.2.0", platform: "pwa" });
+  ok(xf.length > 1000, "B5: chỉ đọc vẫn xuất được tệp sao lưu");
+  sb.close();
+  // Hàm thuần: cùng kết quả với Rust trên ca biên (ảnh chân dung dùng chung, id treo → V3, hai khóa → V1, chạy lại
+  // không đổi) — như store/src/migrate.rs shared_portrait_missing_and_noop.
+  const edge = {
+    photos: [
+      { id: "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e01", mime: "image/jpeg", width: 10, height: 20, bytes: 5, sha256: "a".repeat(64), stripped: true, created_at: "2026-01-01T00:00:00Z" },
+      { id: "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e02", mime: "image/webp", width: 10, height: 20, bytes: 6, sha256: "b".repeat(64), stripped: true, created_at: "2026-01-02T00:00:00Z" }],
+    persons: [
+      { id: "p1", photo_id: "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e01", death: { notice: { certificate_photo_ids: ["0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e01", "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e02", "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5eff"] } } },
+      { id: "p2", photo_id: null, death: { notice: { certificate_photo_ids: ["0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e02"] } } },
+      { id: "p3", photo_id: null, death: null }],
+  };
+  const err = (d) => { try { S.migrate1to2(d); return "OK"; } catch (e) { return `${e.code} ${e.path}`; } };
+  ok(err(edge) === "V3 /persons/0/death/notice/certificate_photo_ids/2", "M09: certificate_photo_ids trỏ tới ảnh không có → V3 (như Rust)");
+  edge.persons[0].death.notice.certificate_photo_ids.pop();
+  const both = structuredClone(edge); both.persons[1].death.notice.attachments = [];
+  ok(err(both) === "V1 /persons/1/death/notice", "X22: có cả attachments lẫn certificate_photo_ids → V1 (như Rust)");
+  const pure = S.migrate1to2(edge);
+  ok(pure.doc.photos.length === 1 && pure.doc.attachments.length === 2 && pure.doc.persons[0].legacy.certificate_photo_ids.length === 2
+    && pure.doc.persons[0].legacy.certificate_photos[0].width === 10 && pure.doc.persons[2].death === null
+    && S.altId("0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e0c", new Set()) === "0b8e4f52-3c1a-4d2e-9f60-e5d4c3b2a1f3"
+    && !S.migrate1to2(pure.doc).changed, "B5: migrate1to2 cùng ca biên với Rust (store/src/migrate.rs)");
+  // Kiểm định: buộc lỗi chuyển đổi → chỉ đọc, dữ liệu cũ nguyên.
+  const ff = await v1Store();
+  const sf = await S.openStore(ff, { forceMigrationFailure: true });
+  ok(sf.migrationStatus().state === "read_only" && sf.db.version === 1, "B5: forceMigrationFailure → quay lui, chỉ đọc (như Rust OpenOptions)");
+  sf.close();
+  // 04 B6 trong chuyển đổi: ảnh giấy báo tử của kho cũ còn EXIF → không chuyển, chỉ đọc, dữ liệu cũ nguyên.
+  const exifJpg = readFileSync(join(TV, "media", "jpeg-exif-gps.jpg"));
+  const fx = new (await import("fake-indexeddb")).IDBFactory();
+  {
+    const doc = structuredClone(old);
+    await new Promise((okk, ko) => {
+      const r = fx.open("lvhv", 1);
+      r.onupgradeneeded = () => {
+        const db = r.result, tx = r.transaction;
+        for (const n of ["photos", "persons", "events"]) db.createObjectStore(n, { keyPath: "id" });
+        db.createObjectStore("event_types", { keyPath: "id" }).createIndex("by_name_key", "name_key", { unique: true });
+        db.createObjectStore("settings"); db.createObjectStore("meta");
+        tx.objectStore("settings").put(doc.settings, "app");
+        for (const t of doc.event_types) tx.objectStore("event_types").put({ id: t.id, name_key: S.validate.nameKey(t.ten), doc: t });
+        for (const p of doc.persons) tx.objectStore("persons").put(p);
+        for (const ph of doc.photos) tx.objectStore("photos").put({ id: ph.id, meta: ph, blob: new Blob([ph.id.endsWith("5e0c") ? exifJpg : readFileSync(join(RD, "store", "photos", `${ph.id}.img`))]) });
+      };
+      r.onsuccess = () => { r.result.close(); okk(); };
+      r.onerror = () => ko(r.error);
+    });
+  }
+  const sx = await S.openStore(fx);
+  ok(sx.migrationStatus().state === "read_only" && /metadata/.test(sx.migrationStatus().error ?? ""), `B6: ảnh giấy báo tử còn EXIF → không chuyển, chỉ đọc (${sx.migrationStatus().error})`);
+  sx.close();
+  results.released = { frozen, migrated_equals_rust: S.canonicalJson(got) === S.canonicalJson(exp.state) };
+}
+
+// ---------- 04 B6 / BM2-01: kiểm tra chặt ảnh và tệp đính kèm — cùng manifest, cùng mã với Rust (store/tests/media.rs) ----------
+{
+  const MD = join(TV, "media");
+  const mm = JSON.parse(readFileSync(join(MD, "manifest.json"), "utf8"));
+  let filesOk = true;
+  for (const [f, h] of Object.entries(mm.files)) if (sha(readFileSync(join(MD, f))) !== h) filesOk = false;
+  ok(filesOk, "B6: tệp mẫu media đúng sha256 của manifest");
+  const wrong = [];
+  for (const c of mm.cases) {
+    const got = S.mediaVerdict(c.kind, c.mime, new Uint8Array(readFileSync(join(MD, c.file))), c.width, c.height);
+    if (got !== c.expect) wrong.push(`${c.file}/${c.mime}/${c.kind}: ${got} ≠ ${c.expect}`);
+  }
+  ok(wrong.length === 0, `B6: ${mm.cases.length} ca media cho đúng mã kỳ vọng (= Rust) ${wrong.join("; ")}`);
+  // Tệp sao lưu (của kẻ gửi) mang tệp đính kèm độc → từ chối toàn bộ, thông báo chung (S12).
+  const SD = join(TV, "supplement-yc05");
+  const sdoc = JSON.parse(readFileSync(join(SD, "notice-v1.json"), "utf8"));
+  const pdf0 = new Uint8Array(readFileSync(join(SD, "giay-chung-tu.pdf")));
+  const blobsOf = (doc, over) => [...doc.photos.map((p) => ({ id: p.id, bytes: exPhoto })),
+    ...doc.attachments.map((a) => ({ id: a.id, bytes: over?.[a.id] ?? (a.mime === "application/pdf" ? pdf0 : exPhoto) }))];
+  ok((await code(() => S.verifyContents(S.canonicalJson(sdoc), blobsOf(sdoc)))) === "OK", "B6: đối chứng — vector bổ sung hợp lệ");
+  const evil = [
+    [0, "image/jpeg", "pdf-ok.pdf"], [0, "image/jpeg", "png-20000x20000-bomb.png"], [0, "image/jpeg", "html-as-image.html"],
+    [0, "image/jpeg", "jpeg-exif-gps.jpg"], [0, "image/webp", "webp-exif.webp"], [1, "application/pdf", "pdf-fake-no-eof.pdf"],
+    [1, "application/pdf", "html-as-image.html"]];
+  const bad = [];
+  for (const [i, mime, f] of evil) {
+    const d = structuredClone(sdoc);
+    const b = new Uint8Array(readFileSync(join(MD, f)));
+    Object.assign(d.attachments[i], { mime, bytes: b.length, sha256: sha(b), stripped: mime !== "application/pdf" });
+    let msg = "";
+    try { await S.verifyContents(S.canonicalJson(d), blobsOf(d, { [d.attachments[i].id]: b })); } catch (e) { msg = e.message; }
+    if (msg !== "Sai mật khẩu hoặc tệp bị hỏng") bad.push(`${f}:${msg}`);
+  }
+  ok(bad.length === 0, `B6/S12: ${evil.length} tệp sao lưu có tệp đính kèm độc (X21 PDF khai image/jpeg, bom PNG, HTML, EXIF, WebP EXIF, PDF giả) → từ chối, thông báo chung ${bad.join("; ")}`);
+  // Thêm ảnh / tệp (BM2-08).
+  const sa = await freshStore();
+  ok((await code(() => sa.addAttachment({ id: "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e7a", mime: "image/jpeg", file_name: null, bytes: new Uint8Array(readFileSync(join(MD, "jpeg-exif-gps.jpg"))) }))) === "input",
+    "B6/BM2-08: addAttachment ảnh còn EXIF → input");
+  ok((await code(() => sa.addAttachment({ id: "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e7a", mime: "application/pdf", file_name: null, bytes: new Uint8Array(readFileSync(join(MD, "pdf-fake-no-eof.pdf"))) }))) === "input",
+    "B6: addAttachment PDF không có %%EOF → input");
+  // X22 / M09 khi nhập tệp sao lưu của bản dựng cũ.
+  const RD2 = join(TV, "released", "0.2-dev-before-attachments");
+  const odoc = JSON.parse(readFileSync(join(RD2, "store-snapshot.json"), "utf8"));
+  const ob = odoc.photos.map((p) => ({ id: p.id, bytes: new Uint8Array(readFileSync(join(RD2, "store", "photos", `${p.id}.img`))) }));
+  ok((await code(() => S.verifyContents(S.canonicalJson(odoc), ob))) === "OK", "B5: tài liệu cũ hợp lệ được chuyển khi nhập");
+  const x22 = structuredClone(odoc); x22.persons[0].death.notice.attachments = [];
+  const m09 = structuredClone(odoc); m09.persons[0].death.notice.certificate_photo_ids = ["0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5eff"];
+  ok((await code(() => S.verifyContents(S.canonicalJson(x22), ob))) === "invalid" && (await code(() => S.verifyContents(S.canonicalJson(m09), ob))) === "invalid",
+    "X22/M09: nhập tài liệu có cả hai khóa, hoặc id ảnh treo → từ chối");
+  results.media = { cases: mm.cases.length, mismatches: wrong.length };
 }
 
 writeFileSync(join(OUT, "results.json"), JSON.stringify(results, null, 2) + "\n");
