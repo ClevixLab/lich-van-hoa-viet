@@ -189,6 +189,34 @@ if (!NOTES) {
   NOTES = [];
 }
 
+// ---------- Gói ảnh mâm lễ của Clevix (YC-2026-10, 08 §16.3, 04 R15 (b), ADR-V02-01) ----------
+// Danh sách mục đã duyệt lấy từ kịch bản kiểm gói của vai nội dung (scripts/check-tray-pack.py — một nguồn duy nhất cho
+// mọi nền tảng: chỉ `trang_thai = "duyet"`, có tệp, đúng sha256, không EXIF/XMP, ≤ 400 KB, cả gói ≤ 2 MB). Gói lỗi →
+// build thất bại. Gói rỗng → không nhúng gì, không hiện mâm. LVHV_TRAY_MANIFEST: gói thử (kiểm thử §16.4 (5)).
+const TRAY_MANIFEST = process.env.LVHV_TRAY_MANIFEST ? resolve(process.env.LVHV_TRAY_MANIFEST) : join(REPO, "content", "memorial", "trays", "manifest.json");
+const trayPack = (() => {
+  // G-04 (duyệt #50): đặt LVHV_TRAY_MANIFEST mà tệp không có → thất bại (không lặng lẽ dựng bản không mâm).
+  if (!existsSync(TRAY_MANIFEST)) { if (process.env.LVHV_TRAY_MANIFEST) fail(`LVHV_TRAY_MANIFEST trỏ tới tệp không có: ${TRAY_MANIFEST}`); return []; }
+  const tmp = join(GEN, "tray-pack.json");
+  mkdirSync(GEN, { recursive: true });
+  try {
+    execFileSync("python3", [join(REPO, "scripts", "check-tray-pack.py"), "--manifest", TRAY_MANIFEST, "--out", tmp], { stdio: ["ignore", "ignore", "pipe"] });
+  } catch (e) { fail(`gói ảnh mâm lễ không đạt (scripts/check-tray-pack.py): ${String(e.stderr ?? e.message).trim()}`); }
+  const approved = JSON.parse(readFileSync(tmp, "utf8")).approved;
+  rmSync(tmp, { force: true });
+  return approved.map((it) => {
+    const src = join(dirname(TRAY_MANIFEST), it.file);
+    const bytes = readFileSync(src);
+    if (createHash("sha256").update(bytes).digest("hex") !== it.sha256) fail(`gói ảnh mâm lễ: sha256 của ${it.file} không khớp`);
+    const ext = it.mime === "image/webp" ? "webp" : "jpg";
+    return { src, out: `trays/${it.id}.${ext}`, item: { id: it.id, tray_style: it.tray_style, path: `trays/${it.id}.${ext}`, mime: it.mime, width: it.width, height: it.height,
+      // 08 §16.1 / G-03 (duyệt #50): ảnh cần ghi công → hiện NGUYÊN VĂN `ghi_cong` của vai nội dung (một số giấy phép đòi
+      // câu ghi công riêng); vai nội dung viết theo dạng "Ảnh: <tác giả> · <giấy phép>".
+      credit: it.ghi_cong === null ? null : it.ghi_cong } };
+  });
+})();
+log(`gói ảnh mâm lễ: ${trayPack.length} ảnh đã duyệt${trayPack.length ? "" : " (gói rỗng — không hiện mâm)"}`);
+
 mkdirSync(GEN, { recursive: true });
 writeFileSync(join(GEN, "content.ts"),
   `// TỆP SINH TỰ ĐỘNG bởi build.mjs — không sửa tay.\n` +
@@ -208,7 +236,9 @@ writeFileSync(join(GEN, "content.ts"),
   `export const CADAO_ATTRIBUTION = ${JSON.stringify(attribution)};\n` +
   `export const RULE_SOURCES_INTRO = ${JSON.stringify(rulesSrc.intro)};\n` +
   `export const RULE_SOURCES: RuleSource[] = ${JSON.stringify(rulesSrc.rows)};\n` +
-  `export const RULE_SOURCES_LIMITS: string[] = ${JSON.stringify(rulesSrc.limits)};\n`);
+  `export const RULE_SOURCES_LIMITS: string[] = ${JSON.stringify(rulesSrc.limits)};\n` +
+  `/** Gói ảnh mâm lễ của Clevix đã duyệt (content/memorial/trays, 08 §16.3); tệp nằm ở dist/trays/. */\n` +
+  `export const TRAY_PACK: { id: string; tray_style: string; path: string; mime: string; width: number; height: number; credit: string | null }[] = ${JSON.stringify(trayPack.map((t) => t.item))};\n`);
 log(`phiên bản ${VERSION}${versionOverridden ? " (LVHV_VERSION)" : ""}, bản dựng ${BUILD_ID}, ngày ${BUILD_DATE}`);
 log(`lõi: ${engineSource}; phương pháp: ${method}${method !== rustMethod ? ` (LVHV_METHOD, lõi Rust: ${rustMethod})` : ""}; ca dao: ${cadao.length} câu${cadaoMock ? " (mock)" : ""}; nguồn Ngọc Hạp: ${rulesSrc.rows.length} dòng`);
 
@@ -281,6 +311,8 @@ function copyDir(src, dst) {
 copyDir(join(ROOT, "public", "icons"), join(DIST, "icons"));
 copyFileSync(join(ROOT, "public", "fonts", "OFL.txt"), join(DIST, "fonts", "OFL.txt"));
 copyFileSync(join(ROOT, "public", "manifest.webmanifest"), join(DIST, "manifest.webmanifest"));
+// Gói ảnh mâm lễ đã duyệt: nằm trong precache (dùng ngoại tuyến, 08 §16.3 "không tải gì qua mạng").
+for (const t of trayPack) { mkdirSync(join(DIST, "trays"), { recursive: true }); copyFileSync(t.src, join(DIST, t.out)); }
 
 const CSP = [
   "default-src 'self'",
