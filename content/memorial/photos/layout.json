@@ -15,8 +15,8 @@
         0.05,
         0.22
       ],
-      "cx": 32,
-      "bottom": 170,
+      "cx": 30,
+      "bottom": 172,
       "width": 22,
       "z": 1,
       "shadow": false
@@ -35,10 +35,25 @@
         0.05,
         0.22
       ],
-      "cx": 328,
-      "bottom": 170,
+      "cx": 332,
+      "bottom": 172,
       "width": 22,
       "z": 1,
+      "shadow": false
+    },
+    {
+      "id": "lo-hoa",
+      "photo": "lo-hoa-1",
+      "crop": [
+        0.17,
+        0.08,
+        0.88,
+        0.8
+      ],
+      "cx": 286,
+      "bottom": 140,
+      "width": 74,
+      "z": 2,
       "shadow": false
     },
     {
@@ -50,10 +65,18 @@
         0.99,
         0.88
       ],
-      "cx": 88,
-      "bottom": 160,
-      "width": 84,
-      "z": 2
+      "cx": 268,
+      "bottom": 168,
+      "width": 80,
+      "z": 3
+    },
+    {
+      "id": "dia-xoi",
+      "photo": "dia-xoi-1",
+      "cx": 92,
+      "bottom": 168,
+      "width": 70,
+      "z": 3
     },
     {
       "id": "bat-huong",
@@ -62,24 +85,10 @@
         0.2,
         0.25,
         0.8,
-        0.75
+        0.66
       ],
       "cx": 180,
-      "bottom": 160,
-      "width": 80,
-      "z": 3
-    },
-    {
-      "id": "lo-hoa",
-      "photo": "lo-hoa-1",
-      "crop": [
-        0.17,
-        0.08,
-        0.88,
-        0.8
-      ],
-      "cx": 268,
-      "bottom": 222,
+      "bottom": 166,
       "width": 80,
       "z": 4
     },
@@ -92,26 +101,10 @@
         0.69,
         0.99
       ],
-      "cx": 178,
-      "bottom": 240,
+      "cx": 182,
+      "bottom": 248,
       "width": 112,
       "z": 7
-    },
-    {
-      "id": "dia-xoi",
-      "photo": "dia-xoi-1",
-      "cx": 98,
-      "bottom": 248,
-      "width": 70,
-      "z": 8
-    },
-    {
-      "id": "bat-com",
-      "photo": "bat-com-1",
-      "cx": 262,
-      "bottom": 250,
-      "width": 56,
-      "z": 9
     },
     {
       "id": "khoanh-gio",
@@ -122,10 +115,18 @@
         0.48,
         0.94
       ],
-      "cx": 150,
-      "bottom": 262,
+      "cx": 96,
+      "bottom": 252,
       "width": 30,
-      "z": 10
+      "z": 8
+    },
+    {
+      "id": "bat-com",
+      "photo": "bat-com-1",
+      "cx": 278,
+      "bottom": 252,
+      "width": 56,
+      "z": 9
     },
     {
       "id": "trung",
@@ -136,10 +137,10 @@
         0.62,
         0.61
       ],
-      "cx": 262,
-      "bottom": 226,
+      "cx": 278,
+      "bottom": 228,
       "width": 22,
-      "z": 11,
+      "z": 10,
       "shadow": false
     }
   ]
