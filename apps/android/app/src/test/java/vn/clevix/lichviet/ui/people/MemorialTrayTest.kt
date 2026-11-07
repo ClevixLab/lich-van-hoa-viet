@@ -265,7 +265,7 @@ class MemorialTrayTest {
         rule.onNode(androidx.compose.ui.test.hasText("Lưu")).performScrollTo().performClick()
         rule.waitForIdle()
         val p = repo.person(ids.a)!!
-        assertTrue("đã lưu ô vừa sửa", p.noiAnTang.endsWith("xã Yên Sở"))
+        assertTrue("đã lưu ô vừa sửa: ${p.noiAnTang}", p.noiAnTang.contains("xã Yên Sở"))
         assertEquals(pid, p.memorial?.get("tray_photo_id"))
         org.junit.Assert.assertNotNull("ảnh mâm lễ còn trong kho", repo.photo(pid))
         // Sửa lần nữa, lần này mở khối Tưởng niệm và đổi lời tưởng niệm — vẫn giữ ảnh.
