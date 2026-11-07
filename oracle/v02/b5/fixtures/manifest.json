@@ -1,0 +1,1856 @@
+{
+ "fixtures": [
+  {
+   "big": false,
+   "blobs": {
+    "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09": {
+     "len": 33714,
+     "sha256": "22a5c04266a6d2e27fa3085bd0623296dfb7e91b5763e8a746c6a4d220dfb7e9"
+    },
+    "b5000000-0000-4000-8000-0000000000c1": {
+     "len": 1187,
+     "sha256": "231068c0b33ce6a99f46e938f11662f02312e01bea44b7627356e225270acb31"
+    },
+    "b5000000-0000-4000-8000-0000000000c2": {
+     "len": 1359,
+     "sha256": "de00d27aae1d02b9318de13a589c054aac5f0608e3731c2377025cc0fe7f28d1"
+    },
+    "b5000000-0000-4000-8000-0000000000c3": {
+     "len": 1350,
+     "sha256": "751ab1aa33e3b02b16154169ebad6ae192431c936029a05a72592cf168a48b8b"
+    }
+   },
+   "class": [
+    "migrate"
+   ],
+   "desc": "v1: 2 ho so da mat co thong tin bao tu, 3 anh giay chung tu, gioi_tinh vang",
+   "expect": "accept",
+   "json_sha256": "2637d0c2f2ef303aa786f321d06a6d6e877f9dd8fa8a4e6f85f474b981c0b329",
+   "lvhv_sha256": "5e874c888953c743528866115f7afef12a4d89d1e5fab8b09a915d9462dfe600",
+   "name": "M01-cu-giay-chung-tu",
+   "oracle_codes": [],
+   "schema_version": 1
+  },
+  {
+   "big": false,
+   "blobs": {
+    "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09": {
+     "len": 33714,
+     "sha256": "22a5c04266a6d2e27fa3085bd0623296dfb7e91b5763e8a746c6a4d220dfb7e9"
+    },
+    "b5000000-0000-4000-8000-0000000000d1": {
+     "len": 1357,
+     "sha256": "e6fdf730208aa2cb748cf9dc71092d9915ad4404b41afb23cc5af7213f2dcf23"
+    },
+    "b5000000-0000-4000-8000-0000000000d2": {
+     "len": 1286,
+     "sha256": "6ee4c9ab290c10887a7739562e695e06f5225f6f131b34e79719d0adeb4f2051"
+    },
+    "b5000000-0000-4000-8000-0000000000d3": {
+     "len": 1389,
+     "sha256": "13d7b41988de2b97cb7d838db03b199025f580ed7ea1d17668f4ba40193feffc"
+    },
+    "b5000000-0000-4000-8000-0000000000d4": {
+     "len": 1163,
+     "sha256": "a8dfe4d9cbaac5bb9c17884bcd194549c986b740a0118ad395ecc322c1b50e0e"
+    }
+   },
+   "class": [
+    "migrate"
+   ],
+   "desc": "v1: toi da 4 anh giay chung tu -> 4 tep dinh kem",
+   "expect": "accept",
+   "json_sha256": "bb2a55e662b6a57eed10572a5723a2f5e98aa1110ce5c8f63ea389601adeac02",
+   "lvhv_sha256": "f9dd0f15e3b7f224aec7eecbe7deda54b3359b4d393817c4a68982862b741500",
+   "name": "M02-cu-4-anh",
+   "oracle_codes": [],
+   "schema_version": 1
+  },
+  {
+   "big": false,
+   "blobs": {
+    "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09": {
+     "len": 33714,
+     "sha256": "22a5c04266a6d2e27fa3085bd0623296dfb7e91b5763e8a746c6a4d220dfb7e9"
+    }
+   },
+   "class": [
+    "migrate"
+   ],
+   "desc": "v1: anh giay chung tu trung anh chan dung (A-M3): anh chan dung phai con",
+   "expect": "accept",
+   "json_sha256": "62a6defc0df175f3f1ffd469526012df3ab957dd2867480afe2ea7821e26f626",
+   "lvhv_sha256": "e9ee89fea2e251ae3be0cab5be60bb8eda195334df233e756385c6f59892bd59",
+   "name": "M03-cu-anh-chung",
+   "oracle_codes": [],
+   "schema_version": 1
+  },
+  {
+   "big": false,
+   "blobs": {
+    "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09": {
+     "len": 33714,
+     "sha256": "22a5c04266a6d2e27fa3085bd0623296dfb7e91b5763e8a746c6a4d220dfb7e9"
+    }
+   },
+   "class": [
+    "migrate"
+   ],
+   "desc": "v1 khoa R6 (example-v1): chi tang phien ban + gioi_tinh null; quan_he chu thuong giu nguyen",
+   "expect": "accept",
+   "json_sha256": "b723677890238aa351dde2e690315a00a81bdc76b2f4ac86dc7da9835363a1f3",
+   "lvhv_sha256": "b12a0864c678b80115bd6711b426d5d63f7c962edd2aa79b614f2b3b223320a3",
+   "name": "M04-cu-khong-bao-tu",
+   "oracle_codes": [],
+   "schema_version": 1
+  },
+  {
+   "big": false,
+   "blobs": {
+    "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09": {
+     "len": 33714,
+     "sha256": "22a5c04266a6d2e27fa3085bd0623296dfb7e91b5763e8a746c6a4d220dfb7e9"
+    }
+   },
+   "class": [
+    "migrate"
+   ],
+   "desc": "v1: notice moi truong null, certificate_photo_ids rong",
+   "expect": "accept",
+   "json_sha256": "faf418420b07c06423b44b3ecb119a1753ce1c73eade37630213138cab147848",
+   "lvhv_sha256": "22ae0b7b6c8963ed324b9b772937a455222c6fd95a6d048ff03e5616bb23fd0c",
+   "name": "M05-cu-bao-tu-rong",
+   "oracle_codes": [],
+   "schema_version": 1
+  },
+  {
+   "big": false,
+   "blobs": {
+    "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09": {
+     "len": 33714,
+     "sha256": "22a5c04266a6d2e27fa3085bd0623296dfb7e91b5763e8a746c6a4d220dfb7e9"
+    },
+    "b5000000-0000-4000-8000-0000000000c1": {
+     "len": 1187,
+     "sha256": "231068c0b33ce6a99f46e938f11662f02312e01bea44b7627356e225270acb31"
+    },
+    "b5000000-0000-4000-8000-0000000000c2": {
+     "len": 1359,
+     "sha256": "de00d27aae1d02b9318de13a589c054aac5f0608e3731c2377025cc0fe7f28d1"
+    },
+    "b5000000-0000-4000-8000-0000000000c3": {
+     "len": 1350,
+     "sha256": "751ab1aa33e3b02b16154169ebad6ae192431c936029a05a72592cf168a48b8b"
+    }
+   },
+   "class": [
+    "migrate",
+    "legacy"
+   ],
+   "desc": "v1 + khoa la o goc, Person, DeathNotice, Photo: phai giu trong legacy (A-M7), khong bo lang le",
+   "expect": "accept_or_chua_ro",
+   "json_sha256": "f07e3700115e8ab867d799c858d0f862b5f3e3e4f0539e08263a768e181c7d74",
+   "lvhv_sha256": "89a0c33d5131e440c9a1c75dab67943ab3b247c4fedc48afd460df7bd249ac64",
+   "name": "M06-cu-khoa-la-legacy",
+   "oracle_codes": [
+    "V1"
+   ],
+   "schema_version": 1
+  },
+  {
+   "big": false,
+   "blobs": {
+    "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09": {
+     "len": 33714,
+     "sha256": "22a5c04266a6d2e27fa3085bd0623296dfb7e91b5763e8a746c6a4d220dfb7e9"
+    }
+   },
+   "class": [
+    "migrate",
+    "names"
+   ],
+   "desc": "v1: danh_xung/quan_he/ho_ten chu thuong, chu hoa le (NFC): nhap/chuyen doi giu nguyen tung byte",
+   "expect": "accept",
+   "json_sha256": "5792b414a060c3d3f6ca148f0f417d81a1ba8cc1ebfe7780d305c00ca94fc089",
+   "lvhv_sha256": "8314c89cf319cb6646c693188706557d313d057c3442cdb737fd61b7fc0594d8",
+   "name": "M07-cu-chu-thuong-nfc",
+   "oracle_codes": [],
+   "schema_version": 1
+  },
+  {
+   "big": false,
+   "blobs": {
+    "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09": {
+     "len": 33714,
+     "sha256": "22a5c04266a6d2e27fa3085bd0623296dfb7e91b5763e8a746c6a4d220dfb7e9"
+    }
+   },
+   "class": [
+    "migrate",
+    "names"
+   ],
+   "desc": "v1: chuoi NFD trong tep nhap (A-N2): ghi nhan giu nguyen hay NFC",
+   "expect": "chua_ro",
+   "json_sha256": "53d181f8226f2bf57cd27e0cb4c5af339197db1895b67c0f8634954bb339fd1d",
+   "lvhv_sha256": "f9d0cf7ada0556e4440e441e1d8c8a2e0b192be720bf3ad694f2e6d400638cb9",
+   "name": "M08-cu-nfd",
+   "oracle_codes": [],
+   "schema_version": 1
+  },
+  {
+   "big": false,
+   "blobs": {
+    "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09": {
+     "len": 33714,
+     "sha256": "22a5c04266a6d2e27fa3085bd0623296dfb7e91b5763e8a746c6a4d220dfb7e9"
+    }
+   },
+   "class": [
+    "V3"
+   ],
+   "desc": "v1: certificate_photo_ids tro toi anh khong co",
+   "expect": "reject",
+   "json_sha256": "7f0e06c4dc39e29aa61fad53796277d59210c351b97d72a3f64ddaaf10948786",
+   "lvhv_sha256": "b3397371b298ef2f2c892ac43e92e9da3f77c4113aecd5715326a47965e4ffc1",
+   "name": "M09-cu-anh-chung-tu-thieu",
+   "oracle_codes": [
+    "V3"
+   ],
+   "schema_version": 1
+  },
+  {
+   "big": false,
+   "blobs": {
+    "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09": {
+     "len": 33714,
+     "sha256": "22a5c04266a6d2e27fa3085bd0623296dfb7e91b5763e8a746c6a4d220dfb7e9"
+    },
+    "b5000000-0000-4000-8000-0000000000c1": {
+     "len": 1187,
+     "sha256": "231068c0b33ce6a99f46e938f11662f02312e01bea44b7627356e225270acb31"
+    },
+    "b5000000-0000-4000-8000-0000000000c2": {
+     "len": 1359,
+     "sha256": "de00d27aae1d02b9318de13a589c054aac5f0608e3731c2377025cc0fe7f28d1"
+    },
+    "b5000000-0000-4000-8000-0000000000c3": {
+     "len": 1350,
+     "sha256": "751ab1aa33e3b02b16154169ebad6ae192431c936029a05a72592cf168a48b8b"
+    }
+   },
+   "class": [
+    "NEWER"
+   ],
+   "desc": "tai lieu dang v2 nhung schema_version 3",
+   "expect": "reject",
+   "json_sha256": "fc60d6eed4ce921fbedc3c2d84b90a9bf9b9d3fb0744784dc5b8dcecf493c648",
+   "lvhv_sha256": "a0d3ea684b521ab3eb3dff476bc72f7ad2afceed0be824d8248a292f2ea4a146",
+   "name": "N01-schema-3",
+   "oracle_codes": [
+    "NEWER"
+   ],
+   "schema_version": 3
+  },
+  {
+   "big": false,
+   "blobs": {
+    "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09": {
+     "len": 33714,
+     "sha256": "22a5c04266a6d2e27fa3085bd0623296dfb7e91b5763e8a746c6a4d220dfb7e9"
+    }
+   },
+   "class": [
+    "NEWER"
+   ],
+   "desc": "tai lieu dang v1, schema_version 99",
+   "expect": "reject",
+   "json_sha256": "8a294c54f221c93159b6cd8ee5e7292d14cab100ef206ae9edefba5f31ed293d",
+   "lvhv_sha256": "f0509bdcd7b7527abeec8e712465778e3da3fc30094a6a0ad9b5f7c78ea7a042",
+   "name": "N02-schema-99",
+   "oracle_codes": [
+    "NEWER"
+   ],
+   "schema_version": 99
+  },
+  {
+   "big": false,
+   "blobs": {
+    "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09": {
+     "len": 33714,
+     "sha256": "22a5c04266a6d2e27fa3085bd0623296dfb7e91b5763e8a746c6a4d220dfb7e9"
+    },
+    "b5000000-0000-4000-8000-0000000000c1": {
+     "len": 1187,
+     "sha256": "231068c0b33ce6a99f46e938f11662f02312e01bea44b7627356e225270acb31"
+    },
+    "b5000000-0000-4000-8000-0000000000c2": {
+     "len": 1359,
+     "sha256": "de00d27aae1d02b9318de13a589c054aac5f0608e3731c2377025cc0fe7f28d1"
+    },
+    "b5000000-0000-4000-8000-0000000000c3": {
+     "len": 1350,
+     "sha256": "751ab1aa33e3b02b16154169ebad6ae192431c936029a05a72592cf168a48b8b"
+    }
+   },
+   "class": [
+    "V1"
+   ],
+   "desc": "schema_version 1 nhung dung truong moi (attachments, gioi_tinh)",
+   "expect": "reject",
+   "json_sha256": "a33f47a9bdf58a39ef0de9f452837ab6049d9860b1884b592c357de0ee30aff4",
+   "lvhv_sha256": "5e3cd4ccab9ef73fc59df6dd2250a39ab78a3a2643f22192b7925c76b21fd686",
+   "name": "N03-v1-dang-moi",
+   "oracle_codes": [
+    "BLOB",
+    "V1"
+   ],
+   "schema_version": 1
+  },
+  {
+   "big": false,
+   "blobs": {
+    "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09": {
+     "len": 33714,
+     "sha256": "22a5c04266a6d2e27fa3085bd0623296dfb7e91b5763e8a746c6a4d220dfb7e9"
+    },
+    "b5000000-0000-4000-8000-0000000000c1": {
+     "len": 1187,
+     "sha256": "231068c0b33ce6a99f46e938f11662f02312e01bea44b7627356e225270acb31"
+    },
+    "b5000000-0000-4000-8000-0000000000c2": {
+     "len": 1359,
+     "sha256": "de00d27aae1d02b9318de13a589c054aac5f0608e3731c2377025cc0fe7f28d1"
+    },
+    "b5000000-0000-4000-8000-0000000000c3": {
+     "len": 1350,
+     "sha256": "751ab1aa33e3b02b16154169ebad6ae192431c936029a05a72592cf168a48b8b"
+    }
+   },
+   "class": [
+    "V1"
+   ],
+   "desc": "schema_version 2 nhung con certificate_photo_ids",
+   "expect": "reject",
+   "json_sha256": "81db771701e564eba9434219ab0d7bb277ab172d394972cfebc5a2b773d82684",
+   "lvhv_sha256": "b3773d177c9a231c593b3399b8272819a71dc047afdcaf9a168b55a8c00e2c50",
+   "name": "N04-v2-dang-cu",
+   "oracle_codes": [
+    "V1"
+   ],
+   "schema_version": 2
+  },
+  {
+   "big": false,
+   "blobs": {
+    "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09": {
+     "len": 33714,
+     "sha256": "22a5c04266a6d2e27fa3085bd0623296dfb7e91b5763e8a746c6a4d220dfb7e9"
+    }
+   },
+   "class": [
+    "V1"
+   ],
+   "desc": "schema_version 0",
+   "expect": "reject",
+   "json_sha256": "16ce78bd4bb148317f84fd62609154aba1429292087b6ea5983e3a2bbe815a05",
+   "lvhv_sha256": "d88e6ffdf28db41f42d369a92f744b59e4b2d9198aec3450788afaf5b3e49caa",
+   "name": "N05-schema-0",
+   "oracle_codes": [
+    "V1"
+   ],
+   "schema_version": 0
+  },
+  {
+   "big": false,
+   "blobs": {
+    "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09": {
+     "len": 33714,
+     "sha256": "22a5c04266a6d2e27fa3085bd0623296dfb7e91b5763e8a746c6a4d220dfb7e9"
+    },
+    "b5000000-0000-4000-8000-0000000000c1": {
+     "len": 1187,
+     "sha256": "231068c0b33ce6a99f46e938f11662f02312e01bea44b7627356e225270acb31"
+    },
+    "b5000000-0000-4000-8000-0000000000c2": {
+     "len": 1359,
+     "sha256": "de00d27aae1d02b9318de13a589c054aac5f0608e3731c2377025cc0fe7f28d1"
+    },
+    "b5000000-0000-4000-8000-0000000000c3": {
+     "len": 1350,
+     "sha256": "751ab1aa33e3b02b16154169ebad6ae192431c936029a05a72592cf168a48b8b"
+    },
+    "b5000000-0000-4000-8000-0000000000f1": {
+     "len": 75,
+     "sha256": "951f360bccff3c7b4ea28d1bba5887d5566bccfc172e7a1671a3dcdc86b4303a"
+    },
+    "b5000000-0000-4000-8000-0000000000f2": {
+     "len": 1442,
+     "sha256": "f088fa310678d631505d71e64100f3038d4dfa73edfa9542608197abf9ebd9b1"
+    }
+   },
+   "class": [
+    "v2"
+   ],
+   "desc": "v2: anh + PDF, ba loai kind, gioi_tinh nam/nu/null",
+   "expect": "accept",
+   "json_sha256": "6ac49a162cca8f01e3fd9ddbf2f35455ddaac81268d86bfd9691c51dc2381a05",
+   "lvhv_sha256": "0d9afb72b9e0639c9530e22e1b2bee48b7d63a4e66f0fc8d05e854a620cd1b41",
+   "name": "G01-v2-hop-le",
+   "oracle_codes": [],
+   "schema_version": 2
+  },
+  {
+   "big": false,
+   "blobs": {
+    "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09": {
+     "len": 33714,
+     "sha256": "22a5c04266a6d2e27fa3085bd0623296dfb7e91b5763e8a746c6a4d220dfb7e9"
+    },
+    "b5000000-0000-4000-8000-0000000000c1": {
+     "len": 1187,
+     "sha256": "231068c0b33ce6a99f46e938f11662f02312e01bea44b7627356e225270acb31"
+    },
+    "b5000000-0000-4000-8000-0000000000c2": {
+     "len": 1359,
+     "sha256": "de00d27aae1d02b9318de13a589c054aac5f0608e3731c2377025cc0fe7f28d1"
+    },
+    "b5000000-0000-4000-8000-0000000000c3": {
+     "len": 1350,
+     "sha256": "751ab1aa33e3b02b16154169ebad6ae192431c936029a05a72592cf168a48b8b"
+    },
+    "b5000000-0000-4000-8000-0000000000f1": {
+     "len": 75,
+     "sha256": "951f360bccff3c7b4ea28d1bba5887d5566bccfc172e7a1671a3dcdc86b4303a"
+    },
+    "b5000000-0000-4000-8000-0000000000f2": {
+     "len": 1442,
+     "sha256": "f088fa310678d631505d71e64100f3038d4dfa73edfa9542608197abf9ebd9b1"
+    },
+    "b5000000-0000-4000-8000-000000000f10": {
+     "len": 1206,
+     "sha256": "b72bbb5ff912163db5ced9da47fae42d963a3ba3ddd1dae5c04d04e37d44ff63"
+    },
+    "b5000000-0000-4000-8000-000000000f11": {
+     "len": 1286,
+     "sha256": "c643d68062b8a9a64ceecdcf90fd78248646fc33ad944e66d306e23d0608cf5b"
+    },
+    "b5000000-0000-4000-8000-000000000f12": {
+     "len": 1335,
+     "sha256": "b46b09fe3cc4744d57f24e7cd9abfbbae2b53683c9c634da3abee05145c1963a"
+    }
+   },
+   "class": [
+    "v2"
+   ],
+   "desc": "v2: dung 6 tep dinh kem (bien tren)",
+   "expect": "accept",
+   "json_sha256": "9527f852affa2b395c19cba7628386e1f22e4bfb8607b9300bec0150d7c07aec",
+   "lvhv_sha256": "4db9473c22d53f4aed14d4729830c2f788be7a1c0bd025e71e0aef8b3c742607",
+   "name": "G02-v2-dung-6-tep",
+   "oracle_codes": [],
+   "schema_version": 2
+  },
+  {
+   "big": false,
+   "blobs": {
+    "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09": {
+     "len": 33714,
+     "sha256": "22a5c04266a6d2e27fa3085bd0623296dfb7e91b5763e8a746c6a4d220dfb7e9"
+    },
+    "b5000000-0000-4000-8000-0000000000c1": {
+     "len": 1187,
+     "sha256": "231068c0b33ce6a99f46e938f11662f02312e01bea44b7627356e225270acb31"
+    },
+    "b5000000-0000-4000-8000-0000000000c2": {
+     "len": 1359,
+     "sha256": "de00d27aae1d02b9318de13a589c054aac5f0608e3731c2377025cc0fe7f28d1"
+    },
+    "b5000000-0000-4000-8000-0000000000c3": {
+     "len": 1350,
+     "sha256": "751ab1aa33e3b02b16154169ebad6ae192431c936029a05a72592cf168a48b8b"
+    },
+    "b5000000-0000-4000-8000-0000000000f1": {
+     "len": 75,
+     "sha256": "951f360bccff3c7b4ea28d1bba5887d5566bccfc172e7a1671a3dcdc86b4303a"
+    },
+    "b5000000-0000-4000-8000-0000000000f2": {
+     "len": 1442,
+     "sha256": "f088fa310678d631505d71e64100f3038d4dfa73edfa9542608197abf9ebd9b1"
+    }
+   },
+   "class": [
+    "v2"
+   ],
+   "desc": "v2: khoa gioi_tinh vang mat (= null)",
+   "expect": "accept",
+   "json_sha256": "3ac6d3d1150716c5721eb5deb0a2d2c3a61cf68d0a5b5073886a037541ef1d20",
+   "lvhv_sha256": "2b7ec21262f001340c011fec812760b84f939f88af188ae1b9821f4e66426bd2",
+   "name": "G03-v2-gioi-tinh-vang",
+   "oracle_codes": [],
+   "schema_version": 2
+  },
+  {
+   "big": true,
+   "blobs": {
+    "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09": {
+     "len": 33714,
+     "sha256": "22a5c04266a6d2e27fa3085bd0623296dfb7e91b5763e8a746c6a4d220dfb7e9"
+    },
+    "b5000000-0000-4000-8000-0000000000c1": {
+     "len": 1187,
+     "sha256": "231068c0b33ce6a99f46e938f11662f02312e01bea44b7627356e225270acb31"
+    },
+    "b5000000-0000-4000-8000-0000000000c2": {
+     "len": 1359,
+     "sha256": "de00d27aae1d02b9318de13a589c054aac5f0608e3731c2377025cc0fe7f28d1"
+    },
+    "b5000000-0000-4000-8000-0000000000c3": {
+     "len": 1350,
+     "sha256": "751ab1aa33e3b02b16154169ebad6ae192431c936029a05a72592cf168a48b8b"
+    },
+    "b5000000-0000-4000-8000-0000000000f1": {
+     "len": 75,
+     "sha256": "951f360bccff3c7b4ea28d1bba5887d5566bccfc172e7a1671a3dcdc86b4303a"
+    },
+    "b5000000-0000-4000-8000-0000000000f2": {
+     "len": 1442,
+     "sha256": "f088fa310678d631505d71e64100f3038d4dfa73edfa9542608197abf9ebd9b1"
+    },
+    "b5000000-0000-4000-8000-0000000000fb": {
+     "len": 10485760,
+     "sha256": "51a15a60911a7274f318d6fd38bb767bff92bc5efdae7bf1c86a1fbe394182e4"
+    }
+   },
+   "class": [
+    "v2"
+   ],
+   "desc": "PDF dung 10 485 760 byte",
+   "expect": "accept",
+   "json_sha256": "a7d74becef28be98651d4b15fca8d75cdef0c53d746c20e4085ff5d088148ee5",
+   "lvhv_sha256": "e855b421a0c385e19178993f6093ab728e3b1f3d72f6c1c2a3169d4db605693a",
+   "name": "G04-pdf-dung-10MB",
+   "oracle_codes": [],
+   "schema_version": 2
+  },
+  {
+   "big": true,
+   "blobs": {
+    "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09": {
+     "len": 33714,
+     "sha256": "22a5c04266a6d2e27fa3085bd0623296dfb7e91b5763e8a746c6a4d220dfb7e9"
+    },
+    "b5000000-0000-4000-8000-0000000000c1": {
+     "len": 1187,
+     "sha256": "231068c0b33ce6a99f46e938f11662f02312e01bea44b7627356e225270acb31"
+    },
+    "b5000000-0000-4000-8000-0000000000c2": {
+     "len": 1359,
+     "sha256": "de00d27aae1d02b9318de13a589c054aac5f0608e3731c2377025cc0fe7f28d1"
+    },
+    "b5000000-0000-4000-8000-0000000000c3": {
+     "len": 1350,
+     "sha256": "751ab1aa33e3b02b16154169ebad6ae192431c936029a05a72592cf168a48b8b"
+    },
+    "b5000000-0000-4000-8000-0000000000f1": {
+     "len": 75,
+     "sha256": "951f360bccff3c7b4ea28d1bba5887d5566bccfc172e7a1671a3dcdc86b4303a"
+    },
+    "b5000000-0000-4000-8000-0000000000f2": {
+     "len": 1442,
+     "sha256": "f088fa310678d631505d71e64100f3038d4dfa73edfa9542608197abf9ebd9b1"
+    },
+    "b5000000-0000-4000-8000-0000000000fb": {
+     "len": 2097152,
+     "sha256": "8ca284ead0eca5fea0e73fa154b620f3326487df76e00b5a47451149da2d0a1f"
+    }
+   },
+   "class": [
+    "v2"
+   ],
+   "desc": "anh JPEG dung 2 097 152 byte",
+   "expect": "accept",
+   "json_sha256": "16bde0b0231d8223cb420c93eae10fb8140d30454558b0811960dc695de6c261",
+   "lvhv_sha256": "ba9b1cc3b73bce5ee93a0cd7f7bd2b98ae7f6c7fed9a3a800ae4c0b2862bb622",
+   "name": "G05-anh-dung-2MB",
+   "oracle_codes": [],
+   "schema_version": 2
+  },
+  {
+   "big": true,
+   "blobs": {
+    "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09": {
+     "len": 33714,
+     "sha256": "22a5c04266a6d2e27fa3085bd0623296dfb7e91b5763e8a746c6a4d220dfb7e9"
+    },
+    "b5000000-0000-4000-8000-0000000000c1": {
+     "len": 1187,
+     "sha256": "231068c0b33ce6a99f46e938f11662f02312e01bea44b7627356e225270acb31"
+    },
+    "b5000000-0000-4000-8000-0000000000c2": {
+     "len": 1359,
+     "sha256": "de00d27aae1d02b9318de13a589c054aac5f0608e3731c2377025cc0fe7f28d1"
+    },
+    "b5000000-0000-4000-8000-0000000000c3": {
+     "len": 1350,
+     "sha256": "751ab1aa33e3b02b16154169ebad6ae192431c936029a05a72592cf168a48b8b"
+    },
+    "b5000000-0000-4000-8000-0000000000f1": {
+     "len": 75,
+     "sha256": "951f360bccff3c7b4ea28d1bba5887d5566bccfc172e7a1671a3dcdc86b4303a"
+    },
+    "b5000000-0000-4000-8000-0000000000f2": {
+     "len": 1442,
+     "sha256": "f088fa310678d631505d71e64100f3038d4dfa73edfa9542608197abf9ebd9b1"
+    },
+    "b5000000-0000-4000-8000-0000000000fb": {
+     "len": 10485761,
+     "sha256": "174d6fb82d59aad64e642a98b60b7aeb34d14aa5daf416b78a57d659de22dbc6"
+    }
+   },
+   "class": [
+    "SIZE",
+    "V1"
+   ],
+   "desc": "PDF 10 485 761 byte",
+   "expect": "reject",
+   "json_sha256": "77bc741cfeaec7bcce68ac9c5f25e6c514f83b822bc614ecf06c58d7aebac9db",
+   "lvhv_sha256": "49b2387641c4732f387aa3ce4eb5aa47949a1c04875f4c6c4a1c87e142de8921",
+   "name": "X02-pdf-qua-10MB",
+   "oracle_codes": [
+    "SIZE",
+    "V1"
+   ],
+   "schema_version": 2
+  },
+  {
+   "big": true,
+   "blobs": {
+    "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09": {
+     "len": 33714,
+     "sha256": "22a5c04266a6d2e27fa3085bd0623296dfb7e91b5763e8a746c6a4d220dfb7e9"
+    },
+    "b5000000-0000-4000-8000-0000000000c1": {
+     "len": 1187,
+     "sha256": "231068c0b33ce6a99f46e938f11662f02312e01bea44b7627356e225270acb31"
+    },
+    "b5000000-0000-4000-8000-0000000000c2": {
+     "len": 1359,
+     "sha256": "de00d27aae1d02b9318de13a589c054aac5f0608e3731c2377025cc0fe7f28d1"
+    },
+    "b5000000-0000-4000-8000-0000000000c3": {
+     "len": 1350,
+     "sha256": "751ab1aa33e3b02b16154169ebad6ae192431c936029a05a72592cf168a48b8b"
+    },
+    "b5000000-0000-4000-8000-0000000000f1": {
+     "len": 75,
+     "sha256": "951f360bccff3c7b4ea28d1bba5887d5566bccfc172e7a1671a3dcdc86b4303a"
+    },
+    "b5000000-0000-4000-8000-0000000000f2": {
+     "len": 1442,
+     "sha256": "f088fa310678d631505d71e64100f3038d4dfa73edfa9542608197abf9ebd9b1"
+    },
+    "b5000000-0000-4000-8000-0000000000fb": {
+     "len": 2097153,
+     "sha256": "e246db8fbd2d138ed7b44025186f72e0cdefa879d3c5aaf019bb08bed6042789"
+    }
+   },
+   "class": [
+    "SIZE"
+   ],
+   "desc": "anh JPEG 2 097 153 byte",
+   "expect": "reject",
+   "json_sha256": "5f7af89b217b7fd52da3213f7c3287f0b5bac9a652dc7694a8692467cc465dd3",
+   "lvhv_sha256": "698463a05a2e5a76e34e18cadf87627c6c42d2d090ec36c9a54684b6c381ea44",
+   "name": "X03-anh-qua-2MB",
+   "oracle_codes": [
+    "SIZE"
+   ],
+   "schema_version": 2
+  },
+  {
+   "big": false,
+   "blobs": {
+    "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09": {
+     "len": 33714,
+     "sha256": "22a5c04266a6d2e27fa3085bd0623296dfb7e91b5763e8a746c6a4d220dfb7e9"
+    },
+    "b5000000-0000-4000-8000-0000000000c1": {
+     "len": 1187,
+     "sha256": "231068c0b33ce6a99f46e938f11662f02312e01bea44b7627356e225270acb31"
+    },
+    "b5000000-0000-4000-8000-0000000000c2": {
+     "len": 1359,
+     "sha256": "de00d27aae1d02b9318de13a589c054aac5f0608e3731c2377025cc0fe7f28d1"
+    },
+    "b5000000-0000-4000-8000-0000000000c3": {
+     "len": 1350,
+     "sha256": "751ab1aa33e3b02b16154169ebad6ae192431c936029a05a72592cf168a48b8b"
+    },
+    "b5000000-0000-4000-8000-0000000000f1": {
+     "len": 75,
+     "sha256": "951f360bccff3c7b4ea28d1bba5887d5566bccfc172e7a1671a3dcdc86b4303a"
+    },
+    "b5000000-0000-4000-8000-0000000000f2": {
+     "len": 1442,
+     "sha256": "f088fa310678d631505d71e64100f3038d4dfa73edfa9542608197abf9ebd9b1"
+    },
+    "b5000000-0000-4000-8000-0000000000fb": {
+     "len": 75,
+     "sha256": "a35d650c60350ae2eec2e5dca9135655d75b773c10e9f73ccff148b6b6c3de7f"
+    }
+   },
+   "class": [
+    "MAGIC"
+   ],
+   "desc": "PDF bat dau '%PDX-'",
+   "expect": "reject",
+   "json_sha256": "583e58b32a761d685e6dcb5276eae6d7591d493eeeb15c549ae024bcae40b931",
+   "lvhv_sha256": "567dd272e6879d8db87e51459fad345401318b3037931c64aaba3b9bea08ddcc",
+   "name": "X01-pdf-sai-magic",
+   "oracle_codes": [
+    "MAGIC"
+   ],
+   "schema_version": 2
+  },
+  {
+   "big": false,
+   "blobs": {
+    "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09": {
+     "len": 33714,
+     "sha256": "22a5c04266a6d2e27fa3085bd0623296dfb7e91b5763e8a746c6a4d220dfb7e9"
+    },
+    "b5000000-0000-4000-8000-0000000000c1": {
+     "len": 1187,
+     "sha256": "231068c0b33ce6a99f46e938f11662f02312e01bea44b7627356e225270acb31"
+    },
+    "b5000000-0000-4000-8000-0000000000c2": {
+     "len": 1359,
+     "sha256": "de00d27aae1d02b9318de13a589c054aac5f0608e3731c2377025cc0fe7f28d1"
+    },
+    "b5000000-0000-4000-8000-0000000000c3": {
+     "len": 1350,
+     "sha256": "751ab1aa33e3b02b16154169ebad6ae192431c936029a05a72592cf168a48b8b"
+    },
+    "b5000000-0000-4000-8000-0000000000f1": {
+     "len": 75,
+     "sha256": "951f360bccff3c7b4ea28d1bba5887d5566bccfc172e7a1671a3dcdc86b4303a"
+    },
+    "b5000000-0000-4000-8000-0000000000f2": {
+     "len": 1442,
+     "sha256": "f088fa310678d631505d71e64100f3038d4dfa73edfa9542608197abf9ebd9b1"
+    },
+    "b5000000-0000-4000-8000-0000000000fb": {
+     "len": 78,
+     "sha256": "110c443c688f598556c7ed2e27eaf06eeca36366f6b7e8a665edbc219c24f55f"
+    }
+   },
+   "class": [
+    "MAGIC"
+   ],
+   "desc": "PDF co BOM truoc '%PDF-'",
+   "expect": "reject",
+   "json_sha256": "e134432450d6f0756a31983bdf16c656d5198538a2a51d92405de8f1206a9457",
+   "lvhv_sha256": "961e20451448f8d399d6b5fae7a0e721ad20d8327037e2300823db145bf29b0c",
+   "name": "X01b-pdf-co-bom-truoc",
+   "oracle_codes": [
+    "MAGIC"
+   ],
+   "schema_version": 2
+  },
+  {
+   "big": false,
+   "blobs": {
+    "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09": {
+     "len": 33714,
+     "sha256": "22a5c04266a6d2e27fa3085bd0623296dfb7e91b5763e8a746c6a4d220dfb7e9"
+    },
+    "b5000000-0000-4000-8000-0000000000c1": {
+     "len": 1187,
+     "sha256": "231068c0b33ce6a99f46e938f11662f02312e01bea44b7627356e225270acb31"
+    },
+    "b5000000-0000-4000-8000-0000000000c2": {
+     "len": 1359,
+     "sha256": "de00d27aae1d02b9318de13a589c054aac5f0608e3731c2377025cc0fe7f28d1"
+    },
+    "b5000000-0000-4000-8000-0000000000c3": {
+     "len": 1350,
+     "sha256": "751ab1aa33e3b02b16154169ebad6ae192431c936029a05a72592cf168a48b8b"
+    },
+    "b5000000-0000-4000-8000-0000000000f1": {
+     "len": 75,
+     "sha256": "951f360bccff3c7b4ea28d1bba5887d5566bccfc172e7a1671a3dcdc86b4303a"
+    },
+    "b5000000-0000-4000-8000-0000000000f2": {
+     "len": 1442,
+     "sha256": "f088fa310678d631505d71e64100f3038d4dfa73edfa9542608197abf9ebd9b1"
+    },
+    "b5000000-0000-4000-8000-0000000000fb": {
+     "len": 75,
+     "sha256": "bd2360fe2a0c75022945c0abf002107950b1863985b4127a4ec97cf67a02f592"
+    }
+   },
+   "class": [
+    "MAGIC"
+   ],
+   "desc": "PDF bat dau '%pdf-'",
+   "expect": "reject",
+   "json_sha256": "ed7e5c9ee108f6c45149f62c6f75db1fcffd4cdaf82701b4b2f1256810aeea3b",
+   "lvhv_sha256": "6b4870790ec64108b29e0e8ba0edf1356edf841aa457b66b7f4ee07457462843",
+   "name": "X01c-pdf-chu-thuong",
+   "oracle_codes": [
+    "MAGIC"
+   ],
+   "schema_version": 2
+  },
+  {
+   "big": false,
+   "blobs": {
+    "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09": {
+     "len": 33714,
+     "sha256": "22a5c04266a6d2e27fa3085bd0623296dfb7e91b5763e8a746c6a4d220dfb7e9"
+    },
+    "b5000000-0000-4000-8000-0000000000c1": {
+     "len": 1187,
+     "sha256": "231068c0b33ce6a99f46e938f11662f02312e01bea44b7627356e225270acb31"
+    },
+    "b5000000-0000-4000-8000-0000000000c2": {
+     "len": 1359,
+     "sha256": "de00d27aae1d02b9318de13a589c054aac5f0608e3731c2377025cc0fe7f28d1"
+    },
+    "b5000000-0000-4000-8000-0000000000c3": {
+     "len": 1350,
+     "sha256": "751ab1aa33e3b02b16154169ebad6ae192431c936029a05a72592cf168a48b8b"
+    },
+    "b5000000-0000-4000-8000-0000000000f1": {
+     "len": 75,
+     "sha256": "951f360bccff3c7b4ea28d1bba5887d5566bccfc172e7a1671a3dcdc86b4303a"
+    },
+    "b5000000-0000-4000-8000-0000000000f2": {
+     "len": 1442,
+     "sha256": "f088fa310678d631505d71e64100f3038d4dfa73edfa9542608197abf9ebd9b1"
+    }
+   },
+   "class": [
+    "DUP"
+   ],
+   "desc": "hai phan tu attachments cung id",
+   "expect": "reject",
+   "json_sha256": "b352e6737e18c71c7e2a98c78f37eec594a93bbcf7a7f67c52f04c94651016f1",
+   "lvhv_sha256": "a0aefa59c965a4ca043df6b368c66644b5fc7a8df01e3734306a78555f8db8d0",
+   "name": "X04-trung-id-dinh-kem",
+   "oracle_codes": [
+    "DUP"
+   ],
+   "schema_version": 2
+  },
+  {
+   "big": false,
+   "blobs": {
+    "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09": {
+     "len": 33714,
+     "sha256": "22a5c04266a6d2e27fa3085bd0623296dfb7e91b5763e8a746c6a4d220dfb7e9"
+    },
+    "b5000000-0000-4000-8000-0000000000c1": {
+     "len": 1187,
+     "sha256": "231068c0b33ce6a99f46e938f11662f02312e01bea44b7627356e225270acb31"
+    },
+    "b5000000-0000-4000-8000-0000000000c2": {
+     "len": 1359,
+     "sha256": "de00d27aae1d02b9318de13a589c054aac5f0608e3731c2377025cc0fe7f28d1"
+    },
+    "b5000000-0000-4000-8000-0000000000c3": {
+     "len": 1350,
+     "sha256": "751ab1aa33e3b02b16154169ebad6ae192431c936029a05a72592cf168a48b8b"
+    },
+    "b5000000-0000-4000-8000-0000000000f1": {
+     "len": 75,
+     "sha256": "951f360bccff3c7b4ea28d1bba5887d5566bccfc172e7a1671a3dcdc86b4303a"
+    },
+    "b5000000-0000-4000-8000-0000000000f2": {
+     "len": 1442,
+     "sha256": "f088fa310678d631505d71e64100f3038d4dfa73edfa9542608197abf9ebd9b1"
+    }
+   },
+   "class": [
+    "DUP"
+   ],
+   "desc": "id phan tu dinh kem trung giua hai ho so",
+   "expect": "reject",
+   "json_sha256": "93b6e1ca5518f031bf511f8223b0ddd82ed815b3cb4e519012d58bf182e0381d",
+   "lvhv_sha256": "80668bad2243d554f160b216556aa928d3fdc5bb01bf200ec26495ca54b367e7",
+   "name": "X04b-trung-id-dinh-kem-hai-ho-so",
+   "oracle_codes": [
+    "DUP"
+   ],
+   "schema_version": 2
+  },
+  {
+   "big": false,
+   "blobs": {
+    "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09": {
+     "len": 33714,
+     "sha256": "22a5c04266a6d2e27fa3085bd0623296dfb7e91b5763e8a746c6a4d220dfb7e9"
+    },
+    "b5000000-0000-4000-8000-0000000000c1": {
+     "len": 1187,
+     "sha256": "231068c0b33ce6a99f46e938f11662f02312e01bea44b7627356e225270acb31"
+    },
+    "b5000000-0000-4000-8000-0000000000c2": {
+     "len": 1359,
+     "sha256": "de00d27aae1d02b9318de13a589c054aac5f0608e3731c2377025cc0fe7f28d1"
+    },
+    "b5000000-0000-4000-8000-0000000000c3": {
+     "len": 1350,
+     "sha256": "751ab1aa33e3b02b16154169ebad6ae192431c936029a05a72592cf168a48b8b"
+    },
+    "b5000000-0000-4000-8000-0000000000f1": {
+     "len": 75,
+     "sha256": "951f360bccff3c7b4ea28d1bba5887d5566bccfc172e7a1671a3dcdc86b4303a"
+    },
+    "b5000000-0000-4000-8000-0000000000f2": {
+     "len": 1442,
+     "sha256": "f088fa310678d631505d71e64100f3038d4dfa73edfa9542608197abf9ebd9b1"
+    }
+   },
+   "class": [
+    "DUP",
+    "BLOB",
+    "V1"
+   ],
+   "desc": "hai ban ghi Attachment cung id",
+   "expect": "reject",
+   "json_sha256": "5f48754d73b5630f52d173fb0aa0967c43cae8f4a28e2cc71cf6349f2c52b3de",
+   "lvhv_sha256": "3518dd56f46536e742f5a87875898bffb8ce3a4af2bd8fa2924560671f548061",
+   "name": "X05-trung-id-ban-ghi-tep",
+   "oracle_codes": [
+    "DUP"
+   ],
+   "schema_version": 2
+  },
+  {
+   "big": false,
+   "blobs": {
+    "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09": {
+     "len": 33714,
+     "sha256": "22a5c04266a6d2e27fa3085bd0623296dfb7e91b5763e8a746c6a4d220dfb7e9"
+    },
+    "b5000000-0000-4000-8000-0000000000c1": {
+     "len": 1187,
+     "sha256": "231068c0b33ce6a99f46e938f11662f02312e01bea44b7627356e225270acb31"
+    },
+    "b5000000-0000-4000-8000-0000000000c2": {
+     "len": 1359,
+     "sha256": "de00d27aae1d02b9318de13a589c054aac5f0608e3731c2377025cc0fe7f28d1"
+    },
+    "b5000000-0000-4000-8000-0000000000c3": {
+     "len": 1350,
+     "sha256": "751ab1aa33e3b02b16154169ebad6ae192431c936029a05a72592cf168a48b8b"
+    },
+    "b5000000-0000-4000-8000-0000000000f1": {
+     "len": 75,
+     "sha256": "951f360bccff3c7b4ea28d1bba5887d5566bccfc172e7a1671a3dcdc86b4303a"
+    },
+    "b5000000-0000-4000-8000-0000000000f2": {
+     "len": 1442,
+     "sha256": "f088fa310678d631505d71e64100f3038d4dfa73edfa9542608197abf9ebd9b1"
+    }
+   },
+   "class": [
+    "V3"
+   ],
+   "desc": "file_id khong co ban ghi Attachment",
+   "expect": "reject",
+   "json_sha256": "d0810470241e59ce4cf8886267b584a79ffdb7735d2a059359ebd96a41bcc549",
+   "lvhv_sha256": "37e29e86e28c0acd7771968da98216c2b66f81b29cb3bf4f1c0bffed831fabbb",
+   "name": "X06-tep-duoc-tro-nhung-thieu",
+   "oracle_codes": [
+    "V3"
+   ],
+   "schema_version": 2
+  },
+  {
+   "big": false,
+   "blobs": {
+    "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09": {
+     "len": 33714,
+     "sha256": "22a5c04266a6d2e27fa3085bd0623296dfb7e91b5763e8a746c6a4d220dfb7e9"
+    },
+    "b5000000-0000-4000-8000-0000000000c1": {
+     "len": 1187,
+     "sha256": "231068c0b33ce6a99f46e938f11662f02312e01bea44b7627356e225270acb31"
+    },
+    "b5000000-0000-4000-8000-0000000000c2": {
+     "len": 1359,
+     "sha256": "de00d27aae1d02b9318de13a589c054aac5f0608e3731c2377025cc0fe7f28d1"
+    },
+    "b5000000-0000-4000-8000-0000000000c3": {
+     "len": 1350,
+     "sha256": "751ab1aa33e3b02b16154169ebad6ae192431c936029a05a72592cf168a48b8b"
+    },
+    "b5000000-0000-4000-8000-0000000000f2": {
+     "len": 1442,
+     "sha256": "f088fa310678d631505d71e64100f3038d4dfa73edfa9542608197abf9ebd9b1"
+    }
+   },
+   "class": [
+    "BLOB"
+   ],
+   "desc": "ban ghi Attachment co nhung khong co byte trong vung chua",
+   "expect": "reject",
+   "json_sha256": "6ac49a162cca8f01e3fd9ddbf2f35455ddaac81268d86bfd9691c51dc2381a05",
+   "lvhv_sha256": "43adcc92b6df75b0aa9b8888674d50c353fd21628bdbe16946344b1ea347ea1f",
+   "name": "X07-thieu-byte-tep",
+   "oracle_codes": [
+    "BLOB"
+   ],
+   "schema_version": 2
+  },
+  {
+   "big": false,
+   "blobs": {
+    "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09": {
+     "len": 33714,
+     "sha256": "22a5c04266a6d2e27fa3085bd0623296dfb7e91b5763e8a746c6a4d220dfb7e9"
+    },
+    "b5000000-0000-4000-8000-0000000000c1": {
+     "len": 1187,
+     "sha256": "231068c0b33ce6a99f46e938f11662f02312e01bea44b7627356e225270acb31"
+    },
+    "b5000000-0000-4000-8000-0000000000c2": {
+     "len": 1359,
+     "sha256": "de00d27aae1d02b9318de13a589c054aac5f0608e3731c2377025cc0fe7f28d1"
+    },
+    "b5000000-0000-4000-8000-0000000000c3": {
+     "len": 1350,
+     "sha256": "751ab1aa33e3b02b16154169ebad6ae192431c936029a05a72592cf168a48b8b"
+    },
+    "b5000000-0000-4000-8000-0000000000f1": {
+     "len": 75,
+     "sha256": "951f360bccff3c7b4ea28d1bba5887d5566bccfc172e7a1671a3dcdc86b4303a"
+    },
+    "b5000000-0000-4000-8000-0000000000f2": {
+     "len": 1442,
+     "sha256": "f088fa310678d631505d71e64100f3038d4dfa73edfa9542608197abf9ebd9b1"
+    },
+    "b5000000-0000-4000-8000-000000000f20": {
+     "len": 1206,
+     "sha256": "b72bbb5ff912163db5ced9da47fae42d963a3ba3ddd1dae5c04d04e37d44ff63"
+    },
+    "b5000000-0000-4000-8000-000000000f21": {
+     "len": 1286,
+     "sha256": "c643d68062b8a9a64ceecdcf90fd78248646fc33ad944e66d306e23d0608cf5b"
+    },
+    "b5000000-0000-4000-8000-000000000f22": {
+     "len": 1335,
+     "sha256": "b46b09fe3cc4744d57f24e7cd9abfbbae2b53683c9c634da3abee05145c1963a"
+    },
+    "b5000000-0000-4000-8000-000000000f23": {
+     "len": 1206,
+     "sha256": "b72bbb5ff912163db5ced9da47fae42d963a3ba3ddd1dae5c04d04e37d44ff63"
+    }
+   },
+   "class": [
+    "COUNT",
+    "V1"
+   ],
+   "desc": "7 tep dinh kem trong mot ho so",
+   "expect": "reject",
+   "json_sha256": "e5e986a38a80c923541659822fd46d531151fcebcfb2496ac37e6563c9016e1a",
+   "lvhv_sha256": "3b00b8de28e44fdd58a004f5ccd9f3f10c9b7c2148b2badaf76b33ecc20ed9e2",
+   "name": "X08-7-tep",
+   "oracle_codes": [
+    "COUNT",
+    "V1"
+   ],
+   "schema_version": 2
+  },
+  {
+   "big": false,
+   "blobs": {
+    "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09": {
+     "len": 33714,
+     "sha256": "22a5c04266a6d2e27fa3085bd0623296dfb7e91b5763e8a746c6a4d220dfb7e9"
+    },
+    "b5000000-0000-4000-8000-0000000000c1": {
+     "len": 1187,
+     "sha256": "231068c0b33ce6a99f46e938f11662f02312e01bea44b7627356e225270acb31"
+    },
+    "b5000000-0000-4000-8000-0000000000c2": {
+     "len": 1359,
+     "sha256": "de00d27aae1d02b9318de13a589c054aac5f0608e3731c2377025cc0fe7f28d1"
+    },
+    "b5000000-0000-4000-8000-0000000000c3": {
+     "len": 1350,
+     "sha256": "751ab1aa33e3b02b16154169ebad6ae192431c936029a05a72592cf168a48b8b"
+    },
+    "b5000000-0000-4000-8000-0000000000f1": {
+     "len": 75,
+     "sha256": "951f360bccff3c7b4ea28d1bba5887d5566bccfc172e7a1671a3dcdc86b4303a"
+    },
+    "b5000000-0000-4000-8000-0000000000f2": {
+     "len": 1442,
+     "sha256": "f088fa310678d631505d71e64100f3038d4dfa73edfa9542608197abf9ebd9b1"
+    },
+    "b5000000-0000-4000-8000-0000000000fb": {
+     "len": 1286,
+     "sha256": "c643d68062b8a9a64ceecdcf90fd78248646fc33ad944e66d306e23d0608cf5b"
+    }
+   },
+   "class": [
+    "V1"
+   ],
+   "desc": "kind 'giay_bao_tu' ngoai enum",
+   "expect": "reject",
+   "json_sha256": "5a42f3f4d8ec69ac70e89f657dda7e16218902905fb0b477a1649639e9239500",
+   "lvhv_sha256": "f8370c12ca71635ddae21152ee5168154b7c2d4f37c07d397d664f09b879bb75",
+   "name": "X09-kind-sai",
+   "oracle_codes": [
+    "V1"
+   ],
+   "schema_version": 2
+  },
+  {
+   "big": false,
+   "blobs": {
+    "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09": {
+     "len": 33714,
+     "sha256": "22a5c04266a6d2e27fa3085bd0623296dfb7e91b5763e8a746c6a4d220dfb7e9"
+    },
+    "b5000000-0000-4000-8000-0000000000c1": {
+     "len": 1187,
+     "sha256": "231068c0b33ce6a99f46e938f11662f02312e01bea44b7627356e225270acb31"
+    },
+    "b5000000-0000-4000-8000-0000000000c2": {
+     "len": 1359,
+     "sha256": "de00d27aae1d02b9318de13a589c054aac5f0608e3731c2377025cc0fe7f28d1"
+    },
+    "b5000000-0000-4000-8000-0000000000c3": {
+     "len": 1350,
+     "sha256": "751ab1aa33e3b02b16154169ebad6ae192431c936029a05a72592cf168a48b8b"
+    },
+    "b5000000-0000-4000-8000-0000000000f1": {
+     "len": 75,
+     "sha256": "951f360bccff3c7b4ea28d1bba5887d5566bccfc172e7a1671a3dcdc86b4303a"
+    },
+    "b5000000-0000-4000-8000-0000000000f2": {
+     "len": 1442,
+     "sha256": "f088fa310678d631505d71e64100f3038d4dfa73edfa9542608197abf9ebd9b1"
+    },
+    "b5000000-0000-4000-8000-0000000000fb": {
+     "len": 1286,
+     "sha256": "c643d68062b8a9a64ceecdcf90fd78248646fc33ad944e66d306e23d0608cf5b"
+    }
+   },
+   "class": [
+    "V1",
+    "MAGIC"
+   ],
+   "desc": "mime image/png ngoai enum",
+   "expect": "reject",
+   "json_sha256": "8c9ffd3379e46807b3201f6685c09b0368b0770de627ea4bdc4a834825952bab",
+   "lvhv_sha256": "66a3b9118bf1825c9641e29675c684649377d16068af3523dad70f6cb4a2b1cb",
+   "name": "X10-mime-png",
+   "oracle_codes": [
+    "MAGIC",
+    "V1"
+   ],
+   "schema_version": 2
+  },
+  {
+   "big": false,
+   "blobs": {
+    "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09": {
+     "len": 33714,
+     "sha256": "22a5c04266a6d2e27fa3085bd0623296dfb7e91b5763e8a746c6a4d220dfb7e9"
+    },
+    "b5000000-0000-4000-8000-0000000000c1": {
+     "len": 1187,
+     "sha256": "231068c0b33ce6a99f46e938f11662f02312e01bea44b7627356e225270acb31"
+    },
+    "b5000000-0000-4000-8000-0000000000c2": {
+     "len": 1359,
+     "sha256": "de00d27aae1d02b9318de13a589c054aac5f0608e3731c2377025cc0fe7f28d1"
+    },
+    "b5000000-0000-4000-8000-0000000000c3": {
+     "len": 1350,
+     "sha256": "751ab1aa33e3b02b16154169ebad6ae192431c936029a05a72592cf168a48b8b"
+    },
+    "b5000000-0000-4000-8000-0000000000f1": {
+     "len": 75,
+     "sha256": "951f360bccff3c7b4ea28d1bba5887d5566bccfc172e7a1671a3dcdc86b4303a"
+    },
+    "b5000000-0000-4000-8000-0000000000f2": {
+     "len": 1442,
+     "sha256": "f088fa310678d631505d71e64100f3038d4dfa73edfa9542608197abf9ebd9b1"
+    },
+    "b5000000-0000-4000-8000-0000000000fb": {
+     "len": 1286,
+     "sha256": "c643d68062b8a9a64ceecdcf90fd78248646fc33ad944e66d306e23d0608cf5b"
+    }
+   },
+   "class": [
+    "SHA"
+   ],
+   "desc": "sha256 khong khop byte",
+   "expect": "reject",
+   "json_sha256": "f9a5e16daa3cf81d8e919a5f216b3c9721b33fecb953fbe40d9c60139994fa84",
+   "lvhv_sha256": "33dcfc37040c0b5b142c177a4d9dbf6a73b33925483e23db9b331210a87f1070",
+   "name": "X11-sha-sai",
+   "oracle_codes": [
+    "SHA"
+   ],
+   "schema_version": 2
+  },
+  {
+   "big": false,
+   "blobs": {
+    "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09": {
+     "len": 33714,
+     "sha256": "22a5c04266a6d2e27fa3085bd0623296dfb7e91b5763e8a746c6a4d220dfb7e9"
+    },
+    "b5000000-0000-4000-8000-0000000000c1": {
+     "len": 1187,
+     "sha256": "231068c0b33ce6a99f46e938f11662f02312e01bea44b7627356e225270acb31"
+    },
+    "b5000000-0000-4000-8000-0000000000c2": {
+     "len": 1359,
+     "sha256": "de00d27aae1d02b9318de13a589c054aac5f0608e3731c2377025cc0fe7f28d1"
+    },
+    "b5000000-0000-4000-8000-0000000000c3": {
+     "len": 1350,
+     "sha256": "751ab1aa33e3b02b16154169ebad6ae192431c936029a05a72592cf168a48b8b"
+    },
+    "b5000000-0000-4000-8000-0000000000f1": {
+     "len": 75,
+     "sha256": "951f360bccff3c7b4ea28d1bba5887d5566bccfc172e7a1671a3dcdc86b4303a"
+    },
+    "b5000000-0000-4000-8000-0000000000f2": {
+     "len": 1442,
+     "sha256": "f088fa310678d631505d71e64100f3038d4dfa73edfa9542608197abf9ebd9b1"
+    },
+    "b5000000-0000-4000-8000-0000000000fb": {
+     "len": 1286,
+     "sha256": "c643d68062b8a9a64ceecdcf90fd78248646fc33ad944e66d306e23d0608cf5b"
+    }
+   },
+   "class": [
+    "BYTES",
+    "SHA"
+   ],
+   "desc": "bytes khac do dai that",
+   "expect": "reject",
+   "json_sha256": "37e177dcde5213627b6a77d29135d70a83ad9ad87b3dc2fbe8de47b773c5895a",
+   "lvhv_sha256": "73a23f414d2db0c8bd33bafde588d6419aafae2ac039c882fbdaec7aa6f04b09",
+   "name": "X12-bytes-sai",
+   "oracle_codes": [
+    "BYTES"
+   ],
+   "schema_version": 2
+  },
+  {
+   "big": false,
+   "blobs": {
+    "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09": {
+     "len": 33714,
+     "sha256": "22a5c04266a6d2e27fa3085bd0623296dfb7e91b5763e8a746c6a4d220dfb7e9"
+    },
+    "b5000000-0000-4000-8000-0000000000c1": {
+     "len": 1187,
+     "sha256": "231068c0b33ce6a99f46e938f11662f02312e01bea44b7627356e225270acb31"
+    },
+    "b5000000-0000-4000-8000-0000000000c2": {
+     "len": 1359,
+     "sha256": "de00d27aae1d02b9318de13a589c054aac5f0608e3731c2377025cc0fe7f28d1"
+    },
+    "b5000000-0000-4000-8000-0000000000c3": {
+     "len": 1350,
+     "sha256": "751ab1aa33e3b02b16154169ebad6ae192431c936029a05a72592cf168a48b8b"
+    },
+    "b5000000-0000-4000-8000-0000000000f1": {
+     "len": 75,
+     "sha256": "951f360bccff3c7b4ea28d1bba5887d5566bccfc172e7a1671a3dcdc86b4303a"
+    },
+    "b5000000-0000-4000-8000-0000000000f2": {
+     "len": 1442,
+     "sha256": "f088fa310678d631505d71e64100f3038d4dfa73edfa9542608197abf9ebd9b1"
+    },
+    "b5000000-0000-4000-8000-0000000000fb": {
+     "len": 75,
+     "sha256": "951f360bccff3c7b4ea28d1bba5887d5566bccfc172e7a1671a3dcdc86b4303a"
+    }
+   },
+   "class": [
+    "V1"
+   ],
+   "desc": "PDF voi stripped = true",
+   "expect": "reject",
+   "json_sha256": "dba8a3b90ecb4a2ab70b67036608cf71ebf9f9ec7b41ddd321674a342b7214ea",
+   "lvhv_sha256": "3248ce0dc453e339bb3e3a2e3bcb6f6c8600d53b70d4f7b3391fb32c5f7a6758",
+   "name": "X13-pdf-stripped-true",
+   "oracle_codes": [
+    "V1"
+   ],
+   "schema_version": 2
+  },
+  {
+   "big": false,
+   "blobs": {
+    "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09": {
+     "len": 33714,
+     "sha256": "22a5c04266a6d2e27fa3085bd0623296dfb7e91b5763e8a746c6a4d220dfb7e9"
+    },
+    "b5000000-0000-4000-8000-0000000000c1": {
+     "len": 1187,
+     "sha256": "231068c0b33ce6a99f46e938f11662f02312e01bea44b7627356e225270acb31"
+    },
+    "b5000000-0000-4000-8000-0000000000c2": {
+     "len": 1359,
+     "sha256": "de00d27aae1d02b9318de13a589c054aac5f0608e3731c2377025cc0fe7f28d1"
+    },
+    "b5000000-0000-4000-8000-0000000000c3": {
+     "len": 1350,
+     "sha256": "751ab1aa33e3b02b16154169ebad6ae192431c936029a05a72592cf168a48b8b"
+    },
+    "b5000000-0000-4000-8000-0000000000f1": {
+     "len": 75,
+     "sha256": "951f360bccff3c7b4ea28d1bba5887d5566bccfc172e7a1671a3dcdc86b4303a"
+    },
+    "b5000000-0000-4000-8000-0000000000f2": {
+     "len": 1442,
+     "sha256": "f088fa310678d631505d71e64100f3038d4dfa73edfa9542608197abf9ebd9b1"
+    },
+    "b5000000-0000-4000-8000-0000000000fb": {
+     "len": 1286,
+     "sha256": "c643d68062b8a9a64ceecdcf90fd78248646fc33ad944e66d306e23d0608cf5b"
+    }
+   },
+   "class": [
+    "V1"
+   ],
+   "desc": "anh voi stripped = false",
+   "expect": "reject",
+   "json_sha256": "4ac5208ccd0816e4d5681a487622bf2acfef976695069e348efb5f873d439d45",
+   "lvhv_sha256": "3c5a47f345ddb03c9723cad46b1d320dd9de647b5d79877cd52ceb623378751a",
+   "name": "X14-anh-stripped-false",
+   "oracle_codes": [
+    "V1"
+   ],
+   "schema_version": 2
+  },
+  {
+   "big": false,
+   "blobs": {
+    "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09": {
+     "len": 33714,
+     "sha256": "22a5c04266a6d2e27fa3085bd0623296dfb7e91b5763e8a746c6a4d220dfb7e9"
+    },
+    "b5000000-0000-4000-8000-0000000000c1": {
+     "len": 1187,
+     "sha256": "231068c0b33ce6a99f46e938f11662f02312e01bea44b7627356e225270acb31"
+    },
+    "b5000000-0000-4000-8000-0000000000c2": {
+     "len": 1359,
+     "sha256": "de00d27aae1d02b9318de13a589c054aac5f0608e3731c2377025cc0fe7f28d1"
+    },
+    "b5000000-0000-4000-8000-0000000000c3": {
+     "len": 1350,
+     "sha256": "751ab1aa33e3b02b16154169ebad6ae192431c936029a05a72592cf168a48b8b"
+    },
+    "b5000000-0000-4000-8000-0000000000f1": {
+     "len": 75,
+     "sha256": "951f360bccff3c7b4ea28d1bba5887d5566bccfc172e7a1671a3dcdc86b4303a"
+    },
+    "b5000000-0000-4000-8000-0000000000f2": {
+     "len": 1442,
+     "sha256": "f088fa310678d631505d71e64100f3038d4dfa73edfa9542608197abf9ebd9b1"
+    }
+   },
+   "class": [
+    "V1"
+   ],
+   "desc": "gioi_tinh = 'Nam'",
+   "expect": "reject",
+   "json_sha256": "0b6c80c3897f38de80fb412e87a7466ffaa9f1a39d66320ebd826e1d99d052f4",
+   "lvhv_sha256": "68f642c97450df6bba3b62deea1bb68a531fa9d46cb0af6bc395208f58f5e403",
+   "name": "X15-gioi-tinh-Nam",
+   "oracle_codes": [
+    "V1"
+   ],
+   "schema_version": 2
+  },
+  {
+   "big": false,
+   "blobs": {
+    "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09": {
+     "len": 33714,
+     "sha256": "22a5c04266a6d2e27fa3085bd0623296dfb7e91b5763e8a746c6a4d220dfb7e9"
+    },
+    "b5000000-0000-4000-8000-0000000000c1": {
+     "len": 1187,
+     "sha256": "231068c0b33ce6a99f46e938f11662f02312e01bea44b7627356e225270acb31"
+    },
+    "b5000000-0000-4000-8000-0000000000c2": {
+     "len": 1359,
+     "sha256": "de00d27aae1d02b9318de13a589c054aac5f0608e3731c2377025cc0fe7f28d1"
+    },
+    "b5000000-0000-4000-8000-0000000000c3": {
+     "len": 1350,
+     "sha256": "751ab1aa33e3b02b16154169ebad6ae192431c936029a05a72592cf168a48b8b"
+    },
+    "b5000000-0000-4000-8000-0000000000f1": {
+     "len": 75,
+     "sha256": "951f360bccff3c7b4ea28d1bba5887d5566bccfc172e7a1671a3dcdc86b4303a"
+    },
+    "b5000000-0000-4000-8000-0000000000f2": {
+     "len": 1442,
+     "sha256": "f088fa310678d631505d71e64100f3038d4dfa73edfa9542608197abf9ebd9b1"
+    }
+   },
+   "class": [
+    "V1"
+   ],
+   "desc": "gioi_tinh = 'khac'",
+   "expect": "reject",
+   "json_sha256": "91cbe2892fd151f34e50ba60431b7a971b1d8179e3ad438869a204c29f65a24c",
+   "lvhv_sha256": "ede613e91eb4c4be68b1eca9f81aa566c27c68cde2e1b6796b3ef923748afd1f",
+   "name": "X16-gioi-tinh-khac",
+   "oracle_codes": [
+    "V1"
+   ],
+   "schema_version": 2
+  },
+  {
+   "big": false,
+   "blobs": {
+    "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09": {
+     "len": 33714,
+     "sha256": "22a5c04266a6d2e27fa3085bd0623296dfb7e91b5763e8a746c6a4d220dfb7e9"
+    },
+    "b5000000-0000-4000-8000-0000000000c1": {
+     "len": 1187,
+     "sha256": "231068c0b33ce6a99f46e938f11662f02312e01bea44b7627356e225270acb31"
+    },
+    "b5000000-0000-4000-8000-0000000000c2": {
+     "len": 1359,
+     "sha256": "de00d27aae1d02b9318de13a589c054aac5f0608e3731c2377025cc0fe7f28d1"
+    },
+    "b5000000-0000-4000-8000-0000000000c3": {
+     "len": 1350,
+     "sha256": "751ab1aa33e3b02b16154169ebad6ae192431c936029a05a72592cf168a48b8b"
+    },
+    "b5000000-0000-4000-8000-0000000000f1": {
+     "len": 75,
+     "sha256": "951f360bccff3c7b4ea28d1bba5887d5566bccfc172e7a1671a3dcdc86b4303a"
+    },
+    "b5000000-0000-4000-8000-0000000000f2": {
+     "len": 1442,
+     "sha256": "f088fa310678d631505d71e64100f3038d4dfa73edfa9542608197abf9ebd9b1"
+    }
+   },
+   "class": [
+    "V1"
+   ],
+   "desc": "gioi_tinh = ''",
+   "expect": "reject",
+   "json_sha256": "98daf1db093719f2b9212e12c2b8b2c508c3a767752a0a3dedef2d6859b61334",
+   "lvhv_sha256": "8664d5df1f3b952971ea95b65eeafd638f5433d63b3b86742f963fa71edee312",
+   "name": "X17-gioi-tinh-rong",
+   "oracle_codes": [
+    "V1"
+   ],
+   "schema_version": 2
+  },
+  {
+   "big": false,
+   "blobs": {
+    "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09": {
+     "len": 33714,
+     "sha256": "22a5c04266a6d2e27fa3085bd0623296dfb7e91b5763e8a746c6a4d220dfb7e9"
+    },
+    "b5000000-0000-4000-8000-0000000000c1": {
+     "len": 1187,
+     "sha256": "231068c0b33ce6a99f46e938f11662f02312e01bea44b7627356e225270acb31"
+    },
+    "b5000000-0000-4000-8000-0000000000c2": {
+     "len": 1359,
+     "sha256": "de00d27aae1d02b9318de13a589c054aac5f0608e3731c2377025cc0fe7f28d1"
+    },
+    "b5000000-0000-4000-8000-0000000000c3": {
+     "len": 1350,
+     "sha256": "751ab1aa33e3b02b16154169ebad6ae192431c936029a05a72592cf168a48b8b"
+    },
+    "b5000000-0000-4000-8000-0000000000f1": {
+     "len": 75,
+     "sha256": "951f360bccff3c7b4ea28d1bba5887d5566bccfc172e7a1671a3dcdc86b4303a"
+    },
+    "b5000000-0000-4000-8000-0000000000f2": {
+     "len": 1442,
+     "sha256": "f088fa310678d631505d71e64100f3038d4dfa73edfa9542608197abf9ebd9b1"
+    }
+   },
+   "class": [
+    "V1"
+   ],
+   "desc": "gioi_tinh = 'nữ'",
+   "expect": "reject",
+   "json_sha256": "43fe047afd2f137b4f98b73ab915975c72fc36c17d0eaf512a2e0806ce712ad3",
+   "lvhv_sha256": "247836764f255197ea9588dbda51fba885fc0f06354ed0db889562bf5cf07179",
+   "name": "X17b-gioi-tinh-nu-dau",
+   "oracle_codes": [
+    "V1"
+   ],
+   "schema_version": 2
+  },
+  {
+   "big": false,
+   "blobs": {
+    "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09": {
+     "len": 33714,
+     "sha256": "22a5c04266a6d2e27fa3085bd0623296dfb7e91b5763e8a746c6a4d220dfb7e9"
+    },
+    "b5000000-0000-4000-8000-0000000000c1": {
+     "len": 1187,
+     "sha256": "231068c0b33ce6a99f46e938f11662f02312e01bea44b7627356e225270acb31"
+    },
+    "b5000000-0000-4000-8000-0000000000c2": {
+     "len": 1359,
+     "sha256": "de00d27aae1d02b9318de13a589c054aac5f0608e3731c2377025cc0fe7f28d1"
+    },
+    "b5000000-0000-4000-8000-0000000000c3": {
+     "len": 1350,
+     "sha256": "751ab1aa33e3b02b16154169ebad6ae192431c936029a05a72592cf168a48b8b"
+    },
+    "b5000000-0000-4000-8000-0000000000f1": {
+     "len": 75,
+     "sha256": "951f360bccff3c7b4ea28d1bba5887d5566bccfc172e7a1671a3dcdc86b4303a"
+    },
+    "b5000000-0000-4000-8000-0000000000f2": {
+     "len": 1442,
+     "sha256": "f088fa310678d631505d71e64100f3038d4dfa73edfa9542608197abf9ebd9b1"
+    },
+    "b5000000-0000-4000-8000-0000000000fb": {
+     "len": 1286,
+     "sha256": "c643d68062b8a9a64ceecdcf90fd78248646fc33ad944e66d306e23d0608cf5b"
+    }
+   },
+   "class": [
+    "V1"
+   ],
+   "desc": "file_name 121 diem ma",
+   "expect": "reject",
+   "json_sha256": "091762ebfd3220f70be3c82da7f112ac9e9574acba589c364928d8acc0528603",
+   "lvhv_sha256": "f77f3fb3d8d9415377f34c853956dd85e6ed626f173f571159917e25f0025814",
+   "name": "X18-ten-tep-121",
+   "oracle_codes": [
+    "V1"
+   ],
+   "schema_version": 2
+  },
+  {
+   "big": false,
+   "blobs": {
+    "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09": {
+     "len": 33714,
+     "sha256": "22a5c04266a6d2e27fa3085bd0623296dfb7e91b5763e8a746c6a4d220dfb7e9"
+    },
+    "b5000000-0000-4000-8000-0000000000c1": {
+     "len": 1187,
+     "sha256": "231068c0b33ce6a99f46e938f11662f02312e01bea44b7627356e225270acb31"
+    },
+    "b5000000-0000-4000-8000-0000000000c2": {
+     "len": 1359,
+     "sha256": "de00d27aae1d02b9318de13a589c054aac5f0608e3731c2377025cc0fe7f28d1"
+    },
+    "b5000000-0000-4000-8000-0000000000c3": {
+     "len": 1350,
+     "sha256": "751ab1aa33e3b02b16154169ebad6ae192431c936029a05a72592cf168a48b8b"
+    },
+    "b5000000-0000-4000-8000-0000000000f1": {
+     "len": 75,
+     "sha256": "951f360bccff3c7b4ea28d1bba5887d5566bccfc172e7a1671a3dcdc86b4303a"
+    },
+    "b5000000-0000-4000-8000-0000000000f2": {
+     "len": 1442,
+     "sha256": "f088fa310678d631505d71e64100f3038d4dfa73edfa9542608197abf9ebd9b1"
+    },
+    "b5000000-0000-4000-8000-0000000000fe": {
+     "len": 1335,
+     "sha256": "b46b09fe3cc4744d57f24e7cd9abfbbae2b53683c9c634da3abee05145c1963a"
+    }
+   },
+   "class": [
+    "BLOB"
+   ],
+   "desc": "muc nhi phan khong co ban ghi nao",
+   "expect": "reject",
+   "json_sha256": "6ac49a162cca8f01e3fd9ddbf2f35455ddaac81268d86bfd9691c51dc2381a05",
+   "lvhv_sha256": "ef01112b5b3458ab125f13e734e48268db960ddf6a7ac3219e7cc8555b5d8437",
+   "name": "X19-byte-thua",
+   "oracle_codes": [
+    "BLOB"
+   ],
+   "schema_version": 2
+  },
+  {
+   "big": false,
+   "blobs": {
+    "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09": {
+     "len": 33714,
+     "sha256": "22a5c04266a6d2e27fa3085bd0623296dfb7e91b5763e8a746c6a4d220dfb7e9"
+    },
+    "b5000000-0000-4000-8000-0000000000c1": {
+     "len": 1187,
+     "sha256": "231068c0b33ce6a99f46e938f11662f02312e01bea44b7627356e225270acb31"
+    },
+    "b5000000-0000-4000-8000-0000000000c2": {
+     "len": 1359,
+     "sha256": "de00d27aae1d02b9318de13a589c054aac5f0608e3731c2377025cc0fe7f28d1"
+    },
+    "b5000000-0000-4000-8000-0000000000c3": {
+     "len": 1350,
+     "sha256": "751ab1aa33e3b02b16154169ebad6ae192431c936029a05a72592cf168a48b8b"
+    },
+    "b5000000-0000-4000-8000-0000000000f1": {
+     "len": 75,
+     "sha256": "951f360bccff3c7b4ea28d1bba5887d5566bccfc172e7a1671a3dcdc86b4303a"
+    },
+    "b5000000-0000-4000-8000-0000000000f2": {
+     "len": 1442,
+     "sha256": "f088fa310678d631505d71e64100f3038d4dfa73edfa9542608197abf9ebd9b1"
+    },
+    "b5000000-0000-4000-8000-0000000000fb": {
+     "len": 1286,
+     "sha256": "c643d68062b8a9a64ceecdcf90fd78248646fc33ad944e66d306e23d0608cf5b"
+    }
+   },
+   "class": [
+    "MAGIC"
+   ],
+   "desc": "mime PDF nhung byte la JPEG",
+   "expect": "reject",
+   "json_sha256": "f03ff43cb45cb89a19d28b376339c823c222d1e93e62c447b9b1de35f291fc4c",
+   "lvhv_sha256": "c2f99aebf90258d9f9613c2bd222df7e4d643a434771b5d1f797d3cca90f92b1",
+   "name": "X20-mime-pdf-byte-jpeg",
+   "oracle_codes": [
+    "MAGIC"
+   ],
+   "schema_version": 2
+  },
+  {
+   "big": false,
+   "blobs": {
+    "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09": {
+     "len": 33714,
+     "sha256": "22a5c04266a6d2e27fa3085bd0623296dfb7e91b5763e8a746c6a4d220dfb7e9"
+    },
+    "b5000000-0000-4000-8000-0000000000c1": {
+     "len": 1187,
+     "sha256": "231068c0b33ce6a99f46e938f11662f02312e01bea44b7627356e225270acb31"
+    },
+    "b5000000-0000-4000-8000-0000000000c2": {
+     "len": 1359,
+     "sha256": "de00d27aae1d02b9318de13a589c054aac5f0608e3731c2377025cc0fe7f28d1"
+    },
+    "b5000000-0000-4000-8000-0000000000c3": {
+     "len": 1350,
+     "sha256": "751ab1aa33e3b02b16154169ebad6ae192431c936029a05a72592cf168a48b8b"
+    },
+    "b5000000-0000-4000-8000-0000000000f1": {
+     "len": 75,
+     "sha256": "951f360bccff3c7b4ea28d1bba5887d5566bccfc172e7a1671a3dcdc86b4303a"
+    },
+    "b5000000-0000-4000-8000-0000000000f2": {
+     "len": 1442,
+     "sha256": "f088fa310678d631505d71e64100f3038d4dfa73edfa9542608197abf9ebd9b1"
+    },
+    "b5000000-0000-4000-8000-0000000000fb": {
+     "len": 75,
+     "sha256": "951f360bccff3c7b4ea28d1bba5887d5566bccfc172e7a1671a3dcdc86b4303a"
+    }
+   },
+   "class": [
+    "MAGIC"
+   ],
+   "desc": "mime JPEG nhung byte la PDF",
+   "expect": "reject",
+   "json_sha256": "b52b36357e5d0ba0f97e224e4757686390790d5bd038351fa93f637afef1b46b",
+   "lvhv_sha256": "13f4e93974658a99cc17c633a0f4a5e4833e5bfbbf32f88cf1b0135106f77323",
+   "name": "X21-mime-jpeg-byte-pdf",
+   "oracle_codes": [
+    "MAGIC"
+   ],
+   "schema_version": 2
+  },
+  {
+   "big": false,
+   "blobs": {
+    "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09": {
+     "len": 33714,
+     "sha256": "22a5c04266a6d2e27fa3085bd0623296dfb7e91b5763e8a746c6a4d220dfb7e9"
+    },
+    "b5000000-0000-4000-8000-0000000000c1": {
+     "len": 1187,
+     "sha256": "231068c0b33ce6a99f46e938f11662f02312e01bea44b7627356e225270acb31"
+    },
+    "b5000000-0000-4000-8000-0000000000c2": {
+     "len": 1359,
+     "sha256": "de00d27aae1d02b9318de13a589c054aac5f0608e3731c2377025cc0fe7f28d1"
+    },
+    "b5000000-0000-4000-8000-0000000000c3": {
+     "len": 1350,
+     "sha256": "751ab1aa33e3b02b16154169ebad6ae192431c936029a05a72592cf168a48b8b"
+    },
+    "b5000000-0000-4000-8000-0000000000f1": {
+     "len": 75,
+     "sha256": "951f360bccff3c7b4ea28d1bba5887d5566bccfc172e7a1671a3dcdc86b4303a"
+    },
+    "b5000000-0000-4000-8000-0000000000f2": {
+     "len": 1442,
+     "sha256": "f088fa310678d631505d71e64100f3038d4dfa73edfa9542608197abf9ebd9b1"
+    }
+   },
+   "class": [
+    "V1"
+   ],
+   "desc": "v2 con khoa certificate_photo_ids",
+   "expect": "reject",
+   "json_sha256": "ad7434bf4bdb6cf04697de85f7a5038c7c5f58d0836795f7162010425fed8717",
+   "lvhv_sha256": "f863a450dd6e9955e40ca0fb6c9499f6aa04a3da6d3c359d55d80270204ece36",
+   "name": "X22-v2-con-khoa-cu",
+   "oracle_codes": [
+    "V1"
+   ],
+   "schema_version": 2
+  },
+  {
+   "big": false,
+   "blobs": {
+    "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09": {
+     "len": 33714,
+     "sha256": "22a5c04266a6d2e27fa3085bd0623296dfb7e91b5763e8a746c6a4d220dfb7e9"
+    },
+    "b5000000-0000-4000-8000-0000000000c1": {
+     "len": 1187,
+     "sha256": "231068c0b33ce6a99f46e938f11662f02312e01bea44b7627356e225270acb31"
+    },
+    "b5000000-0000-4000-8000-0000000000c2": {
+     "len": 1359,
+     "sha256": "de00d27aae1d02b9318de13a589c054aac5f0608e3731c2377025cc0fe7f28d1"
+    },
+    "b5000000-0000-4000-8000-0000000000c3": {
+     "len": 1350,
+     "sha256": "751ab1aa33e3b02b16154169ebad6ae192431c936029a05a72592cf168a48b8b"
+    },
+    "b5000000-0000-4000-8000-0000000000f1": {
+     "len": 75,
+     "sha256": "951f360bccff3c7b4ea28d1bba5887d5566bccfc172e7a1671a3dcdc86b4303a"
+    },
+    "b5000000-0000-4000-8000-0000000000f2": {
+     "len": 1442,
+     "sha256": "f088fa310678d631505d71e64100f3038d4dfa73edfa9542608197abf9ebd9b1"
+    },
+    "b5000000-0000-4000-8000-0000000000fb": {
+     "len": 1286,
+     "sha256": "c643d68062b8a9a64ceecdcf90fd78248646fc33ad944e66d306e23d0608cf5b"
+    }
+   },
+   "class": [
+    "V1"
+   ],
+   "desc": "file_name co ky tu dieu khien",
+   "expect": "reject",
+   "json_sha256": "b86698f297e2909e0b160b799451c248f44a1cc925e18f5754fa332c82ee37ee",
+   "lvhv_sha256": "9e73b65498148cd7e80c412dc780dcc18c3e604a083ef1a2325ca249621d114c",
+   "name": "X23-ten-tep-dieu-khien",
+   "oracle_codes": [
+    "V1"
+   ],
+   "schema_version": 2
+  },
+  {
+   "big": false,
+   "blobs": {
+    "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09": {
+     "len": 33714,
+     "sha256": "22a5c04266a6d2e27fa3085bd0623296dfb7e91b5763e8a746c6a4d220dfb7e9"
+    },
+    "b5000000-0000-4000-8000-0000000000c1": {
+     "len": 1187,
+     "sha256": "231068c0b33ce6a99f46e938f11662f02312e01bea44b7627356e225270acb31"
+    },
+    "b5000000-0000-4000-8000-0000000000c2": {
+     "len": 1359,
+     "sha256": "de00d27aae1d02b9318de13a589c054aac5f0608e3731c2377025cc0fe7f28d1"
+    },
+    "b5000000-0000-4000-8000-0000000000c3": {
+     "len": 1350,
+     "sha256": "751ab1aa33e3b02b16154169ebad6ae192431c936029a05a72592cf168a48b8b"
+    },
+    "b5000000-0000-4000-8000-0000000000f1": {
+     "len": 75,
+     "sha256": "951f360bccff3c7b4ea28d1bba5887d5566bccfc172e7a1671a3dcdc86b4303a"
+    },
+    "b5000000-0000-4000-8000-0000000000f2": {
+     "len": 1442,
+     "sha256": "f088fa310678d631505d71e64100f3038d4dfa73edfa9542608197abf9ebd9b1"
+    }
+   },
+   "class": [
+    "A-U1"
+   ],
+   "desc": "hai ho so tro cung mot Attachment",
+   "expect": "chua_ro",
+   "json_sha256": "cdab9326ab3c49b27a3f31727670dc62c0bde2e8ba16561546c6bc61702dfe17",
+   "lvhv_sha256": "1068785e498cff239c122e276320c6501927e267011037c257817cea8cd4ad09",
+   "name": "U01-hai-ho-so-chung-tep",
+   "oracle_codes": [],
+   "schema_version": 2
+  },
+  {
+   "big": false,
+   "blobs": {
+    "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09": {
+     "len": 33714,
+     "sha256": "22a5c04266a6d2e27fa3085bd0623296dfb7e91b5763e8a746c6a4d220dfb7e9"
+    },
+    "b5000000-0000-4000-8000-0000000000c1": {
+     "len": 1187,
+     "sha256": "231068c0b33ce6a99f46e938f11662f02312e01bea44b7627356e225270acb31"
+    },
+    "b5000000-0000-4000-8000-0000000000c2": {
+     "len": 1359,
+     "sha256": "de00d27aae1d02b9318de13a589c054aac5f0608e3731c2377025cc0fe7f28d1"
+    },
+    "b5000000-0000-4000-8000-0000000000c3": {
+     "len": 1350,
+     "sha256": "751ab1aa33e3b02b16154169ebad6ae192431c936029a05a72592cf168a48b8b"
+    },
+    "b5000000-0000-4000-8000-0000000000f1": {
+     "len": 75,
+     "sha256": "951f360bccff3c7b4ea28d1bba5887d5566bccfc172e7a1671a3dcdc86b4303a"
+    },
+    "b5000000-0000-4000-8000-0000000000f2": {
+     "len": 1442,
+     "sha256": "f088fa310678d631505d71e64100f3038d4dfa73edfa9542608197abf9ebd9b1"
+    },
+    "b5000000-0000-4000-8000-0000000000fd": {
+     "len": 1335,
+     "sha256": "b46b09fe3cc4744d57f24e7cd9abfbbae2b53683c9c634da3abee05145c1963a"
+    }
+   },
+   "class": [
+    "A-U1"
+   ],
+   "desc": "Attachment khong ai tro toi",
+   "expect": "chua_ro",
+   "json_sha256": "d8875d93088687c97b20d28ab55a83f482f377924189350d92c671a928b8f6fa",
+   "lvhv_sha256": "d301c019123b944fdae329b047d951325b32e3802b4d35964d3bab8f0a5430d8",
+   "name": "U02-tep-mo-coi",
+   "oracle_codes": [],
+   "schema_version": 2
+  }
+ ],
+ "nonce_hex": "606162636465666768696a6b6c6d6e6f7071727374757677",
+ "password": "mật khẩu thử nghiệm",
+ "salt_hex": "404142434445464748494a4b4c4d4e4f"
+}
