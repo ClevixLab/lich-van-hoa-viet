@@ -182,12 +182,23 @@ Loại có sẵn (không xóa được, đổi tên được):
 
 | Trường | Kiểu | Bắt buộc | Kiểm tra / ghi chú |
 |---|---|---|---|
-| `tray_style` | `"phat_giao"` \| `"truyen_thong"` \| `"cong_giao"` | có | Mặc định `"truyen_thong"`. `phat_giao`: hương, hoa, quả, mâm chay; `truyen_thong`: mâm cỗ mặn; `cong_giao`: nến và hoa, **không có hương** |
+| `tray_style` | `"phat_giao"` \| `"truyen_thong"` \| `"cong_giao"` \| `"toi_gian"` | có | Mặc định `"truyen_thong"`. `phat_giao`: hương, hoa, quả, mâm chay; `truyen_thong`: mâm cơm cúng mặn — **nội dung do chủ dự án quyết (YC-2026-09)**: bát cơm có quả trứng luộc, khoanh giò, gà luộc, đĩa xôi, đĩa hoa quả, bát hương nhiều chân hương với ba nén đang cháy, lọ hoa ly hoặc cúc vàng; ghép từ **ảnh chụp thật** (09 §3); `cong_giao`: nến và hoa, **không có hương**; `toi_gian` (Bổ sung YC-2026-09): kệ nhỏ, một nến, bát hương, chén nước, một bình hoa (09 §5), có hương theo `incense` |
 | `incense` | boolean | có | Ba nén hương. Bắt buộc `false` khi `cong_giao` |
 | `bia_tieu_de` | chuỗi 0–60 | không | Dòng đầu bia (ví dụ "Hiển khảo", "Hiển tỷ", "Cố"…), tự do |
 | `loi_tuong_niem` | chuỗi 0–2000 | không | Lời của chính người dùng; cho phép `\n` |
 | `gio_het_nam` | 2 \| 3 | có | Năm thứ mấy sau năm mất là "giỗ hết". Mặc định 2 (mục mở O-2) |
 | `huong_duong_duoi` | số nguyên 1–150 | có | Tuổi âm nhỏ hơn số này ghi "hưởng dương", còn lại "hưởng thọ". Mặc định 60 (mục mở O-3) |
+
+**Bổ sung YC-2026-09 (2026-11-07) — thêm `toi_gian`.** Lý do: chủ dự án quyết nội dung mâm truyền thống; điều phối viên chỉ đạo (07/11) thêm kiểu tối giản theo đề xuất
+Q-1 của 09 §1. `cong_giao` giữ nguyên, không thay bằng `toi_gian`.
+- Phiên bản lược đồ: v0.2 **chưa phát hành**, nên làm như các bổ sung YC-2026-05 và YC-2026-07 — giữ
+  `schema_version = 1`, sửa thẳng `schema/backup-v1.schema.json`. Nếu trước khi gộp đã có bộ mẫu phát hành trong
+  `test-vectors/released/` thì phải theo §7: tăng `schema_version` và có hàm chuyển đổi. Điều phối viên xác nhận.
+- Ảnh hưởng B5 / R14 (c): bản dựng 0.2 trước thay đổi này không đọc được tệp có `toi_gian` (báo lỗi, không ghi gì
+  — §6.3). Dữ liệu trên máy không đổi vì không có phép chuyển đổi nào; chấp nhận vì chưa phát hành.
+- Việc của các vai khác (vai nội dung **không** sửa mã): lược đồ JSON (`enum` của `tray_style`), `store/src/validate.rs`,
+  `pwa/src/store/validate.ts`, FFI và giao diện từng nền tảng; vectơ kiểm thử thêm một hồ sơ `toi_gian`.
+- Ràng buộc `incense = false` khi `cong_giao` giữ nguyên; `toi_gian` cho phép cả hai giá trị.
 
 ### 3.8 `Photo` — ảnh chân dung (chỉ trên thiết bị)
 
