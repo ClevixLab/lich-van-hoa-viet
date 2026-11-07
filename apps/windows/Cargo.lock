@@ -2690,12 +2690,14 @@ name = "lvhv-windows"
 version = "0.1.4"
 dependencies = [
  "i-slint-backend-testing",
+ "image",
  "lvhv-ffi",
  "png",
  "serde",
  "serde_json",
  "slint",
  "slint-build",
+ "windows",
  "winresource",
 ]
 

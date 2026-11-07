@@ -11,6 +11,9 @@ use std::rc::Rc;
 use serde::Deserialize;
 use slint::{ComponentHandle, ModelRc, SharedString, VecModel};
 
+mod people;
+mod photo;
+mod platform;
 mod shots;
 #[cfg(test)]
 mod ui_tests;
@@ -306,6 +309,8 @@ struct State {
     good_shown: usize,
     solar_target: Option<D>,
     lunar_target: Option<D>,
+    /// Mô-đun Người thân (kho dữ liệu, trang đang mở, biểu mẫu).
+    people: people::Ps,
 }
 
 fn render_sheet(ui: &AppWindow, st: &State) {
@@ -677,15 +682,25 @@ fn blocks(json: &str) -> ModelRc<Block> {
 }
 
 fn main() -> Result<(), slint::PlatformError> {
+    // Chế độ chụp màn hình cho CI và kiểm tra giao diện: `LichViet.exe --chup-man-hinh <thư mục>` mở
+    // các màn hình chính lần lượt, lưu ảnh PNG vào thư mục rồi tự thoát. `--do-bo-nho`: mở mô-đun Người thân
+    // với dữ liệu mẫu rồi đứng yên (CI đọc Working Set). Hai chế độ dùng kho tạm, không chạm dữ liệu thật.
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    let mode = args.first().cloned().unwrap_or_default();
+    let demo = mode == "--chup-man-hinh" || mode == "--do-bo-nho";
+    if demo {
+        let dir = std::env::temp_dir().join(format!("lvhv-demo-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::env::set_var("LVHV_DATA_DIR", &dir);
+    }
     let ui = AppWindow::new()?;
     let st = setup(&ui);
-    // Chế độ chụp màn hình cho CI và kiểm tra giao diện: `LichViet.exe --chup-man-hinh <thư mục>` mở
-    // các màn hình chính lần lượt, lưu ảnh PNG vào thư mục rồi tự thoát. Không dùng khi chạy thường.
-    let mut args = std::env::args().skip(1);
-    if let (Some(flag), Some(dir)) = (args.next(), args.next()) {
-        if flag == "--chup-man-hinh" {
+    if mode == "--chup-man-hinh" {
+        if let Some(dir) = args.get(1) {
             shots::start(&ui, st, std::path::PathBuf::from(dir));
         }
+    } else if mode == "--do-bo-nho" {
+        shots::memory_mode(&ui, st);
     }
     ui.run()
 }
@@ -703,7 +718,19 @@ fn setup(ui: &AppWindow) -> Rc<RefCell<State>> {
         good_shown: 0,
         solar_target: None,
         lunar_target: None,
+        people: Rc::new(RefCell::new(people::PState::new(platform::data_dir()))),
     }));
+    platform::init_app_identity();
+    let ps = st.borrow().people.clone();
+    people::wire(ui, ps.clone());
+    // Đã từng dùng mô-đun (có kho trên máy): mở kho và đặt lại thông báo Windows ngay khi mở ứng dụng
+    // (02 §7.5). Chưa từng dùng thì không tạo tệp nào.
+    if ps.borrow().dir.join("lvhv.sqlite").exists() {
+        let mut p = ps.borrow_mut();
+        if people::ensure_store(ui, &mut p) {
+            people::reschedule(Some(ui), &mut p);
+        }
+    }
 
     {
         let g = ui.global::<Data>();
@@ -872,6 +899,23 @@ fn setup(ui: &AppWindow) -> Rc<RefCell<State>> {
         }
     }));
 
+    {
+        let w = w.clone();
+        let ps = ps.clone();
+        g.on_open_people(move || {
+            if let Some(ui) = w.upgrade() {
+                let mut p = ps.borrow_mut();
+                let fresh = p.store.is_none();
+                let page = ui.global::<People>().get_page().to_string();
+                if fresh {
+                    people::go(&ui, &mut p, if page.is_empty() { "sap-toi" } else { &page });
+                    people::reschedule(Some(&ui), &mut p);
+                } else {
+                    people::refresh(&ui, &mut p);
+                }
+            }
+        });
+    }
     g.on_check_update(|| {
         update::open_with_os(&update::update_url(update::MS_STORE_ID));
     });

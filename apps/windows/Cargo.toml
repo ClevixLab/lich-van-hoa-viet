@@ -29,6 +29,23 @@ serde_json = "1.0.145"
 slint = { version = "=1.8.0", default-features = false, features = ["std", "compat-1-2", "accessibility", "backend-winit", "renderer-skia", "renderer-software"] }
 # Ghi ảnh PNG cho chế độ chụp màn hình (--chup-man-hinh); đã có sẵn trong cây phụ thuộc của Slint.
 png = "0.17.16"
+# Ảnh chân dung / giấy báo tử (01 §3.8, S9): giải mã rồi mã hóa lại JPEG để bỏ EXIF/GPS/XMP/IPTC. Cùng bản
+# 0.24.9 đã có trong cây phụ thuộc của Slint (không thêm thư viện mới).
+image = { version = "=0.24.9", default-features = false, features = ["jpeg", "png", "gif", "webp", "bmp"] }
+
+# Thông báo Windows đặt lịch trước (WinRT ToastNotificationManager), hộp chọn tệp (comdlg32), múi giờ, định danh
+# ứng dụng (AUMID). Cùng bản 0.58.0 đã có trong cây phụ thuộc (accesskit_windows, skia-safe).
+[target.'cfg(windows)'.dependencies]
+windows = { version = "=0.58.0", features = [
+    "Foundation",
+    "Foundation_Collections",
+    "Data_Xml_Dom",
+    "UI_Notifications",
+    "Win32_Foundation",
+    "Win32_System_Time",
+    "Win32_UI_Shell",
+    "Win32_UI_Controls_Dialogs",
+] }
 
 [dev-dependencies]
 # Backend kiểm thử của Slint: dựng cửa sổ ảo, bấm chuột giả lập để kiểm tra các nút (src/ui_tests.rs).
