@@ -320,7 +320,9 @@ jobs:
   screenshots:
     needs: ui
     # Chỉ commit ảnh vào nhánh PR của Android (tên nhánh có "android"); PR khác chạy workflow này (sửa lõi…) thì không ghi.
-    if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && contains(github.head_ref, 'android')
+    # Chỉ khi job `ui` thành công trọn vẹn (mọi kiểm thử chạy xong → bộ ảnh đủ) và run không bị hủy: run bị hủy hay kiểm thử
+    # lỗi giữa chừng chỉ có một phần ảnh, không được ghi đè lên nhánh.
+    if: ${{ !cancelled() && needs.ui.result == 'success' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && contains(github.head_ref, 'android') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
@@ -330,8 +332,6 @@ jobs:
         with:
           ref: ${{ github.head_ref }}
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
-        # Dựng lỗi (không có ảnh) thì không có tạo phẩm: bỏ qua, không làm đỏ thêm job này.
-        continue-on-error: true
         with:
           name: android-screenshots
           path: ${{ runner.temp }}/shots
@@ -340,7 +340,7 @@ jobs:
           shopt -s nullglob
           files=("$RUNNER_TEMP"/shots/*.png)
           if [ ${#files[@]} -eq 0 ]; then echo "Không có ảnh."; exit 0; fi
-          rm -f apps/android/screenshots/and-*.png
+          # Chỉ thêm/ghi đè ảnh vừa sinh lại; KHÔNG xóa ảnh nào (ảnh của ca kiểm thử đã bỏ thì xóa bằng tay trong PR).
           for f in "${files[@]}"; do
             case "$(basename "$f")" in and-*.png) cp -- "$f" apps/android/screenshots/ ;; esac
           done
