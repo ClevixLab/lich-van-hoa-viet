@@ -26,6 +26,11 @@ export global People {
     in-out property <string> page: "sap-toi";
     in-out property <string> back-label: "‹ Về danh sách hồ sơ";
     in-out property <string> store-error;
+    // Khung báo kho (TKN3-W-01): tiêu đề đậm, lời chính, gợi ý, chi tiết kỹ thuật thu gọn.
+    in-out property <string> store-title;
+    in-out property <string> store-hint;
+    in-out property <string> store-detail;
+    in-out property <bool> store-detail-open;
     // R14: kho không mở được (chuyển đổi lỗi) → khung báo chỉ xem + nút mở thư mục dữ liệu để chép dự phòng.
     in-out property <bool> store-failed;
     // R14 / 01 §7.1: kho mở ở chế độ chỉ đọc (chuyển đổi lỗi) — xem được, xuất sao lưu được, không sửa.
@@ -80,6 +85,7 @@ export global People {
     in-out property <string> restore-file: "Chưa chọn tệp.";
     in-out property <string> restore-pw;
     in-out property <string> restore-error;
+    in-out property <bool> restore-busy;
 
     // Hồ sơ một người
     in-out property <string> v-id;
@@ -261,6 +267,8 @@ export global People {
     in-out property <string> dlg-cancel: "Hủy";
     in-out property <bool> dlg-danger;
     in-out property <bool> dlg-busy;
+    // Nút mặc định của hộp là "Hủy" (BM3-02: mở tệp bằng ứng dụng khác): Hủy tô đậm, Enter = Hủy.
+    in-out property <bool> dlg-default-cancel;
     in-out property <string> pw1;
     in-out property <string> pw2;
     in-out property <string> e-pw1;
@@ -715,6 +723,36 @@ component PPage inherits ScrollView {
     }
 }
 
+// Khung báo kho chỉ đọc / không mở được (R14, TKN3-W-01): nền vàng nhạt, viền vàng đồng, chữ màu `ink` cỡ nội dung
+// như bản web; chi tiết kỹ thuật (câu lỗi của SQLite…) thu gọn sẵn dưới "Chi tiết kỹ thuật".
+component StoreBanner inherits Rectangle {
+    background: Theme.gold-tint;
+    border-radius: 12px;
+    border-width: 1px; border-color: Theme.gold;
+    accessible-role: AccessibleRole.text;
+    accessible-label: People.store-title + " " + People.store-error + " " + People.store-hint;
+    VerticalLayout {
+        padding: 14px; spacing: 8px;
+        T { text: People.store-title; size: 16; font-weight: 700; color: Theme.ink; }
+        T { text: People.store-error; size: 16; color: Theme.ink; }
+        if People.store-hint != "": T { text: People.store-hint; size: 16; color: Theme.ink; }
+        HorizontalLayout {
+            alignment: start; spacing: 8px;
+            if People.read-only: Btn { text: "Tạo tệp sao lưu…"; kind: "primary"; clicked => { People.create-backup(); } }
+            Btn { text: "Mở thư mục dữ liệu"; kind: "outline"; clicked => { People.open-data-dir(); } }
+        }
+        if People.store-detail != "": HorizontalLayout {
+            alignment: start;
+            LinkBtn {
+                text: People.store-detail-open ? "Ẩn chi tiết kỹ thuật" : "Chi tiết kỹ thuật";
+                accessible-label: "Chi tiết kỹ thuật";
+                clicked => { People.store-detail-open = !People.store-detail-open; }
+            }
+        }
+        if People.store-detail-open: T { text: People.store-detail; size: 15; color: Theme.ink2; }
+    }
+}
+
 component Head inherits VerticalLayout {
     spacing: 10px;
     VerticalLayout {
@@ -728,18 +766,7 @@ component Head inherits VerticalLayout {
         accessible-role: AccessibleRole.text; accessible-label: People.toast;
         HorizontalLayout { padding: 10px; T { text: People.toast; color: Theme.green; size: 15; font-weight: 600; } }
     }
-    if People.store-error != "": Notice {
-        warn: true; text: People.store-error;
-        if People.store-failed: HorizontalLayout {
-            alignment: start;
-            Btn { text: "Mở thư mục dữ liệu"; kind: "outline"; clicked => { People.open-data-dir(); } }
-        }
-        if People.read-only: HorizontalLayout {
-            alignment: start; spacing: 8px;
-            Btn { text: "Tạo tệp sao lưu…"; kind: "primary"; clicked => { People.create-backup(); } }
-            Btn { text: "Mở thư mục dữ liệu"; kind: "outline"; clicked => { People.open-data-dir(); } }
-        }
-    }
+    if People.store-error != "": StoreBanner { }
 }
 
 component SubHead inherits VerticalLayout {
@@ -967,13 +994,20 @@ component BackupPage inherits PPage {
             picked(i) => { People.nag-changed(i); }
         }
     }
+    // BM2-22 / MA3N-25-09: gỡ ứng dụng không xóa dữ liệu — nói rõ ở đâu và cách xóa (không có nút xóa tự động).
+    Group {
+        legend: "Dữ liệu trên máy này";
+        T { text: "Sổ Người thân (hồ sơ, ảnh, tệp đính kèm, thông tin báo tử) nằm trong thư mục %LOCALAPPDATA%\\ClevixLab\\LichVanHoaViet. Cài lại, nâng cấp hay gỡ ứng dụng đều giữ nguyên thư mục này. Muốn xóa hẳn: tạo tệp sao lưu nếu cần, gỡ ứng dụng, rồi xóa thư mục đó."; size: 15; color: Theme.ink2; }
+        HorizontalLayout { alignment: start; Btn { text: "Mở thư mục dữ liệu"; kind: "outline"; clicked => { People.open-data-dir(); } } }
+    }
     if !People.read-only: Group {
         legend: "Khôi phục từ tệp sao lưu";
         HorizontalLayout { alignment: start; Btn { text: "Chọn tệp sao lưu…"; kind: "outline"; clicked => { People.choose-backup(); } } }
         T { text: People.restore-file; size: 15; color: Theme.ink2; accessible-role: AccessibleRole.text; accessible-label: People.restore-file; }
         Field { label: "Mật khẩu của tệp"; text <=> People.restore-pw; password: true; box-width: 320px; }
         if People.restore-error != "": T { text: People.restore-error; size: 15; color: Theme.red-ink; font-weight: 600; accessible-role: AccessibleRole.text; accessible-label: People.restore-error; }
-        HorizontalLayout { alignment: start; Btn { text: "Mở tệp"; kind: "outline"; clicked => { People.open-backup(); } } }
+        // MA3C-25-05: khóa nút trong lúc luồng phụ đang giải mã (Argon2id), không chạy hai lần.
+        HorizontalLayout { alignment: start; Btn { text: "Mở tệp"; kind: "outline"; enabled: !People.restore-busy; clicked => { People.open-backup(); } } }
     }
 }
 
@@ -1013,7 +1047,7 @@ component AttLine inherits Rectangle {
     in property <AttRow> item;
     in property <int> index;
     in property <bool> editable;
-    property <[string]> kinds: ["Ảnh tin báo tử", "Giấy chứng tử", "Khác"];
+    property <[string]> kinds: ["Tin báo tử", "Giấy chứng tử", "Tệp khác"];
     background: Theme.paper;
     border-width: 1px; border-color: Theme.rule; border-radius: 10px;
     VerticalLayout {
@@ -1165,7 +1199,7 @@ component NoticeBlock inherits Group {
             NumBox { label: "Năm (dương lịch)"; text <=> People.n-y; w: 120px; edited => { People.form-changed(); } }
         }
         Field { label: "Lý do"; text <=> People.n-reason; multiline: true; edited => { People.form-changed(); } }
-        T { text: "Tệp đính kèm (tối đa 6): ảnh tin báo tử, ảnh hoặc bản quét PDF giấy chứng tử, tệp khác"; size: 15; font-weight: 600; color: Theme.ink2; }
+        T { text: "Tệp đính kèm (tối đa 6): tin báo tử, giấy chứng tử (ảnh hoặc bản quét PDF), tệp khác"; size: 15; font-weight: 600; color: Theme.ink2; }
         for a[i] in People.n-atts: AttLine { item: a; index: i; editable: true; }
         if People.n-atts.length < 6: HorizontalLayout { alignment: start; Btn { text: "Thêm tệp đính kèm"; kind: "outline"; clicked => { People.add-attachment(); } } }
         T { text: "Ảnh được nén lại và bỏ thông tin vị trí, máy chụp. Tệp PDF được lưu nguyên bản."; size: 14; color: Theme.ink3; }
@@ -1552,6 +1586,15 @@ component Dialog inherits Rectangle {
         // Viền để hộp tách khỏi lớp phủ ở giao diện tối (TKN-W-14).
         border-width: 1px; border-color: Theme.outline;
         TouchArea { }
+        // Bàn phím: Esc luôn đóng hộp; Enter chỉ đóng khi nút mặc định là "Hủy".
+        fs := FocusScope {
+            init => { self.focus(); }
+            key-pressed(e) => {
+                if (e.text == Key.Escape && !People.dlg-busy) { People.dlg-dismiss(); return accept; }
+                if (e.text == Key.Return && People.dlg-default-cancel) { People.dlg-dismiss(); return accept; }
+                reject
+            }
+        }
         VerticalLayout {
             padding: 20px; spacing: 10px;
             S { text: People.dlg-title; size: 22; accessible-role: AccessibleRole.text; accessible-label: People.dlg-title; }
@@ -1575,8 +1618,8 @@ component Dialog inherits Rectangle {
             if People.dlg-busy: T { text: "Đang xử lý… (có thể mất vài giây)"; size: 15; color: Theme.ink3; }
             HorizontalLayout {
                 alignment: end; spacing: 10px; padding-top: 6px;
-                Btn { text: People.dlg-cancel; kind: "outline"; enabled: !People.dlg-busy; clicked => { People.dlg-dismiss(); } }
-                if People.dlg-ok != "": Btn { text: People.dlg-ok; kind: People.dlg-danger ? "danger" : "primary"; enabled: !People.dlg-busy; clicked => { People.dlg-confirm(); } }
+                Btn { text: People.dlg-cancel; kind: People.dlg-default-cancel ? "primary" : "outline"; enabled: !People.dlg-busy; clicked => { People.dlg-dismiss(); } }
+                if People.dlg-ok != "": Btn { text: People.dlg-ok; kind: People.dlg-default-cancel ? "outline" : (People.dlg-danger ? "danger" : "primary"); enabled: !People.dlg-busy; clicked => { People.dlg-confirm(); } }
             }
         }
     }

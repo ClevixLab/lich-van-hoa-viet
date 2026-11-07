@@ -295,10 +295,21 @@ fn nguoi_dang_song_su_kien_bao_tu() {
     press(&ui, "Thêm tệp đính kèm");
     assert_eq!(p.get_n_atts().row_count(), 2);
     assert!(p.get_n_atts().row_data(1).unwrap().pdf);
-    press(&ui, "Loại tệp 2: Khác");
+    press(&ui, "Loại tệp 2: Tệp khác");
     assert_eq!(p.get_n_atts().row_data(1).unwrap().kind, 2);
-    // Mở PDF: bản sao tạm tên chung trong thư mục riêng của ứng dụng (§5.3), không mang tên người.
+    // Mở PDF: hỏi trước (BM3-02, S10) — "Hủy" là mặc định và không mở gì; "Mở tệp" mới chép bản tạm tên chung trong
+    // thư mục riêng của ứng dụng (§5.3), không mang tên người.
     press(&ui, "Mở tệp đính kèm 2");
+    assert_eq!(p.get_dlg(), "mo-tep");
+    assert!(p.get_dlg_default_cancel(), "nút mặc định là Hủy");
+    assert!(p.get_dlg_lines().iter().any(|l| l.contains("ứng dụng khác") ));
+    assert!(p.get_dlg_lines().iter().any(|l| l.contains("riêng tư")));
+    click(&ui, &last_by_label(&ui, "Hủy"));
+    assert_eq!(p.get_dlg(), "");
+    assert!(ps.borrow().last_opened.is_none(), "Hủy thì không mở");
+    assert!(!tmp.join("tmp").exists());
+    press(&ui, "Mở tệp đính kèm 2");
+    click(&ui, &last_by_label(&ui, "Mở tệp"));
     let opened = ps.borrow().last_opened.clone().unwrap();
     assert_eq!(opened.file_name().unwrap(), "TepDinhKem.pdf");
     assert!(opened.starts_with(tmp.join("tmp")));
@@ -352,7 +363,10 @@ fn nguoi_dang_song_su_kien_bao_tu() {
     assert!(p.get_v_notice().iter().any(|kv| kv.v == SECRET));
     assert_eq!(p.get_v_atts().row_count(), 2);
     assert_eq!(p.get_v_atts().row_data(1).unwrap().name, "Giấy chứng tử của Cường.pdf");
+    ps.borrow_mut().last_opened = None;
     press(&ui, "Mở tệp đính kèm 2");
+    assert_eq!(p.get_dlg(), "mo-tep", "trang hồ sơ cũng hỏi trước");
+    p.invoke_dlg_confirm();
     assert!(ps.borrow().last_opened.as_ref().unwrap().ends_with("TepDinhKem.pdf"));
 
     // --- B4: biểu mẫu sự kiện của người đã mất không có khối nhắc ---
@@ -522,6 +536,12 @@ fn chuyen_doi_loi_che_do_chi_doc() {
     assert!(p.get_read_only());
     assert!(!p.get_store_failed());
     assert!(p.get_store_error().contains("chỉ đọc"), "{}", p.get_store_error());
+    // TKN3-W-01: chi tiết kỹ thuật không nằm trong lời chính, thu gọn sẵn; bấm mới hiện.
+    assert!(!p.get_store_error().contains("SQLite") && !p.get_store_title().contains("SQLite"));
+    assert!(p.get_store_detail().contains("SQLite"), "{}", p.get_store_detail());
+    assert!(!p.get_store_detail_open());
+    press(&ui, "Chi tiết kỹ thuật");
+    assert!(p.get_store_detail_open());
     seg(&ui, "Hồ sơ");
     assert!(p.get_has_any(), "dữ liệu cũ xem được");
     assert_eq!(count_label(&ui, "Thêm người đã mất"), 0, "không có nút thêm");
@@ -560,7 +580,7 @@ fn chuyen_doi_loi_che_do_chi_doc() {
     }
     p.invoke_go("sap-toi".into());
     assert!(p.get_store_failed());
-    assert!(p.get_store_error().contains("bản mới hơn"), "{}", p.get_store_error());
+    assert!(p.get_store_title().contains("bản mới hơn"), "{}", p.get_store_title());
     press(&ui, "Mở thư mục dữ liệu");
     seg(&ui, "Hồ sơ");
     assert!(p.get_store_failed(), "không thử lại khi chuyển trang");

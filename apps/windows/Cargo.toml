@@ -9,9 +9,19 @@ authors = ["Clevix LLC (Clevix Lab)"]
 homepage = "https://clevix.vn"
 build = "build.rs"
 
+[lib]
+name = "lvhv_windows"
+path = "src/app.rs"
+
+# Bản phát hành (đóng gói vào .msi/.zip).
 [[bin]]
 name = "LichViet"
 path = "src/main.rs"
+
+# Chỉ dùng trong CI, không đóng gói (MA3C-25-01).
+[[bin]]
+name = "lvhv-ci-check"
+path = "src/bin/lvhv-ci-check.rs"
 
 [dependencies]
 lvhv-ffi = { path = "../../ffi" }

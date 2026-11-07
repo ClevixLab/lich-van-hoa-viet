@@ -78,7 +78,7 @@ jobs:
           "Tờ lịch (khởi động): Working set {0:N1} MB; Private {1:N1} MB" -f ($p.WorkingSet64/1MB), ($p.PrivateMemorySize64/1MB) | Tee-Object -FilePath $env:RUNNER_TEMP\mem.txt
           Stop-Process -Id $p.Id -Force
           # Mô-đun Người thân với dữ liệu mẫu (kho tạm): Sắp tới, Theo kỳ năm, hồ sơ có ảnh, trang tưởng niệm.
-          $p = Start-Process -FilePath target\release\LichViet.exe -ArgumentList '--do-bo-nho' -PassThru
+          $p = Start-Process -FilePath target\release\lvhv-ci-check.exe -ArgumentList '--do-bo-nho' -PassThru
           Start-Sleep -Seconds 12
           $p.Refresh()
           "Người thân + tưởng niệm (5 hồ sơ, 2 ảnh): Working set {0:N1} MB; Private {1:N1} MB; đỉnh Working set {2:N1} MB" -f ($p.WorkingSet64/1MB), ($p.PrivateMemorySize64/1MB), ($p.PeakWorkingSet64/1MB) | Tee-Object -FilePath $env:RUNNER_TEMP\mem.txt -Append
@@ -94,15 +94,15 @@ jobs:
           $out = Join-Path $env:RUNNER_TEMP 'screens'
           foreach ($sf in @('1', '2')) {
             $env:SLINT_SCALE_FACTOR = $sf
-            $p = Start-Process -FilePath target\release\LichViet.exe -ArgumentList '--chup-man-hinh', $out -PassThru
+            $p = Start-Process -FilePath target\release\lvhv-ci-check.exe -ArgumentList '--chup-man-hinh', $out -PassThru
             if (-not $p.WaitForExit(240000)) { Stop-Process -Id $p.Id -Force; Write-Host "::error::Chụp màn hình ($sf×) quá 240 giây"; exit 1 }
-            if ($p.ExitCode -ne 0) { Write-Host "::error::LichViet.exe --chup-man-hinh ($sf×) thoát mã $($p.ExitCode)"; exit 1 }
+            if ($p.ExitCode -ne 0) { Write-Host "::error::lvhv-ci-check.exe --chup-man-hinh ($sf×) thoát mã $($p.ExitCode)"; exit 1 }
           }
           Remove-Item Env:SLINT_SCALE_FACTOR
           Add-Type -AssemblyName System.Drawing
           $shots = Get-ChildItem $out -Filter *.png -ErrorAction SilentlyContinue
           $shots | ForEach-Object { $i = [System.Drawing.Image]::FromFile($_.FullName); "{0}  {1}x{2}  {3:N0} byte" -f $_.Name, $i.Width, $i.Height, $_.Length; $i.Dispose() }
-          if ($shots.Count -lt 204) { Write-Host "::error::Chỉ có $($shots.Count)/204 ảnh"; exit 1 }
+          if ($shots.Count -lt 208) { Write-Host "::error::Chỉ có $($shots.Count)/208 ảnh"; exit 1 }
           $small = $shots | Where-Object { $_.Length -lt 20000 }
           if ($small) { Write-Host "::error::Ảnh quá nhỏ (có thể trống): $($small.Name -join ', ')"; exit 1 }
 
@@ -184,7 +184,8 @@ jobs:
           "Lối tắt Start Menu: $($lnk.FullName)" | Tee-Object -FilePath $env:RUNNER_TEMP\toast.txt -Append
           $proto = (Get-ItemProperty -Path 'HKCU:\Software\Classes\lichviet\shell\open\command' -ErrorAction SilentlyContinue).'(default)'
           "Giao thức lichviet: $proto" | Tee-Object -FilePath $env:RUNNER_TEMP\toast.txt -Append
-          $exe = Join-Path $env:LOCALAPPDATA 'Programs\LichVanHoaViet\LichViet.exe'
+          # Tự kiểm chạy bằng lvhv-ci-check.exe (cùng AppUserModelID với bản đã cài; không đóng gói — MA3C-25-01).
+          $exe = (Resolve-Path target\release\lvhv-ci-check.exe).Path
           $o = Join-Path $env:RUNNER_TEMP 'toast-out.txt'; $e = Join-Path $env:RUNNER_TEMP 'toast-err.txt'
           $t = Start-Process -FilePath $exe -ArgumentList '--kiem-thong-bao' -Wait -PassThru -RedirectStandardOutput $o -RedirectStandardError $e
           "--kiem-thong-bao thoát mã $($t.ExitCode)" | Tee-Object -FilePath $env:RUNNER_TEMP\toast.txt -Append
@@ -230,6 +231,15 @@ jobs:
           $data = Join-Path $env:LOCALAPPDATA 'ClevixLab\LichVanHoaViet'
           $flagDir = Join-Path $env:LOCALAPPDATA 'Clevix\LichVanHoaViet'
           $prog = Join-Path $env:LOCALAPPDATA 'Programs\LichVanHoaViet\LichViet.exe'
+          # Công cụ kiểm của CI (không đóng gói, MA3C-25-01). Chuyển đổi dữ liệu và đặt lại thông báo do chính
+          # LichViet.exe đã cài làm khi mở (Open-App); công cụ chỉ đọc và so kết quả.
+          $chk = (Resolve-Path target\release\lvhv-ci-check.exe).Path
+          function Open-App($tag) {
+            $p = Start-Process -FilePath $prog -PassThru; Start-Sleep -Seconds 12
+            if ($p.HasExited) { Fail "$tag: LichViet.exe đã cài tự thoát (mã $($p.ExitCode))" }
+            Stop-Process -Id $p.Id -Force; Start-Sleep -Seconds 2
+            Log "$tag: mở LichViet.exe đã cài 12 giây (mở kho, chuyển đổi nếu cần, đặt lại thông báo) rồi đóng"
+          }
           Log "R14 Windows — $(Get-Date -Format 'yyyy-MM-dd HH:mm') UTC$((Get-Date).ToString('zzz')), bản mới $env:VERSION (run ${{ github.run_number }})"
           # Máy CI sạch: các bước trước chỉ dùng kho tạm. Có dữ liệu sẵn thì dừng chứ không xóa.
           if ((Test-Path $data) -or (Test-Path $flagDir)) { Fail "thư mục dữ liệu đã có trước khi thử" }
@@ -261,7 +271,7 @@ jobs:
           Expand-Archive -Path "dist\LichViet-$env:VERSION-x64.zip" -DestinationPath (Join-Path $r 'zip') -Force
           $zexe = Join-Path $r 'zip\LichViet.exe'
           $snap = Join-Path $r 'anh-chup.json'
-          if ((Run $zexe @('--tao-du-lieu-mau', "`"$snap`"") 'tao') -ne 0) { Fail "--tao-du-lieu-mau lỗi" }
+          if ((Run $chk @('--tao-du-lieu-mau', "`"$snap`"") 'tao') -ne 0) { Fail "--tao-du-lieu-mau lỗi" }
 
           # 3) Cài MSI mới đè lên (nâng cấp lớn; cùng số phiên bản cũng phải nâng cấp chứ không cài song song).
           Msi '/i' (Resolve-Path "dist\LichViet-$env:VERSION-x64.msi").Path 'cai-moi'
@@ -273,7 +283,8 @@ jobs:
           Log "LichViet.exe đã cài là bản mới ($((Get-Item $prog).VersionInfo.FileVersion))"
 
           # 4) Tự kiểm: dữ liệu còn nguyên, đã chuyển lược đồ, thông báo được đặt lại.
-          if ((Run $prog @('--kiem-nang-cap', "`"$snap`"") 'kiem') -ne 0) { Fail "--kiem-nang-cap báo lỗi (xem trên)" }
+          Open-App 'R14 (a)'
+          if ((Run $chk @('--kiem-nang-cap', "`"$snap`"") 'kiem') -ne 0) { Fail "--kiem-nang-cap báo lỗi (xem trên)" }
 
           # 5) Gỡ cài đặt: chương trình mất, dữ liệu còn nguyên từng byte.
           $before = Hashes $data; $flagBefore = Get-Content (Join-Path $flagDir 'nhac-cap-nhat.txt') -Raw
@@ -297,7 +308,8 @@ jobs:
           Copy-Item (Join-Path $fix 'store') $data -Recurse
           Log "R14 (c): chép kho của bộ mẫu $(Split-Path $fix -Leaf) vào thư mục dữ liệu ($((Get-ChildItem $data -Recurse -File).Count) tệp)"
           Msi '/i' (Resolve-Path "dist\LichViet-$env:VERSION-x64.msi").Path 'cai-moi-c'
-          if ((Run $prog @('--kiem-mau-dong-bang', "`"$exp`"") 'kiem-c') -ne 0) { Fail "R14 (c) --kiem-mau-dong-bang báo lỗi (xem trên)" }
+          Open-App 'R14 (c)'
+          if ((Run $chk @('--kiem-mau-dong-bang', "`"$exp`"") 'kiem-c') -ne 0) { Fail "R14 (c) --kiem-mau-dong-bang báo lỗi (xem trên)" }
           $before = Hashes $data
           Msi '/x' (Resolve-Path "dist\LichViet-$env:VERSION-x64.msi").Path 'go-c'
           if (Compare-Object $before (Hashes $data)) { Fail "R14 (c): thư mục dữ liệu đổi sau khi gỡ" }
@@ -305,10 +317,42 @@ jobs:
           Log "R14 (c) Windows: ĐẠT (gỡ cài đặt giữ nguyên $($before.Count) tệp, có bản sao trước chuyển đổi)"
 
           # 7) Ca lỗi: chuyển đổi lỗi thật trên bản chép của bộ mẫu (một hồ sơ hỏng) → chỉ đọc, kho cũ và bản sao giữ
-          #    nguyên, từ chối ghi, vẫn xuất được sao lưu. Chạy bằng LichViet.exe của bản dựng (từ .zip).
+          #    nguyên, từ chối ghi, vẫn xuất được sao lưu. Chạy bằng lvhv-ci-check.exe trên bản chép trong thư mục tạm.
           Log ""
-          if ((Run $zexe @('--kiem-chi-doc', "`"$(Join-Path $fix 'store')`"") 'kiem-loi') -ne 0) { Fail "R14 ca lỗi --kiem-chi-doc báo lỗi (xem trên)" }
+          if ((Run $chk @('--kiem-chi-doc', "`"$(Join-Path $fix 'store')`"") 'kiem-loi') -ne 0) { Fail "R14 ca lỗi --kiem-chi-doc báo lỗi (xem trên)" }
           Log "R14 Windows: ĐẠT — (a) 0.1.4 → bản này, (c) bộ mẫu đóng băng, ca lỗi chỉ đọc"
+
+      # MA3C-25-01: LichViet.exe phát hành (bản trong .zip, cũng là bản trong .msi — so băm ở bước R14) không chứa chế độ
+      # kiểm thử nào: không có chuỗi cờ của CI, và chạy với một cờ thì chỉ mở giao diện như thường (không tạo tệp).
+      # .zip và .msi không chứa lvhv-ci-check.exe.
+      - name: Kiểm tra — LichViet.exe phát hành không có chế độ kiểm thử
+        working-directory: apps/windows
+        run: |
+          $d = Join-Path $env:RUNNER_TEMP 'kiem-phat-hanh'
+          Expand-Archive -Path "dist\LichViet-$env:VERSION-x64.zip" -DestinationPath $d -Force
+          $names = (Get-ChildItem $d -Recurse -File).Name -join ', '
+          Write-Host "Tệp trong .zip: $names"
+          if (Get-ChildItem $d -Recurse -Filter 'lvhv-ci-check*') { Write-Host "::error::.zip chứa lvhv-ci-check"; exit 1 }
+          $exe = Join-Path $d 'LichViet.exe'
+          $bytes = [IO.File]::ReadAllBytes($exe)
+          $text = [Text.Encoding]::UTF8.GetString($bytes)
+          $flags = '--chup-man-hinh','--do-bo-nho','--kiem-thong-bao','--tao-du-lieu-mau','--kiem-nang-cap','--kiem-mau-dong-bang','--kiem-chi-doc'
+          $found = $flags | Where-Object { $text.Contains($_) }
+          if ($found) { Write-Host "::error::LichViet.exe phát hành còn chuỗi cờ: $($found -join ', ')"; exit 1 }
+          $ci = [Text.Encoding]::UTF8.GetString([IO.File]::ReadAllBytes((Resolve-Path target\release\lvhv-ci-check.exe).Path))
+          $missing = $flags | Where-Object { -not $ci.Contains($_) }
+          if ($missing) { Write-Host "::error::phép tìm chuỗi không đáng tin: lvhv-ci-check.exe thiếu $($missing -join ', ')"; exit 1 }
+          # Chạy thử: cờ bị bỏ qua — không tạo tệp ảnh chụp, không tạo thư mục dữ liệu, giao diện mở như thường.
+          $snap = Join-Path $env:RUNNER_TEMP 'khong-duoc-tao.json'
+          $data = Join-Path $env:LOCALAPPDATA 'ClevixLab\LichVanHoaViet'
+          $hadData = Test-Path $data
+          $p = Start-Process -FilePath $exe -ArgumentList '--tao-du-lieu-mau', "`"$snap`"" -PassThru
+          Start-Sleep -Seconds 8
+          if ($p.HasExited) { Write-Host "::error::LichViet.exe --tao-du-lieu-mau thoát (mã $($p.ExitCode)) — có vẻ vẫn hiểu cờ"; exit 1 }
+          Stop-Process -Id $p.Id -Force
+          if (Test-Path $snap) { Write-Host "::error::LichViet.exe phát hành vẫn tạo dữ liệu mẫu"; exit 1 }
+          if (-not $hadData -and (Test-Path (Join-Path $data 'lvhv.sqlite'))) { Write-Host "::error::LichViet.exe phát hành đã tạo kho"; exit 1 }
+          Write-Host "Đạt: không có chuỗi cờ CI ($($flags.Count) cờ), không tạo tệp khi được truyền cờ, .zip chỉ có: $names"
 
       - uses: actions/upload-artifact@v4
         with:

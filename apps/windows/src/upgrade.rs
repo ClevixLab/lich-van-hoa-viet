@@ -133,9 +133,17 @@ pub fn check_frozen(dir: &Path, expected: &Path, t: &dyn toasts::Toasts, now: i6
     let want = jv(&std::fs::read_to_string(expected).map_err(|e| format!("đọc tệp kỳ vọng: {e}"))?);
     let before = schema_version(dir);
     let store = LvhvStore::open(dir.to_string_lossy().into_owned()).map_err(|e| format!("KHÔNG mở được kho: {e}"))?;
+    // Trên CI, LichViet.exe đã cài mở kho trước (chuyển 1 → 2) rồi công cụ này mới chạy: trạng thái là "ok", bằng chứng
+    // chuyển đổi là phiên bản 2 + bản sao trước chuyển đổi. Chạy trực tiếp trên kho phiên bản 1 thì là "migrated".
     let ms = store.migration_status();
-    if ms.state != "migrated" {
-        return Err(format!("trạng thái chuyển đổi {} (kỳ vọng migrated): {:?}", ms.state, ms.message));
+    let bak = dir.join("lvhv.sqlite.pre-v2.bak");
+    let ok = match ms.state.as_str() {
+        "migrated" => true,
+        "ok" => bak.exists() && schema_version(dir) == 2,
+        _ => false,
+    };
+    if !ok {
+        return Err(format!("trạng thái chuyển đổi {} (kỳ vọng đã chuyển sang phiên bản 2): {:?}", ms.state, ms.message));
     }
     let got = state_doc(&store)?;
     if got != want["state"] {
@@ -152,12 +160,13 @@ pub fn check_frozen(dir: &Path, expected: &Path, t: &dyn toasts::Toasts, now: i6
         return Err(format!("chưa đặt lại được thông báo: {r:?}"));
     }
     Ok(format!(
-        "R14 (c) bộ mẫu đóng băng: ĐẠT. Lược đồ {before} → {}; trạng thái trùng tệp kỳ vọng ({} hồ sơ, {} tệp đính kèm, {} ảnh); bản sao trước chuyển đổi: {}; đặt lại thông báo: {r:?}",
+        "R14 (c) bộ mẫu đóng băng: ĐẠT. Lược đồ {before} → {} (trạng thái khi kiểm: {}); trạng thái trùng tệp kỳ vọng ({} hồ sơ, {} tệp đính kèm, {} ảnh); bản sao trước chuyển đổi: {}; đặt lại thông báo: {r:?}",
         schema_version(dir),
+        ms.state,
         got["persons"].as_array().map_or(0, Vec::len),
         got["attachments"].as_array().map_or(0, Vec::len),
         got["photos"].as_array().map_or(0, Vec::len),
-        ms.backup_path.as_deref().map(|p| Path::new(p).file_name().map(|f| f.to_string_lossy().into_owned()).unwrap_or_default()).unwrap_or_default()
+        if bak.exists() { "lvhv.sqlite.pre-v2.bak" } else { "(không có)" }
     ))
 }
 
@@ -341,14 +350,14 @@ mod tests {
         let s = LvhvStore::open(d.to_string_lossy().into_owned()).unwrap();
         let ms = s.migration_status();
         assert_eq!(ms.state, "read_only", "lõi quay lui và mở chỉ đọc");
-        assert!(crate::people::read_only_message(&ms).contains("Tạo tệp sao lưu"));
+        assert!(crate::people::read_only_banner(&ms).text().contains("Tạo tệp sao lưu"));
         drop(s);
         assert_eq!(rows(&d), (n, 0), "không mất hồ sơ, không đổi phiên bản lược đồ");
         // Kho của bản mới hơn: không mở, không sửa.
         rusqlite::Connection::open(d.join("lvhv.sqlite")).unwrap().pragma_update(None, "user_version", 99).unwrap();
         let e = LvhvStore::open(d.to_string_lossy().into_owned()).err().expect("phải lỗi");
         assert_eq!(rows(&d), (n, 99));
-        assert!(crate::people::store_open_message(&e).contains("bản mới hơn"));
+        assert!(crate::people::store_open_banner(&e).text().contains("bản mới hơn"));
         let _ = std::fs::remove_dir_all(&d);
     }
 

@@ -61,7 +61,7 @@
                             <RemoveFolder Id='RemoveProgramsFolder' Directory='ProgramsFolder' On='uninstall'/>
                         </Component>
                         <!-- Giao thức lichviet: — bấm vào thông báo, Windows chạy LichViet.exe "lichviet:nguoi/<id>?…" và ứng dụng mở
-                             đúng hồ sơ (src/toasts.rs). URI chỉ có UUID, không có tên hay ngày. -->
+                             đúng hồ sơ (src/toasts.rs). URI chỉ có UUID và băm nội dung, không có tên hay ngày (BM2-15). -->
                         <Component Id='ProtocolHandler' Guid='6B1D2C5E-7A0F-4C8B-9E3D-2F4A6B8C1D13' Win64='$(var.Win64)'>
                             <RegistryKey Root='HKCU' Key='Software\Classes\lichviet'>
                                 <RegistryValue Type='string' Value='URL:Lich Viet' KeyPath='yes'/>
@@ -99,6 +99,37 @@
             <ComponentRef Id='StartMenuShortcut'/>
             <ComponentRef Id='ProtocolHandler'/>
         </Feature>
+
+        <!-- Giao dien bo cai (BM2-22, MA3N-25-09): Welcome -> Verify -> Progress -> Exit, khong co trang giay phep. Trang
+             ket thuc (cai dat va go bo khi chay lai .msi) ghi ro du lieu ca nhan duoc GIU va nam o dau. Bang MSI dung ma
+             trang 1252 nen cau viet khong dau, nhu ten san pham; cau co dau day du nam o trang Gioi thieu cua ung dung.
+             Go tu Cai dat Windows (giao dien co ban) khong hien hop thoai nay - xem docs/04-BUILD-NATIVE.md. -->
+        <UI Id='LvhvUI'>
+            <TextStyle Id='WixUI_Font_Normal' FaceName='Tahoma' Size='8'/>
+            <TextStyle Id='WixUI_Font_Bigger' FaceName='Tahoma' Size='12'/>
+            <TextStyle Id='WixUI_Font_Title' FaceName='Tahoma' Size='9' Bold='yes'/>
+            <Property Id='DefaultUIFont' Value='WixUI_Font_Normal'/>
+            <Property Id='WixUI_Mode' Value='Minimal'/>
+            <DialogRef Id='ErrorDlg'/>
+            <DialogRef Id='FatalError'/>
+            <DialogRef Id='FilesInUse'/>
+            <DialogRef Id='MsiRMFilesInUse'/>
+            <DialogRef Id='PrepareDlg'/>
+            <DialogRef Id='ProgressDlg'/>
+            <DialogRef Id='ResumeDlg'/>
+            <DialogRef Id='UserExit'/>
+            <DialogRef Id='WelcomeDlg'/>
+            <Publish Dialog='WelcomeDlg' Control='Next' Event='NewDialog' Value='VerifyReadyDlg'>1</Publish>
+            <Publish Dialog='VerifyReadyDlg' Control='Back' Event='NewDialog' Value='WelcomeDlg' Order='1'>NOT Installed</Publish>
+            <Publish Dialog='VerifyReadyDlg' Control='Back' Event='NewDialog' Value='MaintenanceTypeDlg' Order='2'>Installed</Publish>
+            <Publish Dialog='MaintenanceWelcomeDlg' Control='Next' Event='NewDialog' Value='MaintenanceTypeDlg'>1</Publish>
+            <Publish Dialog='MaintenanceTypeDlg' Control='RepairButton' Event='NewDialog' Value='VerifyReadyDlg'>1</Publish>
+            <Publish Dialog='MaintenanceTypeDlg' Control='RemoveButton' Event='NewDialog' Value='VerifyReadyDlg'>1</Publish>
+            <Publish Dialog='MaintenanceTypeDlg' Control='Back' Event='NewDialog' Value='MaintenanceWelcomeDlg'>1</Publish>
+            <Publish Dialog='ExitDialog' Control='Finish' Event='EndDialog' Value='Return' Order='999'>1</Publish>
+        </UI>
+        <UIRef Id='WixUI_Common'/>
+        <Property Id='WIXUI_EXITDIALOGOPTIONALTEXT' Value='Du lieu ca nhan (so Nguoi than: ho so, anh, tep dinh kem, thong tin bao tu) nam o %LOCALAPPDATA%\ClevixLab\LichVanHoaViet. Cai lai, nang cap hay go bo ung dung deu GIU NGUYEN thu muc nay. Muon xoa han du lieu: sau khi go, hay xoa thu muc do (nen tao tep sao luu truoc).'/>
 
         <Icon Id='ProductICO' SourceFile='assets\icon.ico'/>
         <Property Id='ARPPRODUCTICON' Value='ProductICO'/>

@@ -257,12 +257,14 @@ enum DlgAction {
     ReplaceConfirm,
     Discard,
     Mark(Value, Option<Value>),
+    /// Mở tệp đính kèm bằng ứng dụng ngoài — chỉ sau khi người dùng xác nhận (BM3-02, S10).
+    OpenAtt(Box<AttItem>),
 }
 
 pub struct PState {
     pub store: Option<Arc<LvhvStore>>,
     /// Câu báo khi mở kho lỗi (chuyển đổi lược đồ hỏng, kho của bản mới hơn) — R14.
-    pub store_failed: Option<String>,
+    pub store_failed: Option<Banner>,
     /// Kho mở ở chế độ chỉ đọc (`migration_status().state == "read_only"`).
     pub read_only: bool,
     pub dir: PathBuf,
@@ -336,48 +338,76 @@ impl PState {
 
 pub type Ps = Rc<RefCell<PState>>;
 
-/// Mở kho nếu chưa mở. Lỗi → khung đỏ "Không mở được dữ liệu trên máy" (lịch vẫn dùng bình thường).
-/// Câu báo khi không mở được kho (R14, 04 Bổ sung B5 mục 3). Lõi chạy chuyển đổi lược đồ trong một giao dịch và
-/// giữ bản sao trước khi chuyển (01 §7), nên lỗi không làm mất gì; ứng dụng không thử tạo kho mới đè lên.
-pub fn store_open_message(e: &lvhv_ffi::LvhvDataError) -> String {
-    match e {
-        // Lõi gộp "kho của bản mới hơn" vào biến thể Backup khi mở kho.
-        lvhv_ffi::LvhvDataError::Backup(_) => "Dữ liệu Người thân trên máy được tạo bằng một bản mới hơn bản đang cài. \
-             Hãy cài lại bản mới nhất của Lịch và Văn hóa Việt. Ứng dụng không sửa và không xóa dữ liệu đó."
-            .into(),
-        _ => format!(
-            "Chưa chuyển được dữ liệu Người thân sang bản này. Dữ liệu cũ của bạn vẫn còn nguyên trên máy — ứng dụng \
-             không sửa và không xóa gì, và tạm khóa mục Người thân để không ghi thêm gì cho tới bản sửa. Để giữ một bản dự phòng, hãy bấm \
-             \u{201c}Mở thư mục dữ liệu\u{201d} rồi chép cả thư mục sang USB hoặc ổ khác. Lịch vẫn dùng được bình \
-             thường. (Chi tiết kỹ thuật: {e})"
-        ),
+/// Khung báo khi kho không mở bình thường (R14, 01 §7.1; TKN3-W-01): lời thường như bản web, cỡ chữ nội dung; chi tiết
+/// kỹ thuật để riêng, thu gọn sẵn dưới "Chi tiết kỹ thuật".
+#[derive(Clone, Debug, Default)]
+pub struct Banner {
+    pub title: String,
+    pub body: String,
+    pub hint: String,
+    pub detail: String,
+}
+
+impl Banner {
+    #[cfg_attr(not(test), allow(dead_code))]
+    /// Toàn văn (không có chi tiết kỹ thuật) — cho nhãn trợ năng và kiểm thử.
+    pub fn text(&self) -> String {
+        [self.title.as_str(), self.body.as_str(), self.hint.as_str()]
+            .iter()
+            .filter(|x| !x.is_empty())
+            .cloned()
+            .collect::<Vec<_>>()
+            .join(" ")
     }
 }
 
-/// Câu của khung chỉ đọc (01 §7.1): lời của lõi, hướng dẫn xuất sao lưu, và dòng chi tiết kỹ thuật rút gọn (lõi gói cả
-/// câu lỗi SQL dài vào `message`; chỉ giữ dòng đầu, tối đa 100 ký tự).
-pub fn read_only_message(ms: &lvhv_ffi::MigrationStatus) -> String {
+/// Dòng đầu của câu lỗi kỹ thuật, tối đa 160 ký tự.
+fn tech_detail(raw: &str) -> String {
+    raw.lines().next().unwrap_or("").trim().trim_end_matches(" in").chars().take(160).collect()
+}
+
+/// Không mở được kho (R14, 04 Bổ sung B5 mục 3). Lõi chạy chuyển đổi trong một giao dịch và giữ bản sao trước khi
+/// chuyển (01 §7), nên lỗi không làm mất gì; ứng dụng không thử tạo kho mới đè lên.
+pub fn store_open_banner(e: &lvhv_ffi::LvhvDataError) -> Banner {
+    match e {
+        // Lõi gộp "kho của bản mới hơn" vào biến thể Backup khi mở kho.
+        lvhv_ffi::LvhvDataError::Backup(_) => Banner {
+            title: "Dữ liệu Người thân được tạo bằng một bản mới hơn.".into(),
+            body: "Hãy cài bản mới nhất của Lịch và Văn hóa Việt để xem. Ứng dụng không sửa và không xóa dữ liệu đó; lịch vẫn dùng được bình thường.".into(),
+            hint: String::new(),
+            detail: tech_detail(&e.to_string()),
+        },
+        _ => Banner {
+            title: "Chưa mở được sổ Người thân ở bản này.".into(),
+            body: "Dữ liệu cũ của bạn vẫn còn nguyên trên máy — ứng dụng không sửa và không xóa gì. Lịch vẫn dùng được bình thường.".into(),
+            hint: "Để giữ một bản dự phòng, bấm \u{201c}Mở thư mục dữ liệu\u{201d} rồi chép cả thư mục sang USB hoặc ổ khác. Nếu sau khi mở lại ứng dụng vẫn thấy thông báo này, hãy báo cho Clevix Lab.".into(),
+            detail: tech_detail(&e.to_string()),
+        },
+    }
+}
+
+/// Chế độ chỉ đọc (01 §7.1): cùng lời với bản web (PR #30, `#ro-banner`), nút "Tạo tệp sao lưu…" ngay trên khung.
+pub fn read_only_banner(ms: &lvhv_ffi::MigrationStatus) -> Banner {
+    // Lõi gói câu lỗi vào `message`: "Chưa nâng cấp được dữ liệu (<lỗi>). Dữ liệu cũ …".
     let raw = ms.message.clone().unwrap_or_default();
-    let detail = raw
+    let inner = raw
         .split_once('(')
         .map(|(_, r)| r.rsplit_once("). ").map_or(r, |(d, _)| d))
-        .unwrap_or("")
-        .lines()
-        .next()
-        .unwrap_or("")
-        .trim()
-        .trim_end_matches(" in")
-        .chars()
-        .take(100)
-        .collect::<String>();
-    let mut m = "Chưa nâng cấp được dữ liệu Người thân sang bản này. Dữ liệu cũ vẫn còn nguyên; ứng dụng đang ở chế độ chỉ đọc. \
-                 Bấm \u{201c}Tạo tệp sao lưu\u{201d} để giữ toàn bộ dữ liệu trong một tệp có mật khẩu; khi có bản sửa, tệp \
-                 này khôi phục được. Lịch và lời nhắc vẫn dùng bình thường; tạm thời chưa thêm hay sửa được hồ sơ."
-        .to_string();
-    if !detail.is_empty() {
-        m += &format!(" (Chi tiết kỹ thuật: {detail})");
+        .unwrap_or("");
+    Banner {
+        title: "Chưa chuyển được dữ liệu sang bản mới.".into(),
+        body: "Dữ liệu cũ vẫn còn nguyên trên máy và đang mở ở chế độ chỉ đọc: xem được, nhưng chưa thêm hay sửa được.".into(),
+        hint: "Hãy tạo ngay một tệp sao lưu để giữ dữ liệu: bấm \u{201c}Tạo tệp sao lưu…\u{201d}, rồi cất tệp ở nơi an toàn. Sau đó thử mở lại ứng dụng; nếu vẫn thấy thông báo này, hãy báo cho Clevix Lab kèm tệp sao lưu.".into(),
+        detail: tech_detail(inner),
     }
-    m
+}
+
+fn show_banner(p: &People, b: &Banner) {
+    p.set_store_title(ss(&b.title));
+    p.set_store_error(ss(&b.body));
+    p.set_store_hint(ss(&b.hint));
+    p.set_store_detail(ss(&b.detail));
+    p.set_store_detail_open(false);
 }
 
 pub fn ensure_store(ui: &AppWindow, ps: &mut PState) -> bool {
@@ -386,9 +416,22 @@ pub fn ensure_store(ui: &AppWindow, ps: &mut PState) -> bool {
     }
     let p = People::get(ui);
     // Đã lỗi trong lần chạy này: không thử chuyển đổi lại mỗi lần bấm.
-    if let Some(m) = &ps.store_failed {
-        p.set_store_error(ss(m));
+    if let Some(b) = &ps.store_failed {
+        show_banner(&p, b);
         p.set_store_failed(true);
+        return false;
+    }
+    // Thiếu %LOCALAPPDATA% (BM2-22): báo lỗi, không ghi sổ vào thư mục tạm.
+    if ps.dir.as_os_str().is_empty() {
+        let b = Banner {
+            title: "Chưa tìm thấy thư mục dữ liệu của người dùng.".into(),
+            body: "Windows không cho biết thư mục %LOCALAPPDATA% của tài khoản này, nên mục Người thân chưa mở được. Lịch vẫn dùng được bình thường.".into(),
+            hint: "Hãy đăng nhập lại Windows hoặc báo cho Clevix Lab.".into(),
+            detail: "LOCALAPPDATA trống".into(),
+        };
+        show_banner(&p, &b);
+        p.set_store_failed(true);
+        ps.store_failed = Some(b);
         return false;
     }
     match LvhvStore::open(ps.dir.to_string_lossy().into_owned()) {
@@ -399,18 +442,18 @@ pub fn ensure_store(ui: &AppWindow, ps: &mut PState) -> bool {
             let ro = ms.state == "read_only";
             ps.read_only = ro;
             p.set_read_only(ro);
-            p.set_store_error(ss(if ro { read_only_message(&ms) } else { String::new() }));
+            show_banner(&p, &if ro { read_only_banner(&ms) } else { Banner::default() });
             p.set_store_failed(false);
             ps.store = Some(s);
             true
         }
         Err(e) => {
-            let m = store_open_message(&e);
-            p.set_store_error(ss(&m));
+            let b = store_open_banner(&e);
+            show_banner(&p, &b);
             p.set_store_failed(true);
             p.set_read_only(false);
             ps.read_only = false;
-            ps.store_failed = Some(m);
+            ps.store_failed = Some(b);
             false
         }
     }
@@ -2845,6 +2888,7 @@ fn open_dialog(
     p.set_dlg_cancel(ss(cancel));
     p.set_dlg_danger(danger);
     p.set_dlg_busy(false);
+    p.set_dlg_default_cancel(false);
     p.set_dlg(ss(kind));
     ps.dlg = action;
 }
@@ -2974,6 +3018,10 @@ fn dlg_confirm(ui: &AppWindow, ps: &mut PState) {
             }
         }
         DlgAction::ReplaceConfirm => apply_restore(ui, ps, BackupImportMode::Replace),
+        DlgAction::OpenAtt(a) => {
+            close_dialog(ui, ps);
+            open_att(ui, ps, *a);
+        }
         DlgAction::Discard => {
             close_dialog(ui, ps);
             back(ui, ps);
@@ -3069,8 +3117,28 @@ fn load_photo(path: std::path::PathBuf) -> Result<photo::Encoded, String> {
 }
 
 /// Mở một PDF đính kèm bằng ứng dụng xem PDF của Windows qua bản sao tạm tên chung (§5.3, `attach::open_pdf`).
-fn open_att(ui: &AppWindow, ps: &mut PState, a: Option<AttItem>) {
+/// BM3-02 (S10): trước khi giao tệp cho ứng dụng khác, hỏi lại; nút mặc định là "Hủy" (Enter / Esc đều hủy).
+fn ask_open_att(ui: &AppWindow, ps: &mut PState, a: Option<AttItem>) {
     let Some(a) = a.filter(|a| a.pdf) else { return };
+    open_dialog(
+        ui,
+        ps,
+        "mo-tep",
+        "Mở tệp bằng ứng dụng khác?",
+        vec![
+            "Tệp sẽ được mở bằng một ứng dụng khác, ngoài Lịch Việt (ứng dụng xem PDF của máy).".into(),
+            "Tệp có thể chứa thông tin riêng tư của gia đình (giấy chứng tử, tin báo tử). Ứng dụng kia có thể lưu lại bản sao hoặc gửi đi theo cách của nó.".into(),
+            "Lịch Việt chỉ chép tạm tệp với tên chung \u{201c}TepDinhKem.pdf\u{201d} và xóa bản chép khi đóng ứng dụng.".into(),
+        ],
+        "Mở tệp",
+        "Hủy",
+        false,
+        DlgAction::OpenAtt(Box::new(a)),
+    );
+    People::get(ui).set_dlg_default_cancel(true);
+}
+
+fn open_att(ui: &AppWindow, ps: &mut PState, a: AttItem) {
     let bytes = match (&a.new, &a.file_id, ps.s()) {
         (Some(n), _, _) => Ok(n.bytes.clone()),
         (None, Some(f), Some(s)) => s.attachment_bytes(f.clone()).map_err(|e| e.to_string()),
@@ -3204,7 +3272,11 @@ fn open_backup_file(ui: &AppWindow, ps: &mut PState) {
         p.set_restore_error(ss(e.to_string()));
         return;
     }
+    if p.get_restore_busy() {
+        return;
+    }
     p.set_restore_error(ss("Đang mở tệp… (có thể mất vài giây)"));
+    p.set_restore_busy(true);
     bg(
         ui,
         ps,
@@ -3214,6 +3286,7 @@ fn open_backup_file(ui: &AppWindow, ps: &mut PState) {
         },
         |ui, ps, r| {
             let p = People::get(ui);
+            p.set_restore_busy(false);
             match r {
                 Err(e) => p.set_restore_error(ss(e)),
                 Ok(b) => {
@@ -3532,11 +3605,11 @@ pub fn wire(ui: &AppWindow, ps: Ps) {
     }));
     p.on_open_attachment(cb1!(i32, |ui: &AppWindow, ps: &mut PState, i: i32| {
         let a = ps.atts.get(i as usize).cloned();
-        open_att(ui, ps, a);
+        ask_open_att(ui, ps, a);
     }));
     p.on_open_v_attachment(cb1!(i32, |ui: &AppWindow, ps: &mut PState, i: i32| {
         let a = ps.view_atts.get(i as usize).cloned();
-        open_att(ui, ps, a);
+        ask_open_att(ui, ps, a);
     }));
     p.on_save_form(cb0!(|ui: &AppWindow, ps: &mut PState| save_form(ui, ps)));
     p.on_cancel_form(cb0!(|ui: &AppWindow, ps: &mut PState| {

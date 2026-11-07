@@ -1,7 +1,7 @@
 //! Chế độ chụp màn hình (`LichViet.exe --chup-man-hinh <thư mục>`): mở lần lượt các màn hình, chụp nội dung
 //! cửa sổ bằng `Window::take_snapshot()` của Slint (vẽ lại bằng chính renderer của ứng dụng — Skia), ghi PNG
 //! rồi thoát. Tên tệp có hậu tố tỉ lệ màn hình (`-1x`, `-2x`; đặt `SLINT_SCALE_FACTOR=2` để chụp 2×) và giao
-//! diện (`-sang`, `-toi`). Mô-đun Người thân dùng một kho tạm với dữ liệu mẫu (main.rs đặt `LVHV_DATA_DIR`),
+//! diện (`-sang`, `-toi`). Mô-đun Người thân dùng một kho tạm với dữ liệu mẫu (ci.rs đặt thư mục dữ liệu tạm),
 //! không chạm dữ liệu thật. Khi chạy thường (không có cờ) mô-đun này không làm gì.
 
 use std::cell::RefCell;
@@ -157,7 +157,7 @@ pub fn seed_store(store: &lvhv_ffi::LvhvStore) -> (String, String, String) {
     let cert = crate::photo::reencode_with(&demo_certificate(), crate::photo::DOC_SIDE, crate::photo::DOC_STORED).unwrap();
     let cert_id = lvhv_ffi::new_uuid().unwrap();
     store
-        .add_attachment(cert_id.clone(), "image/jpeg".into(), Some("giay-chung-tu.jpg".into()), cert.bytes)
+        .add_attachment(cert_id.clone(), "image/jpeg".into(), Some("anh-tin-bao-tu.jpg".into()), cert.bytes)
         .unwrap();
     let pdf_id = lvhv_ffi::new_uuid().unwrap();
     store
@@ -167,8 +167,8 @@ pub fn seed_store(store: &lvhv_ffi::LvhvStore) -> (String, String, String) {
         "reported_by": "Chị Hoa (con gái)", "place": "Bệnh viện tỉnh Nam Định", "reason": "Tuổi cao, bệnh tim",
         "notice_date": {"calendar":"solar","precision":"day","year":2024,"month":7,"day":18,"leap":false},
         "attachments": [
-            {"id": lvhv_ffi::new_uuid().unwrap(), "kind": "giay_chung_tu", "file_id": cert_id},
-            {"id": lvhv_ffi::new_uuid().unwrap(), "kind": "khac", "file_id": pdf_id},
+            {"id": lvhv_ffi::new_uuid().unwrap(), "kind": "tin_bao_tu", "file_id": cert_id},
+            {"id": lvhv_ffi::new_uuid().unwrap(), "kind": "giay_chung_tu", "file_id": pdf_id},
         ],
         "note": "Gia đình đã báo tin cho họ hàng.",
     });
@@ -332,6 +332,9 @@ fn steps(ui: &AppWindow, st: Rc<RefCell<State>>) -> Vec<Step> {
             p.set_scroll_frac(0.55);
         })));
     }
+    // BM3-02: hỏi trước khi mở PDF bằng ứng dụng khác ("Hủy" là nút mặc định).
+    screens.push(("nt-09c-hoi-mo-tep", Rc::new(|ui: &AppWindow| People::get(ui).invoke_open_v_attachment(1))));
+    screens.push(("_nt-09c-dong", Rc::new(|ui: &AppWindow| People::get(ui).invoke_dlg_dismiss())));
     // Biểu mẫu sửa người đã mất: khối thông tin báo tử với hai tệp đính kèm (ảnh, PDF) — YC-2026-07.
     screens.push(("_nt-09b-chuan-bi", Rc::new(|ui: &AppWindow| {
         let p = People::get(ui);
@@ -521,7 +524,7 @@ fn steps(ui: &AppWindow, st: Rc<RefCell<State>>) -> Vec<Step> {
             v.push((format!("_a3-{name}"), Box::new(move |ui: &AppWindow| act(ui))));
         }
     }
-    // R14: khung báo chỉ xem khi chuyển đổi lược đồ lỗi (câu lấy từ people::store_open_message). Bước cuối vì nó bỏ kho.
+    // R14: khung báo chỉ xem khi chuyển đổi lược đồ lỗi (câu lấy từ people::store_open_banner). Bước cuối vì nó bỏ kho.
     {
         let ps = st.borrow().people.clone();
         v.push(("nt-23-chuyen-doi-loi-sang".to_string(), Box::new(move |ui: &AppWindow| {
@@ -532,10 +535,11 @@ fn steps(ui: &AppWindow, st: Rc<RefCell<State>>) -> Vec<Step> {
             let mut g = ps.borrow_mut();
             let e = lvhv_ffi::LvhvDataError::Storage("Lỗi lưu trữ: table meta already exists".into());
             g.store = None;
-            g.store_failed = Some(people::store_open_message(&e));
+            g.store_failed = Some(people::store_open_banner(&e));
             people::go(ui, &mut g, "sap-toi");
             let p = People::get(ui);
             p.set_has_any(false);
+            p.set_store_detail_open(true);
             p.set_scroll_frac(0.0);
         })));
         v.push(("nt-23-chuyen-doi-loi-toi".to_string(), Box::new(|ui: &AppWindow| theme(ui, true))));

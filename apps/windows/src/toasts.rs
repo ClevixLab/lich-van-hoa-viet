@@ -1,11 +1,12 @@
 //! Thông báo Windows đặt lịch trước (02 §7.4–7.5, R-WIN-1) — lớp đối chiếu giữa kế hoạch xoay vòng 64 của lõi
 //! (`LvhvStore::reschedule_json`) và danh sách thông báo đang chờ của Windows.
 //!
-//! - Nội dung của lõi (`content` = `title` hoặc `title\nbody`) và id của lõi được ghi **nguyên văn** trong thuộc tính
+//! - Id của lõi và **băm** nội dung (`c = SHA-256(content)`, 16 chữ hex — BM2-15/MA3C-25-03) được ghi trong thuộc tính
 //!   `launch` của thông báo (một URI `lichviet:` đã mã hóa phần trăm), không đọc lại từ chữ hiển thị (MA3N-25-01: khi
-//!   ẩn tên, `body` rỗng). Khi `body` rỗng chỉ ghi một `<text>`.
-//! - Bấm vào thông báo: Windows mở URI `lichviet:nguoi/<id hồ sơ>?…` — bộ cài `.msi` đăng ký giao thức này để chạy
-//!   `LichViet.exe "<URI>"`, ứng dụng mở đúng hồ sơ. URI chỉ có UUID, không có tên hay ngày (S4').
+//!   ẩn tên, `body` rỗng). Khi `body` rỗng chỉ ghi một `<text>`. Lõi so `content` nguyên văn, nên trước khi gửi danh
+//!   sách chờ cho lõi, ứng dụng đổi băm về nội dung của kế hoạch nếu băm trùng (xem [`sync`]).
+//! - Bấm vào thông báo: Windows mở URI `lichviet:nguoi/<id hồ sơ>?id=…&c=<băm>` — bộ cài `.msi` đăng ký giao thức này để
+//!   chạy `LichViet.exe "<URI>"`, ứng dụng mở đúng hồ sơ. URI không có tên, ngày hay nội dung thông báo (S4').
 //! - Thông báo của ứng dụng mà không đọc được thì bị gỡ, không bỏ qua; đọc danh sách chờ lỗi thì **không** áp kế hoạch
 //!   (MA3N-25-02); Windows tắt thông báo của ứng dụng thì gỡ hết (MA3N-25-03).
 //! - Lớp hệ điều hành là trait [`Toasts`]; kiểm thử dùng [`FakeToasts`] trong bộ nhớ (MA3N-25-08).
@@ -102,7 +103,13 @@ pub fn launch_uri(person: Option<&str>, id: &str, content: &str) -> String {
         Some(p) if !p.is_empty() => format!("nguoi/{}", pct(p)),
         _ => "mo".to_string(),
     };
-    format!("lichviet:{path}?id={}&c={}", pct(id), pct(content))
+    format!("lichviet:{path}?id={}&c={}", pct(id), content_hash(content))
+}
+
+/// Băm nội dung thông báo ghi trong URI (16 chữ hex đầu của SHA-256) — chỉ để biết nội dung có đổi không.
+pub fn content_hash(content: &str) -> String {
+    use sha2::{Digest, Sha256};
+    Sha256::digest(content.as_bytes())[..8].iter().map(|b| format!("{b:02x}")).collect()
 }
 
 /// Phần đã giải của URI `lichviet:`.
@@ -250,13 +257,40 @@ pub fn sync(t: &dyn Toasts, store: &LvhvStore, now: i64, zone: DeviceZone) -> Sy
         Ok(p) => p,
         Err(e) => return SyncResult::ReadFailed(e),
     };
-    let pj: Vec<Value> = pending
-        .iter()
-        .map(|p| json!({"id": p.id, "at_unix_s": p.at_unix_s, "content": p.content}))
+    // Lượt 1: lấy nội dung mong muốn của từng id (`keep`). Thông báo đang chờ chỉ mang băm; băm trùng → thay bằng
+    // nội dung đầy đủ để lõi so đúng (không trùng → giữ băm, lõi thấy khác và thay thông báo).
+    let plan_of = |pend: &[PendingToast]| -> Result<Value, String> {
+        let pj: Vec<Value> = pend
+            .iter()
+            .map(|p| json!({"id": p.id, "at_unix_s": p.at_unix_s, "content": p.content}))
+            .collect();
+        store
+            .reschedule_json(now, zone.clone(), Value::Array(pj).to_string())
+            .map(|p| serde_json::from_str::<Value>(&p).unwrap_or(Value::Null))
+            .map_err(|e| e.to_string())
+    };
+    let first = match plan_of(&pending) {
+        Ok(p) => p,
+        Err(e) => return SyncResult::Failed(e),
+    };
+    let want: HashMap<String, String> = first["keep"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .map(|k| (k["id"].as_str().unwrap_or_default().to_string(), k["content"].as_str().unwrap_or_default().to_string()))
         .collect();
-    let plan = match store.reschedule_json(now, zone, Value::Array(pj).to_string()) {
-        Ok(p) => serde_json::from_str::<Value>(&p).unwrap_or(Value::Null),
-        Err(e) => return SyncResult::Failed(e.to_string()),
+    let pending: Vec<PendingToast> = pending
+        .into_iter()
+        .map(|mut p| {
+            if let Some(c) = want.get(&p.id).filter(|c| content_hash(c) == p.content) {
+                p.content = c.clone();
+            }
+            p
+        })
+        .collect();
+    let plan = match plan_of(&pending) {
+        Ok(p) => p,
+        Err(e) => return SyncResult::Failed(e),
     };
     let owners = store
         .dataset_json()
@@ -571,10 +605,10 @@ pub fn self_test(t: &dyn Toasts, store: &LvhvStore, now: i64, zone: DeviceZone) 
         })?;
         let p = t.pending()?;
         let got = p.iter().find(|x| x.id == id).ok_or(format!("không thấy {id} trong danh sách chờ"))?;
-        if got.content != content || (got.at_unix_s - (now + 3600)).abs() > 1 {
+        if got.content != content_hash(&content) || (got.at_unix_s - (now + 3600)).abs() > 1 {
             return Err(format!("{id}: đọc lại {:?} ≠ {:?}", got.content, content));
         }
-        log.push(format!("{id}: đọc lại đúng ({:?})", got.content));
+        log.push(format!("{id}: đọc lại đúng ({content:?}, băm {})", got.content));
     }
     t.remove_all().map_err(|e| format!("gỡ hết lỗi: {e}"))?;
     let r1 = sync(t, store, now, zone.clone());
@@ -611,19 +645,24 @@ mod tests {
         let a = t("lvhv:r1:2026-07-28:k=3", "Còn 3 ngày: <Giỗ> & \"x\" 'y'", "Thứ Ba, 28/07/2026");
         let x = toast_xml(&a);
         assert_eq!(x.matches("<text>").count(), 2);
-        assert_eq!(parse_toast_xml(&x), Some((a.id.clone(), a.content.clone())));
+        assert_eq!(parse_toast_xml(&x), Some((a.id.clone(), content_hash(&a.content))));
+        // BM2-15: URI không mang nội dung (tên, ngày) — chỉ băm.
+        let launch = &x[x.find("launch=").unwrap()..];
+        let launch = &launch[..launch[8..].find('"').unwrap() + 9];
+        assert!(!launch.contains(&pct("Còn 3 ngày")) && !launch.contains(&pct("Thứ Ba")), "{launch}");
         // MA3N-25-01: dòng phụ rỗng (mặc định ẩn tên) → một <text>, nội dung đọc lại = content của lõi.
         let b = t("lvhv:sentinel", "Sắp đến ngày giỗ", "");
         let x = toast_xml(&b);
         assert_eq!(x.matches("<text>").count(), 1);
-        assert_eq!(parse_toast_xml(&x), Some((b.id.clone(), "Sắp đến ngày giỗ".into())));
+        assert_eq!(parse_toast_xml(&x), Some((b.id.clone(), content_hash("Sắp đến ngày giỗ"))));
         // Windows chuẩn hóa: phần tử rỗng <text/>, nháy đơn, thực thể &apos;.
         let y = x.replace("\"", "'").replace("<text>Sắp đến ngày giỗ</text>", "<text>Sắp đến ngày giỗ</text><text/>");
-        assert_eq!(parse_toast_xml(&y), Some((b.id.clone(), "Sắp đến ngày giỗ".into())));
+        assert_eq!(parse_toast_xml(&y), Some((b.id.clone(), content_hash("Sắp đến ngày giỗ"))));
         assert_eq!(parse_toast_xml("<toast><visual/></toast>"), None, "thông báo lạ → gỡ");
         let l = parse_launch(&launch_uri(Some("abc-1"), "lvhv:x:y:k=0", "A\nB")).unwrap();
         assert_eq!(l.person.as_deref(), Some("abc-1"));
-        assert_eq!(l.content, "A\nB");
+        assert_eq!(l.content, content_hash("A\nB"));
+        assert_eq!(l.content.len(), 16);
         assert_eq!(parse_launch("lichviet:mo").unwrap().person, None);
         assert_eq!(short_id("lvhv:sentinel").len(), 12);
         assert!(include_str!("../wix/main.wxs")

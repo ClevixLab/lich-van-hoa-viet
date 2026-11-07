@@ -10,16 +10,25 @@ use std::path::PathBuf;
 #[cfg_attr(not(windows), allow(dead_code))]
 pub const AUMID: &str = "ClevixLab.LichVanHoaViet";
 
-/// Thư mục dữ liệu riêng của ứng dụng (01 §4.2): `%LOCALAPPDATA%\ClevixLab\LichVanHoaViet`.
-/// Biến môi trường `LVHV_DATA_DIR` thay thế (kiểm thử, chế độ chụp màn hình).
+static DATA_DIR_OVERRIDE: std::sync::Mutex<Option<PathBuf>> = std::sync::Mutex::new(None);
+
+/// Thay thư mục dữ liệu — chỉ `ci.rs` (lvhv-ci-check) gọi; bản phát hành không đọc biến môi trường nào cho việc này.
+pub fn set_data_dir_override(d: Option<PathBuf>) {
+    if let Ok(mut g) = DATA_DIR_OVERRIDE.lock() {
+        *g = d;
+    }
+}
+
+/// Thư mục dữ liệu riêng của ứng dụng (01 §4.2): `%LOCALAPPDATA%\ClevixLab\LichVanHoaViet`. Thiếu `LOCALAPPDATA` →
+/// đường rỗng (mục Người thân báo lỗi), **không** lùi về `%TEMP%` mà Disk Cleanup có thể dọn (BM2-22).
 pub fn data_dir() -> PathBuf {
-    if let Some(d) = std::env::var_os("LVHV_DATA_DIR").filter(|d| !d.is_empty()) {
-        return PathBuf::from(d);
+    if let Some(d) = DATA_DIR_OVERRIDE.lock().ok().and_then(|g| g.clone()) {
+        return d;
     }
     #[cfg(windows)]
-    let base = std::env::var_os("LOCALAPPDATA")
-        .map(PathBuf::from)
-        .unwrap_or_else(std::env::temp_dir);
+    let Some(base) = std::env::var_os("LOCALAPPDATA").filter(|d| !d.is_empty()).map(PathBuf::from) else {
+        return PathBuf::new();
+    };
     #[cfg(not(windows))]
     let base = std::env::var_os("XDG_DATA_HOME")
         .map(PathBuf::from)

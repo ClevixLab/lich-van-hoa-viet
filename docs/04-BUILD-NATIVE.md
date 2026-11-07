@@ -136,9 +136,10 @@ bản 0.1.2 dùng FemtoVG (OpenGL) — chữ mảnh, nhòe ở tỉ lệ màn h�
 thống mặc định (không khai báo phông sans).
 
 **Kiểm thử giao diện và chụp màn hình.** `cargo test` chạy cả `src/ui_tests.rs` (backend kiểm thử của
-Slint, bấm chuột giả lập vào từng nút). `LichViet.exe --chup-man-hinh <thư mục>` mở lần lượt 11 màn hình,
-chụp bằng renderer của ứng dụng rồi thoát; `windows.yml` chạy bước này và đính kèm ảnh (artifact
-`windows-screens`). Trên Linux: `xvfb-run target/release/LichViet --chup-man-hinh /tmp/anh`, thêm
+Slint, bấm chuột giả lập vào từng nút). Chế độ chụp màn hình nằm trong tệp chạy riêng của CI
+`lvhv-ci-check.exe` (xem dưới), không có trong `LichViet.exe`: `lvhv-ci-check --chup-man-hinh <thư mục>` mở lần lượt
+các màn hình, chụp bằng renderer của ứng dụng rồi thoát; `windows.yml` chạy bước này và đính kèm ảnh (artifact
+`windows-screens`). Trên Linux: `xvfb-run target/release/lvhv-ci-check --chup-man-hinh /tmp/anh`, thêm
 `SLINT_SCALE_FACTOR=2` để chụp ở 2×.
 
 Vì sao Slint mà không dùng WebView2: một tệp `.exe` duy nhất (~12 MB, đo trên Linux), không phụ thuộc
@@ -182,14 +183,31 @@ trong `lvhv-memorial`, `lvhv-store`, `lvhv-backup`. Giao diện chỉ hiển th�
   đồ hỏng — lõi lùi giao dịch, giữ bản sao trước chuyển đổi; hoặc kho của bản mới hơn) → mục Người thân hiện khung báo
   chỉ xem "Dữ liệu cũ của bạn vẫn còn nguyên…" với nút "Mở thư mục dữ liệu" để chép dự phòng; không thử tạo kho mới, không
   thử lại trong lần chạy đó. CI (bước R14 của `windows.yml`): cài `LichViet-0.1.4-x64.msi` từ GitHub Releases, ghi "Để
-  sau", tạo sổ Người thân mẫu (`--tao-du-lieu-mau`, từ `.zip` của bản dựng này), cài MSI mới đè lên, chạy bản đã cài
-  `--kiem-nang-cap` (so hồ sơ, sự kiện, loại sự kiện, cài đặt, hiện tên, băm SHA-256 từng ảnh, "Để sau"; đặt lại thông
+  sau", tạo sổ Người thân mẫu (`lvhv-ci-check --tao-du-lieu-mau`), cài MSI mới đè lên, mở `LichViet.exe` đã cài 12
+  giây (chính bản phát hành mở kho, chuyển đổi nếu cần và đặt lại thông báo), rồi `lvhv-ci-check --kiem-nang-cap` (so hồ sơ, sự kiện, loại sự kiện, cài đặt, hiện tên, băm SHA-256 từng ảnh, "Để sau"; đặt lại thông
   báo), gỡ cài đặt rồi so băm từng tệp trong thư mục dữ liệu; kết quả ở `apps/windows/screenshots/nang-cap.txt`.
   Bản Windows 0.1.4 không lưu cỡ chữ và sáng/tối giữa các lần mở, nên thứ duy nhất cần giữ từ 0.1.4 là "Để sau".
   Cùng bước còn chạy R14 (c): chép kho của bộ mẫu đóng băng `0.2-dev-before-attachments` vào thư mục dữ liệu, cài MSI,
-  `--kiem-mau-dong-bang` so trạng thái sau chuyển 1 → 2 với `expected/0.2-dev-before-attachments.json`; và ca lỗi
+  mở `LichViet.exe` đã cài (chuyển 1 → 2), rồi `--kiem-mau-dong-bang` so trạng thái sau chuyển 1 → 2 với `expected/0.2-dev-before-attachments.json`; và ca lỗi
   `--kiem-chi-doc` (bản chép của bộ mẫu có một hồ sơ hỏng → chỉ đọc, kho cũ và bản sao giữ nguyên, xuất sao lưu được).
   `force_migration_failure` của lõi không có qua FFI; kiểm thử Rust của ứng dụng chạy ca đó trực tiếp bằng `lvhv-store`.
+  **Giới hạn của ca (a) hiện nay (MA3C-25-02):** tệp `VERSION` vẫn là `0.1.4`, nên "MSI mới" cũng mang số 0.1.4 — phép
+  nâng cấp lớn đang thử là cài **cùng số phiên bản** đè lên (`AllowSameVersionUpgrades`), không phải đường thật 0.1.4 →
+  0.2.0. Khi `VERSION` tăng lên 0.2.0 để phát hành, bước R14 tự chạy đúng đường thật (MSI cũ 0.1.4 thật từ GitHub Releases
+  → MSI mới 0.2.0, phiên bản lớn hơn) mà không phải sửa gì; kết quả R14 (a) của bản phát hành 0.2.0 phải lấy từ lần chạy
+  CI trên commit tăng `VERSION` đó. Từ 0.2.0 trở đi, bước này nên thêm một ca cài từ MSI 0.2.x đã phát hành.
+- **Tệp chạy của CI (MA3C-25-01):** `lvhv-ci-check.exe` (`src/bin/lvhv-ci-check.rs`, `src/ci.rs`) chứa mọi chế độ kiểm
+  thử — `--chup-man-hinh`, `--do-bo-nho`, `--kiem-thong-bao`, `--tao-du-lieu-mau`, `--kiem-nang-cap`,
+  `--kiem-mau-dong-bang`, `--kiem-chi-doc` — và là chỗ duy nhất đọc biến môi trường `LVHV_DATA_DIR`. Được dựng cùng
+  `cargo build --release` nhưng **không** đóng gói vào `.msi` hay `.zip`. `LichViet.exe` (`src/main.rs`) chỉ hiểu URI
+  `lichviet:` của thông báo. Bước CI "LichViet.exe phát hành không có chế độ kiểm thử" khẳng định: `.zip` không có
+  `lvhv-ci-check`, `LichViet.exe` không chứa chuỗi cờ nào (còn `lvhv-ci-check.exe` thì có — để phép tìm đáng tin), và
+  chạy `LichViet.exe --tao-du-lieu-mau x.json` chỉ mở giao diện, không tạo tệp hay kho.
+- **Gỡ cài đặt (BM2-22, MA3N-25-09):** dữ liệu được giữ, không bao giờ tự xóa. Trang kết thúc của bộ cài (khi cài, và khi
+  gỡ bằng cách chạy lại `.msi` → Remove) ghi rõ dữ liệu nằm ở `%LOCALAPPDATA%\ClevixLab\LichVanHoaViet` và được giữ — bảng
+  MSI dùng mã trang 1252 nên câu viết không dấu. Gỡ từ Cài đặt Windows dùng giao diện cơ bản của Windows Installer,
+  không hiện hộp thoại riêng; vì vậy câu có dấu đầy đủ nằm ở trang Giới thiệu và ở mục Người thân › Sao lưu ("Dữ liệu trên
+  máy này" + "Mở thư mục dữ liệu"). Thiếu `%LOCALAPPDATA%` → mục Người thân báo lỗi, không lùi về `%TEMP%`.
 - **Giới hạn đã biết:**
   - bản `.zip` chạy không cài không có lối tắt mang AUMID → Windows có thể không hiện thông báo dù đặt được; giao diện ghi
     "Windows chưa xác nhận…" và khuyên cài `.msi`;
@@ -203,7 +221,7 @@ trong `lvhv-memorial`, `lvhv-store`, `lvhv-backup`. Giao diện chỉ hiển th�
   (TK-29), L4 sự kiện, US-M-07 đang sống → đã mất với thông tin báo tử (cùng `id`, B4), B4 biểu mẫu sự kiện, L5
   bốn loại kỳ × ba bộ lọc so với `events_in_period` của lõi, ‹ › Hôm nay, cài đặt O-9, L8 .ics (không chứa thông
   tin báo tử), L9/L10 sao lưu → xóa → khôi phục "Thay toàn bộ" giống hệt, sai mật khẩu, L7 thẻ nhắc hôm nay.
-- **Ảnh chụp:** `LichViet.exe --chup-man-hinh <thư mục>` dùng kho tạm với dữ liệu mẫu; tên tệp
+- **Ảnh chụp:** `lvhv-ci-check --chup-man-hinh <thư mục>` dùng kho tạm với dữ liệu mẫu; tên tệp
   `<màn hình>-<sang|toi>-<1x|2x>.png`. CI chụp ở 1× và 2× rồi commit vào `apps/windows/screenshots/` của nhánh PR
   (kèm `bo-nho.txt`, `thong-bao.txt`). `--do-bo-nho` mở Người thân + tưởng niệm với dữ liệu mẫu để đo Working Set;
   `--kiem-thong-bao` tự kiểm đặt/đọc/gỡ một thông báo thử (CI chạy sau khi cài `.msi`).
