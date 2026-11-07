@@ -173,7 +173,8 @@ fn enum_str<'a>(v: &'a Value, path: &str, allowed: &[&str]) -> Result<&'a str, V
 }
 
 /// `\s` của JavaScript.
-fn js_space(c: char) -> bool {
+/// Khoảng trắng theo `String.prototype.trim` của JavaScript (cùng tập ở hai bản cài đặt).
+pub fn js_space(c: char) -> bool {
     matches!(
         c,
         '\t' | '\n' | '\u{b}' | '\u{c}' | '\r' | ' ' | '\u{a0}' | '\u{1680}' | '\u{2000}'
