@@ -56,7 +56,7 @@ export async function renderPeople(root: HTMLElement, sub: string, nav: Nav): Pr
         h("p", null, "Đang ở chế độ chỉ đọc nên chưa thêm hay sửa được. Hãy tạo tệp sao lưu trước (xem khung ở đầu trang)."),
         h("a", { class: "btnlink", href: "#/nguoi-than/ho-so" }, "Về danh sách hồ sơ")));
     } else if (top === "them") await renderPersonForm(body, parts[1] === "dang-song" ? "living" : "deceased", null, nav);
-    else if (top === "sua" && parts[1]) await renderPersonForm(body, null, parts[1], nav);
+    else if (top === "sua" && parts[1]) await renderPersonForm(body, null, parts[1], nav, parts[2] === "mam-le" ? "mam-le" : null);
     else if (top === "bao-tu" && parts[1]) await renderConvertForm(body, parts[1], nav);
     else if (top === "nguoi" && parts[1]) { await renderPerson(body, parts[1], nav); markUsed(body.querySelector("#person-name") ? 1 : 0); }
     else if (top === "su-kien" && parts[1]) await renderEventForm(body, parts[1], parts[2] && parts[2] !== "moi" ? parts[2] : null, nav);

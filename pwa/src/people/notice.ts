@@ -236,7 +236,9 @@ export async function renderConvertForm(root: HTMLElement, id: string, nav: Nav)
       kind: "deceased",
       death: { input: dr.value as unknown as JsonObj, ...(nc.notice ? { notice: nc.notice } : {}) },
       noi_an_tang: "",
-      memorial: { tray_style: "truyen_thong", incense: true, bia_tieu_de: "", loi_tuong_niem: "", gio_het_nam: 2, huong_duong_duoi: 60 },
+      memorial: { tray_style: "truyen_thong", incense: true, bia_tieu_de: "", loi_tuong_niem: "", gio_het_nam: 2, huong_duong_duoi: 60,
+        // YC-2026-10: không bao giờ làm rơi ảnh mâm lễ đang có (người đang sống không có `memorial`; phòng xa).
+        ...(typeof (old!.memorial as JsonObj | null)?.tray_photo_id === "string" ? { tray_photo_id: (old!.memorial as JsonObj).tray_photo_id } : {}) },
       reminders: { gio: defaultGioRule(sn.settings), sinh_nhat: null, sinh_nhat_am: null },
       sinh_nhat_am: false,
       updated_at: now, rev: (old!.rev as number) + 1,
