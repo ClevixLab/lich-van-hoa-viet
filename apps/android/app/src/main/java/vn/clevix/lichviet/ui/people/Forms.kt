@@ -181,6 +181,8 @@ fun PersonForm(x: PeopleCtx, id: String?, deceasedNew: Boolean?, focusTray: Bool
     val f = remember(id) { PersonFormState(existing, deceased, settings) }
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
+    // Bộ chọn ảnh mâm lễ ở cấp biểu mẫu (P46-01): không mất khi khối "Tưởng niệm" thu gọn.
+    val trayPick = rememberTrayPicker(f)
     var showErrors by remember { mutableStateOf(false) }
     var saveError by remember { mutableStateOf<String?>(null) }
     var confirmCancel by remember { mutableStateOf(false) }
@@ -297,7 +299,7 @@ fun PersonForm(x: PeopleCtx, id: String?, deceasedNew: Boolean?, focusTray: Bool
                 RadioRow("Năm thứ 2 sau năm mất", f.gioHet == 2, { f.gioHet = 2 })
                 RadioRow("Năm thứ 3 sau năm mất", f.gioHet == 3, { f.gioHet = 3 })
                 TextIn("Lời tưởng niệm", f.loi, { f.loi = it }, multiline = true, error = if (showErrors) lenErr(f.loi, 2000, "Lời tưởng niệm") else null)
-                TraySection(f, x.repo, focusTray)
+                TraySection(f, x.repo, focusTray, trayPick)
                 TextIn(
                     "Mất trước tuổi này thì bia ghi “hưởng dương” (mất sớm) thay cho “hưởng thọ”", f.huongDuong,
                     { f.huongDuong = it.filter(Char::isDigit).take(3) }, number = true,
@@ -381,6 +383,7 @@ class PersonFormState(val existing: Person?, val deceased: Boolean, settings: JM
     var tray by mutableStateOf<EncodedImage?>(null)
     var trayRemoved by mutableStateOf(false)
     var trayBusy by mutableStateOf(false)
+    var trayError by mutableStateOf<String?>(null)
     val trayStoredId: String? = existing?.memorial?.sn("tray_photo_id")
     val notice = NoticeState(existing?.notice)
     val gio = RuleState(existing?.reminders?.o("gio"), settings)
