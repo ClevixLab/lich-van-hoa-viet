@@ -602,9 +602,8 @@ class PeopleScreensTest {
                             // Bỏ qua sai số làm tròn < 1 px (đoạn chữ rộng 300,4 px trong ô 300 px) — chỉ bắt tràn/cắt thật.
                             // Đo theo từng dòng (bề rộng nét chữ, đáy dòng cuối) — bề rộng đoạn (paragraph) có thể là bề rộng
                             // tối đa của ràng buộc chứ không phải bề rộng chữ.
-                            t.multiParagraph.didExceedMaxLines ||
-                                (0 until t.lineCount).any { t.multiParagraph.getLineWidth(it) - t.size.width > 1f } ||
-                                (t.lineCount > 0 && t.getLineBottom(t.lineCount - 1) - t.size.height > 1f),
+                            t.didOverflowHeight || t.multiParagraph.didExceedMaxLines ||
+                                (t.didOverflowWidth && (0 until t.lineCount).any { t.getLineRight(it) - t.size.width > 1f }),
                         )
                     }
                 }

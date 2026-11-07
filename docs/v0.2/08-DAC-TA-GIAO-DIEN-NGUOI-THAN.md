@@ -929,7 +929,17 @@ Mọi tính toán qua FFI của lõi (`ffi/src/v02.rs`, `LvhvStore`); giao diệ
 | Sao lưu (§3.8 B, C) | "Tạo tệp sao lưu…" mở các ô mật khẩu **ngay trong khung** "Sao lưu dữ liệu" (cùng câu chữ, lỗi dưới ô, thẻ lưu ý vàng, "Tạo và lưu tệp" / "Hủy") thay vì trong hộp thoại — ô nhập trong hộp thoại làm kiểm thử giao diện không về trạng thái nghỉ. Mật khẩu hai lần → hộp "Lưu tệp" của hệ thống (Storage Access Framework, `CreateDocument`) → mã hóa có thanh tiến độ → ghi. Khôi phục: "Chọn tệp sao lưu…" (`OpenDocument`), "Đã chọn: <tên>", mật khẩu, "Mở tệp" → hộp xem trước Gộp / Thay toàn bộ → hộp xác nhận thứ hai khi Thay toàn bộ. Tệp > 72 + 128 MiB + 16 byte bị từ chối trước khi đọc (S12). TK-16: ngày bản sao lưu đã khôi phục ghi ở SharedPreferences giao diện (`nguoi_than_ui`), không vào dữ liệu |
 | Ảnh (§3.4, §12g) | Photo Picker (`PickVisualMedia`, không quyền bộ nhớ). Giải mã (`ImageDecoder` xoay theo EXIF; API 26–27: `BitmapFactory` + xoay theo `ExifInterface`), cạnh dài ≤ 1024 px, vẽ lại và mã hóa JPEG (`Bitmap.compress` không chép siêu dữ liệu) → S9 |
 | Gợi ý Cách gọi / Quan hệ | Không có `datalist`: dưới ô có nút "Gợi ý ▸" mở hàng nút chọn nhanh (cùng danh sách từ thường ngày) |
-| Ô Ngày / Tháng / Năm, Giờ / Phút | Nhãn nằm phía trên ô (không trong viền) để đọc được ở cỡ chữ lớn |
+| Nhãn ô nhập (mọi ô) | Nhãn cố định phía trên ô, cỡ chữ đầy đủ (không thu nhỏ vào viền khi ô có chữ) — đọc được ở cỡ chữ lớn (TKN-A-14) |
+| Nhóm nút chọn (loại kỳ, bộ lọc, Dương/Âm, thanh phân đoạn) | Ô bo góc rời nhau, nhãn không giới hạn số dòng. Cỡ chữ hệ thống ≥ 1,15: nhóm 4 ô thành lưới 2 × 2, nhóm 3 ô thành ba hàng dọc (như PWA ở A++) — TKN-A-01 |
+| Mục sự kiện | Dòng 1 của sự kiện ghi "Tên sự kiện · tên người" (người đầu tiên của `person_ids`); dòng 3 "Hưởng thọ … tuổi" cho giỗ; chữ loại của lõi (`class_text`: "Ngày giỗ", "Sinh nhật"…) dưới biểu tượng. Chữ lớn: loại + khoảng cách xuống dưới, một cột (TKN-A-03, A-08, A-10) |
+| Sao lưu, khung A | Tiêu đề "Để lịch điện thoại cùng nhắc: xuất lịch (.ics)" và câu "Ứng dụng đã tự nhắc bằng thông báo trên máy này…" (bản cài đã có thông báo hệ thống; .ics để lịch của máy khác cũng nhắc) — TKN-A-12 |
+| Ô "Loại" sự kiện | Ô chọn M3 (`ExposedDropdownMenuBox`): ô viền, chữ trái, mũi tên phải (TKN-A-13) |
+| Nút thu gọn | "Mở ▾" / "Xem ▾" khi đang gọn, "Thu gọn ▴" khi đang mở (TKN-A-11) |
+| Năm trên bia | "Canh Thìn (1940) — Ất Tỵ (2025)" — đúng dạng §3.9 (TKN-X-02) |
+| Chọn lịch | Một cặp chữ "Nhập theo dương lịch / Nhập theo âm lịch" cho mọi ô ngày của mô-đun (TKN-X-05) |
+| Hồ sơ người đang sống | "Sửa" trước, "Cập nhật: đã mất" sau (TKN-X-01) |
+| Thông báo khi bật hiện tên | `VISIBILITY_PRIVATE` + bản công khai không tên ("Sắp đến ngày giỗ" / "Sắp đến sinh nhật" / "Sắp đến sự kiện"), để cài đặt "Ẩn nội dung nhạy cảm" của máy vẫn có hiệu lực (MA3N-24-06) |
+| Lỗi đặt lời nhắc | Bước chuỗi báo thức lỗi → báo thức thử lại sau 6 giờ; trang Cài đặt nhắc hiện "Lần đặt lời nhắc gần nhất bị lỗi…" (MA3N-24-04) |
 | Tưởng niệm, dòng ngày | Giỗ năm nay đã qua → "Ngày giỗ sắp tới: d/m âm lịch, dd/mm/yyyy" (thay "năm nay") |
 | Thông báo | Kênh "Nhắc ngày giỗ, sinh nhật"; nội dung chỉ lấy `title`/`body` của lõi (mặc định không có tên, O-9); chạm → mở hồ sơ người đó. Không bao giờ có thông tin báo tử |
 | Chuỗi báo thức (02 §7.3) | `LvhvStore.android_alarm_step_json` → đăng thông báo đến hạn, **một** báo thức `setAndAllowWhileIdle(RTC_WAKEUP)` cho lời nhắc kế tiếp. Đặt lại khi: báo thức chạy, `BOOT_COMPLETED`, `MY_PACKAGE_REPLACED`, `TIME_SET`, `TIMEZONE_CHANGED`, mở ứng dụng (onResume), lưu/xóa, nhập sao lưu. Lần chạy trước lưu ở SharedPreferences (chỉ một số giây Unix) |
