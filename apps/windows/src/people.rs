@@ -17,7 +17,8 @@ use serde_json::{json, Value};
 use slint::{ComponentHandle, Image, Model, ModelRc, SharedString, Timer, VecModel};
 
 
-use crate::platform::{self, Dialog, PendingToastNew, ToastState};
+use crate::platform::{self, Dialog};
+use crate::toasts::{self, SyncResult};
 use crate::photo;
 use crate::ui::*;
 use crate::{sv, D, WEEKDAY};
@@ -71,11 +72,9 @@ pub fn local_today() -> D {
         .unwrap_or(D { y: 2026, m: 1, d: 1 })
 }
 
+/// Múi giờ thiết bị kèm các lần chuyển giờ mùa hè trong 401 ngày tới (MA3N-25-05).
 pub fn zone() -> DeviceZone {
-    DeviceZone {
-        offset_min: platform::utc_offset_min(),
-        transitions: vec![],
-    }
+    platform::device_zone()
 }
 
 /// Ngày âm dạng "15/6 nhuận âm lịch" (+ " năm Ất Tỵ (2025)" khi có năm và `with_year`).
@@ -224,7 +223,9 @@ pub struct PState {
     dlg: DlgAction,
     toast_gen: Rc<std::cell::Cell<u64>>,
     smoke_gen: Rc<std::cell::Cell<u64>>,
-    pub scheduled: Option<usize>,
+    pub last_sync: Option<SyncResult>,
+    /// Lớp thông báo của hệ điều hành (kiểm thử thay bằng `toasts::FakeToasts`).
+    pub toasts: Box<dyn toasts::Toasts>,
     pub last_error: Option<String>,
 }
 
@@ -252,7 +253,8 @@ impl PState {
             dlg: DlgAction::None,
             toast_gen: Rc::default(),
             smoke_gen: Rc::default(),
-            scheduled: None,
+            last_sync: None,
+            toasts: toasts::system(),
             last_error: None,
         }
     }
@@ -346,7 +348,9 @@ fn item(o: &Value, today: D, sums: &Summaries) -> PItem {
     let (kind, kind_text) = kind_of_class(class);
     let name = st(&o["name"]);
     let headline = st(&o["headline"]);
-    let line1 = if kind <= 2 && !name.is_empty() && headline.ends_with(&name) {
+    let line1 = if class == "tien_thuong" && !name.is_empty() {
+        format!("Tiên thường · {name}")
+    } else if kind <= 2 && !name.is_empty() && headline.ends_with(&name) {
         format!(
             "{} · {name}",
             headline[..headline.len() - name.len()].trim_end()
@@ -503,7 +507,11 @@ fn render_list(ui: &AppWindow, ps: &PState) {
             .unwrap_or_default();
         let summary = if v["kind"] == "deceased" {
             let l = &v["death"]["lunar"];
-            let mut s = format!("Giỗ {}", lunar_text(l, false));
+            // Giỗ hằng năm vào tháng thường kể cả khi mất vào tháng nhuận (O-4) — không ghi "nhuận" (TKN-W-03).
+            let mut s = format!(
+                "Giỗ {}",
+                lunar_text(&json!({"month": l["month"], "day": l["day"], "leap": false}), false)
+            );
             if let Some(o) = next
                 .as_array()
                 .into_iter()
@@ -576,21 +584,11 @@ fn local_midnight_unix(today: D) -> i64 {
     (today.jdn() - 2_440_588) * 86_400 - platform::utc_offset_min() as i64 * 60
 }
 
-fn render_upcoming(ui: &AppWindow, ps: &PState) {
-    let p = People::get(ui);
-    let Some(store) = ps.s() else { return };
+/// Thẻ nhắc hôm nay (L7): lời nhắc có ngày theo giờ máy = hôm nay, trừ thẻ đã bấm "Đã biết". Trong ứng dụng có ghi
+/// tên (O-9 chỉ áp cho thông báo của hệ điều hành). Trả (id lời nhắc, thẻ).
+fn today_cards(ps: &PState) -> Vec<(String, RemCard)> {
+    let Some(store) = ps.s() else { return vec![] };
     let today = local_today();
-    let sums = summaries(ps, today);
-    let up = jv(&store.upcoming_json(today.solar(), 30).unwrap_or_default());
-    let items: Vec<PItem> = up
-        .as_array()
-        .into_iter()
-        .flatten()
-        .map(|o| item(o, today, &sums))
-        .collect();
-    p.set_upcoming(vm(items));
-    // Thẻ nhắc hôm nay (L7): lời nhắc có ngày giờ máy = hôm nay. Trong ứng dụng có ghi tên (O-9 chỉ áp cho
-    // thông báo của hệ điều hành).
     let mut cards = Vec::new();
     if let Ok(ds) = store.dataset_json() {
         let from = local_midnight_unix(today) - 60;
@@ -611,14 +609,44 @@ fn render_upcoming(ui: &AppWindow, ps: &PState) {
                 } else {
                     o["person_ids"][0].as_str().unwrap_or("").to_string()
                 };
-                cards.push(RemCard {
-                    title: ss(st(&r["title"])),
-                    sub: ss(st(&r["body"])),
-                    pid: ss(pid),
-                    memorial: class == "gio" && o["date"].as_str() == Some(pre.as_str()),
-                });
+                cards.push((
+                    id,
+                    RemCard {
+                        title: ss(st(&r["title"])),
+                        sub: ss(st(&r["body"])),
+                        pid: ss(pid),
+                        memorial: class == "gio" && o["date"].as_str() == Some(pre.as_str()),
+                    },
+                ));
             }
         }
+    }
+    cards
+}
+
+fn render_upcoming(ui: &AppWindow, ps: &PState) {
+    let p = People::get(ui);
+    let Some(store) = ps.s() else { return };
+    let today = local_today();
+    let sums = summaries(ps, today);
+    let up = jv(&store.upcoming_json(today.solar(), 30).unwrap_or_default());
+    let items: Vec<PItem> = up
+        .as_array()
+        .into_iter()
+        .flatten()
+        .map(|o| item(o, today, &sums))
+        .collect();
+    p.set_upcoming(vm(items));
+    let cards: Vec<RemCard> = today_cards(ps).into_iter().map(|(_, c)| c).collect();
+    let mut cards = cards;
+    if let Some(first) = cards.first() {
+        let pc = People::get(ui);
+        pc.set_sheet_card(first.clone());
+        pc.set_sheet_has_card(true);
+        pc.set_sheet_more(cards.len() as i32 - 1);
+    } else {
+        p.set_sheet_has_card(false);
+        p.set_sheet_more(0);
     }
     let more = cards.len().saturating_sub(3);
     cards.truncate(3);
@@ -699,18 +727,24 @@ fn render_settings(ui: &AppWindow, ps: &mut PState) {
         .map(|s| format!("\nDữ liệu được khôi phục từ bản sao lưu ngày {}", s.trim()))
         .unwrap_or_default();
     p.set_last_backup(ss(format!("{last}{restored}")));
-    // .ics: chỉ mục có nhắc bật.
+    if People::get(ui).get_page() == "sao-luu" {
+        render_ics_state(ui, ps);
+    }
+}
+
+/// Nút "Xuất tệp lịch" bật khi có ít nhất một lần nhắc trong 10 năm tới (chỉ tính khi mở trang Sao lưu).
+fn render_ics_state(ui: &AppWindow, ps: &PState) {
+    let Some(store) = ps.s() else { return };
+    let p = People::get(ui);
     let today = local_today();
-    let ics = store.dataset_json().ok().and_then(|ds| {
-        lvhv_ffi::ics_export(ds, today.solar(), platform::now_unix(), None).ok()
-    });
-    let n = ics.map(|i| i.events).unwrap_or(0);
+    let n = store
+        .dataset_json()
+        .ok()
+        .and_then(|ds| lvhv_ffi::ics_export(ds, today.solar(), platform::now_unix(), None).ok())
+        .map(|i| i.events)
+        .unwrap_or(0);
     p.set_ics_enabled(n > 0);
-    p.set_ics_note(ss(if n > 0 {
-        ""
-    } else {
-        "Chưa có hồ sơ nào bật nhắc."
-    }));
+    p.set_ics_note(ss(if n > 0 { "" } else { "Chưa có hồ sơ nào bật nhắc." }));
 }
 
 fn local_date_of_rfc3339(s: &str) -> Option<D> {
@@ -721,64 +755,53 @@ fn local_date_of_rfc3339(s: &str) -> Option<D> {
     d.add(mins.div_euclid(1440) as i32)
 }
 
+/// Câu trạng thái "Lời nhắc trên Windows" cho một kết quả đặt lịch; `true` = thông báo chắc chắn đang hoạt động.
+pub fn notif_status(r: &SyncResult, enabled: bool) -> (bool, String) {
+    const TAIL: &str = "Lời nhắc vẫn hiện trong mục Sắp tới khi bạn mở ứng dụng; có thể xuất tệp lịch (.ics) để lịch của máy nhắc.";
+    match r {
+        SyncResult::Unavailable(t) => (false, format!("{t} {TAIL}")),
+        SyncResult::Disabled { reason, cleared } => (
+            false,
+            match cleared {
+                Ok(()) => format!("{reason} Các thông báo đã đặt trước đó đã được gỡ; khi bật lại thông báo, hãy mở ứng dụng để đặt lại. {TAIL}"),
+                Err(e) => format!("{reason} Chưa gỡ được các thông báo đã đặt ({e}). {TAIL}"),
+            },
+        ),
+        SyncResult::ReadFailed(e) => (
+            false,
+            format!("Chưa đọc được danh sách thông báo của Windows ({e}) — sẽ thử lại khi mở ứng dụng. {TAIL}"),
+        ),
+        SyncResult::Failed(e) => (
+            false,
+            format!("Chưa đặt được thông báo của Windows ({e}). Thông báo cần bản cài đặt (.msi), vì bộ cài tạo lối tắt Start Menu mang định danh của ứng dụng. {TAIL}"),
+        ),
+        SyncResult::Scheduled { .. } if !enabled => (
+            false,
+            "Lời nhắc đang tắt. Bật lại để Windows nhắc ngày giỗ, sinh nhật.".to_string(),
+        ),
+        SyncResult::Scheduled { pending, confirmed: true, .. } => (
+            true,
+            format!("Thông báo của Windows đang bật. Đã đặt {pending} lời nhắc sắp tới; Windows tự hiện đúng giờ, kể cả khi ứng dụng đã đóng. Mỗi lần mở ứng dụng, lời nhắc được đặt lại (tối đa 64)."),
+        ),
+        SyncResult::Scheduled { pending, confirmed: false, .. } => (
+            false,
+            format!("Đã đặt {pending} lời nhắc, nhưng Windows chưa xác nhận ứng dụng được phép hiện thông báo. Nếu bạn dùng bản không cài đặt (.zip), hãy cài bản .msi; có thể xuất tệp .ics để lịch của máy nhắc."),
+        ),
+    }
+}
+
 /// Đặt lại thông báo Windows theo kế hoạch xoay vòng 64 của lõi (02 §7.4–7.5) rồi cập nhật dòng trạng thái.
 pub fn reschedule(ui: Option<&AppWindow>, ps: &mut PState) {
     let Some(store) = ps.store.clone() else {
         return;
     };
-    let state = platform::toast_state();
     let enabled = jv(&store.settings_json().unwrap_or_default())["reminders_enabled"] != false;
-    ps.scheduled = None;
-    let text = match &state {
-        ToastState::Ready | ToastState::Unknown(_) => {
-            let pending = platform::pending_toasts().unwrap_or_default();
-            let pj: Vec<Value> = pending
-                .iter()
-                .map(|p| json!({"id": p.id, "at_unix_s": p.at_unix_s, "content": p.content}))
-                .collect();
-            match store.reschedule_json(platform::now_unix(), zone(), Value::Array(pj).to_string())
-            {
-                Ok(plan) => {
-                    let plan = jv(&plan);
-                    let remove: Vec<String> = plan["remove"]
-                        .as_array()
-                        .into_iter()
-                        .flatten()
-                        .map(st)
-                        .collect();
-                    let mut add = Vec::new();
-                    for (k, rep) in [("add", false), ("replace", true)] {
-                        for a in plan[k].as_array().into_iter().flatten() {
-                            add.push(PendingToastNew {
-                                id: st(&a["id"]),
-                                at_unix_s: a["at_unix_s"].as_i64().unwrap_or(0),
-                                title: st(&a["title"]),
-                                body: st(&a["body"]),
-                                replace: rep,
-                            });
-                        }
-                    }
-                    match platform::apply_plan(&remove, &add) {
-                        Ok(n) => {
-                            ps.scheduled = Some(n);
-                            if !enabled {
-                                "Lời nhắc đang tắt. Bật lại để Windows nhắc ngày giỗ, sinh nhật.".to_string()
-                            } else {
-                                format!("Thông báo của Windows đang bật. Đã đặt {n} lời nhắc sắp tới; Windows tự hiện đúng giờ, kể cả khi ứng dụng đã đóng. Mỗi lần mở ứng dụng, lời nhắc được đặt lại (tối đa 64).")
-                            }
-                        }
-                        Err(e) => format!("Chưa đặt được thông báo của Windows ({e}). Thông báo cần bản cài đặt (.msi), vì bộ cài tạo lối tắt Start Menu mang định danh của ứng dụng. Lời nhắc vẫn hiện trong mục Sắp tới khi bạn mở ứng dụng; có thể xuất tệp lịch (.ics) để lịch của máy nhắc."),
-                    }
-                }
-                Err(e) => format!("Chưa tính được lời nhắc: {e}"),
-            }
-        }
-        ToastState::Disabled(t) => format!("{t} Lời nhắc vẫn hiện trong mục Sắp tới khi bạn mở ứng dụng."),
-        ToastState::Unavailable(t) => format!("{t} Lời nhắc vẫn hiện trong mục Sắp tới khi bạn mở ứng dụng; có thể xuất tệp lịch (.ics) để lịch của máy nhắc."),
-    };
+    let r = toasts::sync(ps.toasts.as_ref(), &store, platform::now_unix(), zone());
+    ps.last_sync = Some(r.clone());
     if let Some(ui) = ui {
+        let (ok, text) = notif_status(&r, enabled);
         let p = People::get(ui);
-        p.set_notif_ok(ps.scheduled.is_some() && enabled);
+        p.set_notif_ok(ok);
         p.set_notif_status(ss(text));
     }
 }
@@ -835,8 +858,8 @@ pub fn go(ui: &AppWindow, ps: &mut PState, page: &str) {
         return;
     }
     ps.person = None;
-    refresh(ui, ps);
     show(ui, ps, page);
+    refresh(ui, ps);
 }
 
 fn back(ui: &AppWindow, ps: &mut PState) {
@@ -1169,7 +1192,8 @@ fn open_memorial(ui: &AppWindow, ps: &mut PState, id: &str) {
     let d = &v["death"];
     let dy = d["lunar"]["year"].as_i64();
     let by = v["birth"]["lunar_year"].as_i64();
-    let cc = |y: i64| format!("{} ({y})", lvhv_ffi::year_can_chi(y as i32));
+    // "Canh Thìn 1940 — Ất Tỵ 2025" như Android và PWA (TKN-X-02; 08 §3.9 sửa theo).
+    let cc = |y: i64| format!("{} {y}", lvhv_ffi::year_can_chi(y as i32));
     p.set_m_years(ss(match (by, dy) {
         (Some(b), Some(dd)) => format!("{} — {}", cc(b), cc(dd)),
         (None, Some(dd)) => format!("Mất năm {}", cc(dd)),
@@ -1211,13 +1235,15 @@ fn open_memorial(ui: &AppWindow, ps: &mut PState, id: &str) {
                 .to_string();
             format!("{label} · hôm nay {}", lunar_text(&o["lunar"], false))
         }
-        Some(o) => format!(
-            "Ngày giỗ năm nay: {}, {}",
-            lunar_text(&o["lunar"], false),
-            d_iso(o["date"].as_str().unwrap_or(""))
-                .map(|x| x.dmy())
-                .unwrap_or_default()
-        ),
+        Some(o) => {
+            let d = d_iso(o["date"].as_str().unwrap_or(""));
+            format!(
+                "Ngày giỗ {}: {}, {}",
+                if d.is_some_and(|x| x.y == today.y) { "năm nay" } else { "sắp tới" },
+                lunar_text(&o["lunar"], false),
+                d.map(|x| x.dmy()).unwrap_or_default()
+            )
+        }
         None => format!("Ngày giỗ: {}", lunar_text(&d["lunar"], false)),
     }));
     let cur = p.get_page().to_string();
@@ -2158,12 +2184,58 @@ fn form_changed(ui: &AppWindow, ps: &mut PState) {
     }
 }
 
+/// Khung tóm tắt lỗi (08 §2, TKN-W-05): "Còn n chỗ cần sửa" + từng lỗi, bấm để cuộn tới chỗ đó. Chỉ hiện sau lần bấm
+/// Lưu đầu tiên; cập nhật theo từng lần gõ (TK-03).
 fn update_summary(ui: &AppWindow, ps: &PState, errs: Option<usize>) {
     let p = People::get(ui);
-    p.set_f_summary(ss(match errs {
-        Some(n) if ps.tried && n > 0 => format!("Còn {n} chỗ cần sửa"),
-        _ => String::new(),
-    }));
+    let mut items: Vec<ErrItem> = Vec::new();
+    if ps.tried && errs.is_some_and(|n| n > 0) {
+        let fields: Vec<(&str, &str, SharedString)> = vec![
+            ("ten", "Họ và tên", p.get_e_ho_ten()),
+            ("ten", "Cách gọi", p.get_e_danh_xung()),
+            ("ten", "Tên hiệu", p.get_e_ten_hieu()),
+            ("ten", "Quan hệ", p.get_e_quan_he()),
+            ("ten", "Ghi chú", p.get_e_ghi_chu()),
+            ("ngay-mat", "Ngày mất", p.get_dd_error()),
+            ("ngay-mat", "Ngày mất", p.get_md_error()),
+            ("ngay-sinh", "Ngày sinh", p.get_bd_error()),
+            ("ngay-sinh", "Nơi sinh", p.get_e_noi_sinh()),
+            ("ngay-sinh", "Tuổi", p.get_e_tuoi()),
+            ("an-tang", "Nơi an táng", p.get_e_noi_an_tang()),
+            ("an-tang", "Ảnh", p.get_e_photo()),
+            ("bao-tu", "Thông tin báo tử", p.get_e_notice()),
+            ("nhac", "Nhắc", p.get_r_error()),
+            ("nhac", "Nhắc sinh nhật âm lịch", p.get_r2_error()),
+            ("tuong-niem", "Tưởng niệm", p.get_e_nguong()),
+            ("ten", "Tên loại mới", p.get_e_new_type()),
+            ("ten", "Tiêu đề", p.get_e_title()),
+            ("ten", "Ghi chú", p.get_e_ev_ghi_chu()),
+            ("ngay", "Ngày", p.get_ed_error()),
+            ("nhac", "Nhắc", p.get_er_error()),
+        ];
+        // Mỗi biểu mẫu xóa hết lỗi khi mở (clear_errors), nên chỉ lỗi của biểu mẫu đang mở còn chữ.
+        for (key, label, e) in fields {
+            if !e.is_empty() && !items.iter().any(|i| i.text.ends_with(e.as_str())) {
+                items.push(ErrItem { text: ss(format!("{label}: {e}")), key: ss(key) });
+            }
+        }
+    }
+    let n = errs.unwrap_or(0).max(items.len());
+    p.set_f_summary(ss(if ps.tried && n > 0 { format!("Còn {n} chỗ cần sửa") } else { String::new() }));
+    p.set_f_errors(vm(items));
+}
+
+/// Vị trí cuộn gần đúng của từng nhóm trong biểu mẫu (0 = đầu, 1 = cuối).
+fn error_scroll(key: &str) -> f32 {
+    match key {
+        "ten" => 0.0,
+        "ngay-mat" | "ngay" => 0.2,
+        "ngay-sinh" => 0.35,
+        "an-tang" => 0.5,
+        "bao-tu" => 0.6,
+        "nhac" => 0.8,
+        _ => 1.0,
+    }
 }
 
 fn save_photo(store: &LvhvStore, e: &photo::Encoded) -> Result<String, String> {
@@ -2604,7 +2676,7 @@ fn dlg_confirm(ui: &AppWindow, ps: &mut PState) {
         }
         DlgAction::Ics(name, content) => {
             close_dialog(ui, ps);
-            if let Some(path) = platform::pick(Dialog::Save(name)) {
+            if let Some(path) = platform::pick(platform::hwnd_of(ui.window()), Dialog::Save(name)) {
                 match std::fs::write(&path, content.as_bytes()) {
                     Ok(()) => toast(ui, ps, "Đã lưu tệp lịch. Mở tệp bằng Outlook hoặc ứng dụng Lịch để nhập."),
                     Err(e) => toast(ui, ps, &format!("Chưa ghi được tệp: {e}")),
@@ -2630,24 +2702,35 @@ fn dlg_confirm(ui: &AppWindow, ps: &mut PState) {
                 return;
             }
             let name = format!("LichVanHoaViet-saoluu-{}.lvhv", iso(local_today()));
-            let Some(path) = platform::pick(Dialog::Save(name)) else {
+            let Some(path) = platform::pick(platform::hwnd_of(ui.window()), Dialog::Save(name)) else {
                 ps.dlg = DlgAction::CreateBackup;
                 return;
             };
+            // Argon2id 64 MiB chạy ở luồng phụ; hộp giữ trạng thái "đang xử lý" (MA3N-25-06).
             p.set_dlg_busy(true);
-            let r = store
-                .export_backup(a, crate::update::VERSION.into(), "windows".into())
-                .map_err(|e| e.to_string())
-                .and_then(|bytes| std::fs::write(&path, bytes).map_err(|e| e.to_string()));
-            close_dialog(ui, ps);
-            match r {
-                Ok(()) => {
-                    let _ = std::fs::remove_file(ps.dir.join("ui-restored-from.txt"));
-                    refresh(ui, ps);
-                    toast(ui, ps, "Đã tạo tệp sao lưu. Hãy cất tệp ở nơi an toàn (ổ đám mây, USB) — tệp không tự gửi đi đâu.");
-                }
-                Err(e) => toast(ui, ps, &format!("Chưa tạo được tệp sao lưu: {e}")),
-            }
+            p.set_dlg_lines(vm(vec![ss("Đang mã hóa… (có thể mất vài giây)")]));
+            ps.dlg = DlgAction::CreateBackup;
+            bg(
+                ui,
+                ps,
+                move || {
+                    store
+                        .export_backup(a, crate::update::VERSION.into(), "windows".into())
+                        .map_err(|e| e.to_string())
+                        .and_then(|bytes| std::fs::write(&path, bytes).map_err(|e| e.to_string()))
+                },
+                |ui, ps, r| {
+                    close_dialog(ui, ps);
+                    match r {
+                        Ok(()) => {
+                            let _ = std::fs::remove_file(ps.dir.join("ui-restored-from.txt"));
+                            refresh(ui, ps);
+                            toast(ui, ps, "Đã tạo tệp sao lưu. Hãy cất tệp ở nơi an toàn (ổ đám mây, USB) — tệp không tự gửi đi đâu.");
+                        }
+                        Err(e) => toast(ui, ps, &format!("Chưa tạo được tệp sao lưu: {e}")),
+                    }
+                },
+            );
         }
         DlgAction::Restore => {
             if p.get_restore_mode() == 1 {
@@ -2688,28 +2771,86 @@ fn dlg_confirm(ui: &AppWindow, ps: &mut PState) {
 }
 
 fn apply_restore(ui: &AppWindow, ps: &mut PState, mode: BackupImportMode) {
-    close_dialog(ui, ps);
     let (Some(store), Some(b)) = (ps.store.clone(), ps.backup.take()) else {
+        close_dialog(ui, ps);
         return;
     };
+    let p = People::get(ui);
+    p.set_dlg_busy(true);
+    p.set_dlg_lines(vm(vec![ss("Đang khôi phục… (có thể mất vài giây)")]));
     let pv = b.preview();
-    match store.apply_import(b, mode) {
-        Ok(()) => {
-            if mode == BackupImportMode::Replace {
-                if let Some(d) = local_date_of_rfc3339(&pv.exported_at) {
-                    let _ = std::fs::write(ps.dir.join("ui-restored-from.txt"), d.dmy());
-                }
-            }
+    bg(
+        ui,
+        ps,
+        move || {
+            store
+                .apply_import(b, mode)
+                .map(|_| (mode == BackupImportMode::Replace, pv.exported_at, pv.persons, pv.events))
+                .map_err(|e| e.to_string())
+        },
+        |ui, ps, r| {
+            close_dialog(ui, ps);
             People::get(ui).set_restore_pw(ss(""));
-            after_change(ui, ps);
-            toast(
-                ui,
-                ps,
-                &format!("Đã khôi phục: {} người, {} sự kiện.", pv.persons, pv.events),
-            );
-        }
-        Err(_) => toast(ui, ps, "Chưa khôi phục được — dữ liệu trên máy giữ nguyên."),
+            match r {
+                Ok((replace, exported_at, persons, events)) => {
+                    if replace {
+                        if let Some(d) = local_date_of_rfc3339(&exported_at) {
+                            let _ = std::fs::write(ps.dir.join("ui-restored-from.txt"), d.dmy());
+                        }
+                    }
+                    after_change(ui, ps);
+                    toast(ui, ps, &format!("Đã khôi phục: {persons} người, {events} sự kiện."));
+                }
+                Err(_) => toast(ui, ps, "Chưa khôi phục được — dữ liệu trên máy giữ nguyên."),
+            }
+        },
+    );
+}
+
+thread_local! {
+    /// Trạng thái mô-đun cho phần việc chạy ở luồng phụ quay về luồng giao diện.
+    static PS_TLS: RefCell<Option<Ps>> = const { RefCell::new(None) };
+}
+
+/// Chạy `work` ở luồng phụ, rồi `done` trên luồng giao diện (MA3N-25-06: Argon2id, giải mã tệp sao lưu, khôi phục,
+/// giải mã ảnh không làm đứng cửa sổ). Trong kiểm thử (không có vòng sự kiện) chạy tuần tự.
+fn bg<T: Send + 'static>(
+    ui: &AppWindow,
+    ps: &mut PState,
+    work: impl FnOnce() -> T + Send + 'static,
+    done: fn(&AppWindow, &mut PState, T),
+) {
+    #[cfg(test)]
+    {
+        let r = work();
+        done(ui, ps, r);
     }
+    #[cfg(not(test))]
+    {
+        let _ = ps;
+        let w = ui.as_weak();
+        std::thread::spawn(move || {
+            let r = work();
+            let _ = slint::invoke_from_event_loop(move || {
+                if let Some(ui) = w.upgrade() {
+                    let ps = PS_TLS.with(|t| t.borrow().clone());
+                    if let Some(ps) = ps {
+                        done(&ui, &mut ps.borrow_mut(), r);
+                    }
+                }
+            });
+        });
+    }
+}
+
+/// Đọc + mã hóa lại một ảnh; kiểm 25 MB **trước** khi đọc tệp (MA3N-25-07).
+fn load_photo(path: std::path::PathBuf) -> Result<photo::Encoded, String> {
+    let len = std::fs::metadata(&path).map_err(|e| e.to_string())?.len();
+    if len > photo::MAX_INPUT as u64 {
+        return Err("Ảnh lớn hơn 25 MB — hãy chọn ảnh nhỏ hơn".into());
+    }
+    let bytes = std::fs::read(&path).map_err(|e| e.to_string())?;
+    photo::reencode(&bytes)
 }
 
 fn export_ics(ui: &AppWindow, ps: &mut PState) {
@@ -2725,7 +2866,12 @@ fn export_ics(ui: &AppWindow, ps: &mut PState) {
     let mut date = String::new();
     for line in ics.content.lines() {
         if let Some(d) = line.split(':').nth(1).filter(|_| line.starts_with("DTSTART")) {
-            date = format!("{}/{}/{}", &d[6..8.min(d.len())], &d[4..6.min(d.len())], &d[..4.min(d.len())]);
+            date = format!(
+                "{}/{}/{}",
+                d.get(6..8).unwrap_or(""),
+                d.get(4..6).unwrap_or(""),
+                d.get(..4).unwrap_or("")
+            );
         }
         if let Some(s) = line.strip_prefix("SUMMARY:") {
             prev.push(format!("• {date} — {}", s.replace("\\,", ",").replace("\\;", ";")));
@@ -2734,7 +2880,7 @@ fn export_ics(ui: &AppWindow, ps: &mut PState) {
     let end = today.add(3652).map(|d| d.add(-1).unwrap_or(d)).unwrap_or(today);
     let mut lines = vec![
         format!(
-            "Tệp này chứa tên, ngày giỗ, sinh nhật và sự kiện của {} người. Bất kỳ ai có tệp đều đọc được.",
+            "Tệp này chứa tên, ngày giỗ, sinh nhật và sự kiện của {} người. Bất kỳ ai có tệp đều đọc được. Không gồm thông tin báo tử.",
             ics.persons
         ),
         format!(
@@ -2795,7 +2941,7 @@ fn create_backup(ui: &AppWindow, ps: &mut PState) {
 
 fn choose_backup(ui: &AppWindow, ps: &mut PState) {
     let p = People::get(ui);
-    if let Some(path) = platform::pick(Dialog::OpenBackup) {
+    if let Some(path) = platform::pick(platform::hwnd_of(ui.window()), Dialog::OpenBackup) {
         p.set_restore_file(ss(format!(
             "Đã chọn: {}",
             path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default()
@@ -2816,48 +2962,54 @@ fn open_backup_file(ui: &AppWindow, ps: &mut PState) {
         p.set_restore_error(ss(generic));
         return;
     }
-    let bytes = match std::fs::read(&path) {
-        Ok(b) => b,
-        Err(e) => {
-            p.set_restore_error(ss(format!("Không đọc được tệp: {e}")));
-            return;
-        }
-    };
-    match lvhv_ffi::open_backup(bytes, p.get_restore_pw().to_string()) {
-        Err(e) => p.set_restore_error(ss(e.to_string())),
-        Ok(b) => {
-            p.set_restore_error(ss(""));
-            let pv = b.preview();
-            let date = local_date_of_rfc3339(&pv.exported_at)
-                .map(|d| d.dmy())
-                .unwrap_or_default();
-            let platform = match pv.platform.as_str() {
-                "pwa" => "ứng dụng web",
-                "android" => "Android",
-                "ios" => "iPhone/iPad",
-                "macos" => "máy Mac",
-                "windows" => "Windows",
-                o => o,
+    p.set_restore_error(ss("Đang mở tệp… (có thể mất vài giây)"));
+    let pw = p.get_restore_pw().to_string();
+    bg(
+        ui,
+        ps,
+        move || {
+            let bytes = std::fs::read(&path).map_err(|e| format!("Không đọc được tệp: {e}"))?;
+            lvhv_ffi::open_backup(bytes, pw).map_err(|e| e.to_string())
+        },
+        |ui, ps, r| {
+            let p = People::get(ui);
+            match r {
+                Err(e) => p.set_restore_error(ss(e)),
+                Ok(b) => {
+                    p.set_restore_error(ss(""));
+                    let pv = b.preview();
+                    let date = local_date_of_rfc3339(&pv.exported_at)
+                        .map(|d| d.dmy())
+                        .unwrap_or_default();
+                    let platform = match pv.platform.as_str() {
+                        "pwa" => "ứng dụng web",
+                        "android" => "Android",
+                        "ios" => "iPhone/iPad",
+                        "macos" => "máy Mac",
+                        "windows" => "Windows",
+                        o => o,
+                    }
+                    .to_string();
+                    ps.backup = Some(b);
+                    p.set_restore_mode(0);
+                    open_dialog(
+                        ui,
+                        ps,
+                        "khoi-phuc",
+                        "Khôi phục dữ liệu",
+                        vec![format!(
+                            "Tệp xuất ngày {date} từ {platform}: {} người, {} sự kiện, {} ảnh.",
+                            pv.persons, pv.events, pv.photos
+                        )],
+                        "Khôi phục",
+                        "Hủy",
+                        false,
+                        DlgAction::Restore,
+                    );
+                }
             }
-            .to_string();
-            ps.backup = Some(b);
-            p.set_restore_mode(0);
-            open_dialog(
-                ui,
-                ps,
-                "khoi-phuc",
-                "Khôi phục dữ liệu",
-                vec![format!(
-                    "Tệp xuất ngày {date} từ {platform}: {} người, {} sự kiện, {} ảnh.",
-                    pv.persons, pv.events, pv.photos
-                )],
-                "Khôi phục",
-                "Hủy",
-                false,
-                DlgAction::Restore,
-            );
-        }
-    }
+        },
+    );
 }
 
 fn settings_changed(ui: &AppWindow, ps: &mut PState) {
@@ -2885,8 +3037,14 @@ fn settings_changed(ui: &AppWindow, ps: &mut PState) {
             return;
         }
     }
-    let _ = store.put_settings_json(s.to_string());
-    let _ = store.set_lock_screen_names(p.get_show_names());
+    let r = store
+        .put_settings_json(s.to_string())
+        .and_then(|_| store.set_lock_screen_names(p.get_show_names()));
+    if let Err(e) = r {
+        toast(ui, ps, &format!("Chưa lưu được cài đặt: {e}"));
+        render_settings(ui, ps);
+        return;
+    }
     reschedule(Some(ui), ps);
 }
 
@@ -2928,6 +3086,7 @@ fn toggle_off(ui: &AppWindow, ps: &mut PState, k: &str, i: i32) {
 // ------------------------------------------------------------------------------------------------
 
 pub fn wire(ui: &AppWindow, ps: Ps) {
+    PS_TLS.with(|t| *t.borrow_mut() = Some(ps.clone()));
     let p = People::get(ui);
     let w = ui.as_weak();
     macro_rules! cb0 {
@@ -3035,18 +3194,21 @@ pub fn wire(ui: &AppWindow, ps: Ps) {
         });
     }
     p.on_pick_photo(cb0!(|ui: &AppWindow, ps: &mut PState| {
-        let p = People::get(ui);
-        let Some(path) = platform::pick(Dialog::OpenImage) else { return };
-        match std::fs::read(&path).map_err(|e| e.to_string()).and_then(|b| photo::reencode(&b)) {
-            Ok(e) => {
-                p.set_f_photo(photo::to_slint(&e.bytes).unwrap_or_default());
-                p.set_f_has_photo(true);
-                p.set_e_photo(ss(""));
-                ps.photo = PhotoSel::New(e);
-                ps.dirty = true;
+        let Some(path) = platform::pick(platform::hwnd_of(ui.window()), Dialog::OpenImage) else { return };
+        People::get(ui).set_e_photo(ss("Đang đọc ảnh…"));
+        bg(ui, ps, move || load_photo(path), |ui, ps, r| {
+            let p = People::get(ui);
+            match r {
+                Ok(e) => {
+                    p.set_f_photo(photo::to_slint(&e.bytes).unwrap_or_default());
+                    p.set_f_has_photo(true);
+                    p.set_e_photo(ss(""));
+                    ps.photo = PhotoSel::New(e);
+                    ps.dirty = true;
+                }
+                Err(e) => p.set_e_photo(ss(e)),
             }
-            Err(e) => p.set_e_photo(ss(e)),
-        }
+        });
     }));
     p.on_drop_photo(cb0!(|ui: &AppWindow, ps: &mut PState| {
         let p = People::get(ui);
@@ -3056,21 +3218,25 @@ pub fn wire(ui: &AppWindow, ps: Ps) {
         ps.dirty = true;
     }));
     p.on_add_notice_photo(cb0!(|ui: &AppWindow, ps: &mut PState| {
-        let p = People::get(ui);
         if ps.certs.len() >= 4 {
             return;
         }
-        let Some(path) = platform::pick(Dialog::OpenImage) else { return };
-        match std::fs::read(&path).map_err(|e| e.to_string()).and_then(|b| photo::reencode(&b)) {
-            Ok(e) => {
-                let img = photo::to_slint(&e.bytes).unwrap_or_default();
-                ps.certs.push(CertPhoto { id: None, enc: Some(e), img });
-                p.set_n_photos(vm(ps.certs.iter().map(|c| c.img.clone()).collect()));
-                p.set_e_notice(ss(""));
-                ps.dirty = true;
+        let Some(path) = platform::pick(platform::hwnd_of(ui.window()), Dialog::OpenImage) else { return };
+        People::get(ui).set_e_notice(ss("Đang đọc ảnh…"));
+        bg(ui, ps, move || load_photo(path), |ui, ps, r| {
+            let p = People::get(ui);
+            match r {
+                Ok(e) if ps.certs.len() < 4 => {
+                    let img = photo::to_slint(&e.bytes).unwrap_or_default();
+                    ps.certs.push(CertPhoto { id: None, enc: Some(e), img });
+                    p.set_n_photos(vm(ps.certs.iter().map(|c| c.img.clone()).collect()));
+                    p.set_e_notice(ss(""));
+                    ps.dirty = true;
+                }
+                Ok(_) => p.set_e_notice(ss("")),
+                Err(e) => p.set_e_notice(ss(e)),
             }
-            Err(e) => p.set_e_notice(ss(e)),
-        }
+        });
     }));
     p.on_drop_notice_photo(cb1!(i32, |ui: &AppWindow, ps: &mut PState, i: i32| {
         if (i as usize) < ps.certs.len() {
@@ -3129,13 +3295,26 @@ pub fn wire(ui: &AppWindow, ps: Ps) {
         let Some(store) = ps.store.clone() else { return };
         let mut s = jv(&store.settings_json().unwrap_or_default());
         s["backup_nag_days"] = json!([30, 60, 90, 0][i.clamp(0, 3) as usize]);
-        let _ = store.put_settings_json(s.to_string());
+        if let Err(e) = store.put_settings_json(s.to_string()) {
+            toast(ui, ps, &format!("Chưa lưu được cài đặt: {e}"));
+        }
         refresh(ui, ps);
+    }));
+    p.on_dismiss_sheet_card(cb0!(|ui: &AppWindow, ps: &mut PState| {
+        if let Some((id, _)) = today_cards(ps).first() {
+            ps.hidden_cards.insert(id.clone());
+        }
+        render_upcoming(ui, ps);
+    }));
+    p.on_goto_error(cb1!(SharedString, |ui: &AppWindow, _ps: &mut PState, k: SharedString| {
+        People::get(ui).set_scroll_frac(error_scroll(&k));
     }));
     p.on_dlg_confirm(cb0!(|ui: &AppWindow, ps: &mut PState| dlg_confirm(ui, ps)));
     p.on_dlg_dismiss(cb0!(|ui: &AppWindow, ps: &mut PState| {
         if !People::get(ui).get_dlg_busy() {
-            ps.backup = None;
+            if ps.backup.take().is_some() {
+                People::get(ui).set_restore_pw(ss(""));
+            }
             close_dialog(ui, ps);
         }
     }));
@@ -3148,23 +3327,8 @@ pub fn wire(ui: &AppWindow, ps: Ps) {
         }
     }));
     p.on_dismiss_card(cb1!(i32, |ui: &AppWindow, ps: &mut PState, i: i32| {
-        let today = local_today();
-        let Some(store) = ps.store.clone() else { return };
-        if let Ok(ds) = store.dataset_json() {
-            if let Ok(j) = lvhv_ffi::reminders_json(ds, local_midnight_unix(today) - 60, zone(), 2, true) {
-                let pre = iso(today);
-                let ids: Vec<String> = jv(&j)
-                    .as_array()
-                    .into_iter()
-                    .flatten()
-                    .filter(|r| r["fire_local"].as_str().unwrap_or("").starts_with(&pre))
-                    .map(|r| st(&r["id"]))
-                    .filter(|id| id != "lvhv:sentinel" && !ps.hidden_cards.contains(id))
-                    .collect();
-                if let Some(id) = ids.get(i as usize) {
-                    ps.hidden_cards.insert(id.clone());
-                }
-            }
+        if let Some((id, _)) = today_cards(ps).get(i as usize) {
+            ps.hidden_cards.insert(id.clone());
         }
         render_upcoming(ui, ps);
     }));

@@ -15,6 +15,8 @@ use crate::ui::*;
 use crate::ui_tests::{by_label, click, count_label, scroll_into_view};
 
 const SECRET: &str = "BI-MAT-BAO-TU-7731";
+/// Lý do trong thông tin báo tử của dữ liệu mẫu (shots::seed_store).
+const SEED_SECRET: &str = "Tuổi cao, bệnh tim";
 
 fn v(s: &str) -> Value {
     serde_json::from_str(s).unwrap()
@@ -47,10 +49,12 @@ fn page(ui: &AppWindow) -> String {
     People::get(ui).get_page().to_string()
 }
 
-#[test]
-fn people_flows() {
+/// Dựng cửa sổ, kho tạm, đồng hồ giả, hộp chọn tệp giả. Mỗi kiểm thử chạy trên luồng riêng (backend kiểm thử khởi
+/// tạo một lần mỗi luồng; đồng hồ giả và hộp chọn tệp giả là biến cục bộ của luồng).
+#[allow(clippy::type_complexity)]
+fn fixture(tag: &str) -> (AppWindow, std::rc::Rc<std::cell::RefCell<crate::State>>, crate::people::Ps, PathBuf, Rc<std::cell::RefCell<PathBuf>>, Rc<std::cell::RefCell<PathBuf>>, crate::D) {
     i_slint_backend_testing::init_no_event_loop();
-    let tmp = std::env::temp_dir().join(format!("lvhv-win-uitest-{}", std::process::id()));
+    let tmp = std::env::temp_dir().join(format!("lvhv-win-uitest-{tag}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&tmp);
     std::fs::create_dir_all(&tmp).unwrap();
     // 07/11/2026 09:00 giờ Việt Nam.
@@ -66,7 +70,6 @@ fn people_flows() {
     ps.borrow_mut().store = None;
     ui.window().set_size(slint::LogicalSize::new(1280., 3000.));
     ui.show().unwrap();
-    let p = People::get(&ui);
 
     // Ảnh mẫu có EXIF + APP13 (vị trí giả) để kiểm S9.
     let img = tmp.join("chan-dung.jpg");
@@ -82,6 +85,15 @@ fn people_flows() {
         })));
     }
 
+    (ui, st, ps, tmp, save_to, open_from, day0)
+}
+
+/// L2 (ngày âm, tháng nhuận, lỗi), nhắc, ảnh (S9), L11 tưởng niệm, L12 sửa.
+#[test]
+fn nguoi_da_mat_tuong_niem_sua() {
+    let (ui, _st, ps, tmp, save_to, open_from, day0) = fixture("a");
+    let p = People::get(&ui);
+    let _ = (&save_to, &open_from, day0);
     // --- Mở mô-đun: trống → khung chào ---
     click(&ui, &by_label(&ui, "Người thân"));
     assert_eq!(ui.get_tab(), 4);
@@ -177,6 +189,20 @@ fn people_flows() {
     assert_eq!(page(&ui), "nguoi");
     assert_eq!(v(&store.person_json(bid.clone()).unwrap())["rev"], 2);
 
+    platform::set_fake_now(None);
+    platform::set_fake_offset(None);
+    platform::set_dialog_override(None);
+    let _ = std::fs::remove_dir_all(&tmp);
+}
+
+/// L3 người đang sống + sinh nhật âm, L4 sự kiện, US-M-07 cập nhật đã mất + thông tin báo tử, B4.
+#[test]
+fn nguoi_dang_song_su_kien_bao_tu() {
+    let (ui, _st, ps, tmp, save_to, open_from, day0) = fixture("b");
+    let p = People::get(&ui);
+    let _ = (&save_to, &open_from, day0);
+    click(&ui, &by_label(&ui, "Người thân"));
+    let store = ps.borrow().store.clone().unwrap();
     // --- L3: người đang sống ---
     seg(&ui, "Hồ sơ");
     assert_eq!(page(&ui), "ho-so");
@@ -271,6 +297,22 @@ fn people_flows() {
     press(&ui, "Hủy");
     assert_eq!(page(&ui), "nguoi");
 
+    platform::set_fake_now(None);
+    platform::set_fake_offset(None);
+    platform::set_dialog_override(None);
+    let _ = std::fs::remove_dir_all(&tmp);
+}
+
+/// L5 theo kỳ (so với lõi), O-9, L8 .ics, L9/L10 sao lưu → xóa → khôi phục, L7 thẻ nhắc hôm nay (cả trên Tờ lịch).
+#[test]
+fn theo_ky_ics_sao_luu_the_nhac() {
+    let (ui, _st, ps, tmp, save_to, open_from, day0) = fixture("c");
+    let p = People::get(&ui);
+    let _ = (&save_to, &open_from, day0);
+    click(&ui, &by_label(&ui, "Người thân"));
+    let store = ps.borrow().store.clone().unwrap();
+    let (_a_id, b_id, _c_id) = crate::shots::seed_store(&store);
+    crate::people::refresh(&ui, &mut ps.borrow_mut());
     // --- L5: Theo kỳ, bốn loại kỳ × ba bộ lọc, so với lõi ---
     seg(&ui, "Theo kỳ");
     assert_eq!(page(&ui), "theo-ky");
@@ -328,7 +370,7 @@ fn people_flows() {
     click(&ui, &last_by_label(&ui, "Lưu tệp .ics"));
     let ics = std::fs::read_to_string(tmp.join("lich.ics")).unwrap();
     assert!(ics.starts_with("BEGIN:VCALENDAR"));
-    assert!(!ics.contains(SECRET), "R-PRIV-2: không có thông tin báo tử trong .ics");
+    assert!(!ics.contains(SEED_SECRET), "R-PRIV-2: không có thông tin báo tử trong .ics");
 
     // --- L9/L10: sao lưu → xóa → khôi phục "Thay toàn bộ" ---
     let before = store.persons_json().unwrap();
@@ -375,17 +417,22 @@ fn people_flows() {
     click(&ui, &last_by_label(&ui, "Thay toàn bộ"));
     assert_eq!(p.get_dlg(), "");
     assert_eq!(store.persons_json().unwrap(), before, "khôi phục giống hệt trước khi xóa");
-    assert!(p.get_toast().starts_with("Đã khôi phục: 2 người"));
+    assert!(p.get_toast().starts_with("Đã khôi phục: 5 người"));
     assert!(p.get_last_backup().contains("Dữ liệu được khôi phục từ bản sao lưu ngày 07/11/2026"));
 
-    // --- Thẻ nhắc hôm nay (L7): đặt đồng hồ vào ngày giỗ − 3 của bà Bình ---
-    let next = v(&store.upcoming_json(day0.solar(), 400).unwrap());
-    let g = next.as_array().unwrap().iter().find(|o| o["entity_id"] == bid.as_str() && o["class"] == "gio").unwrap().clone();
-    let gd = crate::people::tests_date(g["date"].as_str().unwrap()).add(-3).unwrap();
-    platform::set_fake_now(Some((gd.jdn() - 2_440_588) * 86_400 + 2 * 3600));
+    // --- Thẻ nhắc hôm nay (L7): giỗ bà Bình (dữ liệu mẫu) đúng hôm nay; trên Sắp tới và một thẻ trên Tờ lịch ---
     seg(&ui, "Sắp tới");
-    assert!(p.get_cards().iter().any(|c| c.title.starts_with("Còn 3 ngày: ") && c.title.contains("Trần Thị Bình")), "thẻ nhắc trong ứng dụng có tên");
-    let _ = SharedString::default();
+    assert!(p.get_cards().iter().any(|c| c.title.starts_with("Hôm nay: ") && c.title.contains("Trần Thị Bình") && c.memorial), "thẻ nhắc trong ứng dụng có tên");
+    assert!(p.get_sheet_has_card());
+    click(&ui, &by_label(&ui, "Tờ lịch"));
+    assert_eq!(count_label(&ui, "Đã biết lời nhắc trên Tờ lịch"), 1, "Tờ lịch chỉ một thẻ");
+    if p.get_sheet_card().memorial {
+        click(&ui, &by_label(&ui, "Mở trang tưởng niệm"));
+        assert_eq!(ui.get_tab(), 4);
+        assert_eq!(page(&ui), "tuong-niem");
+        assert_eq!(p.get_m_name(), "Trần Thị Bình");
+        let _ = &b_id;
+    }
     platform::set_fake_now(None);
     platform::set_fake_offset(None);
     platform::set_dialog_override(None);

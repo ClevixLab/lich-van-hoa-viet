@@ -2693,6 +2693,7 @@ dependencies = [
  "image",
  "lvhv-ffi",
  "png",
+ "raw-window-handle",
  "serde",
  "serde_json",
  "slint",
@@ -4072,6 +4073,7 @@ dependencies = [
  "num-traits",
  "once_cell",
  "pin-weak",
+ "raw-window-handle",
  "slint-macros",
  "vtable",
 ]

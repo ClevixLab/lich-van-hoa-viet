@@ -24,6 +24,8 @@ export global Theme {
     out property <color> paper: dark ? #211a1b : #fdfcfa;
     out property <color> paper2: dark ? #2a2223 : #f6f2ee;
     out property <color> rule: dark ? #3a3031 : #e4dbd5;
+    // Viền ô nhập, nút viền, ô chọn: ≥ 3:1 trên paper/paper2 ở cả sáng và tối (TKN-W-07, WCAG 1.4.11).
+    out property <color> outline: dark ? #8a7c79 : #857875;
     out property <color> ink: dark ? #f1e9e6 : #231a1a;
     out property <color> ink2: dark ? #cdbfbb : #5e5150;
     out property <color> ink3: dark ? #a99a96 : #7a6b69;
@@ -106,7 +108,7 @@ export component Btn inherits Rectangle {
         : kind == "outline" || kind == "choice" ? (ta.has-hover ? Theme.paper2 : Theme.paper)
         : (ta.has-hover ? Theme.rule : Theme.paper2);
     border-width: kind == "danger" ? 1.5px : (kind == "outline" || kind == "choice") && !filled ? 1px : 0px;
-    border-color: kind == "danger" ? Theme.red-ink : Theme.rule;
+    border-color: kind == "danger" ? Theme.red-ink : Theme.outline;
     accessible-role: button;
     accessible-label: text;
     accessible-checked: active;
@@ -153,7 +155,7 @@ export component RoundBtn inherits Rectangle {
     width: d; height: d;
     border-radius: self.width / 2;
     background: ta.has-hover && enabled ? Theme.paper2 : Theme.paper;
-    border-width: 1px; border-color: Theme.rule;
+    border-width: 1px; border-color: Theme.outline;
     opacity: enabled ? 1 : 0.4;
     accessible-role: button;
     accessible-label: label;

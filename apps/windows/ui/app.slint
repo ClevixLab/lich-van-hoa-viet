@@ -6,9 +6,9 @@
 // (không dùng ký tự ‹ › ✕ ▦ ▲ ▼ — các ký tự này không có trong phông nên máy phải mượn phông khác).
 import { LineEdit, ComboBox, CheckBox, ScrollView, Palette } from "std-widgets.slint";
 import { Gio, Cell, GoodRow, Block, ChipRow, Sheet, Theme, T, S, Icon, ClevixLogo, Card, Btn, LinkBtn, RoundBtn, LabelBox, Bullets, Chip, Chips, Fact } from "common.slint";
-import { People, PeopleView, PItem, PRow, KV, EvRow, RemCard } from "people.slint";
+import { People, PeopleView, PItem, PRow, KV, EvRow, RemCard, ErrItem } from "people.slint";
 export { Gio, Cell, GoodRow, Block, ChipRow, Sheet, Theme } from "common.slint";
-export { People, PItem, PRow, KV, EvRow, RemCard } from "people.slint";
+export { People, PItem, PRow, KV, EvRow, RemCard, ErrItem } from "people.slint";
 
 import "fonts/LVHVSerif-Regular.ttf";
 import "fonts/LVHVSerif-SemiBold.ttf";
@@ -666,9 +666,10 @@ component TabBtn inherits Rectangle {
     in property <string> text;
     in property <image> icon;
     in property <bool> active;
+    in property <bool> compact: false;
     callback clicked;
     min-height: 44px;
-    min-width: tl.preferred-width + 54px;
+    min-width: compact ? 52px : tl.preferred-width + 54px;
     border-radius: 22px;
     background: active ? Theme.paper : (ta.has-hover ? #00000010 : transparent);
     drop-shadow-blur: active ? 4px : 0px;
@@ -680,9 +681,28 @@ component TabBtn inherits Rectangle {
     HorizontalLayout {
         padding-left: 16px; padding-right: 16px; spacing: 8px; alignment: center;
         VerticalLayout { alignment: center; Icon { source: root.icon; tint: root.active ? Theme.red-ink : Theme.ink2; width: 18px; height: 18px; } }
-        tl := T { text: root.text; size: 15; font-weight: 600; color: root.active ? Theme.red-ink : Theme.ink2; wrap: no-wrap; vertical-alignment: center; }
+        tl := T { text: root.text; size: 15; font-weight: 600; color: root.active ? Theme.red-ink : Theme.ink2; wrap: no-wrap; vertical-alignment: center; visible: !root.compact; width: root.compact ? 0px : self.preferred-width; }
     }
     ta := TouchArea { clicked => { root.clicked(); } mouse-cursor: pointer; }
+}
+
+// Thanh mục chính. Thứ tự: Tờ lịch · Chọn ngày tốt · Đổi ngày · Người thân · Giới thiệu. Số trang giữ như v0.1
+// (Giới thiệu = 3); Người thân = 4.
+component NavTabs inherits HorizontalLayout {
+    in property <int> tab;
+    in property <bool> compact: false;
+    callback picked(int);
+    spacing: 4px;
+    for t in [
+        { label: "Tờ lịch", icon: @image-url("icons/sheet.svg"), id: 0 },
+        { label: "Chọn ngày tốt", icon: @image-url("icons/star.svg"), id: 1 },
+        { label: "Đổi ngày", icon: @image-url("icons/swap.svg"), id: 2 },
+        { label: "Người thân", icon: @image-url("icons/people.svg"), id: 4 },
+        { label: "Giới thiệu", icon: @image-url("icons/info.svg"), id: 3 },
+    ]: TabBtn {
+        text: t.label; icon: t.icon; active: root.tab == t.id; compact: root.compact;
+        clicked => { root.picked(t.id); }
+    }
 }
 
 // ---------------- Cửa sổ chính ----------------
@@ -692,7 +712,7 @@ export component AppWindow inherits Window {
     icon: @image-url("../assets/icon-256.png");
     preferred-width: 1180px;
     preferred-height: 900px;
-    min-width: 440px;
+    min-width: 560px;
     min-height: 600px;
     background: Theme.wall;
     default-font-family: Theme.sans;
@@ -702,6 +722,10 @@ export component AppWindow inherits Window {
     in-out property <bool> month-open: false;
     in-out property <int> size: 1;
     in-out property <int> theme-mode: 0; // 0 = theo máy, 1 = sáng, 2 = tối
+    // Thanh mục xuống hàng riêng khi chữ lớn hoặc cửa sổ hẹp (TKN-W-01).
+    out property <bool> two-rows: Theme.scale > 1.01 || root.width < 1150px;
+    callback pick-tab(int);
+    pick-tab(id) => { root.tab = id; if (id == 3) { Data.about-rules = false; } if (id == 4) { Data.open-people(); } }
     // Màu nền theo máy lúc mở ứng dụng (đọc một lần trước khi người dùng đổi giao diện).
     property <bool> system-dark: false;
     // Ô nhập/hộp chọn của std-widgets theo màu của ứng dụng (sáng/tối).
@@ -725,34 +749,22 @@ export component AppWindow inherits Window {
         }
 
         VerticalLayout {
-            // Thanh trên
+            // Thanh trên. Ở cỡ chữ A+/A++ hoặc khi cửa sổ hẹp, thanh mục xuống hàng riêng dưới tên ứng dụng (TKN-W-01,
+            // như PWA 08 §12b); rất hẹp thì chỉ còn biểu tượng (nhãn trợ năng vẫn đủ chữ).
             HorizontalLayout {
                 padding: 12px; padding-left: 18px; padding-right: 18px; spacing: 10px;
+                padding-bottom: root.two-rows ? 4px : 12px;
                 HorizontalLayout {
                     spacing: 10px;
                     VerticalLayout { alignment: center; Image { source: @image-url("../assets/icon.svg"); width: 30px; height: 30px; } }
-                    S { text: root.width < 1100px ? "Lịch Việt" : "Lịch và Văn hóa Việt"; size: 18; vertical-alignment: center; wrap: no-wrap; }
+                    S { text: root.two-rows || root.width >= 1100px ? "Lịch và Văn hóa Việt" : "Lịch Việt"; size: 18; vertical-alignment: center; wrap: no-wrap; }
                 }
                 Rectangle { horizontal-stretch: 1; }
-                HorizontalLayout {
-                    spacing: 4px;
-                    // Thứ tự hiển thị: Tờ lịch · Chọn ngày tốt · Đổi ngày · Người thân · Giới thiệu. Số trang (tab)
-                    // giữ như v0.1 (Giới thiệu = 3); Người thân = 4.
-                    for t in [
-                        { label: "Tờ lịch", icon: @image-url("icons/sheet.svg"), id: 0 },
-                        { label: "Chọn ngày tốt", icon: @image-url("icons/star.svg"), id: 1 },
-                        { label: "Đổi ngày", icon: @image-url("icons/swap.svg"), id: 2 },
-                        { label: "Người thân", icon: @image-url("icons/people.svg"), id: 4 },
-                        { label: "Giới thiệu", icon: @image-url("icons/info.svg"), id: 3 },
-                    ]: TabBtn {
-                        text: t.label; icon: t.icon; active: root.tab == t.id;
-                        clicked => { root.tab = t.id; if (t.id == 3) { Data.about-rules = false; } if (t.id == 4) { Data.open-people(); } }
-                    }
-                }
-                Rectangle { horizontal-stretch: 1; }
+                if !root.two-rows: NavTabs { tab: root.tab; picked(id) => { root.pick-tab(id); } }
+                if !root.two-rows: Rectangle { horizontal-stretch: 1; }
                 // Cỡ chữ A / A+ / A++
                 Rectangle {
-                    background: Theme.paper; border-radius: 22px; border-width: 1px; border-color: Theme.rule;
+                    background: Theme.paper; border-radius: 22px; border-width: 1px; border-color: Theme.outline;
                     height: 44px;
                     HorizontalLayout {
                         padding: 3px; spacing: 2px;
@@ -762,6 +774,7 @@ export component AppWindow inherits Window {
                             accessible-role: button;
                             accessible-label: i == 0 ? "Cỡ chữ thường" : (i == 1 ? "Cỡ chữ lớn" : "Cỡ chữ rất lớn");
                             accessible-checked: root.size == i + 1;
+                            accessible-action-default => { root.size = i + 1; Theme.scale = i == 0 ? 1.0 : (i == 1 ? 1.15 : 1.32); }
                             Text { text: z; font-family: Theme.serif; font-weight: 600; font-size: (15 + i * 1.5) * 1px; color: root.size == i + 1 ? #ffffff : Theme.ink2; horizontal-alignment: center; vertical-alignment: center; }
                             zta := TouchArea {
                                 clicked => { root.size = i + 1; Theme.scale = i == 0 ? 1.0 : (i == 1 ? 1.15 : 1.32); }
@@ -776,6 +789,37 @@ export component AppWindow inherits Window {
                     clicked => {
                         root.theme-mode = root.theme-mode == 0 ? 2 : (root.theme-mode == 2 ? 1 : 0);
                         Theme.dark = root.theme-mode == 0 ? root.system-dark : root.theme-mode == 2;
+                    }
+                }
+            }
+            if root.two-rows: HorizontalLayout {
+                padding-left: 12px; padding-right: 12px; padding-bottom: 8px;
+                alignment: center;
+                NavTabs { tab: root.tab; compact: root.width < 780px * Theme.scale; picked(id) => { root.pick-tab(id); } }
+            }
+            // Thẻ nhắc hôm nay trên Tờ lịch (08 §5.5, L7): một thẻ + dòng gộp các lời nhắc khác.
+            if root.tab == 0 && People.sheet-has-card: HorizontalLayout {
+                padding-left: 16px; padding-right: 16px; padding-bottom: 6px;
+                alignment: center;
+                Rectangle {
+                    max-width: 560px; horizontal-stretch: 1;
+                    background: Theme.paper; border-radius: 14px; border-width: 1px; border-color: Theme.outline;
+                    accessible-role: text; accessible-label: People.sheet-card.title + ". " + People.sheet-card.sub;
+                    Rectangle { x: 0; width: 5px; height: parent.height; background: Theme.red; border-top-left-radius: 14px; border-bottom-left-radius: 14px; }
+                    VerticalLayout {
+                        padding: 12px; padding-left: 18px; spacing: 6px;
+                        T { text: People.sheet-card.title; size: 16; font-weight: 700; }
+                        T { text: People.sheet-card.sub; size: 14; color: Theme.ink2; }
+                        HorizontalLayout {
+                            spacing: 8px; alignment: start;
+                            if People.sheet-card.memorial: Btn { text: "Mở trang tưởng niệm"; kind: "primary"; clicked => { root.tab = 4; People.open-memorial(People.sheet-card.pid); } }
+                            Btn { text: "Xem"; kind: "outline"; accessible-label: "Xem lời nhắc trên Tờ lịch"; clicked => { root.tab = 4; People.open-person(People.sheet-card.pid); } }
+                            Btn { text: "Đã biết"; kind: "outline"; accessible-label: "Đã biết lời nhắc trên Tờ lịch"; clicked => { People.dismiss-sheet-card(); } }
+                        }
+                        if People.sheet-more > 0: LinkBtn {
+                            text: "Còn " + People.sheet-more + " lời nhắc khác hôm nay — Xem"; size: 14;
+                            clicked => { root.tab = 4; People.go("sap-toi"); }
+                        }
                     }
                 }
             }

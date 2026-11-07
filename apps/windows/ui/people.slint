@@ -16,6 +16,7 @@ export struct PRow { id: string, initial: string, name: string, rel: string, sum
 export struct KV { k: string, v: string }
 export struct EvRow { id: string, text: string }
 export struct RemCard { title: string, sub: string, pid: string, memorial: bool }
+export struct ErrItem { text: string, key: string }
 
 export global People {
     // Trang đang mở: sap-toi | theo-ky | ho-so | sao-luu | nguoi | form | bao-tu | su-kien | tuong-niem
@@ -25,6 +26,12 @@ export global People {
     in-out property <string> toast;
     in-out property <bool> has-any;
     in-out property <float> scroll-frac: 0;
+    in-out property <bool> defaults-open: false;
+    in-out property <[ErrItem]> f-errors;
+    // Thẻ nhắc trên Tờ lịch (08 §5.5)
+    in-out property <bool> sheet-has-card;
+    in-out property <RemCard> sheet-card;
+    in-out property <int> sheet-more;
 
     // Sắp tới
     in-out property <[PItem]> upcoming;
@@ -281,9 +288,20 @@ export global People {
     callback dlg-dismiss();
     callback smoke-toggle();
     callback dismiss-card(int);
+    callback dismiss-sheet-card();
+    callback goto-error(string);
 }
 
 // ---------------- Thành phần ----------------
+
+// Khung viền của ô nhập: viền `outline` (≥ 3:1, TKN-W-07); có lỗi → viền đỏ dày (TKN-W-05).
+component Boxed inherits Rectangle {
+    in property <bool> bad: false;
+    border-width: bad ? 2px : 1px;
+    border-color: bad ? Theme.red-ink : Theme.outline;
+    border-radius: 6px;
+    HorizontalLayout { padding: bad ? 2px : 1px; @children }
+}
 
 component Field inherits VerticalLayout {
     in property <string> label;
@@ -296,45 +314,55 @@ component Field inherits VerticalLayout {
     in property <length> box-width: 0px;
     callback edited();
     spacing: 4px;
-    T { text: root.label; size: 14; font-weight: 600; color: Theme.ink2; }
+    T { text: root.label; size: 15; font-weight: 600; color: Theme.ink2; }
     if !root.multiline: HorizontalLayout {
-        LineEdit {
+        Boxed {
+            bad: root.error != "";
             horizontal-stretch: 1;
             max-width: root.box-width > 0px ? root.box-width : 100000px;
-            text <=> root.text;
-            placeholder-text: root.placeholder;
-            input-type: root.password ? InputType.password : InputType.text;
-            accessible-label: root.label;
-            edited => { root.edited(); }
+            LineEdit {
+                text <=> root.text;
+                placeholder-text: root.placeholder;
+                input-type: root.password ? InputType.password : InputType.text;
+                accessible-label: root.label;
+                edited => { root.edited(); }
+            }
         }
         if root.box-width > 0px: Rectangle { horizontal-stretch: 1; }
     }
-    if root.multiline: TextEdit {
-        height: 84px;
-        text <=> root.text;
-        wrap: word-wrap;
-        accessible-label: root.label;
-        edited => { root.edited(); }
+    if root.multiline: Boxed {
+        bad: root.error != "";
+        TextEdit {
+            height: 84px;
+            text <=> root.text;
+            wrap: word-wrap;
+            accessible-label: root.label;
+            edited => { root.edited(); }
+        }
     }
-    if root.hint != "": T { text: root.hint; size: 13; color: Theme.ink3; }
-    if root.error != "": T { text: root.error; size: 14; color: Theme.red-ink; font-weight: 600; accessible-role: AccessibleRole.text; accessible-label: root.error; }
+    if root.hint != "": T { text: root.hint; size: 14; color: Theme.ink3; }
+    if root.error != "": T { text: root.error; size: 15; color: Theme.red-ink; font-weight: 600; accessible-role: AccessibleRole.text; accessible-label: root.error; }
 }
 
 // Ô số nhỏ (ngày, tháng, năm, giờ, phút).
 component NumBox inherits VerticalLayout {
     in property <string> label;
     in-out property <string> text;
-    in property <length> w: 72px;
+    in property <length> w: 76px;
+    in property <bool> bad: false;
     callback edited();
     spacing: 3px;
-    T { text: root.label; size: 13; font-weight: 600; color: Theme.ink3; }
-    LineEdit {
-        width: root.w;
-        text <=> root.text;
-        input-type: number;
-        horizontal-alignment: center;
-        accessible-label: root.label;
-        edited => { root.edited(); }
+    T { text: root.label; size: 14; font-weight: 600; color: Theme.ink2; }
+    Boxed {
+        bad: root.bad;
+        width: root.w * Theme.scale;
+        LineEdit {
+            text <=> root.text;
+            input-type: number;
+            horizontal-alignment: center;
+            accessible-label: root.label;
+            edited => { root.edited(); }
+        }
     }
 }
 
@@ -347,23 +375,41 @@ component Choice inherits HorizontalLayout {
     spacing: 6px;
     alignment: start;
     for it[i] in root.items: Btn {
-        text: it; kind: "choice"; active: root.current == i; size: 14;
+        text: it; kind: "choice"; active: root.current == i; size: 15;
         accessible-label: root.group + ": " + it;
         clicked => { root.picked(i); }
     }
 }
 
-component Check inherits HorizontalLayout {
+// Hộp kiểm màu của ứng dụng (đỏ, như `accent-color` của PWA — TKN-W-10). Ô 22 × 22, vùng bấm cả dòng chữ.
+component Check inherits Rectangle {
     in property <string> text;
     in-out property <bool> checked;
     in property <bool> enabled: true;
     callback toggled();
     min-height: 40px;
-    CheckBox {
-        text: root.text;
-        checked <=> root.checked;
+    accessible-role: checkbox;
+    accessible-label: root.text;
+    accessible-checked: root.checked;
+    accessible-action-default => { if (root.enabled) { root.checked = !root.checked; root.toggled(); } }
+    opacity: root.enabled ? 1 : 0.5;
+    HorizontalLayout {
+        spacing: 10px; alignment: start;
+        VerticalLayout {
+            alignment: center;
+            Rectangle {
+                width: 22px; height: 22px; border-radius: 5px;
+                background: root.checked ? (Theme.dark ? Theme.red-ink : Theme.red-deep) : Theme.paper;
+                border-width: root.checked ? 0px : 1.5px; border-color: Theme.outline;
+                if root.checked: Image { source: @image-url("icons/check.svg"); width: 16px; height: 16px; colorize: Theme.dark ? #2a0d0c : #ffffff; }
+            }
+        }
+        T { text: root.text; size: 15; vertical-alignment: center; }
+    }
+    TouchArea {
         enabled: root.enabled;
-        toggled => { root.toggled(); }
+        clicked => { root.checked = !root.checked; root.toggled(); }
+        mouse-cursor: pointer;
     }
 }
 
@@ -412,9 +458,9 @@ component DateIn inherits VerticalLayout {
     }
     HorizontalLayout {
         spacing: 10px; alignment: start;
-        if root.prec == 0: NumBox { label: "Ngày"; text <=> root.d; w: 72px; edited => { root.changed(); } }
-        if root.prec == 0: NumBox { label: "Tháng"; text <=> root.m; w: 72px; edited => { root.changed(); } }
-        if !(root.allow-unknown && root.unknown && root.cal == 1): NumBox { label: "Năm"; text <=> root.yr; w: 96px; edited => { root.changed(); } }
+        if root.prec == 0: NumBox { label: "Ngày"; bad: root.error != ""; text <=> root.d; w: 76px; edited => { root.changed(); } }
+        if root.prec == 0: NumBox { label: "Tháng"; bad: root.error != ""; text <=> root.m; w: 76px; edited => { root.changed(); } }
+        if !(root.allow-unknown && root.unknown && root.cal == 1): NumBox { label: "Năm"; bad: root.error != ""; text <=> root.yr; w: 96px; edited => { root.changed(); } }
     }
     if root.cal == 1 && root.prec == 0 && root.leap-visible: Check {
         text: root.leap-label; checked <=> root.leap; toggled => { root.changed(); }
@@ -422,13 +468,13 @@ component DateIn inherits VerticalLayout {
     if root.cal == 1 && root.allow-unknown: Check {
         text: root.unknown-text; checked <=> root.unknown; toggled => { root.changed(); }
     }
-    if root.note != "": T { text: root.note; size: 13; color: Theme.ink3; }
+    if root.note != "": T { text: root.note; size: 14; color: Theme.ink3; }
     if root.result != "": Rectangle {
         background: Theme.paper2; border-radius: 10px;
         accessible-role: AccessibleRole.text; accessible-label: root.result;
         HorizontalLayout { padding: 10px; T { text: root.result; size: 15; font-weight: 600; } }
     }
-    if root.error != "": T { text: root.error; size: 14; color: Theme.red-ink; font-weight: 600; accessible-role: AccessibleRole.text; accessible-label: root.error; }
+    if root.error != "": T { text: root.error; size: 15; color: Theme.red-ink; font-weight: 600; accessible-role: AccessibleRole.text; accessible-label: root.error; }
 }
 
 // Khối nhắc (§3.4 "Nhắc ngày giỗ"): công tắc, mốc nhắc, ô tự đặt, giờ 24 giờ, tiên thường.
@@ -452,11 +498,11 @@ component RemBlock inherits VerticalLayout {
     VerticalLayout {
         spacing: 8px;
         opacity: root.enabled ? 1 : 0.55;
-        T { text: "Nhắc trước"; size: 14; font-weight: 600; color: Theme.ink2; }
+        T { text: "Nhắc trước"; size: 15; font-weight: 600; color: Theme.ink2; }
         HorizontalLayout {
             spacing: 6px; alignment: start;
             for t[i] in ["Đúng ngày", "1 ngày", "3 ngày", "5 ngày", "10 ngày", "15 ngày"]: Btn {
-                text: t; kind: "choice"; size: 14;
+                text: t; kind: "choice"; size: 15;
                 active: i < root.offs.length && root.offs[i];
                 accessible-label: "Nhắc trước: " + t;
                 clicked => { root.toggle(i); }
@@ -469,11 +515,11 @@ component RemBlock inherits VerticalLayout {
             VerticalLayout { alignment: end; padding-bottom: 8px; T { text: ":"; size: 18; font-weight: 700; } }
             NumBox { label: "Phút"; text <=> root.mm; w: 64px; edited => { root.changed(); } }
         }
-        T { text: "Giờ nhắc theo đồng hồ 24 giờ của máy."; size: 13; color: Theme.ink3; }
+        T { text: "Giờ nhắc theo đồng hồ 24 giờ của máy."; size: 14; color: Theme.ink3; }
         if root.show-tt: Check { text: "Nhắc thêm ngày tiên thường (lễ cúng hôm trước ngày giỗ)"; checked <=> root.tt; toggled => { root.changed(); } }
     }
-    if root.warn != "": T { text: root.warn; size: 14; color: Theme.gold; font-weight: 600; }
-    if root.error != "": T { text: root.error; size: 14; color: Theme.red-ink; font-weight: 600; accessible-role: AccessibleRole.text; accessible-label: root.error; }
+    if root.warn != "": T { text: root.warn; size: 15; color: Theme.gold; font-weight: 600; }
+    if root.error != "": T { text: root.error; size: 15; color: Theme.red-ink; font-weight: 600; accessible-role: AccessibleRole.text; accessible-label: root.error; }
 }
 
 // Biểu tượng loại lần xuất hiện (vẽ bằng hình, kèm chữ ở nhãn trợ năng).
@@ -508,22 +554,22 @@ component PItemBody inherits HorizontalLayout {
     padding: 10px; spacing: 12px;
     VerticalLayout {
         width: 56px; alignment: center; spacing: 0px;
-        T { text: it.wd; size: 13; font-weight: 700; color: it.sunday ? Theme.red-ink : Theme.ink3; horizontal-alignment: center; }
+        T { text: it.wd; size: 14; font-weight: 700; color: it.sunday ? Theme.red-ink : Theme.ink3; horizontal-alignment: center; }
         S { text: it.day; size: 26; font-weight: 700; color: it.sunday ? Theme.red-ink : Theme.ink; horizontal-alignment: center; }
-        T { text: it.mon; size: 13; color: Theme.ink3; horizontal-alignment: center; wrap: no-wrap; }
+        T { text: it.mon; size: 14; color: Theme.ink3; horizontal-alignment: center; wrap: no-wrap; }
     }
     Rectangle { width: 1px; background: Theme.rule; }
     VerticalLayout {
         spacing: 2px; alignment: center; horizontal-stretch: 1;
         T { text: it.line1; size: 16; font-weight: 700; color: it.past ? Theme.ink2 : Theme.ink; }
-        T { text: it.line2; size: 14; color: Theme.ink2; }
-        if it.line3 != "": T { text: it.line3; size: 14; color: Theme.ink3; }
+        T { text: it.line2; size: 15; color: Theme.ink2; }
+        if it.line3 != "": T { text: it.line3; size: 15; color: Theme.ink3; }
     }
     VerticalLayout {
-        width: 104px; alignment: center; spacing: 4px;
+        width: 128px; alignment: center; spacing: 4px;
         HorizontalLayout { alignment: center; KindIcon { kind: it.kind; } }
-        T { text: it.kind-text; size: 12; color: Theme.ink3; horizontal-alignment: center; }
-        T { text: it.right; size: 14; font-weight: 700; horizontal-alignment: center; color: it.today ? Theme.red-ink : (it.past ? Theme.ink3 : Theme.ink2); }
+        T { text: it.kind-text; size: 14; color: Theme.ink3; horizontal-alignment: center; }
+        T { text: it.right; size: 15; font-weight: 700; horizontal-alignment: center; color: it.today ? Theme.red-ink : (it.past ? Theme.ink3 : Theme.ink2); }
     }
 }
 
@@ -565,6 +611,22 @@ component Notice inherits Rectangle {
         padding: 12px; spacing: 8px;
         T { text: root.text; size: 15; color: root.warn ? Theme.red-ink : Theme.ink; }
         @children
+    }
+}
+
+component ErrorSummary inherits Rectangle {
+    background: Theme.red-tint;
+    border-radius: 12px;
+    border-width: 1px; border-color: Theme.red-ink;
+    accessible-role: AccessibleRole.text;
+    accessible-label: People.f-summary;
+    VerticalLayout {
+        padding: 12px; spacing: 2px;
+        T { text: People.f-summary; size: 16; font-weight: 700; color: Theme.red-ink; }
+        for e in People.f-errors: HorizontalLayout {
+            alignment: start;
+            LinkBtn { text: e.text; size: 15; accessible-label: "Tới chỗ cần sửa: " + e.text; clicked => { People.goto-error(e.key); } }
+        }
     }
 }
 
@@ -671,7 +733,7 @@ component UpMain inherits VerticalLayout {
             VerticalLayout {
                 spacing: 6px; horizontal-stretch: 1;
                 T { text: c.title; size: 17; font-weight: 700; }
-                T { text: c.sub; size: 14; color: Theme.ink2; }
+                T { text: c.sub; size: 15; color: Theme.ink2; }
                 HorizontalLayout {
                     spacing: 8px; alignment: start; padding-top: 4px;
                     if c.memorial: Btn { text: "Mở trang tưởng niệm"; kind: "primary"; clicked => { People.open-memorial(c.pid); } }
@@ -681,7 +743,7 @@ component UpMain inherits VerticalLayout {
             }
         }
     }
-    if People.cards-more > 0: T { text: "… và " + People.cards-more + " lời nhắc khác hôm nay (xem danh sách bên dưới)."; size: 14; color: Theme.ink2; }
+    if People.cards-more > 0: T { text: "… và " + People.cards-more + " lời nhắc khác hôm nay (xem danh sách bên dưới)."; size: 15; color: Theme.ink2; }
     if People.backup-nag: Notice {
         text: People.backup-nag-text;
         HorizontalLayout { alignment: start; Btn { text: "Sao lưu ngay"; kind: "primary"; clicked => { People.go("sao-luu"); } } }
@@ -715,11 +777,11 @@ component UpSide inherits VerticalLayout {
         Rectangle {
             background: People.notif-ok ? Theme.green-tint : Theme.gold-tint; border-radius: 10px;
             accessible-role: AccessibleRole.text; accessible-label: People.notif-status;
-            HorizontalLayout { padding: 10px; T { text: People.notif-status; size: 14; color: People.notif-ok ? Theme.green : Theme.ink; } }
+            HorizontalLayout { padding: 10px; T { text: People.notif-status; size: 15; color: People.notif-ok ? Theme.green : Theme.ink; } }
         }
         Check { text: "Bật lời nhắc"; checked <=> People.rem-enabled; toggled => { People.settings-changed(); } }
         Check { text: "Hiện tên người trong thông báo"; checked <=> People.show-names; toggled => { People.settings-changed(); } }
-        T { text: "Mặc định thông báo không ghi tên (ví dụ \"Sắp đến ngày giỗ\"), để người khác nhìn màn hình không biết là ai. Lời nhắc trong ứng dụng vẫn ghi tên. Cài đặt này chỉ lưu trên máy này, không vào tệp sao lưu."; size: 13; color: Theme.ink3; }
+        T { text: "Mặc định thông báo không ghi tên (ví dụ \"Sắp đến ngày giỗ\"), để người khác nhìn màn hình không biết là ai. Lời nhắc trong ứng dụng vẫn ghi tên. Cài đặt này chỉ lưu trên máy này, không vào tệp sao lưu."; size: 14; color: Theme.ink3; }
     }
 }
 
@@ -734,9 +796,20 @@ component UpcomingPage inherits PPage {
     }
     if !root.wide: UpMain { }
     if !root.wide: UpSide { }
+    // Thu gọn sẵn (TKN-W-13): người mới mở mô-đun không phải thấy ngay 6 nút và ô giờ.
     Group {
-        legend: "Mặc định nhắc cho hồ sơ mới";
-        RemBlock {
+        Rectangle {
+            min-height: 44px;
+            accessible-role: button;
+            accessible-label: People.defaults-open ? "Thu gọn Mặc định nhắc cho hồ sơ mới" : "Mở Mặc định nhắc cho hồ sơ mới";
+            accessible-action-default => { People.defaults-open = !People.defaults-open; }
+            HorizontalLayout {
+                S { text: "Mặc định nhắc cho hồ sơ mới"; size: 18; vertical-alignment: center; horizontal-stretch: 1; }
+                VerticalLayout { alignment: center; Icon { source: People.defaults-open ? @image-url("icons/up.svg") : @image-url("icons/down.svg"); tint: Theme.ink2; } }
+            }
+            TouchArea { clicked => { People.defaults-open = !People.defaults-open; } mouse-cursor: pointer; }
+        }
+        if People.defaults-open: RemBlock {
             key: "def"; show-switch: false;
             enabled: true; offs: People.def-offs;
             custom <=> People.def-custom; hh <=> People.def-hh; mm <=> People.def-mm;
@@ -760,7 +833,7 @@ component PeriodPage inherits PPage {
             items: ["Tất cả", "Người đã mất", "Người đang sống"]; current: People.pfilter; group: "Bộ lọc";
             picked(i) => { People.period-filter(i); }
         }
-        if People.pnote != "": T { text: People.pnote; size: 13; color: Theme.ink3; }
+        if People.pnote != "": T { text: People.pnote; size: 14; color: Theme.ink2; }
         HorizontalLayout {
             spacing: 10px;
             RoundBtn { icon: @image-url("icons/prev.svg"); label: "Kỳ trước"; clicked => { People.period-step(-1); } }
@@ -770,7 +843,7 @@ component PeriodPage inherits PPage {
         HorizontalLayout {
             alignment: center;
             if !People.pcurrent: Btn { text: "Hôm nay"; kind: "outline"; clicked => { People.period-today(); } }
-            if People.pcurrent: T { text: "Đang xem kỳ có hôm nay"; size: 14; color: Theme.ink3; vertical-alignment: center; min-height: 44px; }
+            if People.pcurrent: T { text: "Đang xem kỳ có hôm nay"; size: 15; color: Theme.ink2; vertical-alignment: center; min-height: 44px; }
         }
         T { text: People.pcount; size: 15; font-weight: 700; color: Theme.ink2; accessible-role: AccessibleRole.text; accessible-label: People.pcount; }
         if People.pitems.length == 0: T { text: People.pempty; size: 15; color: Theme.ink2; }
@@ -798,8 +871,8 @@ component PersonRowBtn inherits Rectangle {
         VerticalLayout {
             alignment: center; spacing: 2px; horizontal-stretch: 1;
             T { text: r.name; size: 16; font-weight: 700; }
-            if r.rel != "": T { text: r.rel; size: 14; color: Theme.ink2; }
-            T { text: r.summary; size: 14; color: Theme.ink2; }
+            if r.rel != "": T { text: r.rel; size: 15; color: Theme.ink2; }
+            T { text: r.summary; size: 15; color: Theme.ink2; }
         }
     }
     ta := TouchArea { clicked => { People.open-person(r.id); } mouse-cursor: pointer; }
@@ -831,13 +904,13 @@ component BackupPage inherits PPage {
         legend: "Để lịch của máy tự nhắc: xuất lịch (.ics)";
         T { text: "Tệp lịch (.ics) mở được bằng Outlook, Lịch của Windows, lịch điện thoại. Ứng dụng này đã có thông báo của Windows; tệp lịch hữu ích khi bạn muốn nhắc trên điện thoại hoặc máy khác."; size: 15; color: Theme.ink2; }
         HorizontalLayout { alignment: start; Btn { text: "Xuất tệp lịch (.ics)…"; kind: "primary"; enabled: People.ics-enabled; clicked => { People.export-ics(); } } }
-        if People.ics-note != "": T { text: People.ics-note; size: 13; color: Theme.ink3; }
+        if People.ics-note != "": T { text: People.ics-note; size: 14; color: Theme.ink3; }
     }
     Group {
         legend: "Sao lưu dữ liệu";
         T { text: People.last-backup; size: 15; color: Theme.ink2; accessible-role: AccessibleRole.text; accessible-label: People.last-backup; }
         HorizontalLayout { alignment: start; Btn { text: "Tạo tệp sao lưu…"; kind: "primary"; clicked => { People.create-backup(); } } }
-        T { text: "Nhắc sao lưu khi có thay đổi chưa sao lưu sau:"; size: 14; font-weight: 600; color: Theme.ink2; }
+        T { text: "Nhắc sao lưu khi có thay đổi chưa sao lưu sau:"; size: 15; font-weight: 600; color: Theme.ink2; }
         Choice {
             items: ["30 ngày", "60 ngày", "90 ngày", "Không nhắc"]; current: People.nag-index; group: "Nhắc sao lưu";
             picked(i) => { People.nag-changed(i); }
@@ -846,27 +919,42 @@ component BackupPage inherits PPage {
     Group {
         legend: "Khôi phục từ tệp sao lưu";
         HorizontalLayout { alignment: start; Btn { text: "Chọn tệp sao lưu…"; kind: "outline"; clicked => { People.choose-backup(); } } }
-        T { text: People.restore-file; size: 14; color: Theme.ink2; accessible-role: AccessibleRole.text; accessible-label: People.restore-file; }
+        T { text: People.restore-file; size: 15; color: Theme.ink2; accessible-role: AccessibleRole.text; accessible-label: People.restore-file; }
         Field { label: "Mật khẩu của tệp"; text <=> People.restore-pw; password: true; box-width: 320px; }
-        if People.restore-error != "": T { text: People.restore-error; size: 14; color: Theme.red-ink; font-weight: 600; accessible-role: AccessibleRole.text; accessible-label: People.restore-error; }
+        if People.restore-error != "": T { text: People.restore-error; size: 15; color: Theme.red-ink; font-weight: 600; accessible-role: AccessibleRole.text; accessible-label: People.restore-error; }
         HorizontalLayout { alignment: start; Btn { text: "Mở tệp"; kind: "outline"; clicked => { People.open-backup(); } } }
     }
 }
 
-component PhotoOval inherits Rectangle {
+// Khung ảnh bầu dục thật (TKN-W-17): ảnh phủ kín hình chữ nhật, một Path tô màu nền theo luật chẵn-lẻ che bốn góc
+// ngoài hình bầu dục, rồi vẽ đường viền vàng đồng.
+export component OvalPhoto inherits Rectangle {
     in property <bool> has;
     in property <image> img;
     in property <string> initial;
     in property <length> w: 120px;
+    in property <color> bg: Theme.wall;
+    in property <color> fill: Theme.paper2;
+    in property <color> initial-color: Theme.ink3;
+    in property <length> stroke: 2px;
     width: w; height: w * 1.25;
-    border-radius: w / 2;
-    clip: true;
-    background: Theme.paper2;
-    border-width: 2px; border-color: #b8893a;
     accessible-role: AccessibleRole.text;
     accessible-label: has ? "Ảnh chân dung" : "Chưa có ảnh";
+    Rectangle { background: root.fill; }
     if root.has: Image { width: parent.width; height: parent.height; source: root.img; image-fit: cover; }
-    if !root.has: S { text: root.initial; size: 40; color: Theme.ink3; horizontal-alignment: center; vertical-alignment: center; }
+    if !root.has: Text { text: root.initial; font-family: Theme.serif; font-size: root.w * 0.36; color: root.initial-color; horizontal-alignment: center; vertical-alignment: center; }
+    Path {
+        width: 100%; height: 100%;
+        viewbox-width: 100; viewbox-height: 125;
+        fill: root.bg; fill-rule: evenodd;
+        commands: "M -1 -1 L 101 -1 L 101 126 L -1 126 Z M 50 0.5 A 49.5 62 0 1 0 50 124.5 A 49.5 62 0 1 0 50 0.5 Z";
+    }
+    Path {
+        width: 100%; height: 100%;
+        viewbox-width: 100; viewbox-height: 125;
+        stroke: #b8893a; stroke-width: root.stroke;
+        commands: "M 50 1.5 A 48.5 61 0 1 0 50 123.5 A 48.5 61 0 1 0 50 1.5 Z";
+    }
 }
 
 component PersonPage inherits PPage {
@@ -876,7 +964,7 @@ component PersonPage inherits PPage {
         spacing: 14px;
         HorizontalLayout {
             spacing: 16px;
-            if People.v-dead: PhotoOval { has: People.v-has-photo; img: People.v-photo; initial: People.v-initial; w: 104px; }
+            if People.v-dead: OvalPhoto { has: People.v-has-photo; img: People.v-photo; initial: People.v-initial; w: 104px; bg: Theme.wall; }
             VerticalLayout {
                 spacing: 4px; alignment: center; horizontal-stretch: 1;
                 S { text: People.v-name; size: 28; accessible-role: AccessibleRole.text; accessible-label: People.v-name; }
@@ -900,7 +988,7 @@ component PersonPage inherits PPage {
             for kv in People.v-info: HorizontalLayout {
                 spacing: 12px;
                 accessible-role: AccessibleRole.text; accessible-label: kv.k + ": " + kv.v;
-                T { text: kv.k; width: 170px; size: 14; color: Theme.ink3; font-weight: 600; }
+                T { text: kv.k; width: 170px; size: 15; color: Theme.ink3; font-weight: 600; }
                 T { text: kv.v; size: 15; horizontal-stretch: 1; }
             }
         }
@@ -921,7 +1009,7 @@ component PersonPage inherits PPage {
                 for kv in People.v-notice: HorizontalLayout {
                     spacing: 12px;
                     accessible-role: AccessibleRole.text; accessible-label: kv.k + ": " + kv.v;
-                    T { text: kv.k; width: 170px; size: 14; color: Theme.ink3; font-weight: 600; }
+                    T { text: kv.k; width: 170px; size: 15; color: Theme.ink3; font-weight: 600; }
                     T { text: kv.v; size: 15; horizontal-stretch: 1; }
                 }
                 HorizontalLayout {
@@ -946,7 +1034,7 @@ component PersonPage inherits PPage {
                 Btn { text: "Sửa"; accessible-label: "Sửa sự kiện: " + e.text; clicked => { People.edit-event(e.id); } }
                 Btn { text: "Xóa"; accessible-label: "Xóa sự kiện: " + e.text; clicked => { People.delete-event(e.id); } }
             }
-            if People.v-dead: T { text: "Không nhắc sinh nhật và sự kiện của người đã mất — chỉ nhắc ngày giỗ. Thông tin vẫn được lưu và sao lưu."; size: 13; color: Theme.ink3; }
+            if People.v-dead: T { text: "Không nhắc sinh nhật và sự kiện của người đã mất — chỉ nhắc ngày giỗ. Thông tin vẫn được lưu và sao lưu."; size: 14; color: Theme.ink3; }
         }
         Group {
             legend: "Nhắc";
@@ -980,7 +1068,7 @@ component NoticeBlock inherits Group {
     }
     if People.n-open: VerticalLayout {
         spacing: 10px;
-        T { text: "Chỉ hiện trên trang hồ sơ này. Không đưa vào lời nhắc, thông báo, tệp lịch (.ics) hay trang tưởng niệm; có trong tệp sao lưu (đã mã hóa)."; size: 13; color: Theme.ink3; }
+        T { text: "Chỉ hiện trên trang hồ sơ này. Không đưa vào lời nhắc, thông báo, tệp lịch (.ics) hay trang tưởng niệm; có trong tệp sao lưu (đã mã hóa)."; size: 14; color: Theme.ink3; }
         Field { label: "Người báo tin"; text <=> People.n-by; edited => { People.form-changed(); } }
         Field { label: "Mất tại"; text <=> People.n-place; edited => { People.form-changed(); } }
         HorizontalLayout {
@@ -990,7 +1078,7 @@ component NoticeBlock inherits Group {
             NumBox { label: "Năm (dương lịch)"; text <=> People.n-y; w: 120px; edited => { People.form-changed(); } }
         }
         Field { label: "Lý do"; text <=> People.n-reason; multiline: true; edited => { People.form-changed(); } }
-        T { text: "Ảnh giấy báo tử (tối đa 4)"; size: 14; font-weight: 600; color: Theme.ink2; }
+        T { text: "Ảnh giấy báo tử (tối đa 4)"; size: 15; font-weight: 600; color: Theme.ink2; }
         HorizontalLayout {
             spacing: 10px; alignment: start;
             for p[i] in People.n-photos: VerticalLayout {
@@ -999,19 +1087,19 @@ component NoticeBlock inherits Group {
                     width: 96px; height: 120px; border-width: 1px; border-color: Theme.rule; border-radius: 6px; clip: true;
                     Image { width: parent.width; height: parent.height; source: p; image-fit: contain; }
                 }
-                Btn { text: "Bỏ ảnh"; size: 13; accessible-label: "Bỏ ảnh giấy báo tử " + (i + 1); clicked => { People.drop-notice-photo(i); } }
+                Btn { text: "Bỏ ảnh"; size: 14; accessible-label: "Bỏ ảnh giấy báo tử " + (i + 1); clicked => { People.drop-notice-photo(i); } }
             }
         }
         if People.n-photos.length < 4: HorizontalLayout { alignment: start; Btn { text: "Thêm ảnh giấy báo tử"; kind: "outline"; clicked => { People.add-notice-photo(); } } }
         Field { label: "Ghi chú"; text <=> People.n-note; multiline: true; edited => { People.form-changed(); } }
-        if People.e-notice != "": T { text: People.e-notice; size: 14; color: Theme.red-ink; font-weight: 600; accessible-role: AccessibleRole.text; accessible-label: People.e-notice; }
+        if People.e-notice != "": T { text: People.e-notice; size: 15; color: Theme.red-ink; font-weight: 600; accessible-role: AccessibleRole.text; accessible-label: People.e-notice; }
     }
 }
 
 component PersonFormPage inherits PPage {
     maxw: 700px;
     SubHead { title: People.f-title; sub: People.f-subtitle; }
-    if People.f-summary != "": Notice { warn: true; text: People.f-summary; }
+    if People.f-summary != "": ErrorSummary { }
     Group {
         legend: People.f-dead ? "Người đã mất" : "Người đang sống";
         Field { label: "Cách gọi (đứng trước tên)"; hint: "Ví dụ: cụ, kỵ, ông, bà, bác, chú, cô, dì, bố, mẹ…"; text <=> People.f-danh-xung; error: People.e-danh-xung; box-width: 240px; edited => { People.form-changed(); } }
@@ -1042,7 +1130,6 @@ component PersonFormPage inherits PPage {
             what: "Ngày sinh";
             cal <=> People.bd-cal; prec <=> People.bd-prec; d <=> People.bd-d; m <=> People.bd-m; yr <=> People.bd-y;
             leap <=> People.bd-leap; allow-year-only: true;
-            cal-items: ["Dương lịch", "Âm lịch"];
             leap-visible: People.bd-leap-visible; leap-label: People.bd-leap-label; note: People.bd-note;
             result: People.bd-result; error: People.bd-error;
             changed => { People.form-changed(); }
@@ -1053,11 +1140,11 @@ component PersonFormPage inherits PPage {
             T { text: People.f-tuoi-line; size: 16; font-weight: 700; accessible-role: AccessibleRole.text; accessible-label: People.f-tuoi-line; }
             Check { text: "Tự nhập tuổi (khi gia đình ghi khác)"; checked <=> People.f-tuoi-manual; toggled => { People.form-changed(); } }
             if People.f-tuoi-manual: NumBox { label: "Tuổi (1–150)"; text <=> People.f-tuoi; w: 96px; edited => { People.form-changed(); } }
-            if People.e-tuoi != "": T { text: People.e-tuoi; size: 14; color: Theme.red-ink; font-weight: 600; }
+            if People.e-tuoi != "": T { text: People.e-tuoi; size: 15; color: Theme.red-ink; font-weight: 600; }
         }
         if !People.f-dead && People.f-feb29: VerticalLayout {
             spacing: 6px;
-            T { text: "Sinh ngày 29/02 — năm không nhuận mừng sinh nhật vào:"; size: 14; font-weight: 600; color: Theme.ink2; }
+            T { text: "Sinh ngày 29/02 — năm không nhuận mừng sinh nhật vào:"; size: 15; font-weight: 600; color: Theme.ink2; }
             Choice { items: ["28/02", "01/03"]; current: People.f-feb29-rule; group: "Năm không nhuận"; picked(i) => { People.f-feb29-rule = i; People.form-changed(); } }
         }
     }
@@ -1071,7 +1158,7 @@ component PersonFormPage inherits PPage {
             toggle(i) => { People.toggle-off("r", i); }
         }
         Check { text: "Nhắc cả sinh nhật âm lịch hằng năm"; checked <=> People.f-am; enabled: People.f-am-allowed; toggled => { People.form-changed(); } }
-        if !People.f-am-allowed: T { text: "Cần biết đủ ngày sinh"; size: 13; color: Theme.ink3; }
+        if !People.f-am-allowed: T { text: "Cần biết đủ ngày sinh"; size: 14; color: Theme.ink3; }
         if People.f-am && People.f-am-allowed: Check { text: "Nhắc sinh nhật âm lịch giống nhắc sinh nhật dương lịch"; checked <=> People.f-am-same; toggled => { People.form-changed(); } }
         if People.f-am && People.f-am-allowed && !People.f-am-same: VerticalLayout {
             spacing: 8px;
@@ -1090,15 +1177,15 @@ component PersonFormPage inherits PPage {
         Field { label: "Nơi an táng"; text <=> People.f-noi-an-tang; error: People.e-noi-an-tang; edited => { People.form-changed(); } }
         HorizontalLayout {
             spacing: 14px; alignment: start;
-            PhotoOval { has: People.f-has-photo; img: People.f-photo; initial: "?"; w: 96px; }
+            OvalPhoto { has: People.f-has-photo; img: People.f-photo; initial: "?"; w: 96px; bg: Theme.paper; }
             VerticalLayout {
                 spacing: 8px; alignment: center;
                 Btn { text: People.f-has-photo ? "Đổi ảnh" : "Chọn ảnh"; kind: "outline"; clicked => { People.pick-photo(); } }
                 if People.f-has-photo: Btn { text: "Bỏ ảnh"; clicked => { People.drop-photo(); } }
             }
         }
-        T { text: "Ảnh chỉ lưu trong ứng dụng trên máy này, đã bỏ thông tin vị trí và máy chụp."; size: 13; color: Theme.ink3; }
-        if People.e-photo != "": T { text: People.e-photo; size: 14; color: Theme.red-ink; font-weight: 600; accessible-role: AccessibleRole.text; accessible-label: People.e-photo; }
+        T { text: "Ảnh chỉ lưu trong ứng dụng trên máy này, đã bỏ thông tin vị trí và máy chụp."; size: 14; color: Theme.ink3; }
+        if People.e-photo != "": T { text: People.e-photo; size: 15; color: Theme.red-ink; font-weight: 600; accessible-role: AccessibleRole.text; accessible-label: People.e-photo; }
     }
     if People.f-dead: NoticeBlock { }
     if People.f-dead: Group {
@@ -1125,11 +1212,11 @@ component PersonFormPage inherits PPage {
         }
         if People.f-mem-open: VerticalLayout {
             spacing: 10px;
-            T { text: "Giỗ hết (giỗ lần cuối của thời gian để tang) vào"; size: 14; font-weight: 600; color: Theme.ink2; }
+            T { text: "Giỗ hết (giỗ lần cuối của thời gian để tang) vào"; size: 15; font-weight: 600; color: Theme.ink2; }
             Choice { items: ["Năm thứ 2 sau năm mất", "Năm thứ 3 sau năm mất"]; current: People.f-gio-het - 2; group: "Giỗ hết"; picked(i) => { People.f-gio-het = i + 2; People.form-changed(); } }
             Field { label: "Lời tưởng niệm"; text <=> People.f-loi; multiline: true; edited => { People.form-changed(); } }
             NumBox { label: "Mất trước tuổi này thì ghi “hưởng dương” (mất sớm) thay cho “hưởng thọ”"; text <=> People.f-nguong; w: 96px; edited => { People.form-changed(); } }
-            if People.e-nguong != "": T { text: People.e-nguong; size: 14; color: Theme.red-ink; font-weight: 600; }
+            if People.e-nguong != "": T { text: People.e-nguong; size: 15; color: Theme.red-ink; font-weight: 600; }
         }
     }
     FormButtons { }
@@ -1139,7 +1226,7 @@ component MarkDeceasedPage inherits PPage {
     maxw: 700px;
     SubHead { title: "Cập nhật: đã mất"; sub: People.md-name; }
     T { text: "Ghi lại ngày mất của " + People.md-name + ". Hồ sơ, ảnh và ngày sinh được giữ nguyên; ứng dụng sẽ nhắc ngày giỗ hằng năm."; size: 15; color: Theme.ink2; }
-    if People.f-summary != "": Notice { warn: true; text: People.f-summary; }
+    if People.f-summary != "": ErrorSummary { }
     Group {
         legend: "Ngày mất *";
         DateIn {
@@ -1159,10 +1246,10 @@ component MarkDeceasedPage inherits PPage {
 component EventFormPage inherits PPage {
     maxw: 700px;
     SubHead { title: People.ev-heading; }
-    if People.f-summary != "": Notice { warn: true; text: People.f-summary; }
+    if People.f-summary != "": ErrorSummary { }
     Group {
         legend: "Sự kiện";
-        T { text: "Loại"; size: 14; font-weight: 600; color: Theme.ink2; }
+        T { text: "Loại"; size: 15; font-weight: 600; color: Theme.ink2; }
         HorizontalLayout {
             alignment: start;
             ComboBox {
@@ -1183,7 +1270,6 @@ component EventFormPage inherits PPage {
             cal <=> People.ed-cal; d <=> People.ed-d; m <=> People.ed-m; yr <=> People.ed-y;
             leap <=> People.ed-leap; unknown <=> People.ed-unknown;
             allow-unknown: People.ev-recurring; unknown-text: "Không rõ năm";
-            cal-items: ["Dương lịch", "Âm lịch"];
             leap-visible: People.ed-leap-visible; leap-label: People.ed-leap-label; note: People.ed-note;
             result: People.ed-result; error: People.ed-error;
             changed => { People.form-changed(); }
@@ -1247,12 +1333,9 @@ component MemorialPage inherits Rectangle {
                     // Ảnh bầu dục viền vàng đồng
                     HorizontalLayout {
                         alignment: center; padding-top: 6px;
-                        Rectangle {
-                            width: 136px; height: 172px; border-radius: 68px; clip: true;
-                            background: #2b2422; border-width: 3px; border-color: #b8893a;
-                            accessible-role: AccessibleRole.text; accessible-label: People.m-has-photo ? "Ảnh chân dung" : "Chưa có ảnh";
-                            if People.m-has-photo: Image { width: parent.width; height: parent.height; source: People.m-photo; image-fit: cover; }
-                            if !People.m-has-photo: Text { text: People.m-initial; color: #e8c67a; font-family: Theme.serif; font-size: 48px; horizontal-alignment: center; vertical-alignment: center; }
+                        OvalPhoto {
+                            w: 138px; bg: #1d1513; fill: #2b2422; initial-color: #e8c67a; stroke: 3px;
+                            has: People.m-has-photo; img: People.m-photo; initial: People.m-initial;
                         }
                     }
                     // Bia: đỉnh vòm, nền đá sẫm, chữ vàng đồng
@@ -1322,7 +1405,7 @@ component MemorialPage inherits Rectangle {
                             // Hai cây nến
                             for c in [{ x: 18px }, { x: 386px }]: Rectangle {
                                 x: c.x; y: 112px; width: 16px; height: 64px;
-                                Rectangle { y: 12px; width: 16px; height: 52px; border-radius: 3px; background: #efe3cf; }
+                                Rectangle { y: 12px; width: 16px; height: 52px; border-radius: 3px; background: @linear-gradient(90deg, #a3121a 0%, #c4161c 55%, #8f1416 100%); }
                                 Rectangle { x: 4px; y: 0px; width: 8px; height: 13px; border-radius: 4px; background: #ffb347; }
                             }
                             // Mâm ngũ quả
@@ -1358,6 +1441,8 @@ component Dialog inherits Rectangle {
         x: (parent.width - self.width) / 2;
         y: (parent.height - self.height) / 2;
         border-radius: 18px;
+        // Viền để hộp tách khỏi lớp phủ ở giao diện tối (TKN-W-14).
+        border-width: 1px; border-color: Theme.outline;
         TouchArea { }
         VerticalLayout {
             padding: 20px; spacing: 10px;
@@ -1368,18 +1453,18 @@ component Dialog inherits Rectangle {
                 Field { label: "Mật khẩu (ít nhất 8 ký tự)"; text <=> People.pw1; password: true; error: People.e-pw1; }
                 Field { label: "Nhập lại mật khẩu"; text <=> People.pw2; password: true; error: People.e-pw2; }
                 Notice { text: "Lưu ý: quên mật khẩu là mất dữ liệu trong tệp — không ai lấy lại được, kể cả Clevix Lab."; }
-                T { text: "Gợi ý: dùng một câu dễ nhớ, ví dụ \"nhà ở Hà Đông có cây bàng\"."; size: 13; color: Theme.ink3; }
+                T { text: "Gợi ý: dùng một câu dễ nhớ, ví dụ \"nhà ở Hà Đông có cây bàng\"."; size: 14; color: Theme.ink3; }
             }
             if People.dlg == "khoi-phuc": VerticalLayout {
                 spacing: 6px;
-                T { text: "Cách nhập:"; size: 14; font-weight: 600; }
+                T { text: "Cách nhập:"; size: 15; font-weight: 600; }
                 Choice {
                     items: ["Gộp vào dữ liệu đang có (khuyên dùng)", "Thay toàn bộ"]; current: People.restore-mode; group: "Cách nhập";
                     picked(i) => { People.restore-mode = i; }
                 }
-                T { text: People.restore-mode == 0 ? "Giữ bản mới hơn của từng hồ sơ." : "Xóa dữ liệu đang có trên máy rồi dùng dữ liệu trong tệp."; size: 13; color: Theme.ink3; }
+                T { text: People.restore-mode == 0 ? "Giữ bản mới hơn của từng hồ sơ." : "Xóa dữ liệu đang có trên máy rồi dùng dữ liệu trong tệp."; size: 14; color: Theme.ink3; }
             }
-            if People.dlg-busy: T { text: "Đang xử lý… (có thể mất vài giây)"; size: 14; color: Theme.ink3; }
+            if People.dlg-busy: T { text: "Đang xử lý… (có thể mất vài giây)"; size: 15; color: Theme.ink3; }
             HorizontalLayout {
                 alignment: end; spacing: 10px; padding-top: 6px;
                 Btn { text: People.dlg-cancel; kind: "outline"; enabled: !People.dlg-busy; clicked => { People.dlg-dismiss(); } }

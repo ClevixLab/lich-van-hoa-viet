@@ -72,7 +72,11 @@ fn demo_certificate() -> Vec<u8> {
 /// Gieo dữ liệu mẫu vào kho tạm. Trả id của (người đã mất có ảnh + báo tử, người đã mất có giỗ hôm nay, người
 /// đang sống).
 pub fn seed_demo(ps: &mut PState) -> (String, String, String) {
-    let store = ps.store.clone().expect("kho đã mở");
+    seed_store(&ps.store.clone().expect("kho đã mở"))
+}
+
+/// Gieo dữ liệu mẫu vào một kho (dùng cả cho `--kiem-thong-bao`).
+pub fn seed_store(store: &lvhv_ffi::LvhvStore) -> (String, String, String) {
     let today = local_today();
     // 1) Ông nội — mất 08/08/2025 (15/6 nhuận Ất Tỵ), có ảnh.
     let ph = crate::photo::reencode(&demo_portrait()).unwrap();

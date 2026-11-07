@@ -1,6 +1,6 @@
-//! Phần phụ thuộc hệ điều hành của mô-đun Người thân: thư mục dữ liệu, múi giờ, hộp chọn tệp, thông báo
-//! Windows đặt lịch trước (02 §7.5). Trên Linux (kiểm thử, chụp màn hình) các hàm Windows có bản thay thế
-//! không làm gì. Không dùng mạng.
+//! Phần phụ thuộc hệ điều hành của mô-đun Người thân: thư mục dữ liệu, múi giờ (kể cả giờ mùa hè), hộp chọn tệp
+//! (con của cửa sổ chính), định danh ứng dụng. Thông báo đặt lịch: `toasts.rs`. Trên Linux (kiểm thử, chụp màn
+//! hình) các hàm Windows có bản thay thế không làm gì. Không dùng mạng.
 
 use std::cell::RefCell;
 use std::path::PathBuf;
@@ -101,17 +101,17 @@ pub fn set_dialog_override(f: Option<Box<dyn Fn(Dialog) -> Option<PathBuf>>>) {
 }
 
 /// Mở hộp chọn tệp của hệ điều hành. `None` khi người dùng hủy (hoặc không có hộp thoại trên máy này).
-pub fn pick(kind: Dialog) -> Option<PathBuf> {
+pub fn pick(owner: Option<isize>, kind: Dialog) -> Option<PathBuf> {
     let o = DIALOG.with(|d| d.borrow().as_ref().map(|f| f(kind.clone())));
     if let Some(r) = o {
         return r;
     }
-    os_pick(kind)
+    os_pick(owner, kind)
 }
 
 #[cfg(windows)]
 #[allow(unsafe_code)]
-fn os_pick(kind: Dialog) -> Option<PathBuf> {
+fn os_pick(owner: Option<isize>, kind: Dialog) -> Option<PathBuf> {
     use std::os::windows::ffi::OsStringExt;
     use windows::core::{PCWSTR, PWSTR};
     use windows::Win32::UI::Controls::Dialogs::{
@@ -159,6 +159,7 @@ fn os_pick(kind: Dialog) -> Option<PathBuf> {
     let save = matches!(kind, Dialog::Save(_));
     let mut ofn = OPENFILENAMEW {
         lStructSize: std::mem::size_of::<OPENFILENAMEW>() as u32,
+        hwndOwner: windows::Win32::Foundation::HWND(owner.unwrap_or(0) as *mut core::ffi::c_void),
         lpstrFilter: PCWSTR(filter.as_ptr()),
         lpstrFile: PWSTR(buf.as_mut_ptr()),
         nMaxFile: buf.len() as u32,
@@ -194,296 +195,185 @@ fn os_pick(kind: Dialog) -> Option<PathBuf> {
 }
 
 #[cfg(not(windows))]
-fn os_pick(_kind: Dialog) -> Option<PathBuf> {
+fn os_pick(_owner: Option<isize>, _kind: Dialog) -> Option<PathBuf> {
     None
 }
 
+
 // ------------------------------------------------------------------------------------------------
-// Thông báo Windows đặt lịch trước (ScheduledToastNotification)
+// Chế độ dữ liệu mẫu, định danh ứng dụng, cửa sổ cha của hộp thoại
 // ------------------------------------------------------------------------------------------------
 
-/// Một thông báo đang chờ trong hệ thống: `id` của lõi (`lvhv:…`), thời điểm, nội dung `title\nbody`.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct PendingToast {
-    pub id: String,
-    pub at_unix_s: i64,
-    pub content: String,
-}
-
-/// Mã ngắn (12 chữ hex, 48 bit đầu của FNV-1a 64 bit) của id lõi. `Id`/`Tag` của thông báo đặt lịch có giới hạn
-/// độ dài: CI Windows báo 0x803E0120 "The size of the developer id for scheduled notification is too large" với
-/// 16 ký tự, nên dùng 12. Xung đột không đáng kể với ≤ 64 thông báo chờ.
-pub fn short_id(id: &str) -> String {
-    let mut h: u64 = 0xcbf29ce484222325;
-    for b in id.bytes() {
-        h ^= b as u64;
-        h = h.wrapping_mul(0x100000001b3);
-    }
-    format!("{:012x}", h >> 16)
-}
-
-fn xml_escape(s: &str) -> String {
-    s.replace('&', "&amp;")
-        .replace('<', "&lt;")
-        .replace('>', "&gt;")
-        .replace('"', "&quot;")
-}
-
-fn xml_unescape(s: &str) -> String {
-    s.replace("&lt;", "<")
-        .replace("&gt;", ">")
-        .replace("&quot;", "\"")
-        .replace("&apos;", "'")
-        .replace("&amp;", "&")
-}
-
-/// Nội dung XML của một thông báo (mẫu ToastGeneric). `launch` giữ id của lõi để đọc lại khi xoay vòng.
-pub fn toast_xml(id: &str, title: &str, body: &str) -> String {
-    format!(
-        "<toast launch=\"{}\"><visual><binding template=\"ToastGeneric\"><text>{}</text><text>{}</text></binding></visual></toast>",
-        xml_escape(id),
-        xml_escape(title),
-        xml_escape(body)
-    )
-}
-
-/// Đọc lại (id lõi, nội dung) từ XML do `toast_xml` sinh.
-pub fn parse_toast_xml(xml: &str) -> Option<(String, String)> {
-    let a = xml.find("launch=\"")? + 8;
-    let b = a + xml[a..].find('"')?;
-    let id = xml_unescape(&xml[a..b]);
-    let mut texts = Vec::new();
-    let mut rest = &xml[b..];
-    while let Some(i) = rest.find("<text") {
-        let s = i + rest[i..].find('>')? + 1;
-        let e = s + rest[s..].find("</text>")?;
-        texts.push(xml_unescape(&rest[s..e]));
-        rest = &rest[e + 7..];
-    }
-    let content = match texts.as_slice() {
-        [t] => t.clone(),
-        [t, b, ..] => format!("{t}\n{b}"),
-        [] => String::new(),
-    };
-    Some((id, content))
-}
-
-/// Tình trạng thông báo Windows trên máy này.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum ToastState {
-    /// Đặt lịch được.
-    Ready,
-    /// Windows có thông báo nhưng người dùng/chính sách đang tắt cho ứng dụng này.
-    Disabled(String),
-    /// Không đọc được cài đặt thông báo (Windows trả lỗi), nhưng vẫn thử đặt lịch được.
-    Unknown(String),
-    /// Không dùng được (không phải Windows, hoặc không tạo được bộ gửi thông báo).
-    Unavailable(String),
-}
-
-#[cfg(windows)]
-mod toast_os {
-    use super::*;
-    use windows::core::HSTRING;
-    use windows::Data::Xml::Dom::XmlDocument;
-    use windows::Foundation::DateTime;
-    use windows::UI::Notifications::{
-        NotificationSetting, ScheduledToastNotification, ToastNotificationManager, ToastNotifier,
-    };
-
-    const EPOCH_DIFF_S: i64 = 11_644_473_600;
-
-    #[allow(unsafe_code)]
-    pub fn init() {
-        use windows::Win32::UI::Shell::SetCurrentProcessExplicitAppUserModelID;
-        // SAFETY: chuỗi HSTRING hợp lệ suốt lời gọi.
-        let _ = unsafe { SetCurrentProcessExplicitAppUserModelID(&HSTRING::from(AUMID)) };
-    }
-
-    fn notifier() -> windows::core::Result<ToastNotifier> {
-        ToastNotificationManager::CreateToastNotifierWithId(&HSTRING::from(AUMID))
-    }
-
-    pub fn state() -> ToastState {
-        let n = match notifier() {
-            Ok(n) => n,
-            Err(e) => {
-                return ToastState::Unavailable(format!(
-                    "Windows chưa cho ứng dụng gửi thông báo ({}).",
-                    e.code()
-                ))
-            }
-        };
-        match n.Setting() {
-            Ok(NotificationSetting::Enabled) => ToastState::Ready,
-            Ok(NotificationSetting::DisabledForApplication) => {
-                ToastState::Disabled("Thông báo của ứng dụng đang tắt trong Cài đặt Windows (Hệ thống › Thông báo).".into())
-            }
-            Ok(NotificationSetting::DisabledForUser) => {
-                ToastState::Disabled("Thông báo đang tắt cho tài khoản Windows này.".into())
-            }
-            Ok(NotificationSetting::DisabledByGroupPolicy) => {
-                ToastState::Disabled("Thông báo bị tắt bởi chính sách của máy.".into())
-            }
-            Ok(_) => ToastState::Disabled("Windows đang tắt thông báo trên máy này.".into()),
-            // 0x80070490 (không tìm thấy) gặp trên máy CI ngay sau khi cài; vẫn thử đặt lịch.
-            Err(e) => ToastState::Unknown(format!("{}", e.code())),
-        }
-    }
-
-    pub fn pending() -> windows::core::Result<Vec<PendingToast>> {
-        let n = notifier()?;
-        let v = n.GetScheduledToastNotifications()?;
-        let mut out = Vec::new();
-        for i in 0..v.Size()? {
-            let s = v.GetAt(i)?;
-            let xml = s.Content()?.GetXml()?.to_string();
-            let Some((id, content)) = parse_toast_xml(&xml) else {
-                continue;
-            };
-            let at = s.DeliveryTime()?.UniversalTime / 10_000_000 - EPOCH_DIFF_S;
-            out.push(PendingToast {
-                id,
-                at_unix_s: at,
-                content,
-            });
-        }
-        Ok(out)
-    }
-
-    pub fn remove(ids: &[String]) -> windows::core::Result<usize> {
-        let n = notifier()?;
-        let v = n.GetScheduledToastNotifications()?;
-        let mut k = 0;
-        for i in 0..v.Size()? {
-            let s = v.GetAt(i)?;
-            let xml = s.Content()?.GetXml()?.to_string();
-            if let Some((id, _)) = parse_toast_xml(&xml) {
-                if ids.contains(&id) {
-                    n.RemoveFromSchedule(&s)?;
-                    k += 1;
-                }
-            }
-        }
-        Ok(k)
-    }
-
-    pub fn add(id: &str, at_unix_s: i64, title: &str, body: &str) -> windows::core::Result<()> {
-        let n = notifier()?;
-        let doc = XmlDocument::new()?;
-        doc.LoadXml(&HSTRING::from(toast_xml(id, title, body)))?;
-        let t = DateTime {
-            UniversalTime: (at_unix_s + EPOCH_DIFF_S) * 10_000_000,
-        };
-        let s = ScheduledToastNotification::CreateScheduledToastNotification(&doc, t)?;
-        let sid = short_id(id);
-        s.SetId(&HSTRING::from(sid.as_str()))?;
-        s.SetTag(&HSTRING::from(sid.as_str()))?;
-        s.SetGroup(&HSTRING::from("lvhv"))?;
-        n.AddToSchedule(&s)
-    }
-}
-
-/// Đặt định danh ứng dụng cho tiến trình (thanh tác vụ và thông báo dùng chung một AUMID).
-pub fn init_app_identity() {
-    #[cfg(windows)]
-    toast_os::init();
-}
-
-/// Chế độ chụp màn hình / đo bộ nhớ: dữ liệu mẫu không được đặt thành thông báo thật trên máy.
+/// Chế độ chụp màn hình / đo bộ nhớ / kiểm thử: dữ liệu mẫu không được đặt thành thông báo thật.
 static DEMO: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
 pub fn set_demo_mode() {
     DEMO.store(true, std::sync::atomic::Ordering::Relaxed);
 }
 
-pub fn toast_state() -> ToastState {
-    if DEMO.load(std::sync::atomic::Ordering::Relaxed) {
-        return ToastState::Unavailable(
-            "Chế độ chụp màn hình với dữ liệu mẫu: không đặt thông báo thật trên máy này.".into(),
-        );
-    }
+pub fn is_demo() -> bool {
+    DEMO.load(std::sync::atomic::Ordering::Relaxed)
+}
+
+/// Đặt định danh ứng dụng cho tiến trình (thanh tác vụ và thông báo dùng chung một AUMID).
+pub fn init_app_identity() {
     #[cfg(windows)]
+    #[allow(unsafe_code)]
     {
-        toast_os::state()
-    }
-    #[cfg(not(windows))]
-    {
-        ToastState::Unavailable("Thông báo của Windows chỉ có trên Windows.".into())
+        use windows::core::HSTRING;
+        use windows::Win32::UI::Shell::SetCurrentProcessExplicitAppUserModelID;
+        // SAFETY: chuỗi HSTRING hợp lệ suốt lời gọi.
+        let _ = unsafe { SetCurrentProcessExplicitAppUserModelID(&HSTRING::from(AUMID)) };
     }
 }
 
-/// Thông báo đang chờ do ứng dụng này đặt.
-pub fn pending_toasts() -> Result<Vec<PendingToast>, String> {
-    #[cfg(windows)]
-    {
-        toast_os::pending().map_err(|e| e.to_string())
-    }
-    #[cfg(not(windows))]
-    {
-        Ok(Vec::new())
-    }
-}
-
-/// Áp kế hoạch `reschedule` của lõi: gỡ `remove`, thay `replace` (gỡ rồi thêm), thêm `add`.
-/// Trả số thông báo đang chờ sau khi áp. Thông báo có thời điểm đã qua bị Windows từ chối — bỏ qua.
+/// HWND của cửa sổ chính (để hộp chọn tệp là hộp thoại con, luôn nằm trên cửa sổ và chặn cửa sổ cha).
 #[allow(unused_variables)]
-pub fn apply_plan(remove: &[String], add: &[PendingToastNew]) -> Result<usize, String> {
+pub fn hwnd_of(w: &slint::Window) -> Option<isize> {
     #[cfg(windows)]
     {
-        let mut gone: Vec<String> = remove.to_vec();
-        gone.extend(add.iter().filter(|a| a.replace).map(|a| a.id.clone()));
-        toast_os::remove(&gone).map_err(|e| e.to_string())?;
-        let now = now_unix();
-        for a in add.iter().filter(|a| a.at_unix_s > now) {
-            toast_os::add(&a.id, a.at_unix_s, &a.title, &a.body).map_err(|e| e.to_string())?;
-        }
-        Ok(toast_os::pending().map_err(|e| e.to_string())?.len())
-    }
-    #[cfg(not(windows))]
-    {
-        Err("Thông báo của Windows chỉ có trên Windows.".into())
-    }
-}
-
-/// Tự kiểm (CI, R-WIN-1): đặt một thông báo thử sau 1 giờ, đọc lại từ danh sách chờ của Windows, gỡ đi.
-pub fn self_test_toast() -> Result<String, String> {
-    let state = toast_state();
-    #[cfg(windows)]
-    {
-        let id = "lvhv:kiem-thu-thong-bao".to_string();
-        let at = now_unix() + 3600;
-        let before = toast_os::pending().map_err(|e| format!("{state:?}; đọc danh sách chờ lỗi: {e}"))?.len();
-        toast_os::add(&id, at, "Kiểm thử", "Thông báo thử của Lịch Việt")
-            .map_err(|e| format!("{state:?}; đặt thông báo lỗi: {e}"))?;
-        let list = toast_os::pending().map_err(|e| format!("{state:?}; đọc lại lỗi: {e}"))?;
-        let found = list.iter().find(|p| p.id == id).cloned();
-        toast_os::remove(&[id]).map_err(|e| format!("gỡ lỗi: {e}"))?;
-        let after = toast_os::pending().map(|l| l.len()).unwrap_or(usize::MAX);
-        match found {
-            Some(p) if (p.at_unix_s - at).abs() <= 1 => Ok(format!(
-                "Thông báo đặt lịch: ĐẶT ĐƯỢC. Trạng thái {state:?}; chờ trước {before}, sau khi đặt {}, sau khi gỡ {after}; nội dung đọc lại: {:?}",
-                list.len(),
-                p.content
-            )),
-            Some(p) => Err(format!("đọc lại sai thời điểm: {} ≠ {at}", p.at_unix_s)),
-            None => Err(format!("{state:?}; đã đặt nhưng không thấy trong danh sách chờ")),
+        use raw_window_handle::{HasWindowHandle, RawWindowHandle};
+        let h = w.window_handle();
+        match h.window_handle().ok()?.as_raw() {
+            RawWindowHandle::Win32(x) => Some(x.hwnd.get()),
+            _ => None,
         }
     }
     #[cfg(not(windows))]
     {
-        Err(format!("{state:?}"))
+        None
     }
 }
 
-/// Một thông báo cần đặt (từ `add` hoặc `replace` của `reschedule_json`).
-#[derive(Clone, Debug)]
-pub struct PendingToastNew {
-    pub id: String,
-    pub at_unix_s: i64,
-    pub title: String,
-    pub body: String,
-    pub replace: bool,
+// ------------------------------------------------------------------------------------------------
+// Múi giờ: các lần chuyển giờ mùa hè trong 401 ngày tới (MA3N-25-05), như Android/Apple
+// ------------------------------------------------------------------------------------------------
+
+/// Quy tắc chuyển giờ kiểu `SYSTEMTIME` của Windows: `year == 0` → "tuần thứ `day` (5 = cuối cùng) của tháng,
+/// thứ `dow` (0 = Chủ nhật), lúc `hour:minute` giờ địa phương **trước** khi chuyển".
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct TzRule {
+    pub year: u16,
+    pub month: u16,
+    pub dow: u16,
+    pub day: u16,
+    pub hour: u16,
+    pub minute: u16,
+}
+
+/// Một năm của múi giờ: `bias` (phút, UTC = địa phương + bias), độ lệch giờ chuẩn / giờ mùa hè.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct TzYear {
+    pub bias: i32,
+    pub std_bias: i32,
+    pub dst_bias: i32,
+    pub std_date: TzRule,
+    pub dst_date: TzRule,
+}
+
+fn days_from_civil(y: i64, m: i64, d: i64) -> i64 {
+    // Số ngày kể từ 1970-01-01 (thuật toán của H. Hinnant).
+    let y = if m <= 2 { y - 1 } else { y };
+    let era = y.div_euclid(400);
+    let yoe = y - era * 400;
+    let doy = (153 * (m + if m > 2 { -3 } else { 9 }) + 2) / 5 + d - 1;
+    let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+    era * 146_097 + doe - 719_468
+}
+
+fn days_in_month(y: i64, m: i64) -> i64 {
+    days_from_civil(if m == 12 { y + 1 } else { y }, if m == 12 { 1 } else { m + 1 }, 1)
+        - days_from_civil(y, m, 1)
+}
+
+/// Thời điểm (giây Unix, giờ địa phương coi như UTC) của quy tắc trong năm `y`.
+fn rule_local_secs(r: &TzRule, y: i64) -> Option<i64> {
+    if r.month == 0 {
+        return None;
+    }
+    let (m, yy) = (r.month as i64, if r.year != 0 { r.year as i64 } else { y });
+    let day = if r.year != 0 {
+        r.day as i64
+    } else {
+        let first = days_from_civil(yy, m, 1);
+        let wd_first = (first + 4).rem_euclid(7); // 1970-01-01 là Thứ Năm (4)
+        let mut d = 1 + (r.dow as i64 - wd_first).rem_euclid(7) + 7 * (r.day as i64 - 1);
+        while d > days_in_month(yy, m) {
+            d -= 7;
+        }
+        d
+    };
+    Some(days_from_civil(yy, m, day) * 86_400 + r.hour as i64 * 3600 + r.minute as i64 * 60)
+}
+
+/// Các lần chuyển `(giây Unix UTC, độ lệch mới tính bằng phút)` trong một năm.
+pub fn year_transitions(y: i64, z: &TzYear) -> Vec<(i64, i32)> {
+    let std_off = -(z.bias + z.std_bias);
+    let dst_off = -(z.bias + z.dst_bias);
+    let mut v = Vec::new();
+    if z.dst_date.month == 0 || z.std_date.month == 0 || std_off == dst_off {
+        return v;
+    }
+    // Vào giờ mùa hè: giờ địa phương theo giờ chuẩn; ra: theo giờ mùa hè.
+    if let Some(l) = rule_local_secs(&z.dst_date, y) {
+        v.push((l - std_off as i64 * 60, dst_off));
+    }
+    if let Some(l) = rule_local_secs(&z.std_date, y) {
+        v.push((l - dst_off as i64 * 60, std_off));
+    }
+    v.sort();
+    v
+}
+
+/// Múi giờ thiết bị cho lõi: độ lệch hiện tại + các lần chuyển trong `(now, now + 401 ngày]`.
+pub fn device_zone() -> lvhv_ffi::DeviceZone {
+    let now = now_unix();
+    let offset = utc_offset_min();
+    let mut transitions = Vec::new();
+    if FAKE_OFFSET.with(|f| f.borrow().is_none()) {
+        let y = 1970 + now.div_euclid(86_400 * 365.2425 as i64);
+        for yy in y - 1..=y + 2 {
+            if let Some(z) = os_year(yy) {
+                for (at, off) in year_transitions(yy, &z) {
+                    if at > now && at <= now + 401 * 86_400 {
+                        transitions.push(lvhv_ffi::ZoneTransition { at_unix_s: at, offset_min: off });
+                    }
+                }
+            }
+        }
+        transitions.sort_by_key(|t| t.at_unix_s);
+        transitions.dedup_by_key(|t| t.at_unix_s);
+    }
+    lvhv_ffi::DeviceZone { offset_min: offset, transitions }
+}
+
+#[cfg(windows)]
+#[allow(unsafe_code)]
+fn os_year(y: i64) -> Option<TzYear> {
+    use windows::Win32::System::Time::{GetTimeZoneInformationForYear, TIME_ZONE_INFORMATION};
+    let mut tz = TIME_ZONE_INFORMATION::default();
+    // SAFETY: con trỏ tới biến cục bộ; `None` = múi giờ hiện tại của máy.
+    unsafe { GetTimeZoneInformationForYear(u16::try_from(y).ok()?, None, &mut tz) }.ok()?;
+    let r = |s: &windows::Win32::Foundation::SYSTEMTIME| TzRule {
+        year: s.wYear,
+        month: s.wMonth,
+        dow: s.wDayOfWeek,
+        day: s.wDay,
+        hour: s.wHour,
+        minute: s.wMinute,
+    };
+    Some(TzYear {
+        bias: tz.Bias,
+        std_bias: tz.StandardBias,
+        dst_bias: tz.DaylightBias,
+        std_date: r(&tz.StandardDate),
+        dst_date: r(&tz.DaylightDate),
+    })
+}
+
+#[cfg(not(windows))]
+fn os_year(_y: i64) -> Option<TzYear> {
+    None
 }
 
 #[cfg(test)]
@@ -491,15 +381,30 @@ mod tests {
     use super::*;
 
     #[test]
-    fn toast_xml_roundtrip() {
-        let x = toast_xml("lvhv:abc:2026-07-28:k=3", "Còn 3 ngày: <Giỗ> & \"x\"", "Thứ Ba, 28/07/2026");
-        let (id, c) = parse_toast_xml(&x).unwrap();
-        assert_eq!(id, "lvhv:abc:2026-07-28:k=3");
-        assert_eq!(c, "Còn 3 ngày: <Giỗ> & \"x\"\nThứ Ba, 28/07/2026");
-        assert_eq!(short_id("lvhv:sentinel").len(), 12);
-        assert_ne!(short_id("a"), short_id("b"));
-        // Lối tắt Start Menu của bộ cài mang đúng AUMID này (R-WIN-1).
-        assert!(include_str!("../wix/main.wxs")
-            .contains(&format!("Key='System.AppUserModel.ID' Value='{AUMID}'")));
+    fn berlin_2026_transitions() {
+        // Europe/Berlin: Bias −60, giờ mùa hè −60; vào: Chủ nhật cuối tháng 3 lúc 02:00; ra: Chủ nhật cuối tháng 10
+        // lúc 03:00 → 29/03/2026 01:00Z và 25/10/2026 01:00Z.
+        let z = TzYear {
+            bias: -60,
+            std_bias: 0,
+            dst_bias: -60,
+            std_date: TzRule { year: 0, month: 10, dow: 0, day: 5, hour: 3, minute: 0 },
+            dst_date: TzRule { year: 0, month: 3, dow: 0, day: 5, hour: 2, minute: 0 },
+        };
+        let t = year_transitions(2026, &z);
+        let utc = |y: i64, m: i64, d: i64, h: i64| days_from_civil(y, m, d) * 86_400 + h * 3600;
+        assert_eq!(t, vec![(utc(2026, 3, 29, 1), 120), (utc(2026, 10, 25, 1), 60)]);
+        // Việt Nam: không có giờ mùa hè.
+        let vn = TzYear { bias: -420, std_bias: 0, dst_bias: 0, std_date: TzRule { year: 0, month: 0, dow: 0, day: 0, hour: 0, minute: 0 }, dst_date: TzRule { year: 0, month: 0, dow: 0, day: 0, hour: 0, minute: 0 } };
+        assert!(year_transitions(2026, &vn).is_empty());
+        // Hoa Kỳ (New York): Chủ nhật thứ hai tháng 3 lúc 02:00, Chủ nhật đầu tháng 11 lúc 02:00 → 08/03 07:00Z, 01/11 06:00Z.
+        let ny = TzYear {
+            bias: 300,
+            std_bias: 0,
+            dst_bias: -60,
+            std_date: TzRule { year: 0, month: 11, dow: 0, day: 1, hour: 2, minute: 0 },
+            dst_date: TzRule { year: 0, month: 3, dow: 0, day: 2, hour: 2, minute: 0 },
+        };
+        assert_eq!(year_transitions(2026, &ny), vec![(utc(2026, 3, 8, 7), -240), (utc(2026, 11, 1, 6), -300)]);
     }
 }

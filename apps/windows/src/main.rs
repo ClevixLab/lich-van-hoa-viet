@@ -15,6 +15,7 @@ mod people;
 mod photo;
 mod platform;
 mod shots;
+mod toasts;
 #[cfg(test)]
 mod ui_tests;
 #[cfg(test)]
@@ -693,7 +694,16 @@ fn main() -> Result<(), slint::PlatformError> {
     // sách chờ của Windows, gỡ nó, in kết quả. Không mở cửa sổ, không đụng dữ liệu người dùng. Dùng trong CI.
     if mode == "--kiem-thong-bao" {
         platform::init_app_identity();
-        match platform::self_test_toast() {
+        let dir = std::env::temp_dir().join(format!("lvhv-kiem-thong-bao-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let r = lvhv_ffi::LvhvStore::open(dir.to_string_lossy().into_owned())
+            .map_err(|e| e.to_string())
+            .and_then(|store| {
+                shots::seed_store(&store);
+                toasts::self_test(toasts::system().as_ref(), &store, platform::now_unix(), platform::device_zone())
+            });
+        let _ = std::fs::remove_dir_all(&dir);
+        match r {
             Ok(msg) => {
                 println!("{msg}");
                 std::process::exit(0);
@@ -704,6 +714,11 @@ fn main() -> Result<(), slint::PlatformError> {
             }
         }
     }
+    // Bấm vào thông báo: Windows chạy `LichViet.exe "lichviet:nguoi/<id>?…"` (giao thức do bộ cài đăng ký).
+    let open_person = args
+        .iter()
+        .find_map(|a| toasts::parse_launch(a))
+        .and_then(|l| l.person);
     let demo = mode == "--chup-man-hinh" || mode == "--do-bo-nho";
     if demo {
         let dir = std::env::temp_dir().join(format!("lvhv-demo-{}", std::process::id()));
@@ -719,6 +734,11 @@ fn main() -> Result<(), slint::PlatformError> {
         }
     } else if mode == "--do-bo-nho" {
         shots::memory_mode(&ui, st);
+    } else if let Some(id) = open_person {
+        // Mở đúng hồ sơ của lời nhắc (chỉ khi hồ sơ còn trong kho).
+        ui.set_tab(4);
+        ui.global::<Data>().invoke_open_people();
+        ui.global::<People>().invoke_open_person(id.into());
     }
     ui.run()
 }
