@@ -151,17 +151,20 @@ private fun AttRow(it: AttItem, i: Int, repo: PeopleRepo, onRemove: () -> Unit) 
     val label = "${ATT_KIND_TEXT[it.kind] ?: "Tệp"} ${i + 1}"
     val meta = remember(it.fileId) { it.fileId?.let { id -> repo.attachmentMeta()[id] } }
     val pdf = it.isPdf || meta?.s("mime") == "application/pdf"
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-        if (!pdf) {
-            val bytes = remember(it) { it.pending?.bytes ?: it.fileId?.let { id -> repo.attachmentBytes(id) } }
-            val img = remember(bytes) { bytes?.let { b -> Photos.bitmap(b, 512)?.asImageBitmap() } }
-            if (img != null) Image(img, contentDescription = label, contentScale = ContentScale.Fit, modifier = Modifier.size(96.dp))
+    // Nhãn một dòng riêng (không bị ép hẹp bên cạnh ảnh); dưới là ảnh thu nhỏ / "PDF" và nút bỏ.
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Body("$label · ${if (pdf) "PDF" else "Ảnh"}")
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+            if (!pdf) {
+                val bytes = remember(it) { it.pending?.bytes ?: it.fileId?.let { id -> repo.attachmentBytes(id) } }
+                val img = remember(bytes) { bytes?.let { b -> Photos.bitmap(b, 512)?.asImageBitmap() } }
+                if (img != null) Image(img, contentDescription = label, contentScale = ContentScale.Fit, modifier = Modifier.size(96.dp))
+            } else {
+                (it.pending?.fileName ?: meta?.sn("file_name"))?.let { n -> Fine(n, Modifier.weight(1f)) }
+            }
+            if (!pdf) androidx.compose.foundation.layout.Spacer(Modifier.weight(1f))
+            SecondaryButton("Bỏ tệp", onRemove)
         }
-        Column(Modifier.weight(1f)) {
-            Body(label)
-            Fine(if (pdf) "PDF" else "Ảnh")
-        }
-        SecondaryButton("Bỏ tệp", onRemove)
     }
 }
 

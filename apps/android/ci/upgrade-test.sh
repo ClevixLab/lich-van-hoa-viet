@@ -102,9 +102,9 @@ end
 
 say "Ca chuyển đổi lỗi: quay lui, chế độ chỉ đọc, vẫn xuất sao lưu"
 # Lõi chỉ có tùy chọn buộc lỗi ở API Rust (OpenOptions::force_migration_failure, không qua FFI). Ở đây làm lỗi bằng dữ
-# liệu: một hồ sơ trong kho phiên bản 1 có `kind` không hợp lệ → kiểm tra 01 §6.2 sau chuyển đổi thất bại.
+# liệu như store/tests/released.rs: một chuỗi chưa cắt khoảng trắng trong kho phiên bản 1 → kiểm 01 §6.2 sau chuyển đổi lỗi.
 BAD="$(mktemp -d)"; cp -r "$FIX/store/." "$BAD/"
-sqlite3 "$BAD/lvhv.sqlite" "UPDATE person SET json = json_set(json, '\$.kind', 'xyz') WHERE id = '0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e03';" \
+sqlite3 "$BAD/lvhv.sqlite" "UPDATE person SET json = json_set(json, '\$.death.notice.place', '  Quê nhà') WHERE id = '0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e02';" \
   || fail "không sửa được bản sao bộ mẫu"
 BEFORE="$(sha256sum "$BAD/lvhv.sqlite" | cut -c1-64)"
 seed_store "$BAD"

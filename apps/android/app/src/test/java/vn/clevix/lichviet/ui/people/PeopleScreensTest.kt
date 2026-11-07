@@ -145,6 +145,8 @@ class PeopleScreensTest {
         show(r = ro, start = PRoute.Profiles)
         rule.onNodeWithText("chế độ chỉ đọc", substring = true).assertExists()
         assertTrue(rule.onAllNodesWithText("+ Thêm").fetchSemanticsNodes().isEmpty())
+        // Dữ liệu cũ vẫn xem được.
+        assertTrue(rule.onAllNodesWithText("Nguyễn Văn A", substring = true).fetchSemanticsNodes().isNotEmpty())
         shoot("41-chi-doc", variants = withXl)
         rule.onNodeWithText("Tạo tệp sao lưu…").performScrollTo().performClick()
         rule.waitForIdle()

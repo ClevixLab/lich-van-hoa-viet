@@ -32,12 +32,15 @@ class MigrationTest {
             return d
         }
 
-        /** Làm hỏng một hồ sơ trong kho phiên bản 1 (cần công cụ sqlite3 của máy dựng). */
+        /**
+         * Làm hỏng một hồ sơ trong kho phiên bản 1 như store/tests/released.rs: chuỗi chưa cắt khoảng trắng → bước kiểm
+         * 01 §6.2 sau chuyển đổi thất bại (cần công cụ sqlite3 của máy dựng).
+         */
         fun breakOnePerson(dir: File) {
             val p = runCatching {
                 ProcessBuilder(
                     "sqlite3", File(dir, "lvhv.sqlite").path,
-                    "UPDATE person SET json = json_set(json, '$.kind', 'xyz') WHERE id = '0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e03';",
+                    "UPDATE person SET json = json_set(json, '$.death.notice.place', '  Quê nhà') WHERE id = '0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e02';",
                 ).redirectErrorStream(true).start()
             }.getOrNull()
             assumeTrue("cần công cụ sqlite3", p != null && p.waitFor() == 0)
