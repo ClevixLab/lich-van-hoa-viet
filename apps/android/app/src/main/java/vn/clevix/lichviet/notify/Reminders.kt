@@ -114,7 +114,7 @@ object Reminders {
     fun genericTitle(cls: String): String = when (cls) {
         "gio", "tien_thuong" -> "Sắp đến ngày giỗ"
         "sinh_nhat", "sinh_nhat_am" -> "Sắp đến sinh nhật"
-        else -> "Sắp đến ngày kỷ niệm"
+        else -> "Sắp đến sự kiện" // cùng chữ với lõi (O-9)
     }
 
     fun ensureChannel(ctx: Context) {
