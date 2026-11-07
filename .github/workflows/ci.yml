@@ -107,8 +107,8 @@ jobs:
         uses: EmbarkStudios/cargo-deny-action@v2
         with:
           manifest-path: apps/windows/Cargo.toml
+          # deny.toml được tìm cạnh manifest (apps/windows/deny.toml).
           command: check advisories bans
-          command-arguments: --config apps/windows/deny.toml
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
