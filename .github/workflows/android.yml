@@ -2,11 +2,42 @@
 # có đủ 4 secret LVHV_ANDROID_* → bản ký bằng khóa tải lên (upload key). Xem docs/04-BUILD-NATIVE.md.
 name: android
 
+# Chỉ chạy khi mã hay dữ liệu mà bản Android dùng thay đổi (đường lọc không áp cho thẻ v*: thẻ luôn dựng).
 on:
   push:
     branches: [main]
     tags: ["v*"]
+    paths:
+      - "apps/android/**"
+      - "core/**"
+      - "ngochap/**"
+      - "store/**"
+      - "backup/**"
+      - "ffi/**"
+      - "memorial/**"
+      - "content/memorial/trays/**"
+      - "scripts/check-tray-pack.py"
+      - "docs/v0.2/schema/test-vectors/released/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "VERSION"
+      - ".github/workflows/android.yml"
   pull_request:
+    paths:
+      - "apps/android/**"
+      - "core/**"
+      - "ngochap/**"
+      - "store/**"
+      - "backup/**"
+      - "ffi/**"
+      - "memorial/**"
+      - "content/memorial/trays/**"
+      - "scripts/check-tray-pack.py"
+      - "docs/v0.2/schema/test-vectors/released/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "VERSION"
+      - ".github/workflows/android.yml"
   workflow_dispatch:
 
 permissions:
@@ -288,7 +319,8 @@ jobs:
   # Commit ảnh vào nhánh PR (MA3N-24-08): có quyền ghi nhưng KHÔNG chạy mã của PR — chỉ lấy tệp PNG từ artifact.
   screenshots:
     needs: ui
-    if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    # Chỉ commit ảnh vào nhánh PR của Android (tên nhánh có "android"); PR khác chạy workflow này (sửa lõi…) thì không ghi.
+    if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && contains(github.head_ref, 'android')
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
