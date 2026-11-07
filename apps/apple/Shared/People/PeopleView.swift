@@ -131,7 +131,8 @@ struct PeopleView: View {
             switch r {
             case .person(let id): PersonDetailView(id: id, path: $path)
             // Chế độ chỉ đọc (08 §12l TKN3-P-01): không dựng biểu mẫu ghi.
-            case .add where m.readOnly, .edit where m.readOnly, .event where m.readOnly, .markDeceased where m.readOnly:
+            case .add where m.readOnly, .edit where m.readOnly, .editTray where m.readOnly, .event where m.readOnly,
+                 .markDeceased where m.readOnly:
                 ReadOnlyBlockedView()
             case .add(let kind): PersonFormView(kind: kind, editId: nil, path: $path)
             case .edit(let id): PersonFormView(kind: m.person(id)?["kind"].str ?? "living", editId: id, path: $path)

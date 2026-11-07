@@ -110,7 +110,8 @@ final class PeopleUpgradeTests: XCTestCase {
         XCTAssertFalse(app.buttons["profiles.add.deceased"].exists, "chỉ đọc: không có nút thêm hồ sơ")
         XCTAssertFalse(app.buttons["profiles.add.living"].exists)
         let first = app.buttons.matching(NSPredicate(format: "label CONTAINS 'Nguyễn Văn A'")).firstMatch
-        if first.waitForExistence(timeout: 5) {
+        XCTAssertTrue(first.waitForExistence(timeout: 10), "chỉ đọc: vẫn mở được hồ sơ để kiểm không có nút ghi")
+        do {
             first.tap()
             Thread.sleep(forTimeInterval: 2)
             for id in ["person.edit", "person.delete", "person.addEvent", "person.markDeceased", "person.event.edit",
