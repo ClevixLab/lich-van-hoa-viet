@@ -108,6 +108,19 @@ Bản web (từ 0.2.0, `docs/reports/PHAT-HANH-PWA-0.2.0.md`):
   `released/<bản>/pwa/`. Ca (d) của `upgrade.mjs` tự dùng mọi bộ mẫu đó cho các bản sau.
 - Đường lùi: chạy `pwa-pages` (workflow_dispatch) trên thẻ của bản trước.
 
+Bản Windows (từ 0.2.1):
+- R14 là bước "R14" của `.github/workflows/windows.yml`: (a) cài `.msi` 0.1.4 từ GitHub Releases, tạo dữ liệu, cài `.msi`
+  mới đè lên — CI khẳng định phiên bản sản phẩm đổi sang đúng `VERSION` (cùng số phiên bản thì KHÔNG ĐẠT), rồi gỡ cài
+  đặt và thư mục dữ liệu còn nguyên; (c) bộ mẫu `0.2-dev-before-attachments`; (d) mọi bộ mẫu `released/<bản>/windows/`
+  (nâng cấp thật từ `.msi` của bản đó khi đã có trên GitHub Releases); ca lỗi chuyển đổi → chỉ đọc.
+- Bộ mẫu đóng băng: trên commit phát hành, `cargo build --bin lvhv-ci-check` trong `apps/windows`, rồi
+  `lvhv-ci-check --dong-bang-ban-phat-hanh docs/v0.2/schema/test-vectors/released/<bản>/windows
+  docs/v0.2/schema/test-vectors/released/expected/<bản>-windows.json`; thêm `README.md` và `manifest.json` (sha256 từng
+  tệp, mật khẩu `upgrade::RELEASE_FIXTURE_PASSWORD`). Bước R14 (d) tự dùng bộ mẫu đó cho các bản sau.
+- Ghi chú phát hành: `apps/windows/release-notes/<bản>.md` (bước "Đăng lên GitHub Releases" dùng tệp này; bản phát
+  hành đã có sẵn thì nối phần Windows vào cuối). Phát hành: chạy `windows` (workflow_dispatch, `publish_release = true`)
+  trên `main`.
+
 Bản Android (từ 0.2.1):
 - Khóa ký: một lần, trên máy Windows của chủ dự án, `scripts/tao-khoa-ky-android.ps1` (tạo khóa, in dấu vân tay,
   đặt 4 secret `LVHV_ANDROID_*`). Mọi bản sau phải ký bằng cùng khóa, nếu không người dùng không cài đè được.

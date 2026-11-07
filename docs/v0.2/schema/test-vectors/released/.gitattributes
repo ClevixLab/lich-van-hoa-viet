@@ -1,0 +1,3 @@
+# Bộ mẫu đóng băng được so sha256 từng byte (manifest.json): không bao giờ đổi xuống dòng khi checkout (máy Windows có
+# core.autocrlf=true sẽ đổi LF → CRLF ở tệp văn bản và làm sai sha256).
+** -text

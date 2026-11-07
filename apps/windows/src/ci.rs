@@ -8,13 +8,15 @@
 //! - `--kiem-nang-cap <ảnh chụp.json>`: R14 (a) — so dữ liệu sau khi cài đè với ảnh chụp, đặt lại thông báo.
 //! - `--kiem-mau-dong-bang <expected.json>`: R14 (c) — kho của bộ mẫu đóng băng đã chuyển đúng tệp kỳ vọng.
 //! - `--kiem-chi-doc <kho bộ mẫu>`: R14 ca lỗi — trên bản chép trong thư mục tạm.
+//! - `--dong-bang-ban-phat-hanh <thư mục ra> <tệp kỳ vọng>`: tạo bộ mẫu đóng băng của bản này (04 B5 quy tắc 5–6).
+//! - `--kiem-mau-phat-hanh <bộ mẫu> <tệp kỳ vọng>`: R14 (d) — kho của bộ mẫu một bản đã phát hành, đã mở bằng bản này.
 //!
 //! Biến môi trường (chỉ ở đây, bản phát hành không đọc): `LVHV_DATA_DIR` thay thư mục dữ liệu.
 
 use crate::{platform, shots, toasts, upgrade, UiMode};
 
 /// Mọi cờ CI — CI tìm từng chuỗi này trong `LichViet.exe` phát hành và báo lỗi nếu thấy.
-pub const FLAGS: [&str; 7] = [
+pub const FLAGS: [&str; 9] = [
     "--chup-man-hinh",
     "--do-bo-nho",
     "--kiem-thong-bao",
@@ -22,6 +24,8 @@ pub const FLAGS: [&str; 7] = [
     "--kiem-nang-cap",
     "--kiem-mau-dong-bang",
     "--kiem-chi-doc",
+    "--dong-bang-ban-phat-hanh",
+    "--kiem-mau-phat-hanh",
 ];
 
 fn done(r: Result<String, String>, fail: i32) -> i32 {
@@ -44,7 +48,14 @@ pub fn main() -> i32 {
     if let Some(d) = std::env::var_os("LVHV_DATA_DIR").filter(|d| !d.is_empty()) {
         platform::set_data_dir_override(Some(d.into()));
     }
+    let arg2 = std::path::PathBuf::from(args.get(2).cloned().unwrap_or_default());
     match mode.as_str() {
+        "--dong-bang-ban-phat-hanh" => done(upgrade::freeze(&arg1, &arg2), 6),
+        "--kiem-mau-phat-hanh" => {
+            platform::init_app_identity();
+            let dir = platform::data_dir();
+            done(upgrade::check_release_fixture(&dir, &arg1, &arg2, toasts::system().as_ref(), platform::now_unix()), 6)
+        }
         "--kiem-thong-bao" => {
             platform::init_app_identity();
             let dir = std::env::temp_dir().join(format!("lvhv-kiem-thong-bao-{}", std::process::id()));

@@ -72,7 +72,7 @@ fn demo_certificate() -> Vec<u8> {
 
 /// Ảnh mâm lễ mẫu (vẽ bằng mã, ảnh chụp thật chưa có): mặt bàn nâu, mâm vàng, vài đĩa màu. Chỉ dùng cho ảnh chụp
 /// màn hình của biểu mẫu và trang tưởng niệm khi có ảnh gia đình (08 §16.4 ca 2).
-fn demo_tray() -> Vec<u8> {
+pub(crate) fn demo_tray() -> Vec<u8> {
     let (w, h) = (1200u32, 900u32);
     let img = image::RgbImage::from_fn(w, h, |x, y| {
         let (cx, cy) = (x as f32 - 600.0, y as f32 - 520.0);

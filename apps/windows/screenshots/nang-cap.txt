@@ -1,17 +1,18 @@
-R14 Windows — 2026-11-07 16:07 UTC+00:00, bản mới 0.2.1 (run 349)
+R14 Windows — 2026-11-07 18:03 UTC+00:00, bản mới 0.2.1 (run 354)
 msiexec /i cai-0.1.4 (LichViet-0.1.4-x64.msi): mã 0
 Sản phẩm 0.1.4: {19F9472B-F7FC-445C-90D7-507FFA71669E} 0.1.4
 Đã cài bản cũ: LichViet.exe 0.1.4
 Để sau (định dạng 0.1.4): 2026-12-07
   Đã tạo dữ liệu mẫu ở C:\Users\runneradmin\AppData\Local\ClevixLab\LichVanHoaViet: 5 hồ sơ, 1 sự kiện, 1 ảnh; Để sau = "2026-12-07"
 msiexec /i cai-moi (LichViet-0.2.1-x64.msi): mã 0
-Sản phẩm đã cài (cùng UpgradeCode): 1 ({8B9F03A7-732D-41D1-9220-B4674E45733C} 0.2.1)
+Sản phẩm đã cài (cùng UpgradeCode): 1 ({05125065-280A-4BFA-A81F-A22159DBCDF0} 0.2.1)
+Nâng cấp phiên bản: 0.1.4 → 0.2.1
 LichViet.exe đã cài là bản mới (0.2.1)
 R14 (a): mở LichViet.exe đã cài 12 giây (mở kho, chuyển đổi nếu cần, đặt lại thông báo) rồi đóng
   R14 Windows: ĐẠT. Lược đồ: 2 → 2; Dữ liệu giữ nguyên: 5 hồ sơ, 1 sự kiện, 4 loại sự kiện, 1 ảnh (SHA-256 khớp), cài đặt, hiện tên = true, Để sau = "2026-12-07"; Đặt lại thông báo: Scheduled { pending: 22, added: 0, removed: 0, confirmed: false }
 msiexec /x go (LichViet-0.2.1-x64.msi): mã 0
 Gỡ cài đặt: chương trình đã gỡ; thư mục dữ liệu còn nguyên (4 tệp, SHA-256 khớp); tệp Để sau còn nguyên
-R14 (a) Windows: ĐẠT (0.1.4 → 0.2.1 bản dựng 349; nâng cấp + gỡ cài đặt)
+R14 (a) Windows: ĐẠT (0.1.4 → 0.2.1 bản dựng 354; nâng cấp + gỡ cài đặt)
 
 R14 (c): chép kho của bộ mẫu 0.2-dev-before-attachments vào thư mục dữ liệu (3 tệp)
 msiexec /i cai-moi-c (LichViet-0.2.1-x64.msi): mã 0
@@ -20,5 +21,12 @@ R14 (c): mở LichViet.exe đã cài 12 giây (mở kho, chuyển đổi nếu c
 msiexec /x go-c (LichViet-0.2.1-x64.msi): mã 0
 R14 (c) Windows: ĐẠT (gỡ cài đặt giữ nguyên 6 tệp, có bản sao trước chuyển đổi)
 
+R14 (d) 0.2.1: chép kho của bộ mẫu (không có .msi 0.2.1 khác bản đang kiểm để cài trước)
+msiexec /i cai-moi-0.2.1 (LichViet-0.2.1-x64.msi): mã 0
+R14 (d) 0.2.1: mở LichViet.exe đã cài 12 giây (mở kho, chuyển đổi nếu cần, đặt lại thông báo) rồi đóng
+  R14 (d) bộ mẫu 0.2.1/windows: ĐẠT. sha256 10 tệp khớp manifest; lược đồ 2 → 2 (trạng thái khi kiểm: ok); trạng thái trùng tệp kỳ vọng (5 hồ sơ, 1 sự kiện, 2 ảnh, 2 tệp đính kèm); khôi phục backup.lvhv vào kho trống khớp; đặt lại thông báo: Scheduled { pending: 22, added: 0, removed: 0, confirmed: false }
+msiexec /x go-d-0.2.1 (LichViet-0.2.1-x64.msi): mã 0
+R14 (d) Windows 0.2.1: ĐẠT (mở bằng 0.2.1; gỡ cài đặt giữ nguyên 5 tệp)
+
   R14 ca lỗi: ĐẠT. Chuyển đổi lỗi → read_only; kho cũ giữ nguyên (13 dòng); bản sao lvhv.sqlite.pre-v2.bak; ghi bị từ chối; xuất sao lưu được (3 người). Thông báo: Chưa nâng cấp được dữ liệu (SQLite: kiểm định: lỗi chuyển đổi). Dữ liệu cũ vẫn còn nguyên; ứng dụng đang ở chế độ chỉ đọc — hãy xuất sao lưu.
-R14 Windows: ĐẠT — (a) 0.1.4 → bản này, (c) bộ mẫu đóng băng, ca lỗi chỉ đọc
+R14 Windows: ĐẠT — (a) 0.1.4 → bản này, (c) bộ mẫu đóng băng, (d) bộ mẫu các bản Windows đã phát hành, ca lỗi chỉ đọc
