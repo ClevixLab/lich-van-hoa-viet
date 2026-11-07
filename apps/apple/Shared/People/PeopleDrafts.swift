@@ -361,12 +361,12 @@ enum AttKind: String, CaseIterable {
     case tinBaoTu = "tin_bao_tu", giayChungTu = "giay_chung_tu", khac = "khac"
     var title: String {
         switch self {
-        case .tinBaoTu: return "Ảnh tin báo tử"
+        case .tinBaoTu: return "Tin báo tử"
         case .giayChungTu: return "Giấy chứng tử"
-        case .khac: return "Khác"
+        case .khac: return "Tệp khác"
         }
     }
-    static func title(_ code: String) -> String { AttKind(rawValue: code)?.title ?? "Khác" }
+    static func title(_ code: String) -> String { AttKind(rawValue: code)?.title ?? "Tệp khác" }
 }
 
 /// Tệp mới chọn, chưa ghi vào kho: ảnh đã mã hóa lại (S9) hoặc PDF nguyên bản.

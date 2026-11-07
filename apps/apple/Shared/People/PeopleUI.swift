@@ -93,6 +93,7 @@ struct PrimaryButtonStyle: ButtonStyle {
 
 struct SecondaryButtonStyle: ButtonStyle {
     var destructive = false
+    @Environment(\.isEnabled) private var enabled
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .ps(16, .semibold)
@@ -101,6 +102,7 @@ struct SecondaryButtonStyle: ButtonStyle {
             .frame(minHeight: 44)
             .background(C.paper2.opacity(configuration.isPressed ? 0.6 : 1), in: Capsule())
             .overlay(Capsule().stroke(destructive ? C.redInk : C.rule, lineWidth: 1))
+            .opacity(enabled ? 1 : 0.45)
             .contentShape(Capsule())
     }
 }

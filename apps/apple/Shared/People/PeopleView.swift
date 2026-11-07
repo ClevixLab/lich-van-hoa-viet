@@ -95,8 +95,13 @@ struct PeopleView: View {
         VStack(alignment: .leading, spacing: 8) {
             Label { Text("Đang ở chế độ chỉ đọc").ps(17, .semibold) } icon: { Image(systemName: "lock.fill") }
                 .foregroundStyle(C.redInk)
-            Text(m.migration?.message ?? "Chưa nâng cấp được dữ liệu. Dữ liệu cũ vẫn còn nguyên; hãy xuất sao lưu.")
+            Text("Ứng dụng chưa chuyển được dữ liệu sang bản mới. Dữ liệu cũ vẫn còn nguyên trên máy; trong lúc này bạn xem được hồ sơ và nên xuất một bản sao lưu.")
                 .ps(15).foregroundStyle(C.ink).fixedSize(horizontal: false, vertical: true)
+            if let msg = m.migration?.message, !msg.isEmpty {
+                Text("Chi tiết: \(msg)")
+                    .ps(13).foregroundStyle(C.ink2).fixedSize(horizontal: false, vertical: true)
+                    .textSelection(.enabled)
+            }
             Button("Xuất sao lưu") { section = .backup }.buttonStyle(PrimaryButtonStyle())
         }
         .padding(14)
