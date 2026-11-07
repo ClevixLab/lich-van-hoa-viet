@@ -492,6 +492,12 @@ fn steps(ui: &AppWindow, st: Rc<RefCell<State>>) -> Vec<Step> {
             p.set_m_smoke(false);
         })));
     }
+    // YC-2026-10 (08 §16.4 ca 4): bàn thờ Công giáo — nến · hoa · nến, không hương (chỉ đổi cách vẽ, không đổi dữ liệu).
+    screens.push(("nt-22b-tuong-niem-cong-giao", Rc::new(|ui: &AppWindow| {
+        let p = People::get(ui);
+        p.set_m_incense(false);
+        p.set_m_catholic(true);
+    })));
     let big: [&str; 13] = [
         "nt-02-sap-toi", "nt-03-theo-ky-thang", "nt-05-theo-ky-nam-da-mat", "nt-07-ho-so", "nt-08-nguoi-da-mat",
         "nt-11b-them-da-mat-ket-qua", "nt-12-them-da-mat-loi", "nt-13b-them-dang-song-nhac", "nt-15-cap-nhat-xac-nhan",
