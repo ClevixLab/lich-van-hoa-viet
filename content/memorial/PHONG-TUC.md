@@ -96,12 +96,13 @@ gọi trước tên nữa, để không lặp ("Ông nội / Nguyễn Văn A", k
 
 | Kiểu | Đồ cúng thường gặp | Nguồn |
 |---|---|---|
-| Truyền thống — mâm cỗ mặn | Món người mất ưa thích; xôi, gà luộc, món thịt lợn; miền Bắc có bánh chưng, miền Nam có bánh tét | [N9] "Các món ăn yêu thích của người đã khuất được chuẩn bị"; "Xôi, gà luộc và các món thịt heo là phổ biến."; "Ở miền Bắc, bánh chưng … thường xuất hiện."; "Ở miền Nam, bánh tét … phổ biến hơn." |
+| Truyền thống — mâm cơm cúng (**chủ dự án quyết, YC-2026-09**) | Theo lời chủ dự án: bát cơm có quả trứng luộc, một khoanh giò, một con gà luộc, một đĩa xôi, một đĩa hoa quả tổng hợp, ba nén nhang trên bát hương có rất nhiều chân hương đã cháy hết, tàn cong; lọ hoa ly hoặc cúc vàng. Nguồn hỗ trợ: món người mất ưa thích; xôi, gà luộc, món thịt lợn; miền Bắc có bánh chưng, miền Nam có bánh tét | [N9] "Các món ăn yêu thích của người đã khuất được chuẩn bị"; "Xôi, gà luộc và các món thịt heo là phổ biến."; "Ở miền Bắc, bánh chưng … thường xuất hiện."; "Ở miền Nam, bánh tét … phổ biến hơn." |
 | Phật giáo — mâm chay | Hương, hoa, đèn (nến), trà, quả, món chay; tối thiểu nước sạch, hoa quả, một nén hương | [N8] "Vào những ngày giỗ kỵ tổ tiên, ông bà hay bố mẹ, người thân của mình nên làm chay thanh tịnh mới tốt."; "có hương, hoa, đăng; có trà, quả, thực"; "chén nước lạnh tinh khiết với hoa quả, một nén hương thành tâm là đủ". [N4] "Nhà nghèo thì chỉ cần nhang đèn bông trái, vài món ăn giản dị cúng người mất cũng được rồi." |
 | Công giáo — nến và hoa, **không hương** | Cầu nguyện, dâng lễ ở nhà thờ; không cúng | [N10] "Chúng ta không cúng nhưng cầu nguyện cho người thân đã qua đời."; "Cũng tổ chức lễ giỗ tại tư gia, tại nhà thờ." [N10] **không** nhắc nến, hoa, hương hay bàn thờ — phần "nến và hoa" của 01 §3.7 **chưa có nguồn** (§5) |
 
-Hình vẽ màn hình tưởng niệm **không vẽ món mặn** (gà, thịt) dù mâm cỗ mặn là phổ biến: vẽ món mặn dễ thô, khó trang
-nghiêm ở cỡ nhỏ. Kiểu truyền thống chỉ vẽ đĩa quả và có thể thêm đĩa xôi (docs/v0.2/09 §2).
+Mâm truyền thống dùng **ảnh chụp thật** ghép lại (YC-2026-09, docs/v0.2/09 §3), không hình vẽ, không ảnh do máy tạo.
+Hình vẽ `mam-truyen-thong.svg` chỉ là bản tạm; hình vẽ không vẽ món mặn (dễ thô ở cỡ nhỏ). Sổ giấy phép ảnh:
+`SOURCES.md` §1b.
 
 Hình vẽ bàn thờ, bia, nến, đĩa quả, bình hoa, hương và khói là **hình vẽ mới cho dự án**. Bản đang chạy viết thẳng bằng
 SVG/CSS trong `pwa/src/people/memorial.ts`; bản mẫu ba kiểu mâm ở `content/memorial/mam-*.svg` (`SOURCES.md`).

@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 200" width="360" height="200" role="img" aria-labelledby="t d">
   <title id="t">Mâm lễ kiểu chay (Phật giáo)</title>
   <desc id="d">Bàn thờ gỗ, mâm chay: hai cây nến hai bên; đĩa quả và chén trà bên trái; bát hương đồng ở giữa có ba nén hương và bát nước trong phía trước; bát cơm chay và độc bình có hoa sen bên phải.</desc>
-  <!-- Vẽ mới cho dự án Lịch và Văn hóa Việt (Clevix Lab), 2026-11-07. Giấy phép MIT. Bản mẫu thiết kế, docs/v0.2/09. -->
+  <!-- BẢN TẠM (placeholder): hình vẽ chỉ dùng cho tới khi có ảnh thật được duyệt (YC-2026-09, docs/v0.2/09). Vẽ mới cho dự án Lịch và Văn hóa Việt (Clevix Lab), 2026-11-07. Giấy phép MIT. -->
   <defs>
     <radialGradient id="bg" cx="50%" cy="10%" r="95%">
       <stop offset="0" stop-color="#5a2a1e"/><stop offset=".5" stop-color="#3a1a14"/><stop offset="1" stop-color="#1d0f0c"/>

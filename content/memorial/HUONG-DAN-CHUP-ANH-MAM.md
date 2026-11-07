@@ -15,18 +15,19 @@ Một số món đã tìm được ảnh thật có giấy phép trên mạng (x
 chưa có ảnh dùng được, nhóm mình chụp giúp. Món đã có ảnh mạng vẫn nên chụp nếu được: ảnh nhà mình chụp sẽ hợp nhau
 hơn về ánh sáng và góc máy.
 
-| # | Món | Tình trạng |
+| # | Món | Tình trạng (07/11/2026) |
 |---|---|---|
-| 1 | Bát cơm trắng, trên có một quả trứng luộc bóc vỏ | xem SOURCES §1b |
-| 2 | Một khoanh giò lụa (cắt dày, thấy mặt cắt) | xem SOURCES §1b |
-| 3 | Một con gà luộc nguyên con, da vàng, trên đĩa | xem SOURCES §1b |
-| 4 | Một đĩa xôi (xôi gấc, xôi trắng hoặc xôi đỗ) | xem SOURCES §1b |
-| 5 | Một đĩa hoa quả tổng hợp (chuối, bưởi, cam, táo, nho…) | xem SOURCES §1b |
-| 6 | **Bát hương có rất nhiều chân hương đã cháy hết, tàn cong đẹp, ba nén đang cháy** | **CẦN CHỤP** (rất khó có ảnh mạng đúng như vậy) |
-| 7 | Lọ hoa ly **hoặc** cúc vàng | xem SOURCES §1b |
-| 8 | Hai cây nến đỏ trên chân nến, đang cháy | xem SOURCES §1b |
+| 1 | Bát cơm trắng, trên có một quả trứng luộc bóc vỏ | Có ảnh mạng tạm (bát cơm và quả trứng là hai ảnh khác nhau). Nên chụp |
+| 2 | Một khoanh giò lụa (cắt dày, thấy mặt cắt) | Có ảnh mạng tạm, nhưng là miếng cắt tam giác, không phải khoanh tròn. **Nên chụp** |
+| 3 | Một con gà luộc nguyên con, da vàng, trên đĩa | Có ảnh mạng tạm (gà ở chợ Hà Nội, bị khung ảnh cắt một bên). Nên chụp |
+| 4 | Một đĩa xôi (xôi gấc, xôi trắng hoặc xôi đỗ) | Có ảnh mạng tạm (xôi gấc, mất đĩa khi tách nền). Nên chụp |
+| 5 | Một đĩa hoa quả tổng hợp (chuối, bưởi, cam, táo, nho…) | Có ảnh mạng tạm, nhưng chỉ có táo. **Nên chụp** |
+| 6 | **Bát hương có rất nhiều chân hương đã cháy hết, tàn cong đẹp, ba nén đang cháy** | **CẦN CHỤP** — không có ảnh mạng đúng như vậy |
+| 7 | Lọ hoa ly **hoặc** cúc vàng | Hoa ly: có ảnh mạng tạm, nhưng mất lọ khi tách nền. Cúc vàng: **CẦN CHỤP** (không có ảnh chụp thật có giấy phép) |
+| 8 | Hai cây nến đỏ trên chân nến, đang cháy | Có ảnh mạng tạm (nến không có chân nến). Nên chụp kèm chân nến đồng |
 | 9 | Chén nước trong | **CẦN CHỤP** |
 | 10 | Mâm tròn (gỗ sơn, đồng hoặc nhôm), để trống | **CẦN CHỤP** |
+| 11 | Mặt bàn thờ gỗ (một dải gỗ thật, không đồ vật) | **CẦN CHỤP** (không bắt buộc) |
 
 ## 2. Chuẩn bị chung (cho mọi tấm)
 

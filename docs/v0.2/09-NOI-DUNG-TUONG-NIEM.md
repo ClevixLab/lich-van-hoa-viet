@@ -251,6 +251,27 @@ tả của mình.
 Hình vẽ kiểu 1 trước đây (bố cục, màu ở bản tạm SVG) giữ nguyên trong `mam-truyen-thong.svg` cho tới khi có ảnh.
 Màu nền, đồng và chữ bia vẫn theo §2 và §6.
 
+### 3.9 Ảnh mạng có giấy phép và bản ghép nháp (07/11/2026)
+
+Theo chỉ thị của điều phối viên (chủ dự án muốn dùng ảnh thật trên mạng thay vì tự chụp hết), vai nội dung đã tìm ảnh
+chụp thật có giấy phép thoáng cho từng món, ghi ở sổ `content/memorial/SOURCES.md` §1b (2 ứng viên mỗi món, trừ món
+không có). Quy trình chạy trên máy chạy GitHub, `.github/workflows/memorial-assets.yml`:
+
+1. `discover` — tìm ứng viên trên Commons qua API, chỉ giữ CC0 / phạm vi công cộng / CC BY / CC BY-SA, loại thể loại
+   "AI-generated"; tạo tờ ảnh thu nhỏ `content/memorial/photos/discover/<món>.jpg` để người xem chọn.
+2. `fetch` — tải ảnh đã chọn vào `content/memorial/photos/originals/`, ghi sha256 vào `ledger.json` ở lần đầu, kiểm
+   lại ở các lần sau, đọc lại giấy phép Commons mỗi lần.
+3. `composite` — tách nền (rembg — phân vùng ảnh thật, không sinh hình; nến trên nền đen tách bằng độ sáng), xuất WebP
+   1×/2×/3× vào `content/memorial/photos/webp/`, kiểm ngân sách, dựng `content/memorial/photos/preview/mam-anh-that-preview.png`.
+
+Bố cục của bản nháp nằm ở `content/memorial/photos/layout.json` và **khác §3.2** ở một điểm: đĩa xôi lên hàng sau bên
+trái, đĩa hoa quả hàng sau bên phải với lọ hoa ly đặt sau (để giấu cuống hoa — lọ bị mất khi tách nền), hàng trước là
+khoanh giò, gà, bát cơm có trứng. Chưa có mâm, chén nước, mặt bàn.
+
+Kết quả: tổng WebP **183 568 byte** (≤ 600 KB). Bản ghép **chưa đạt** để phát hành: ánh sáng và góc của các ảnh khác
+nhau; bát hương không có ba nén đang cháy và tàn cong; xôi mất đĩa; giò là miếng tam giác; hoa ly mất lọ. Những món
+này ghi **CẦN CHỤP / nên chụp** trong `HUONG-DAN-CHUP-ANH-MAM.md` §1. Khói động (§3.4) chưa có trong ảnh xem trước.
+
 ## 4. Kiểu 2 — Chay (thiên về Phật giáo)
 
 Tệp mẫu: `content/memorial/mam-chay.svg`. Theo sáu thứ dâng cúng mà [N8] nêu: "có hương, hoa, đăng; có trà, quả,
