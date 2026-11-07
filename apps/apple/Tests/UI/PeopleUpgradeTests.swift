@@ -41,7 +41,7 @@ final class PeopleUpgradeTests: XCTestCase {
         Thread.sleep(forTimeInterval: 2)
         let r0 = report.label
         print("R14 trước khi cấp quyền:\n\(r0)")
-        XCTAssertTrue(["migrated", "ok"].contains(value(r0, "migration") ?? ""), r0)
+        XCTAssertEqual(value(r0, "migration"), "migrated", "kho 0.2-dev (lược đồ 1) phải được chuyển sang 2: \(r0)")
         XCTAssertEqual(value(r0, "persons"), "5", r0)
         XCTAssertEqual(value(r0, "events"), "1", r0)
         XCTAssertEqual(value(r0, "notices"), "1", r0)

@@ -10,7 +10,7 @@ ROOT="$(pwd)"
 A="$ROOT/apps/apple"
 T="$RUNNER_TEMP/r14"
 SHOTS="$RUNNER_TEMP/shots-upgrade"
-OLD1_REF="${OLD1_REF:-origin/main}"
+OLD1_REF="${OLD1_REF:-c4d3128}"   # main trước nhánh này: ứng dụng Apple 0.1 (chưa có Người thân)
 OLD2_REF="${OLD2_REF:-89dedb3}"
 BID="vn.clevix.lichviet"
 mkdir -p "$T" "$SHOTS"
@@ -20,20 +20,42 @@ echo "Máy mô phỏng: $UDID"
 xcrun simctl boot "$UDID" || true
 xcrun simctl status_bar "$UDID" override --time 9:41 --batteryState charged --batteryLevel 100 || true
 
+# Lõi CŨ (trước core2): bản cũ phải chạy với đúng lõi của nó, nếu không kho tạo ra đã ở lược đồ mới và ca B/C
+# không thử được chuyển đổi. Dựng một lát mô phỏng arm64 từ $OLD2_REF (lõi giống ở $OLD1_REF).
+build_old_core() {
+  local dir="$T/core-old"
+  git worktree add -f "$dir" "$OLD2_REF" >/dev/null
+  export IPHONEOS_DEPLOYMENT_TARGET=16.0
+  (cd "$dir" && CARGO_TARGET_DIR="$T/target-old" cargo build -q -p lvhv-ffi --lib --release --target aarch64-apple-ios-sim \
+    && CARGO_TARGET_DIR="$T/target-old" cargo build -q -p lvhv-ffi --features bindgen-cli --bin uniffi-bindgen) \
+    > "$T/core-old.log" 2>&1 || { tail -40 "$T/core-old.log"; exit 1; }
+  local lib="$T/target-old/aarch64-apple-ios-sim/release/liblvhv_ffi.a"
+  rm -rf "$T/gen-old" "$T/hdr-old" "$T/old-core.xcframework"; mkdir -p "$T/gen-old" "$T/hdr-old"
+  "$T/target-old/debug/uniffi-bindgen" generate --library "$lib" --language swift --out-dir "$T/gen-old" \
+    --config "$dir/ffi/uniffi.toml" >/dev/null
+  cp "$T/gen-old/lvhv_ffiFFI.h" "$T/hdr-old/"
+  cp "$T/gen-old/lvhv_ffiFFI.modulemap" "$T/hdr-old/module.modulemap"
+  xcodebuild -create-xcframework -library "$lib" -headers "$T/hdr-old" -output "$T/old-core.xcframework" >/dev/null
+}
+
 build_old() { # ref tên cấu-hình
-  local ref=$1 name=$2 cfg=$3 dir="$T/$1"
-  dir="$T/$name"
+  local ref=$1 name=$2 cfg=$3
+  local dir="$T/$name"
   git worktree add -f "$dir" "$ref" >/dev/null
-  mkdir -p "$dir/apps/apple/build"
-  cp -R "$A/build/LvhvCore.xcframework" "$dir/apps/apple/build/"
-  rm -rf "$dir/apps/apple/Generated"; cp -R "$A/Generated" "$dir/apps/apple/Generated"
+  mkdir -p "$dir/apps/apple/build" "$dir/apps/apple/Generated"
+  cp -R "$T/old-core.xcframework" "$dir/apps/apple/build/LvhvCore.xcframework"
+  cp "$T/gen-old/LvhvCore.swift" "$dir/apps/apple/Generated/LvhvCore.swift"
+  cp "$A/Generated/Version.xcconfig" "$dir/apps/apple/Generated/Version.xcconfig"
   (cd "$dir/apps/apple" && xcodegen generate >/dev/null && \
     xcodebuild -project LichVanHoaViet.xcodeproj -scheme LichViet-iOS -configuration "$cfg" \
       -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath "$T/dd-$name" \
-      CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build > "$T/$name.log" 2>&1) || { tail -50 "$T/$name.log"; exit 1; }
+      ARCHS=arm64 ONLY_ACTIVE_ARCH=NO CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build > "$T/$name.log" 2>&1) \
+    || { tail -50 "$T/$name.log"; exit 1; }
   echo "$T/dd-$name/Build/Products/$cfg-iphonesimulator/LichViet.app"
 }
 
+echo "== Dựng lõi cũ ($OLD2_REF)"
+build_old_core
 echo "== Dựng bản cũ 0.1 ($OLD1_REF)"
 OLD1_APP=$(build_old "$OLD1_REF" old01 Release | tail -1)
 echo "== Dựng bản cũ 0.2-dev ($OLD2_REF)"
