@@ -599,7 +599,9 @@ class PeopleScreensTest {
                         assertFalse(
                             "${v.suffix} $r: chữ bị cắt/tràn: \"${t.layoutInput.text}\" (rộng ${t.didOverflowWidth}, cao " +
                                 "${t.didOverflowHeight}, ${t.size}, ${t.layoutInput.constraints}, maxLines ${t.layoutInput.maxLines})",
-                            t.hasVisualOverflow,
+                            // Bỏ qua sai số làm tròn < 1 px (đoạn chữ rộng 300,4 px trong ô 300 px) — chỉ bắt tràn/cắt thật.
+                            t.multiParagraph.width - t.size.width > 1f || t.multiParagraph.height - t.size.height > 1f ||
+                                t.multiParagraph.didExceedMaxLines,
                         )
                     }
                 }
