@@ -596,8 +596,8 @@ fun OccRow(o: Occ, today: LocalDate, onClick: (() -> Unit)?, idx: OccIndex? = nu
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     KindIcon(o.cls, if (o.isGio) c.gold else c.redInk)
                     Text(o.classText, style = MaterialTheme.typography.labelMedium, color = c.ink2)
-                    Text("· $dist", style = MaterialTheme.typography.labelMedium, color = distColor, fontWeight = distWeight)
                 }
+                Text(dist, style = MaterialTheme.typography.labelMedium, color = distColor, fontWeight = distWeight)
             }
         }
         if (!large) {
