@@ -143,6 +143,12 @@ pub fn capitalize_first(s: &str) -> String {
     }
 }
 
+/// Viết hoa chữ cái đầu **khi hiển thị** cách gọi / quan hệ đã lưu (kể cả dữ liệu khôi phục từ tệp cũ còn viết
+/// thường — nhập sao lưu giữ nguyên byte). Cùng quy tắc với [`capitalize_first`].
+pub fn display_capitalize(s: &str) -> String {
+    capitalize_first(s)
+}
+
 /// Chuẩn hóa một `Person` (JSON) **khi lưu từ giao diện** (01 §3.1): viết hoa chữ đầu `danh_xung` và `quan_he`;
 /// `gioi_tinh: null` → bỏ khóa (thiếu ≡ `null`, tài liệu không có giới tính giữ nguyên từng byte). Không áp cho
 /// tệp sao lưu khi nhập (giữ nguyên dữ liệu người dùng).

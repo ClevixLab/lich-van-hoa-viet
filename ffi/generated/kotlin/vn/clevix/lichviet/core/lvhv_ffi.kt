@@ -874,6 +874,8 @@ internal interface UniffiForeignFutureCompleteVoid : com.sun.jna.Callback {
 
 
 
+
+
 // For large crates we prevent `MethodTooLargeException` (see #2340)
 // N.B. the name of the extension is very misleading, since it is 
 // rather `InterfaceTooLargeException`, caused by too many methods 
@@ -911,8 +913,6 @@ fun uniffi_lvhv_ffi_checksum_func_cadao_sources_blocks_json(
 ): Short
 fun uniffi_lvhv_ffi_checksum_func_cadao_sources_markdown(
 ): Short
-fun uniffi_lvhv_ffi_checksum_func_capitalize_first(
-): Short
 fun uniffi_lvhv_ffi_checksum_func_danh_xung_suggestions(
 ): Short
 fun uniffi_lvhv_ffi_checksum_func_day_info_json(
@@ -924,6 +924,8 @@ fun uniffi_lvhv_ffi_checksum_func_days_in_month(
 fun uniffi_lvhv_ffi_checksum_func_derive_birth_json(
 ): Short
 fun uniffi_lvhv_ffi_checksum_func_derive_person_json(
+): Short
+fun uniffi_lvhv_ffi_checksum_func_display_capitalize(
 ): Short
 fun uniffi_lvhv_ffi_checksum_func_due_today_json(
 ): Short
@@ -1016,6 +1018,8 @@ fun uniffi_lvhv_ffi_checksum_method_lvhvstore_lock_screen_names(
 fun uniffi_lvhv_ffi_checksum_method_lvhvstore_mark_backup_saved(
 ): Short
 fun uniffi_lvhv_ffi_checksum_method_lvhvstore_mark_deceased_json(
+): Short
+fun uniffi_lvhv_ffi_checksum_method_lvhvstore_migration_status(
 ): Short
 fun uniffi_lvhv_ffi_checksum_method_lvhvstore_person_json(
 ): Short
@@ -1140,6 +1144,8 @@ fun uniffi_lvhv_ffi_fn_method_lvhvstore_mark_backup_saved(`ptr`: Pointer,`savedA
 ): Unit
 fun uniffi_lvhv_ffi_fn_method_lvhvstore_mark_deceased_json(`ptr`: Pointer,`personId`: RustBuffer.ByValue,`deathDateValueJson`: RustBuffer.ByValue,`noticeJson`: RustBuffer.ByValue,`today`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
+fun uniffi_lvhv_ffi_fn_method_lvhvstore_migration_status(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
 fun uniffi_lvhv_ffi_fn_method_lvhvstore_person_json(`ptr`: Pointer,`id`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_lvhv_ffi_fn_method_lvhvstore_persons_json(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
@@ -1192,8 +1198,6 @@ fun uniffi_lvhv_ffi_fn_func_cadao_sources_blocks_json(uniffi_out_err: UniffiRust
 ): RustBuffer.ByValue
 fun uniffi_lvhv_ffi_fn_func_cadao_sources_markdown(uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
-fun uniffi_lvhv_ffi_fn_func_capitalize_first(`text`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-): RustBuffer.ByValue
 fun uniffi_lvhv_ffi_fn_func_danh_xung_suggestions(`deceased`: Byte,`gioiTinh`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_lvhv_ffi_fn_func_day_info_json(`y`: Int,`m`: Int,`d`: Int,uniffi_out_err: UniffiRustCallStatus, 
@@ -1205,6 +1209,8 @@ fun uniffi_lvhv_ffi_fn_func_days_in_month(`y`: Int,`m`: Int,uniffi_out_err: Unif
 fun uniffi_lvhv_ffi_fn_func_derive_birth_json(`dateValueJson`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_lvhv_ffi_fn_func_derive_person_json(`json`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_lvhv_ffi_fn_func_display_capitalize(`text`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_lvhv_ffi_fn_func_due_today_json(`datasetJson`: RustBuffer.ByValue,`today`: RustBuffer.ByValue,`zone`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
@@ -1417,9 +1423,6 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_lvhv_ffi_checksum_func_cadao_sources_markdown() != 63224.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_lvhv_ffi_checksum_func_capitalize_first() != 13260.toShort()) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
     if (lib.uniffi_lvhv_ffi_checksum_func_danh_xung_suggestions() != 52316.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1436,6 +1439,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_lvhv_ffi_checksum_func_derive_person_json() != 47386.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_lvhv_ffi_checksum_func_display_capitalize() != 8847.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_lvhv_ffi_checksum_func_due_today_json() != 11414.toShort()) {
@@ -1574,6 +1580,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_lvhv_ffi_checksum_method_lvhvstore_mark_deceased_json() != 28404.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_lvhv_ffi_checksum_method_lvhvstore_migration_status() != 48573.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_lvhv_ffi_checksum_method_lvhvstore_person_json() != 48207.toShort()) {
@@ -2202,6 +2211,11 @@ public interface LvhvStoreInterface {
     fun `markDeceasedJson`(`personId`: kotlin.String, `deathDateValueJson`: kotlin.String, `noticeJson`: kotlin.String?, `today`: SolarDay): kotlin.String
     
     /**
+     * Trạng thái chuyển đổi khi mở kho — gọi ngay sau `open` để biết có phải hiện chế độ chỉ đọc không.
+     */
+    fun `migrationStatus`(): MigrationStatus
+    
+    /**
      * Một `Person`.
      */
     fun `personJson`(`id`: kotlin.String): kotlin.String
@@ -2681,6 +2695,21 @@ open class LvhvStore: Disposable, AutoCloseable, LvhvStoreInterface
     uniffiRustCallWithError(LvhvDataException) { _status ->
     UniffiLib.INSTANCE.uniffi_lvhv_ffi_fn_method_lvhvstore_mark_deceased_json(
         it, FfiConverterString.lower(`personId`),FfiConverterString.lower(`deathDateValueJson`),FfiConverterOptionalString.lower(`noticeJson`),FfiConverterTypeSolarDay.lower(`today`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Trạng thái chuyển đổi khi mở kho — gọi ngay sau `open` để biết có phải hiện chế độ chỉ đọc không.
+     */override fun `migrationStatus`(): MigrationStatus {
+            return FfiConverterTypeMigrationStatus.lift(
+    callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_lvhv_ffi_fn_method_lvhvstore_migration_status(
+        it, _status)
 }
     }
     )
@@ -3486,6 +3515,70 @@ public object FfiConverterTypeLunarDay: FfiConverterRustBuffer<LunarDay> {
 
 
 /**
+ * Trạng thái chuyển đổi khi mở kho (01 §7, 04 Bổ sung B5 / R14).
+ */
+data class MigrationStatus (
+    /**
+     * `"ok"` (không cần chuyển), `"migrated"` (đã chuyển xong; có bản sao dữ liệu cũ ở `backup_path`),
+     * `"read_only"` (chuyển lỗi: dữ liệu cũ giữ nguyên, mọi thao tác ghi báo lỗi; giao diện hiện chế độ chỉ đọc và
+     * hướng dẫn xuất sao lưu — `export_backup` vẫn dùng được).
+     */
+    var `state`: kotlin.String, 
+    /**
+     * Phiên bản kho trước khi mở.
+     */
+    var `fromVersion`: kotlin.Long, 
+    /**
+     * Phiên bản kho sau khi mở (bằng `from_version` khi chỉ đọc).
+     */
+    var `toVersion`: kotlin.Long, 
+    /**
+     * Bản sao dữ liệu cũ (nếu đã tạo).
+     */
+    var `backupPath`: kotlin.String?, 
+    /**
+     * Câu lỗi (khi chỉ đọc), tiếng Việt cho người dùng.
+     */
+    var `message`: kotlin.String?
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeMigrationStatus: FfiConverterRustBuffer<MigrationStatus> {
+    override fun read(buf: ByteBuffer): MigrationStatus {
+        return MigrationStatus(
+            FfiConverterString.read(buf),
+            FfiConverterLong.read(buf),
+            FfiConverterLong.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: MigrationStatus) = (
+            FfiConverterString.allocationSize(value.`state`) +
+            FfiConverterLong.allocationSize(value.`fromVersion`) +
+            FfiConverterLong.allocationSize(value.`toVersion`) +
+            FfiConverterOptionalString.allocationSize(value.`backupPath`) +
+            FfiConverterOptionalString.allocationSize(value.`message`)
+    )
+
+    override fun write(value: MigrationStatus, buf: ByteBuffer) {
+            FfiConverterString.write(value.`state`, buf)
+            FfiConverterLong.write(value.`fromVersion`, buf)
+            FfiConverterLong.write(value.`toVersion`, buf)
+            FfiConverterOptionalString.write(value.`backupPath`, buf)
+            FfiConverterOptionalString.write(value.`message`, buf)
+    }
+}
+
+
+
+/**
  * Biên một kỳ.
  */
 data class PeriodRange (
@@ -4271,19 +4364,6 @@ public object FfiConverterSequenceTypeZoneTransition: FfiConverterRustBuffer<Lis
     
 
         /**
-         * Viết hoa chữ cái đầu như khi lưu (NFC, phần còn lại giữ nguyên) — để ô nhập hiển thị trước đúng giá trị sẽ
-         * lưu. `save_person_json` tự áp cho `danh_xung` và `quan_he`.
-         */ fun `capitalizeFirst`(`text`: kotlin.String): kotlin.String {
-            return FfiConverterString.lift(
-    uniffiRustCall() { _status ->
-    UniffiLib.INSTANCE.uniffi_lvhv_ffi_fn_func_capitalize_first(
-        FfiConverterString.lower(`text`),_status)
-}
-    )
-    }
-    
-
-        /**
          * Gợi ý cách gọi (01 §3.1, YC-2026-07), đã viết hoa chữ đầu. Người đang sống không có Cụ, Kỵ, Ông Tổ họ, Bà
          * Cô Tổ họ, Bé đỏ. `gioi_tinh` = `"nam"` / `"nu"`: từ hợp giới tính lên trước (thứ tự gốc trong mỗi nhóm);
          * `null` hay giá trị khác → thứ tự gốc. Cùng `danhXungSuggestions` của PWA.
@@ -4358,6 +4438,20 @@ public object FfiConverterSequenceTypeZoneTransition: FfiConverterRustBuffer<Lis
     uniffiRustCallWithError(LvhvDataException) { _status ->
     UniffiLib.INSTANCE.uniffi_lvhv_ffi_fn_func_derive_person_json(
         FfiConverterString.lower(`json`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Viết hoa chữ cái đầu (NFC, phần còn lại giữ nguyên) để **hiển thị** `danh_xung` / `quan_he` đã lưu — dữ liệu
+         * khôi phục từ tệp cũ có thể còn viết thường vì nhập sao lưu giữ nguyên byte. `save_person_json` tự áp khi lưu.
+         * Tên hiển thị trong lời nhắc, .ics, danh sách của lõi đã viết hoa sẵn.
+         */ fun `displayCapitalize`(`text`: kotlin.String): kotlin.String {
+            return FfiConverterString.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_lvhv_ffi_fn_func_display_capitalize(
+        FfiConverterString.lower(`text`),_status)
 }
     )
     }

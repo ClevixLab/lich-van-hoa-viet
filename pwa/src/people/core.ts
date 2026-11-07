@@ -82,8 +82,9 @@ export function lunarOf(d: Ymd): string {
 }
 
 export function displayName(p: JsonObj): string {
+  // YC-2026-07: viết hoa chữ đầu khi hiển thị (dữ liệu khôi phục từ tệp cũ giữ nguyên byte) — cùng lõi.
   const dx = (p.danh_xung as string) ?? "";
-  return dx ? `${dx} ${p.ho_ten as string}` : (p.ho_ten as string);
+  return dx ? `${M.upperFirst(dx)} ${p.ho_ten as string}` : (p.ho_ten as string);
 }
 
 export type ItemKind = "gio" | "tt" | "sn" | "ev";

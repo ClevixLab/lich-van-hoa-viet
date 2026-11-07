@@ -213,3 +213,61 @@ fn import_checks_notice() {
     b["persons"][0]["death"]["notice"] = Value::Null;
     assert!(validate::document(&b).is_ok());
 }
+
+/// PR #30: "Gộp" một tệp có tệp đính kèm — tệp đính kèm của hồ sơ nhập vào được giữ (trước đây gộp chỉ giữ ảnh
+/// chân dung nên tài liệu sau gộp trỏ tới tệp không tồn tại → V3). Hồ sơ trên máy thắng thì tệp đính kèm của bản
+/// nhập không được thêm.
+#[test]
+fn merge_keeps_imported_attachments() {
+    let file = std::fs::read(gen::out_dir().join("notice-v1.lvhv")).unwrap();
+    let v = open_backup(&file, gen::PASSWORD).unwrap();
+    // 1) Kho mới (chỉ có dữ liệu mặc định) ← Gộp: mọi hồ sơ là của bản nhập → giữ cả hai tệp đính kèm.
+    let dir = tmpdir("merge1");
+    let mut s = Store::open(&dir).unwrap();
+    s.apply_import(&v, ImportMode::Merge).unwrap();
+    let mut ids: Vec<String> = s
+        .attachments()
+        .unwrap()
+        .iter()
+        .map(|a| a["id"].as_str().unwrap().to_owned())
+        .collect();
+    ids.sort();
+    assert_eq!(ids, vec![gen::CERT_ID.to_owned(), gen::PDF_ID.to_owned()]);
+    assert_eq!(s.attachment_bytes(gen::PDF_ID).unwrap(), gen::PDF_BYTES);
+    // Gộp lần nữa (cùng tệp) → không đổi gì.
+    let h = s.state_hash().unwrap();
+    s.apply_import(&v, ImportMode::Merge).unwrap();
+    assert_eq!(s.state_hash().unwrap(), h);
+    // 2) Kho có cùng hồ sơ với rev cao hơn, không có báo tử → bản trên máy thắng; tệp đính kèm nhập vào không
+    //    được ai dùng nên không thêm; tài liệu sau gộp vẫn hợp lệ.
+    let dir2 = tmpdir("merge2");
+    let mut t = Store::open(&dir2).unwrap();
+    let mut doc: Value = v.document().clone();
+    doc.as_object_mut().unwrap().remove("attachments");
+    doc["persons"][0]["death"]
+        .as_object_mut()
+        .unwrap()
+        .remove("notice");
+    doc["persons"][0]["rev"] = json!(doc["persons"][0]["rev"].as_i64().unwrap() + 5);
+    let photos: Vec<lvhv_backup::PhotoBlob> = gen::notice_doc()
+        .1
+        .into_iter()
+        .filter(|(id, _)| id != gen::CERT_ID && id != gen::PDF_ID)
+        .map(|(id, b)| lvhv_backup::PhotoBlob {
+            id: lvhv_backup::uuid_from_str(&id).unwrap(),
+            bytes: b,
+        })
+        .collect();
+    let local = lvhv_store::verify_contents(&lvhv_backup::Contents {
+        json: canonical_json(&doc),
+        photos,
+    })
+    .unwrap();
+    t.apply_import(&local, ImportMode::Replace).unwrap();
+    t.apply_import(&v, ImportMode::Merge).unwrap();
+    assert!(t.attachments().unwrap().is_empty());
+    let p = t.person("0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e01").unwrap();
+    assert!(p["death"].get("notice").is_none());
+    let _ = std::fs::remove_dir_all(dir);
+    let _ = std::fs::remove_dir_all(dir2);
+}

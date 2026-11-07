@@ -235,6 +235,7 @@
         "kind": { "enum": ["deceased", "living"] },
         "danh_xung": { "allOf": [{ "$ref": "#/$defs/text" }, { "maxLength": 40 }] },
         "gioi_tinh": { "$comment": "YC-2026-07 — khóa tùy chọn, thiếu ≡ null", "enum": ["nam", "nu", null] },
+        "legacy": { "$comment": "04 B5 — khóa tùy chọn: bản gốc của trường cũ mà phép chuyển đổi (01 §7.1) không đặt được vào trường mới; không hiển thị, không xóa", "type": "object" },
         "ho_ten": { "allOf": [{ "$ref": "#/$defs/text" }, { "minLength": 1, "maxLength": 120, "pattern": "\\S" }] },
         "ten_hieu": { "allOf": [{ "$ref": "#/$defs/text" }, { "maxLength": 120 }] },
         "quan_he": { "allOf": [{ "$ref": "#/$defs/text" }, { "maxLength": 120 }] },

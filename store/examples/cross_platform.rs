@@ -153,6 +153,23 @@ fn main() {
             );
             std::fs::write(out().join("photo-gc-rust.json"), canonical_json(&r)).unwrap();
             std::fs::write(out().join("names-rust.json"), canonical_json(&names_doc())).unwrap();
+            // PR #30: Gộp tệp có tệp đính kèm (vector bổ sung YC-05/07) vào kho mới — PWA so state hash.
+            let nf = std::fs::read(
+                PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                    .join("../docs/v0.2/schema/test-vectors/supplement-yc05/notice-v1.lvhv"),
+            )
+            .unwrap();
+            let nv = open_backup(&nf, gen::PASSWORD).unwrap();
+            let d = tmp.join("merge");
+            let _ = std::fs::remove_dir_all(&d);
+            let mut m = Store::open(&d).unwrap();
+            m.apply_import(&nv, ImportMode::Merge).unwrap();
+            assert_eq!(m.attachments().unwrap().len(), 2);
+            std::fs::write(
+                out().join("notice-merge-rust.json"),
+                canonical_json(&serde_json::json!({"state_sha256": m.state_hash().unwrap()})),
+            )
+            .unwrap();
             println!("ok: photo-gc-rust.json ({})", r["state_sha256"]);
         }
         "check" => {

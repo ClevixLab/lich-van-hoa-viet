@@ -12,13 +12,17 @@
 // Không dùng localStorage/sessionStorage/Cache Storage cho dữ liệu cá nhân (01 §4.1, S4').
 import { canonicalJson, type Json, type JsonObj } from "./json";
 import { mergeDocs } from "./merge";
+import { STORE_VERSION, hasCertificatePhotoIds, migrate1to2, type MigrationStatus } from "./migrate";
 import * as V from "./validate";
 
 export const DB_NAME = "lvhv";
 export const SCHEMA_VERSION = 1;
-/** Phiên bản IndexedDB: 2 thêm kho `attachments` (YC-2026-07). Khác `SCHEMA_VERSION` của tài liệu sao lưu (vẫn 1,
- *  vector đã khóa) — như bản Rust tạo bảng `attachment` mà không đổi `schema_version`. */
-export const IDB_VERSION = 2;
+/** Phiên bản IndexedDB (khác `SCHEMA_VERSION` của tài liệu sao lưu, vẫn 1 — vector đã khóa):
+ *  1 = bản dựng 0.2 trước YC-2026-07 (`certificate_photo_ids`); 2 = bản dựng trung gian đã có kho `attachments` nhưng
+ *  chưa chuyển dữ liệu; 3 = đã chuyển (04 B5). Tương ứng Rust STORE_VERSION 2 (`migrate.ts`). */
+export const IDB_VERSION = 3;
+export { STORE_VERSION };
+export type { MigrationStatus };
 const STORES = ["persons", "events", "event_types", "photos", "attachments", "settings", "meta"] as const;
 type StoreName = (typeof STORES)[number];
 
@@ -36,7 +40,7 @@ export function normNotice(p: JsonObj): JsonObj {
 }
 
 export class StoreError extends Error {
-  constructor(public code: "invalid" | "input" | "newer_schema" | "not_found" | "backup", msg: string, public cause?: unknown) { super(msg); }
+  constructor(public code: "invalid" | "input" | "newer_schema" | "not_found" | "backup" | "read_only", msg: string, public cause?: unknown) { super(msg); }
 }
 
 export interface AppInfo { version: string; platform: "pwa" }
@@ -106,16 +110,72 @@ function upgrade(db: IDBDatabase, tx: IDBTransaction, from: number): void {
   }
   if (from < 2 && !db.objectStoreNames.contains("attachments")) db.createObjectStore("attachments", { keyPath: "id" });
   // Phiên bản sau: thêm nhánh `if (from < N)` với migrate_{N-1}_to_N (01 §7).
+  if (from >= 1 && from < 3) migrateData1to2(tx);
 }
 
-/** Mở (hoặc tạo) kho. Kho có phiên bản lớn hơn bản này hiểu → StoreError("newer_schema"). */
+/**
+ * Bước dữ liệu 1 → 2 (YC-2026-07) trong giao dịch `versionchange`: đọc hồ sơ, ảnh, tệp đính kèm bằng yêu cầu
+ * IndexedDB (không `await` — giao dịch nâng cấp tự kết thúc khi hết yêu cầu), áp `migrate1to2` (hàm thuần đồng bộ,
+ * như Rust), ghi lại, rồi kiểm 01 §6.2. Lỗi → `abort()`: IndexedDB quay lui toàn bộ nâng cấp (giữ nguyên phiên bản và
+ * dữ liệu cũ — chính là "bản sao dữ liệu cũ" của 01 §7 trên trình duyệt); openStore mở lại ở chế độ chỉ đọc.
+ */
+function migrateData1to2(tx: IDBTransaction): void {
+  const all = <T>(name: StoreName, then: (rows: T[]) => void) => {
+    const r = tx.objectStore(name).getAll();
+    r.onsuccess = () => then(r.result as T[]);
+  };
+  all<JsonObj>("persons", (persons) => all<{ id: string; meta: JsonObj; blob: Blob }>("photos", (photos) =>
+    all<{ id: string; meta: JsonObj; blob: Blob }>("attachments", (atts) => {
+      try {
+        const m = migrate1to2({ persons, photos: photos.map((x) => x.meta), attachments: atts.map((x) => x.meta) });
+        if (!m.changed) return;
+        const blob = new Map(photos.map((x) => [x.id, x.blob] as const));
+        const metas = new Map(((m.doc.attachments as JsonObj[] | undefined) ?? []).map((a) => [a.id as string, a] as const));
+        for (const [aid, pid] of m.blob_sources) {
+          const b = blob.get(pid);
+          if (!b) throw new Error(`thiếu byte ảnh ${pid}`);
+          tx.objectStore("attachments").put({ id: aid, meta: metas.get(aid)!, blob: b });
+        }
+        for (const pid of m.moved_photos) tx.objectStore("photos").delete(pid);
+        const photoIds = new Set(((m.doc.photos as JsonObj[] | undefined) ?? []).map((x) => x.id as string));
+        for (const p of m.doc.persons as JsonObj[]) {
+          V.person(p, "/person");
+          for (const pid of V.personPhotoRefs(p)) if (!photoIds.has(pid)) throw new Error(`V3 ảnh ${pid}`);
+          for (const aid of V.personAttachmentRefs(p)) if (!metas.has(aid)) throw new Error(`V3 tệp đính kèm ${aid}`);
+          tx.objectStore("persons").put(normNotice(p));
+        }
+        for (const a of metas.values()) V.attachment(a, "/attachment");
+        tx.objectStore("meta").put(STORE_VERSION, "store_version");
+      } catch (e) {
+        (tx as unknown as { __lvhvError?: string }).__lvhvError = (e as Error).message;
+        tx.abort();
+      }
+    })));
+}
+
+/**
+ * Mở (hoặc tạo) kho, chuyển đổi phiên bản nếu cần (01 §7, 04 B5). Kho có phiên bản lớn hơn bản này hiểu →
+ * StoreError("newer_schema"). Chuyển đổi lỗi → mở lại kho cũ (đã quay lui) ở chế độ chỉ đọc; `migrationStatus()`
+ * cho giao diện biết để hiện chế độ chỉ đọc và hướng dẫn xuất sao lưu.
+ */
 export function openStore(factory: IDBFactory = indexedDB): Promise<Store> {
   return new Promise((ok, ko) => {
     let r: IDBOpenDBRequest;
+    let from = IDB_VERSION;
+    let upgradeTx: IDBTransaction | null = null;
     try { r = factory.open(DB_NAME, IDB_VERSION); } catch (e) { ko(e); return; }
-    r.onupgradeneeded = (e) => upgrade(r.result, r.transaction!, e.oldVersion);
-    r.onsuccess = () => ok(new Store(r.result));
-    r.onerror = () => ko(r.error?.name === "VersionError" ? new StoreError("newer_schema", "Dữ liệu được tạo bởi phiên bản mới hơn — hãy cập nhật ứng dụng") : r.error);
+    r.onupgradeneeded = (e) => { from = e.oldVersion; upgradeTx = r.transaction!; upgrade(r.result, r.transaction!, e.oldVersion); };
+    r.onsuccess = () => ok(new Store(r.result, { state: from > 0 && from < IDB_VERSION ? "migrated" : "ok", from_version: from, to_version: IDB_VERSION, error: null }));
+    r.onerror = (ev) => {
+      if (r.error?.name === "VersionError") { ko(new StoreError("newer_schema", "Dữ liệu được tạo bởi phiên bản mới hơn — hãy cập nhật ứng dụng")); return; }
+      const msg = (upgradeTx as unknown as { __lvhvError?: string } | null)?.__lvhvError;
+      if (msg === undefined || from === 0) { ko(r.error); return; }
+      ev.preventDefault?.();
+      // Nâng cấp đã quay lui: mở kho cũ (không chỉ định phiên bản → không nâng cấp) ở chế độ chỉ đọc.
+      const r2 = factory.open(DB_NAME);
+      r2.onsuccess = () => ok(new Store(r2.result, { state: "read_only", from_version: from, to_version: from, error: msg }));
+      r2.onerror = () => ko(r2.error);
+    };
     r.onblocked = () => ko(new StoreError("invalid", "Kho đang được mở ở thẻ khác"));
   });
 }
@@ -123,9 +183,17 @@ export function openStore(factory: IDBFactory = indexedDB): Promise<Store> {
 const vErr = (e: unknown) => (e instanceof V.ValidationError ? new StoreError("invalid", e.message, e) : e);
 
 export class Store {
-  constructor(readonly db: IDBDatabase) {}
+  constructor(readonly db: IDBDatabase, private readonly status: MigrationStatus = { state: "ok", from_version: IDB_VERSION, to_version: IDB_VERSION, error: null }) {}
 
   close(): void { this.db.close(); }
+
+  /** Trạng thái chuyển đổi khi mở kho (04 B5) — như Rust `migration_status`. */
+  migrationStatus(): MigrationStatus { return { ...this.status }; }
+
+  /** Chế độ chỉ đọc sau chuyển đổi lỗi: mọi thao tác ghi báo StoreError("read_only"). */
+  private writable(): void {
+    if (this.status.state === "read_only") throw new StoreError("read_only", "Dữ liệu đang ở chế độ chỉ đọc vì nâng cấp chưa xong — dữ liệu cũ vẫn còn nguyên; hãy xuất sao lưu");
+  }
 
   private tx(names: StoreName[] | StoreName, mode: IDBTransactionMode = "readonly") { return this.db.transaction(names, mode); }
 
@@ -135,10 +203,13 @@ export class Store {
   async events(): Promise<JsonObj[]> { return (await req(this.tx("events").objectStore("events").getAll())) as JsonObj[]; }
   async eventTypes(): Promise<JsonObj[]> { return ((await req(this.tx("event_types").objectStore("event_types").getAll())) as { doc: JsonObj }[]).map((x) => x.doc); }
   async photos(): Promise<JsonObj[]> { return ((await req(this.tx("photos").objectStore("photos").getAll())) as { meta: JsonObj }[]).map((x) => x.meta); }
-  async attachments(): Promise<JsonObj[]> { return ((await req(this.tx("attachments").objectStore("attachments").getAll())) as { meta: JsonObj }[]).map((x) => x.meta); }
+  async attachments(): Promise<JsonObj[]> {
+    if (!this.db.objectStoreNames.contains("attachments")) return []; // kho phiên bản 1 mở chỉ đọc
+    return ((await req(this.tx("attachments").objectStore("attachments").getAll())) as { meta: JsonObj }[]).map((x) => x.meta); }
 
   /** Byte một tệp đính kèm (kiểm `sha256` khi đọc). */
   async attachmentBytes(id: string): Promise<Uint8Array> {
+    if (!this.db.objectStoreNames.contains("attachments")) throw new StoreError("not_found", "không tìm thấy");
     const r = (await req(this.tx("attachments").objectStore("attachments").get(id))) as { meta: JsonObj; blob: Blob } | undefined;
     if (!r) throw new StoreError("not_found", "không tìm thấy");
     const b = new Uint8Array(await r.blob.arrayBuffer());
@@ -148,6 +219,7 @@ export class Store {
 
   /** Thêm một tệp đính kèm chưa gắn hồ sơ (như Rust `add_attachment`). Trả bản ghi. */
   async addAttachment(a: NewAttachment): Promise<JsonObj> {
+    this.writable();
     const meta = await attachmentMeta(a);
     const tx = this.tx(["attachments", "meta"], "readwrite");
     const fin = done(tx);
@@ -159,6 +231,7 @@ export class Store {
 
   /** Xóa tệp đính kèm không hồ sơ nào dùng. Còn dùng → "input"; không có → "not_found". */
   async deleteAttachment(id: string): Promise<void> {
+    this.writable();
     const has = await req(this.tx("attachments").objectStore("attachments").getKey(id));
     if (has === undefined) throw new StoreError("not_found", "không tìm thấy");
     if ((await this.persons()).some((x) => V.personAttachmentRefs(x).includes(id))) {
@@ -209,6 +282,7 @@ export class Store {
    * **một** giao dịch (01 §4.1). Lần lưu hồ sơ đầu tiên gọi requestPersistentStorage().
    */
   async putPerson(p: JsonObj, newPhoto?: NewPhoto, newAttachments: NewAttachment[] = []): Promise<void> {
+    this.writable();
     try { V.person(p, "/person"); } catch (e) { throw vErr(e); }
     // `newAttachments`: tệp đính kèm báo tử mới (01 §3.8a) — ghi cùng giao dịch với hồ sơ.
     const attRecs: { id: string; meta: JsonObj; blob: Blob }[] = [];
@@ -254,6 +328,7 @@ export class Store {
 
   /** Ghi một Event (V1, V3, V4, V8). */
   async putEvent(e: JsonObj): Promise<void> {
+    this.writable();
     try { V.event(e, "/event"); } catch (x) { throw vErr(x); }
     const tx = this.tx(["events", "event_types", "persons", "meta"], "readwrite");
     const fin = done(tx);
@@ -271,6 +346,7 @@ export class Store {
 
   /** Ghi một EventType (V1, V7 — chỉ mục duy nhất by_name_key). */
   async putEventType(t: JsonObj): Promise<void> {
+    this.writable();
     try { V.eventType(t, "/event_type"); } catch (x) { throw vErr(x); }
     const tx = this.tx(["event_types", "meta"], "readwrite");
     const fin = done(tx);
@@ -280,6 +356,7 @@ export class Store {
   }
 
   async putSettings(s: JsonObj): Promise<void> {
+    this.writable();
     try { V.settings(s, "/settings"); } catch (x) { throw vErr(x); }
     const tx = this.tx("settings", "readwrite");
     tx.objectStore("settings").put(s, "app");
@@ -291,6 +368,7 @@ export class Store {
    * sơ nào khác còn dùng — một giao dịch.
    */
   async deletePerson(id: string, opts: { deleteOrphanEvents?: boolean } = {}): Promise<string[]> {
+    this.writable();
     // opts.deleteOrphanEvents: như Rust `delete_person_with` — trong cùng giao dịch xóa sự kiện mà người này là người
     // duy nhất được gắn; trả id các sự kiện đã xóa.
     const removed: string[] = [];
@@ -318,6 +396,7 @@ export class Store {
 
   /** Xóa một ảnh không hồ sơ nào dùng (như Rust `delete_photo`). Còn được dùng → "input"; không có → "not_found". */
   async deletePhoto(id: string): Promise<void> {
+    this.writable();
     const has = await req(this.tx("photos").objectStore("photos").getKey(id));
     if (has === undefined) throw new StoreError("not_found", "không tìm thấy");
     if ((await this.persons()).some((x) => V.personPhotoRefs(x).includes(id))) {
@@ -331,6 +410,7 @@ export class Store {
   }
 
   async deleteEvent(id: string): Promise<void> {
+    this.writable();
     const tx = this.tx(["events", "meta"], "readwrite");
     const fin = done(tx);
     tx.objectStore("events").delete(id);
@@ -389,9 +469,12 @@ export class Store {
     const file = await bc.exportBackup(password, canonicalJson(doc), photos, onProgress);
     for (const p of photos) p.bytes.fill(0);
     // MA3N-23-01: chỉ ghi nhớ thời điểm tạo; "đã sao lưu" do markBackupSaved ghi sau khi tệp được lưu.
-    const tx = this.tx("meta", "readwrite");
-    tx.objectStore("meta").put(now, "last_export_at");
-    await done(tx);
+    // Chế độ chỉ đọc (04 B5): vẫn xuất được, không ghi gì.
+    if (this.status.state !== "read_only") {
+      const tx = this.tx("meta", "readwrite");
+      tx.objectStore("meta").put(now, "last_export_at");
+      await done(tx);
+    }
     return file;
   }
 
@@ -400,6 +483,7 @@ export class Store {
    * Rust: `last_backup_at = savedAt`; xóa "chờ sao lưu" nếu thay đổi chờ không muộn hơn lúc tạo tệp. Chưa tạo tệp → lỗi.
    */
   async markBackupSaved(savedAt: string): Promise<void> {
+    this.writable();
     if (!V.isTimestamp(savedAt)) throw new StoreError("input", "Thời điểm không hợp lệ (RFC 3339 UTC).");
     const exported = (await this.meta("last_export_at")) as string | undefined;
     if (exported === undefined) throw new StoreError("input", "Chưa tạo tệp sao lưu nào để ghi nhận.");
@@ -421,6 +505,7 @@ export class Store {
 
   /** Ghi tài liệu đã kiểm tra — Thay toàn bộ hoặc Gộp — trong **một** giao dịch. Lỗi → không ghi gì. */
   async applyImport(b: VerifiedBackup, mode: ImportMode): Promise<void> {
+    this.writable();
     let target = b.doc;
     if (mode === "merge") {
       target = mergeDocs(await this.snapshot({ version: "0.0.0", platform: "pwa" }, "1970-01-01T00:00:00Z"), b.doc);
@@ -480,13 +565,30 @@ export async function openBackup(file: Uint8Array, password: string, onProgress?
 }
 
 /** Phần kiểm tra nội dung của openBackup (sau khi giải mã). Cùng thứ tự với `verify_contents` của Rust. */
-export async function verifyContents(json: string, photos: { id: string; bytes: Uint8Array }[]): Promise<VerifiedBackup> {
+export async function verifyContents(json: string, blobsIn: { id: string; bytes: Uint8Array }[]): Promise<VerifiedBackup> {
+  let photos = blobsIn;
   const generic = (e: unknown) => new StoreError("invalid", "Sai mật khẩu hoặc tệp bị hỏng", e);
   let doc: JsonObj;
   try {
     doc = V.parseJson(json) as JsonObj;
     const sv = V.int((doc as JsonObj)?.schema_version ?? null);
     if (sv !== null && sv > SCHEMA_VERSION) throw new StoreError("newer_schema", "Tệp được tạo bởi phiên bản mới hơn — hãy cập nhật ứng dụng");
+    // 04 B5 mục 5: tệp của bản dựng 0.2 trước YC-2026-07 → cùng hàm chuyển đổi thuần như Rust; xếp lại khối.
+    if (hasCertificatePhotoIds(doc)) {
+      const m = migrate1to2(doc);
+      const src = new Map(photos.map((b) => [b.id, b.bytes] as const));
+      const from = new Map(m.blob_sources);
+      const list: { id: string; bytes: Uint8Array }[] = [];
+      for (const [k, att] of [["photos", false], ["attachments", true]] as const) {
+        for (const r of (m.doc[k] as JsonObj[] | undefined) ?? []) {
+          const id = r.id as string;
+          const b = src.get(att ? from.get(id) ?? id : id);
+          if (b) list.push({ id, bytes: b });
+        }
+      }
+      photos = list;
+      doc = m.doc;
+    }
     V.document(doc);
   } catch (e) { throw e instanceof StoreError ? e : generic(e); }
   const meta = new Map((doc.photos as JsonObj[]).map((p) => [p.id as string, p] as const));

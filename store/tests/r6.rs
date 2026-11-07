@@ -482,9 +482,13 @@ fn newer_schema_rejected() {
         let s = Store::open(&dir).unwrap();
         drop(s);
         let c = rusqlite::Connection::open(dir.join(lvhv_store::DB_FILE)).unwrap();
-        c.pragma_update(None, "user_version", 2).unwrap();
+        c.pragma_update(None, "user_version", lvhv_store::migrate::STORE_VERSION + 1)
+            .unwrap();
     }
-    assert!(matches!(Store::open(&dir), Err(StoreError::NewerSchema(2))));
+    assert!(matches!(
+        Store::open(&dir),
+        Err(StoreError::NewerSchema(v)) if v == lvhv_store::migrate::STORE_VERSION + 1
+    ));
 }
 
 #[test]

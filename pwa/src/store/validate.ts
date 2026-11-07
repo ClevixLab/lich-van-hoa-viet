@@ -314,7 +314,10 @@ const PERSON_KEYS = ["id", "kind", "danh_xung", "ho_ten", "ten_hieu", "quan_he",
 export function person(v: Json, path: string): void {
   // `gioi_tinh` (YC-2026-07): khóa tùy chọn, thiếu ≡ null.
   const hasGt = isObj(v) && has(v, "gioi_tinh");
-  const o = obj(v, path, hasGt ? [...PERSON_KEYS, "gioi_tinh"] : PERSON_KEYS);
+  // `legacy` (04 B5): bản gốc của trường cũ mà phép chuyển đổi không đặt được vào trường mới — đối tượng tự do.
+  const hasLegacy = isObj(v) && has(v, "legacy");
+  const o = obj(v, path, [...PERSON_KEYS, ...(hasGt ? ["gioi_tinh"] : []), ...(hasLegacy ? ["legacy"] : [])]);
+  if (hasLegacy && !isObj(o.legacy)) throw v1(p(path, "legacy"), "phải là đối tượng");
   if (hasGt && o.gioi_tinh !== null) enumStr(o.gioi_tinh, p(path, "gioi_tinh"), ["nam", "nu"]);
   uuid(o.id, p(path, "id"));
   const deceased = enumStr(o.kind, p(path, "kind"), ["deceased", "living"]) === "deceased";

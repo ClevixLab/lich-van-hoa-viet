@@ -36,6 +36,9 @@ export function capitalizeFirst(s: string): string {
   return (cps[0].toUpperCase() + cps.slice(1).join("")).normalize("NFC");
 }
 
+/** Viết hoa chữ đầu khi hiển thị cách gọi / quan hệ đã lưu (dữ liệu khôi phục có thể còn viết thường). */
+export const displayCapitalize = capitalizeFirst;
+
 /** Chuẩn hóa Person khi lưu từ giao diện (như Rust `normalize_person_names`): viết hoa chữ đầu `danh_xung`,
  *  `quan_he`; `gioi_tinh: null` → bỏ khóa. Không áp khi nhập sao lưu. */
 export function normalizePersonNames(p: JsonObj): JsonObj {

@@ -10,6 +10,7 @@
 #![forbid(unsafe_code)]
 
 pub mod derive;
+pub mod migrate;
 pub mod model;
 pub mod names;
 pub mod validate;
@@ -32,14 +33,6 @@ pub const PHOTO_DIR: &str = "photos";
 /// Thư mục tệp đính kèm thông tin báo tử (01 §3.8a, YC-2026-07).
 pub const ATTACHMENT_DIR: &str = "attachments";
 
-/// Bảng tệp đính kèm (YC-2026-07). v0.2 chưa phát hành nên không tăng `schema_version` (số này cũng là
-/// `schema_version` của tài liệu sao lưu — vector đã khóa); bảng được tạo nếu thiếu mỗi lần mở kho.
-const ATTACHMENT_TABLE: &str = "CREATE TABLE IF NOT EXISTS attachment (
-        id TEXT PRIMARY KEY,
-        json TEXT NOT NULL,
-        sha256 TEXT NOT NULL
-    ) STRICT;";
-
 /// Lỗi của kho.
 #[derive(Debug)]
 pub enum StoreError {
@@ -49,6 +42,8 @@ pub enum StoreError {
     Input(String),
     /// Kho có `schema_version` lớn hơn bản này hiểu.
     NewerSchema(i64),
+    /// Kho đang ở chế độ chỉ đọc vì chuyển đổi phiên bản lỗi (04 B5) — dữ liệu cũ giữ nguyên; hãy xuất sao lưu.
+    ReadOnly,
     /// Không tìm thấy bản ghi.
     NotFound,
     /// Lỗi tệp sao lưu (vùng chứa/mật mã).
@@ -77,7 +72,12 @@ impl core::fmt::Display for StoreError {
         match self {
             StoreError::Invalid(e) => write!(f, "dữ liệu không hợp lệ: {e}"),
             StoreError::Input(s) => f.write_str(s),
-            StoreError::NewerSchema(v) => write!(f, "kho có schema_version {v} > {SCHEMA_VERSION}"),
+            StoreError::NewerSchema(v) => {
+                write!(f, "kho có phiên bản {v} > {}", migrate::STORE_VERSION)
+            }
+            StoreError::ReadOnly => f.write_str(
+                "Dữ liệu đang ở chế độ chỉ đọc vì nâng cấp chưa xong — dữ liệu cũ vẫn còn nguyên; hãy xuất sao lưu",
+            ),
             StoreError::NotFound => f.write_str("không tìm thấy"),
             StoreError::Backup(e) => write!(f, "{e}"),
             StoreError::Sql(e) => write!(f, "SQLite: {e}"),
@@ -276,7 +276,8 @@ pub fn backup_due(nag_days: i64, pending_since: Option<&str>, now: &str) -> bool
 // Lược đồ SQLite và chuyển đổi phiên bản
 // ---------------------------------------------------------------------------------------------
 
-/// Chuỗi chuyển đổi: phần tử `i` đưa kho từ `user_version = i` lên `i + 1`.
+/// Chuỗi chuyển đổi lược đồ SQLite: phần tử `i` đưa kho từ `user_version = i` lên `i + 1`. Bước có chuyển dữ liệu
+/// gọi thêm hàm thuần của [`migrate`] (1 → 2: [`migrate::migrate_1_to_2`]).
 const MIGRATIONS: &[&str] = &[
     // 0 → 1: lược đồ ban đầu (01 §4.2).
     r#"
@@ -317,6 +318,14 @@ const MIGRATIONS: &[&str] = &[
     ) STRICT;
     CREATE INDEX event_person_by_person ON event_person(person_id);
     "#,
+    // 1 → 2 (YC-2026-07): bảng tệp đính kèm. `IF NOT EXISTS`: bản dựng 0.2 trung gian đã tạo bảng mà chưa tăng số.
+    r#"
+    CREATE TABLE IF NOT EXISTS attachment (
+        id TEXT PRIMARY KEY,
+        json TEXT NOT NULL,
+        sha256 TEXT NOT NULL
+    ) STRICT;
+    "#,
 ];
 
 /// Kho dữ liệu trên một thư mục.
@@ -324,6 +333,7 @@ const MIGRATIONS: &[&str] = &[
 pub struct Store {
     conn: Connection,
     dir: PathBuf,
+    status: migrate::MigrationStatus,
 }
 
 fn jtext(v: &Value) -> String {
@@ -347,21 +357,57 @@ impl Store {
         conn.pragma_update(None, "foreign_keys", true)?;
         conn.pragma_update(None, "journal_mode", "WAL")?;
         let ver: i64 = conn.query_row("PRAGMA user_version", [], |r| r.get(0))?;
-        if ver > SCHEMA_VERSION {
+        // 01 §7: kho của bản mới hơn → từ chối, không cố đọc một phần.
+        if ver > migrate::STORE_VERSION {
             return Err(StoreError::NewerSchema(ver));
         }
-        if ver < SCHEMA_VERSION {
+        let mut status = migrate::MigrationStatus {
+            state: "ok",
+            from_version: ver,
+            to_version: ver.max(migrate::STORE_VERSION),
+            backup_path: None,
+            error: None,
+        };
+        if ver < migrate::STORE_VERSION {
             if ver > 0 {
-                // 01 §7: bản sao nội bộ không mã hóa trước khi chuyển đổi (giữ 1 bản).
-                let bak = dir.join(format!("{DB_FILE}.pre-v{SCHEMA_VERSION}.bak"));
+                // 01 §7, 04 B5: bản sao nội bộ không mã hóa trước khi chuyển đổi. Không bao giờ tự xóa. Tệp ảnh và
+                // tệp đính kèm không bị xóa bởi phép chuyển nào, nên bản sao CSDL + thư mục ảnh = toàn bộ dữ liệu cũ.
+                let bak = dir.join(format!("{DB_FILE}.pre-v{}.bak", migrate::STORE_VERSION));
                 conn.execute_batch("PRAGMA wal_checkpoint(TRUNCATE)")?;
-                std::fs::copy(dir.join(DB_FILE), bak)?;
+                if !bak.exists() {
+                    std::fs::copy(dir.join(DB_FILE), &bak)?;
+                }
+                status.backup_path = Some(bak.to_string_lossy().into_owned());
             }
-            let tx = conn.transaction_with_behavior(TransactionBehavior::Exclusive)?;
-            for m in &MIGRATIONS[ver as usize..] {
-                tx.execute_batch(m)?;
+            match Self::run_migrations(&mut conn, &dir, ver) {
+                Ok(()) => {
+                    if ver > 0 {
+                        status.state = "migrated";
+                    }
+                }
+                Err(e) => {
+                    // Giao dịch đã quay lui: kho cũ giữ nguyên; mở ở chế độ chỉ đọc (04 B5 mục 3).
+                    status.state = "read_only";
+                    status.to_version = ver;
+                    status.error = Some(e.to_string());
+                }
             }
-            tx.pragma_update(None, "user_version", SCHEMA_VERSION)?;
+        }
+        Ok(Store { conn, dir, status })
+    }
+
+    /// Chạy chuỗi chuyển đổi từ `ver` lên [`migrate::STORE_VERSION`] trong **một** giao dịch, rồi kiểm 01 §6.2 trên
+    /// mọi hồ sơ và tệp đính kèm. Lỗi → quay lui toàn bộ.
+    fn run_migrations(conn: &mut Connection, dir: &Path, ver: i64) -> Result<()> {
+        let tx = conn.transaction_with_behavior(TransactionBehavior::Exclusive)?;
+        for m in &MIGRATIONS[ver as usize..] {
+            tx.execute_batch(m)?;
+        }
+        if ver == 1 {
+            migrate_data_1_to_2(&tx, dir)?;
+        }
+        tx.pragma_update(None, "user_version", migrate::STORE_VERSION)?;
+        {
             if ver == 0 {
                 tx.execute(
                     "INSERT INTO meta(key, value) VALUES ('schema_version', ?1), ('created_with_app_version', ?2)",
@@ -380,10 +426,51 @@ impl Store {
                     params![SCHEMA_VERSION.to_string()],
                 )?;
             }
-            tx.commit()?;
+            tx.execute(
+                "INSERT OR REPLACE INTO meta(key, value) VALUES ('store_version', ?1)",
+                params![migrate::STORE_VERSION.to_string()],
+            )?;
         }
-        conn.execute_batch(ATTACHMENT_TABLE)?;
-        Ok(Store { conn, dir })
+        // 01 §6.2 sau chuyển đổi: mọi hồ sơ hợp lệ và tham chiếu tồn tại.
+        if ver > 0 {
+            let rows: Vec<String> = {
+                let mut st = tx.prepare("SELECT json FROM person ORDER BY id")?;
+                let r = st
+                    .query_map([], |r| r.get(0))?
+                    .collect::<core::result::Result<_, _>>()?;
+                r
+            };
+            for r in rows {
+                let p = parse_col(&r)?;
+                validate::person(&p, "/person")?;
+                check_refs_person(&tx, &p)?;
+            }
+            let rows: Vec<String> = {
+                let mut st = tx.prepare("SELECT json FROM attachment ORDER BY id")?;
+                let r = st
+                    .query_map([], |r| r.get(0))?
+                    .collect::<core::result::Result<_, _>>()?;
+                r
+            };
+            for r in rows {
+                validate::attachment(&parse_col(&r)?, "/attachment")?;
+            }
+        }
+        tx.commit()?;
+        Ok(())
+    }
+
+    /// Trạng thái chuyển đổi khi mở kho (04 B5): giao diện hiện chế độ chỉ đọc / lỗi khi `state = "read_only"`.
+    pub fn migration_status(&self) -> &migrate::MigrationStatus {
+        &self.status
+    }
+
+    fn writable(&self) -> Result<()> {
+        if self.status.state == "read_only" {
+            Err(StoreError::ReadOnly)
+        } else {
+            Ok(())
+        }
     }
 
     /// `PRAGMA user_version`.
@@ -416,6 +503,7 @@ impl Store {
 
     /// Ghi tùy chọn "hiện tên trên màn hình khóa" (O-9).
     pub fn set_lock_screen_names(&mut self, show: bool) -> Result<()> {
+        self.writable()?;
         self.conn.execute(
             "INSERT INTO meta(key, value) VALUES ('lock_screen_names', ?1)
              ON CONFLICT(key) DO UPDATE SET value = excluded.value",
@@ -478,6 +566,15 @@ impl Store {
     }
     /// Siêu dữ liệu mọi `Attachment` (01 §3.8a), sắp theo `id`.
     pub fn attachments(&self) -> Result<Vec<Value>> {
+        // Kho phiên bản 1 mở chỉ đọc sau chuyển đổi lỗi (04 B5) chưa có bảng này.
+        let has: i64 = self.conn.query_row(
+            "SELECT count(*) FROM sqlite_master WHERE type = 'table' AND name = 'attachment'",
+            [],
+            |r| r.get(0),
+        )?;
+        if has == 0 {
+            return Ok(Vec::new());
+        }
         self.all("attachment")
     }
 
@@ -549,6 +646,7 @@ impl Store {
     /// Ảnh mà bản cũ của hồ sơ này dùng nhưng bản mới bỏ (đổi/xóa ảnh chân dung, bỏ ảnh giấy báo tử) bị xóa trong
     /// cùng giao dịch nếu không hồ sơ nào khác còn dùng.
     pub fn put_person(&mut self, p: &Value) -> Result<()> {
+        self.writable()?;
         validate::person(p, "/person")?;
         let now = now_rfc3339();
         let tx = self.conn.transaction()?;
@@ -595,6 +693,7 @@ impl Store {
         file_name: Option<&str>,
         bytes: &[u8],
     ) -> Result<Value> {
+        self.writable()?;
         let pdf = mime == "application/pdf";
         if pdf && !bytes.starts_with(b"%PDF-") {
             return Err(StoreError::Input(
@@ -623,6 +722,7 @@ impl Store {
     /// Xóa một tệp đính kèm không hồ sơ nào dùng (đã thêm rồi người dùng hủy). Tệp hồ sơ gỡ khỏi danh sách thì
     /// [`Store::put_person`] đã tự xóa. Còn được dùng → `Input`; không có → `NotFound`.
     pub fn delete_attachment(&mut self, id: &str) -> Result<()> {
+        self.writable()?;
         let tx = self.conn.transaction()?;
         let n: i64 = tx.query_row(
             "SELECT count(*) FROM attachment WHERE id = ?1",
@@ -646,6 +746,7 @@ impl Store {
     /// Xóa một ảnh không hồ sơ nào dùng — ví dụ ảnh đã thêm bằng [`Store::add_photo`] rồi người dùng bỏ không lưu
     /// hồ sơ. Ảnh còn được hồ sơ dùng → `Input`; không có → `NotFound`.
     pub fn delete_photo(&mut self, id: &str) -> Result<()> {
+        self.writable()?;
         let tx = self.conn.transaction()?;
         let n: i64 = tx.query_row(
             "SELECT count(*) FROM photo WHERE id = ?1",
@@ -668,6 +769,7 @@ impl Store {
 
     /// Ghi một `Event` (V1, V3, V4, V8).
     pub fn put_event(&mut self, e: &Value) -> Result<()> {
+        self.writable()?;
         validate::event(e, "/event")?;
         let now = now_rfc3339();
         let tx = self.conn.transaction()?;
@@ -690,6 +792,7 @@ impl Store {
 
     /// Ghi một `EventType` (V1, V7).
     pub fn put_event_type(&mut self, t: &Value) -> Result<()> {
+        self.writable()?;
         validate::event_type(t, "/event_type")?;
         let now = now_rfc3339();
         let tx = self.conn.transaction()?;
@@ -723,6 +826,7 @@ impl Store {
         height: u32,
         bytes: &[u8],
     ) -> Result<Value> {
+        self.writable()?;
         let meta = json!({
             "id": id, "mime": mime, "width": width, "height": height, "bytes": bytes.len(),
             "sha256": sha256_hex(bytes), "stripped": true, "created_at": now_rfc3339(),
@@ -753,6 +857,7 @@ impl Store {
         id: &str,
         delete_orphan_events: bool,
     ) -> Result<Vec<String>> {
+        self.writable()?;
         let now = now_rfc3339();
         let mut removed_events = Vec::new();
         let tx = self.conn.transaction()?;
@@ -809,6 +914,7 @@ impl Store {
 
     /// Xóa một sự kiện.
     pub fn delete_event(&mut self, id: &str) -> Result<()> {
+        self.writable()?;
         let tx = self.conn.transaction()?;
         if tx.execute("DELETE FROM event WHERE id = ?1", params![id])? == 0 {
             return Err(StoreError::NotFound);
@@ -820,6 +926,7 @@ impl Store {
 
     /// Cập nhật `AppSettings` (V1, V8).
     pub fn put_settings(&mut self, s: &Value) -> Result<()> {
+        self.writable()?;
         validate::settings(s, "/settings")?;
         self.conn.execute(
             "UPDATE settings SET json = ?1 WHERE id = 1",
@@ -919,11 +1026,14 @@ impl Store {
         let now = now_rfc3339();
         let (doc, blobs) = self.snapshot_with_photos(app, &now)?;
         let file = lvhv_backup::export(password, &canonical_json(&doc), &blobs)?;
-        self.conn.execute(
-            "INSERT INTO meta(key, value) VALUES ('last_export_at', ?1)
+        // Chế độ chỉ đọc (04 B5): vẫn xuất được sao lưu, chỉ không ghi gì vào kho.
+        if self.writable().is_ok() {
+            self.conn.execute(
+                "INSERT INTO meta(key, value) VALUES ('last_export_at', ?1)
              ON CONFLICT(key) DO UPDATE SET value = excluded.value",
-            params![now],
-        )?;
+                params![now],
+            )?;
+        }
         Ok(file)
     }
 
@@ -931,6 +1041,7 @@ impl Store {
     /// `settings.last_backup_at = saved_at` và xóa trạng thái "chờ sao lưu" nếu mọi thay đổi chờ đã có trong tệp
     /// (thay đổi đầu tiên chưa sao lưu không muộn hơn thời điểm tạo tệp). Chưa tạo tệp nào → lỗi `Input`.
     pub fn mark_backup_saved(&mut self, saved_at: &str) -> Result<()> {
+        self.writable()?;
         if !validate::is_timestamp(saved_at) {
             return Err(StoreError::Input(
                 "Thời điểm không hợp lệ (RFC 3339 UTC).".into(),
@@ -978,6 +1089,7 @@ impl Store {
 
     /// Ghi một tài liệu đã kiểm tra (Thay toàn bộ hoặc Gộp) trong **một** giao dịch. Lỗi → không ghi gì.
     pub fn apply_import(&mut self, b: &VerifiedBackup, mode: ImportMode) -> Result<()> {
+        self.writable()?;
         let target = match mode {
             ImportMode::Replace => b.doc.clone(),
             ImportMode::Merge => {
@@ -1160,6 +1272,44 @@ fn gc_photos(tx: &rusqlite::Transaction<'_>, mut candidates: Vec<String>) -> Res
         }
     }
     Ok(gone)
+}
+
+/// Bước dữ liệu của chuyển đổi kho 1 → 2 (YC-2026-07): đọc hồ sơ, ảnh, tệp đính kèm; áp
+/// [`migrate::migrate_1_to_2`]; chép byte ảnh sang tệp đính kèm (không xóa tệp ảnh nào); ghi lại trong giao dịch `tx`.
+fn migrate_data_1_to_2(tx: &rusqlite::Transaction<'_>, dir: &Path) -> Result<()> {
+    let col = |sql: &str| -> Result<Vec<Value>> {
+        let mut st = tx.prepare(sql)?;
+        let rows: Vec<String> = st
+            .query_map([], |r| r.get(0))?
+            .collect::<core::result::Result<_, _>>()?;
+        rows.iter().map(|r| parse_col(r)).collect()
+    };
+    let doc = json!({
+        "persons": col("SELECT json FROM person ORDER BY id")?,
+        "photos": col("SELECT json FROM photo ORDER BY id")?,
+        "attachments": col("SELECT json FROM attachment ORDER BY id")?,
+    });
+    let m = migrate::migrate_1_to_2(&doc);
+    if !m.changed {
+        return Ok(());
+    }
+    for (aid, pid) in &m.blob_sources {
+        let b = std::fs::read(dir.join(PHOTO_DIR).join(format!("{pid}.img")))?;
+        write_atomic(&dir.join(ATTACHMENT_DIR).join(format!("{aid}.bin")), &b)?;
+    }
+    for a in m.doc["attachments"].as_array().into_iter().flatten() {
+        tx.execute(
+            "INSERT OR REPLACE INTO attachment(id, json, sha256) VALUES (?1, ?2, ?3)",
+            params![a["id"].as_str(), jtext(a), a["sha256"].as_str()],
+        )?;
+    }
+    for p in m.doc["persons"].as_array().into_iter().flatten() {
+        upsert_person(tx, p)?;
+    }
+    for pid in &m.moved_photos {
+        tx.execute("DELETE FROM photo WHERE id = ?1", params![pid])?;
+    }
+    Ok(())
 }
 
 /// Như [`gc_photos`] cho tệp đính kèm (bảng `attachment`).
@@ -1435,7 +1585,48 @@ pub fn verify_contents(c: &lvhv_backup::Contents) -> Result<VerifiedBackup> {
             return Err(StoreError::NewerSchema(v));
         }
     }
+    // 04 B5 mục 5: tệp của bản dựng 0.2 trước YC-2026-07 (`certificate_photo_ids`) → chuyển bằng cùng hàm thuần,
+    // rồi xếp lại khối theo tài liệu mới (ảnh rồi tệp đính kèm; byte tệp đính kèm lấy từ ảnh nguồn).
+    let mut doc = doc;
+    let mut migrated: Option<Vec<(String, Vec<u8>)>> = None;
+    if migrate::has_certificate_photo_ids(&doc) {
+        let m = migrate::migrate_1_to_2(&doc);
+        let src: HashMap<String, &[u8]> = c
+            .photos
+            .iter()
+            .map(|b| (lvhv_backup::uuid_to_string(&b.id), b.bytes.as_slice()))
+            .collect();
+        let from: HashMap<&str, &str> = m
+            .blob_sources
+            .iter()
+            .map(|(a, p)| (a.as_str(), p.as_str()))
+            .collect();
+        let mut list = Vec::new();
+        for (k, is_att) in [("photos", false), ("attachments", true)] {
+            for r in m.doc[k].as_array().into_iter().flatten() {
+                let id = r["id"].as_str().unwrap_or_default();
+                let key = if is_att {
+                    from.get(id).copied().unwrap_or(id)
+                } else {
+                    id
+                };
+                if let Some(b) = src.get(key) {
+                    list.push((id.to_owned(), b.to_vec()));
+                }
+            }
+        }
+        migrated = Some(list);
+        doc = m.doc;
+    }
     validate::document(&doc)?;
+    let blobs: Vec<(String, Vec<u8>)> = match migrated {
+        Some(l) => l,
+        None => c
+            .photos
+            .iter()
+            .map(|b| (lvhv_backup::uuid_to_string(&b.id), b.bytes.clone()))
+            .collect(),
+    };
     let meta: HashMap<String, &Value> = doc["photos"]
         .as_array()
         .into_iter()
@@ -1465,8 +1656,12 @@ pub fn verify_contents(c: &lvhv_backup::Contents) -> Result<VerifiedBackup> {
         })
     };
     // Khối: ảnh trước, tệp đính kèm sau (03 §2.3); mỗi khối khớp đúng một bản ghi theo id.
-    for b in &c.photos {
-        let id = lvhv_backup::uuid_to_string(&b.id);
+    for (id, bytes) in &blobs {
+        let id = id.clone();
+        let b = PhotoBlob {
+            id: [0; 16],
+            bytes: bytes.clone(),
+        };
         if let Some(m) = meta.get(&id) {
             if m["sha256"].as_str() != Some(sha256_hex(&b.bytes).as_str())
                 || m["bytes"].as_u64() != Some(b.bytes.len() as u64)

@@ -1306,7 +1306,7 @@ fn names_gender_and_suggestions() {
     let mut c = b.clone();
     c["gioi_tinh"] = json!("khac");
     assert!(s.save_person_json(c.to_string()).is_err());
-    assert_eq!(capitalize_first("bé đỏ".into()), "Bé đỏ");
+    assert_eq!(display_capitalize("bé đỏ".into()), "Bé đỏ");
     let dead = danh_xung_suggestions(true, None);
     let living = danh_xung_suggestions(false, None);
     assert_eq!((dead.len(), living.len()), (22, 17));
@@ -1322,4 +1322,74 @@ fn names_gender_and_suggestions() {
     assert!(quan_he_suggestions(true).contains(&"Kỵ ông".to_string()));
     assert!(!quan_he_suggestions(false).contains(&"Kỵ ông".to_string()));
     let _ = std::fs::remove_dir_all(dir);
+}
+
+/// 04 B5 / R14: trạng thái chuyển đổi qua FFI — kho của bản dựng 0.2 trước YC-2026-07 (bộ mẫu đóng băng) chuyển
+/// được; kho hỏng → chỉ đọc, ghi báo lỗi, vẫn xuất được sao lưu.
+#[test]
+fn migration_status_via_ffi() {
+    fn copy_dir(from: &std::path::Path, to: &std::path::Path) {
+        std::fs::create_dir_all(to).unwrap();
+        for e in std::fs::read_dir(from).unwrap().flatten() {
+            let t = to.join(e.file_name());
+            if e.file_type().unwrap().is_dir() {
+                copy_dir(&e.path(), &t);
+            } else {
+                std::fs::copy(e.path(), t).unwrap();
+            }
+        }
+    }
+    let fix = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../docs/v0.2/schema/test-vectors/released/0.2-dev-before-attachments/store");
+    let (fresh, d0) = tmp_store();
+    assert_eq!(fresh.migration_status().state, "ok");
+    let dir = std::env::temp_dir().join(format!("lvhv-ffi-mig-{}", new_uuid().unwrap()));
+    copy_dir(&fix, &dir);
+    let s = LvhvStore::open(dir.to_string_lossy().into_owned()).unwrap();
+    let st = s.migration_status();
+    assert_eq!(
+        (st.state.as_str(), st.from_version, st.to_version),
+        ("migrated", 1, 2)
+    );
+    assert!(st.backup_path.is_some() && st.message.is_none());
+    let p = v(&s
+        .person_json("0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e02".into())
+        .unwrap());
+    assert_eq!(
+        p["death"]["notice"]["attachments"]
+            .as_array()
+            .unwrap()
+            .len(),
+        2
+    );
+    // Kho hỏng: chỉ đọc.
+    let bad = std::env::temp_dir().join(format!("lvhv-ffi-mig-{}", new_uuid().unwrap()));
+    copy_dir(&fix, &bad);
+    {
+        // Sửa thẳng byte trong tệp SQLite (cùng độ dài): "Quê nhà" → "Quê nh  " (khoảng trắng cuối → V1 sau chuyển đổi).
+        let f = bad.join("lvhv.sqlite");
+        let mut b = std::fs::read(&f).unwrap();
+        let (from, to) = ("\"Quê nhà\"".as_bytes(), "\"Quê nh  \"".as_bytes());
+        assert_eq!(from.len(), to.len());
+        let i = b.windows(from.len()).position(|w| w == from).unwrap();
+        b[i..i + to.len()].copy_from_slice(to);
+        std::fs::write(&f, b).unwrap();
+    }
+    let r = LvhvStore::open(bad.to_string_lossy().into_owned()).unwrap();
+    let st = r.migration_status();
+    assert_eq!(st.state, "read_only");
+    assert!(st.message.as_deref().unwrap().contains("chỉ đọc"));
+    let pj = r
+        .person_json("0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e01".into())
+        .unwrap();
+    assert!(matches!(
+        r.save_person_json(pj),
+        Err(LvhvDataError::Invalid(_))
+    ));
+    assert!(r
+        .export_backup("mật khẩu đúng".into(), "0.2.0".into(), "android".into())
+        .is_ok());
+    for d in [d0, dir, bad] {
+        let _ = std::fs::remove_dir_all(d);
+    }
 }

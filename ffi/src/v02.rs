@@ -60,6 +60,8 @@ impl From<StoreError> for LvhvDataError {
             StoreError::Invalid(v) => LvhvDataError::Invalid(format!("Dữ liệu không hợp lệ: {v}")),
             StoreError::Input(s) => LvhvDataError::Invalid(s),
             StoreError::NotFound => LvhvDataError::NotFound("Không tìm thấy bản ghi.".into()),
+            // 04 B5: kho chỉ đọc sau chuyển đổi lỗi — giữ biến thể lỗi cũ để mã ứng dụng không phải đổi.
+            e @ StoreError::ReadOnly => LvhvDataError::Invalid(e.to_string()),
             e @ (StoreError::Backup(_) | StoreError::NewerSchema(_)) => {
                 LvhvDataError::Backup(e.import_message().into())
             }
@@ -353,6 +355,23 @@ impl LvhvStore {
     }
 }
 
+/// Trạng thái chuyển đổi khi mở kho (01 §7, 04 Bổ sung B5 / R14).
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct MigrationStatus {
+    /// `"ok"` (không cần chuyển), `"migrated"` (đã chuyển xong; có bản sao dữ liệu cũ ở `backup_path`),
+    /// `"read_only"` (chuyển lỗi: dữ liệu cũ giữ nguyên, mọi thao tác ghi báo lỗi; giao diện hiện chế độ chỉ đọc và
+    /// hướng dẫn xuất sao lưu — `export_backup` vẫn dùng được).
+    pub state: String,
+    /// Phiên bản kho trước khi mở.
+    pub from_version: i64,
+    /// Phiên bản kho sau khi mở (bằng `from_version` khi chỉ đọc).
+    pub to_version: i64,
+    /// Bản sao dữ liệu cũ (nếu đã tạo).
+    pub backup_path: Option<String>,
+    /// Câu lỗi (khi chỉ đọc), tiếng Việt cho người dùng.
+    pub message: Option<String>,
+}
+
 #[uniffi::export]
 impl LvhvStore {
     /// Mở (hoặc tạo) kho trong thư mục `dir` (tạo `lvhv.sqlite` và `photos/`), chuyển đổi phiên bản nếu cần.
@@ -361,6 +380,21 @@ impl LvhvStore {
         Ok(Arc::new(LvhvStore {
             inner: Mutex::new(Store::open(dir)?),
         }))
+    }
+
+    /// Trạng thái chuyển đổi khi mở kho — gọi ngay sau `open` để biết có phải hiện chế độ chỉ đọc không.
+    pub fn migration_status(&self) -> MigrationStatus {
+        let st = self.lock();
+        let m = st.migration_status();
+        MigrationStatus {
+            state: m.state.into(),
+            from_version: m.from_version,
+            to_version: m.to_version,
+            backup_path: m.backup_path.clone(),
+            message: m.error.as_ref().map(|e| {
+                format!("Chưa nâng cấp được dữ liệu ({e}). Dữ liệu cũ vẫn còn nguyên; ứng dụng đang ở chế độ chỉ đọc — hãy xuất sao lưu.")
+            }),
+        }
     }
 
     /// `AppSettings` (01 §3.9).
@@ -1365,11 +1399,12 @@ pub fn quan_he_suggestions(deceased: bool) -> Vec<String> {
         .collect()
 }
 
-/// Viết hoa chữ cái đầu như khi lưu (NFC, phần còn lại giữ nguyên) — để ô nhập hiển thị trước đúng giá trị sẽ
-/// lưu. `save_person_json` tự áp cho `danh_xung` và `quan_he`.
+/// Viết hoa chữ cái đầu (NFC, phần còn lại giữ nguyên) để **hiển thị** `danh_xung` / `quan_he` đã lưu — dữ liệu
+/// khôi phục từ tệp cũ có thể còn viết thường vì nhập sao lưu giữ nguyên byte. `save_person_json` tự áp khi lưu.
+/// Tên hiển thị trong lời nhắc, .ics, danh sách của lõi đã viết hoa sẵn.
 #[uniffi::export]
-pub fn capitalize_first(text: String) -> String {
-    lvhv_store::names::capitalize_first(&text)
+pub fn display_capitalize(text: String) -> String {
+    lvhv_store::names::display_capitalize(&text)
 }
 
 /// Tháng nhuận của năm âm `year` (1899–3000) theo phương pháp mặc định, `null` nếu năm không nhuận — để ô chọn

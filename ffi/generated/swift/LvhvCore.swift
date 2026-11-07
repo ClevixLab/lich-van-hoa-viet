@@ -691,6 +691,11 @@ public protocol LvhvStoreProtocol: AnyObject, Sendable {
     func markDeceasedJson(personId: String, deathDateValueJson: String, noticeJson: String?, today: SolarDay) throws  -> String
     
     /**
+     * Trạng thái chuyển đổi khi mở kho — gọi ngay sau `open` để biết có phải hiện chế độ chỉ đọc không.
+     */
+    func migrationStatus()  -> MigrationStatus
+    
+    /**
      * Một `Person`.
      */
     func personJson(id: String) throws  -> String
@@ -1064,6 +1069,16 @@ open func markDeceasedJson(personId: String, deathDateValueJson: String, noticeJ
         FfiConverterString.lower(deathDateValueJson),
         FfiConverterOptionString.lower(noticeJson),
         FfiConverterTypeSolarDay_lower(today),$0
+    )
+})
+}
+    
+    /**
+     * Trạng thái chuyển đổi khi mở kho — gọi ngay sau `open` để biết có phải hiện chế độ chỉ đọc không.
+     */
+open func migrationStatus() -> MigrationStatus  {
+    return try!  FfiConverterTypeMigrationStatus_lift(try! rustCall() {
+    uniffi_lvhv_ffi_fn_method_lvhvstore_migration_status(self.uniffiClonePointer(),$0
     )
 })
 }
@@ -2022,6 +2037,137 @@ public func FfiConverterTypeLunarDay_lift(_ buf: RustBuffer) throws -> LunarDay 
 #endif
 public func FfiConverterTypeLunarDay_lower(_ value: LunarDay) -> RustBuffer {
     return FfiConverterTypeLunarDay.lower(value)
+}
+
+
+/**
+ * Trạng thái chuyển đổi khi mở kho (01 §7, 04 Bổ sung B5 / R14).
+ */
+public struct MigrationStatus {
+    /**
+     * `"ok"` (không cần chuyển), `"migrated"` (đã chuyển xong; có bản sao dữ liệu cũ ở `backup_path`),
+     * `"read_only"` (chuyển lỗi: dữ liệu cũ giữ nguyên, mọi thao tác ghi báo lỗi; giao diện hiện chế độ chỉ đọc và
+     * hướng dẫn xuất sao lưu — `export_backup` vẫn dùng được).
+     */
+    public var state: String
+    /**
+     * Phiên bản kho trước khi mở.
+     */
+    public var fromVersion: Int64
+    /**
+     * Phiên bản kho sau khi mở (bằng `from_version` khi chỉ đọc).
+     */
+    public var toVersion: Int64
+    /**
+     * Bản sao dữ liệu cũ (nếu đã tạo).
+     */
+    public var backupPath: String?
+    /**
+     * Câu lỗi (khi chỉ đọc), tiếng Việt cho người dùng.
+     */
+    public var message: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * `"ok"` (không cần chuyển), `"migrated"` (đã chuyển xong; có bản sao dữ liệu cũ ở `backup_path`),
+         * `"read_only"` (chuyển lỗi: dữ liệu cũ giữ nguyên, mọi thao tác ghi báo lỗi; giao diện hiện chế độ chỉ đọc và
+         * hướng dẫn xuất sao lưu — `export_backup` vẫn dùng được).
+         */state: String, 
+        /**
+         * Phiên bản kho trước khi mở.
+         */fromVersion: Int64, 
+        /**
+         * Phiên bản kho sau khi mở (bằng `from_version` khi chỉ đọc).
+         */toVersion: Int64, 
+        /**
+         * Bản sao dữ liệu cũ (nếu đã tạo).
+         */backupPath: String?, 
+        /**
+         * Câu lỗi (khi chỉ đọc), tiếng Việt cho người dùng.
+         */message: String?) {
+        self.state = state
+        self.fromVersion = fromVersion
+        self.toVersion = toVersion
+        self.backupPath = backupPath
+        self.message = message
+    }
+}
+
+#if compiler(>=6)
+extension MigrationStatus: Sendable {}
+#endif
+
+
+extension MigrationStatus: Equatable, Hashable {
+    public static func ==(lhs: MigrationStatus, rhs: MigrationStatus) -> Bool {
+        if lhs.state != rhs.state {
+            return false
+        }
+        if lhs.fromVersion != rhs.fromVersion {
+            return false
+        }
+        if lhs.toVersion != rhs.toVersion {
+            return false
+        }
+        if lhs.backupPath != rhs.backupPath {
+            return false
+        }
+        if lhs.message != rhs.message {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(state)
+        hasher.combine(fromVersion)
+        hasher.combine(toVersion)
+        hasher.combine(backupPath)
+        hasher.combine(message)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeMigrationStatus: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> MigrationStatus {
+        return
+            try MigrationStatus(
+                state: FfiConverterString.read(from: &buf), 
+                fromVersion: FfiConverterInt64.read(from: &buf), 
+                toVersion: FfiConverterInt64.read(from: &buf), 
+                backupPath: FfiConverterOptionString.read(from: &buf), 
+                message: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: MigrationStatus, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.state, into: &buf)
+        FfiConverterInt64.write(value.fromVersion, into: &buf)
+        FfiConverterInt64.write(value.toVersion, into: &buf)
+        FfiConverterOptionString.write(value.backupPath, into: &buf)
+        FfiConverterOptionString.write(value.message, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeMigrationStatus_lift(_ buf: RustBuffer) throws -> MigrationStatus {
+    return try FfiConverterTypeMigrationStatus.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeMigrationStatus_lower(_ value: MigrationStatus) -> RustBuffer {
+    return FfiConverterTypeMigrationStatus.lower(value)
 }
 
 
@@ -3015,17 +3161,6 @@ public func cadaoSourcesMarkdown() -> String  {
 })
 }
 /**
- * Viết hoa chữ cái đầu như khi lưu (NFC, phần còn lại giữ nguyên) — để ô nhập hiển thị trước đúng giá trị sẽ
- * lưu. `save_person_json` tự áp cho `danh_xung` và `quan_he`.
- */
-public func capitalizeFirst(text: String) -> String  {
-    return try!  FfiConverterString.lift(try! rustCall() {
-    uniffi_lvhv_ffi_fn_func_capitalize_first(
-        FfiConverterString.lower(text),$0
-    )
-})
-}
-/**
  * Gợi ý cách gọi (01 §3.1, YC-2026-07), đã viết hoa chữ đầu. Người đang sống không có Cụ, Kỵ, Ông Tổ họ, Bà
  * Cô Tổ họ, Bé đỏ. `gioi_tinh` = `"nam"` / `"nu"`: từ hợp giới tính lên trước (thứ tự gốc trong mỗi nhóm);
  * `null` hay giá trị khác → thứ tự gốc. Cùng `danhXungSuggestions` của PWA.
@@ -3090,6 +3225,18 @@ public func derivePersonJson(json: String)throws  -> String  {
     return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeLvhvDataError_lift) {
     uniffi_lvhv_ffi_fn_func_derive_person_json(
         FfiConverterString.lower(json),$0
+    )
+})
+}
+/**
+ * Viết hoa chữ cái đầu (NFC, phần còn lại giữ nguyên) để **hiển thị** `danh_xung` / `quan_he` đã lưu — dữ liệu
+ * khôi phục từ tệp cũ có thể còn viết thường vì nhập sao lưu giữ nguyên byte. `save_person_json` tự áp khi lưu.
+ * Tên hiển thị trong lời nhắc, .ics, danh sách của lõi đã viết hoa sẵn.
+ */
+public func displayCapitalize(text: String) -> String  {
+    return try!  FfiConverterString.lift(try! rustCall() {
+    uniffi_lvhv_ffi_fn_func_display_capitalize(
+        FfiConverterString.lower(text),$0
     )
 })
 }
@@ -3469,9 +3616,6 @@ private let initializationResult: InitializationResult = {
     if (uniffi_lvhv_ffi_checksum_func_cadao_sources_markdown() != 63224) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_lvhv_ffi_checksum_func_capitalize_first() != 13260) {
-        return InitializationResult.apiChecksumMismatch
-    }
     if (uniffi_lvhv_ffi_checksum_func_danh_xung_suggestions() != 52316) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -3488,6 +3632,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_lvhv_ffi_checksum_func_derive_person_json() != 47386) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_lvhv_ffi_checksum_func_display_capitalize() != 8847) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_lvhv_ffi_checksum_func_due_today_json() != 11414) {
@@ -3626,6 +3773,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_lvhv_ffi_checksum_method_lvhvstore_mark_deceased_json() != 28404) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_lvhv_ffi_checksum_method_lvhvstore_migration_status() != 48573) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_lvhv_ffi_checksum_method_lvhvstore_person_json() != 48207) {

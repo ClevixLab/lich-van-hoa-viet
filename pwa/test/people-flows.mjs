@@ -328,7 +328,7 @@ export async function runPeople({ browser, BASE, ORIGIN, ROOT, SHOTS, check, met
     await page.click(".form-acts .primary");
     await page.waitForSelector("#person-name");
     const rev2 = await store(`async (s) => { const p = await s.person("${idA}"); return [p.rev, p.quan_he, p.photo_id !== null]; }`);
-    check(rev2[0] === 2 && rev2[1] === "ông nội (bên nội)" && rev2[2], `L12: sửa → rev = 2, giữ ảnh (${JSON.stringify(rev2)})`);
+    check(rev2[0] === 2 && rev2[1] === "Ông nội (bên nội)" && rev2[2], `L12: sửa → rev = 2, giữ ảnh; gõ "ông nội (bên nội)" → lưu "Ông nội (bên nội)" (YC-2026-07 viết hoa chữ đầu) (${JSON.stringify(rev2)})`);
 
     // ---------- L11: tưởng niệm ----------
     await page.click("#open-memorial");

@@ -366,6 +366,11 @@ void uniffi_lvhv_ffi_fn_method_lvhvstore_mark_backup_saved(void*_Nonnull ptr, in
 RustBuffer uniffi_lvhv_ffi_fn_method_lvhvstore_mark_deceased_json(void*_Nonnull ptr, RustBuffer person_id, RustBuffer death_date_value_json, RustBuffer notice_json, RustBuffer today, RustCallStatus *_Nonnull out_status
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_MIGRATION_STATUS
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_MIGRATION_STATUS
+RustBuffer uniffi_lvhv_ffi_fn_method_lvhvstore_migration_status(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_PERSON_JSON
 #define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_PERSON_JSON
 RustBuffer uniffi_lvhv_ffi_fn_method_lvhvstore_person_json(void*_Nonnull ptr, RustBuffer id, RustCallStatus *_Nonnull out_status
@@ -502,11 +507,6 @@ RustBuffer uniffi_lvhv_ffi_fn_func_cadao_sources_markdown(RustCallStatus *_Nonnu
     
 );
 #endif
-#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_FUNC_CAPITALIZE_FIRST
-#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_FUNC_CAPITALIZE_FIRST
-RustBuffer uniffi_lvhv_ffi_fn_func_capitalize_first(RustBuffer text, RustCallStatus *_Nonnull out_status
-);
-#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_FUNC_DANH_XUNG_SUGGESTIONS
 #define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_FUNC_DANH_XUNG_SUGGESTIONS
 RustBuffer uniffi_lvhv_ffi_fn_func_danh_xung_suggestions(int8_t deceased, RustBuffer gioi_tinh, RustCallStatus *_Nonnull out_status
@@ -535,6 +535,11 @@ RustBuffer uniffi_lvhv_ffi_fn_func_derive_birth_json(RustBuffer date_value_json,
 #ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_FUNC_DERIVE_PERSON_JSON
 #define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_FUNC_DERIVE_PERSON_JSON
 RustBuffer uniffi_lvhv_ffi_fn_func_derive_person_json(RustBuffer json, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_FUNC_DISPLAY_CAPITALIZE
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_FUNC_DISPLAY_CAPITALIZE
+RustBuffer uniffi_lvhv_ffi_fn_func_display_capitalize(RustBuffer text, RustCallStatus *_Nonnull out_status
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_FUNC_DUE_TODAY_JSON
@@ -1017,12 +1022,6 @@ uint16_t uniffi_lvhv_ffi_checksum_func_cadao_sources_markdown(void
     
 );
 #endif
-#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_FUNC_CAPITALIZE_FIRST
-#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_FUNC_CAPITALIZE_FIRST
-uint16_t uniffi_lvhv_ffi_checksum_func_capitalize_first(void
-    
-);
-#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_FUNC_DANH_XUNG_SUGGESTIONS
 #define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_FUNC_DANH_XUNG_SUGGESTIONS
 uint16_t uniffi_lvhv_ffi_checksum_func_danh_xung_suggestions(void
@@ -1056,6 +1055,12 @@ uint16_t uniffi_lvhv_ffi_checksum_func_derive_birth_json(void
 #ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_FUNC_DERIVE_PERSON_JSON
 #define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_FUNC_DERIVE_PERSON_JSON
 uint16_t uniffi_lvhv_ffi_checksum_func_derive_person_json(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_FUNC_DISPLAY_CAPITALIZE
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_FUNC_DISPLAY_CAPITALIZE
+uint16_t uniffi_lvhv_ffi_checksum_func_display_capitalize(void
     
 );
 #endif
@@ -1332,6 +1337,12 @@ uint16_t uniffi_lvhv_ffi_checksum_method_lvhvstore_mark_backup_saved(void
 #ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_MARK_DECEASED_JSON
 #define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_MARK_DECEASED_JSON
 uint16_t uniffi_lvhv_ffi_checksum_method_lvhvstore_mark_deceased_json(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_MIGRATION_STATUS
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_MIGRATION_STATUS
+uint16_t uniffi_lvhv_ffi_checksum_method_lvhvstore_migration_status(void
     
 );
 #endif

@@ -163,6 +163,15 @@ const exPhoto = rd(manifest.example.photo);
     let threw = false; try { S.validate.document(b2); } catch { threw = true; }
     ok(threw, `YC-2026-07: Attachment.${k} sai → từ chối`);
   }
+  // PR #30: "Gộp" tệp có tệp đính kèm vào kho mới → giữ tệp đính kèm, tài liệu hợp lệ; state hash = Rust.
+  const tm = await freshStore();
+  await tm.applyImport(v, "merge");
+  ok((await tm.attachments()).length === 2 && sha(await tm.attachmentBytes(sm.attachment_pdf_id)) === sm.pdf.sha256, "PR #30: Gộp giữ tệp đính kèm của bản nhập");
+  const hm = await tm.stateHash();
+  const rm = JSON.parse(readFileSync(join(OUT, "notice-merge-rust.json"), "utf8"));
+  ok(hm === rm.state_sha256, "PR #30: Gộp tệp có tệp đính kèm — stateHash = Rust (notice-merge-rust.json)");
+  await tm.applyImport(v, "merge");
+  ok((await tm.stateHash()) === hm, "PR #30: Gộp lần hai cùng tệp → không đổi");
   // Tệp sao lưu sửa: khối PDF thiếu (chỉ còn ảnh) → từ chối.
   let rej = "";
   try { await S.verifyContents(nText, blobs.slice(0, -1).map((b) => ({ id: bc.bytesToUuid(b.id), bytes: b.bytes }))); } catch (e) { rej = e.message; }
@@ -411,6 +420,99 @@ let r6File;
   const np = S.normalizePersonNames({ danh_xung: "ông", quan_he: "bà ngoại", gioi_tinh: null, ho_ten: "x" });
   ok(np.danh_xung === "Ông" && np.quan_he === "Bà ngoại" && !("gioi_tinh" in np), "YC-2026-07: normalizePersonNames (viết hoa, gioi_tinh null → bỏ khóa)");
   results.names = { same_as_rust: S.canonicalJson(mine) === S.canonicalJson(rust) };
+}
+
+// ---------- 04 B5 / R14: bộ mẫu đóng băng released/0.2-dev-before-attachments ----------
+// Dựng kho IndexedDB phiên bản 1 (như bản dựng 0.2 trước YC-2026-07) từ ảnh chụp kho + byte ảnh của bộ mẫu, mở bằng
+// bản này → chuyển trong onupgradeneeded → so với cùng tệp kỳ vọng mà bản Rust phải ra.
+{
+  const RD = join(TV, "released", "0.2-dev-before-attachments");
+  const rm = JSON.parse(readFileSync(join(RD, "manifest.json"), "utf8"));
+  let frozen = true;
+  for (const [f, h] of Object.entries(rm.files)) if (sha(readFileSync(join(RD, f))) !== h) frozen = false;
+  ok(frozen, "B5: bộ mẫu đóng băng 0.2-dev-before-attachments không bị sửa (sha256 = manifest)");
+  const snapText = readFileSync(join(RD, "store-snapshot.json"), "utf8");
+  const old = JSON.parse(snapText);
+  const exp = JSON.parse(readFileSync(join(TV, "released", "expected", "0.2-dev-before-attachments.json"), "utf8"));
+  const { IDBFactory } = await import("fake-indexeddb");
+  const v1Store = async (mutate) => {
+    const f = new IDBFactory();
+    const doc = structuredClone(old);
+    if (mutate) mutate(doc);
+    await new Promise((okk, ko) => {
+      const r = f.open("lvhv", 1);
+      r.onupgradeneeded = () => {
+        const db = r.result, tx = r.transaction;
+        db.createObjectStore("persons", { keyPath: "id" });
+        db.createObjectStore("events", { keyPath: "id" }).createIndex("by_person", "person_ids", { multiEntry: true });
+        db.createObjectStore("event_types", { keyPath: "id" }).createIndex("by_name_key", "name_key", { unique: true });
+        db.createObjectStore("photos", { keyPath: "id" });
+        db.createObjectStore("settings");
+        db.createObjectStore("meta");
+        tx.objectStore("settings").put(doc.settings, "app");
+        tx.objectStore("meta").put(1, "schema_version");
+        for (const t of doc.event_types) tx.objectStore("event_types").put({ id: t.id, name_key: S.validate.nameKey(t.ten), doc: t });
+        for (const p of doc.persons) tx.objectStore("persons").put(p);
+        for (const e of doc.events) tx.objectStore("events").put(e);
+        for (const ph of doc.photos) tx.objectStore("photos").put({ id: ph.id, meta: ph, blob: new Blob([readFileSync(join(RD, "store", "photos", `${ph.id}.img`))], { type: ph.mime }) });
+      };
+      r.onsuccess = () => { r.result.close(); okk(); };
+      r.onerror = () => ko(r.error);
+    });
+    return f;
+  };
+  const stateDoc = async (st) => { const d = await st.snapshot({ version: "0.0.0", platform: "pwa" }, "1970-01-01T00:00:00Z"); delete d.app; delete d.exported_at; return d; };
+  // Chuyển kho.
+  const f1 = await v1Store();
+  const st = await S.openStore(f1);
+  const ms = st.migrationStatus();
+  ok(ms.state === "migrated" && ms.from_version === 1 && ms.to_version === 3, `B5: kho phiên bản 1 → chuyển đổi (${JSON.stringify(ms)})`);
+  const got = await stateDoc(st);
+  ok(S.canonicalJson(got) === S.canonicalJson(exp.state), "B5/R14: kho IndexedDB sau chuyển đổi = tệp kỳ vọng (giống bản Rust, 0 trường khác)");
+  ok((await st.stateHash()) === exp.state_sha256, "B5/R14: stateHash sau chuyển đổi = state_sha256 của Rust");
+  let bytesOk = true;
+  for (const ph of old.photos) {
+    const orig = sha(readFileSync(join(RD, "store", "photos", `${ph.id}.img`)));
+    const b = await st.photoBytes(ph.id).catch(() => st.attachmentBytes(ph.id));
+    if (sha(b) !== orig) bytesOk = false;
+  }
+  for (const a of exp.state.attachments) if (sha(await st.attachmentBytes(a.id)) !== a.sha256) bytesOk = false;
+  ok(bytesOk, "B5/R14: mọi byte ảnh cũ còn nguyên (ảnh chân dung, tệp đính kèm chuyển từ ảnh giấy báo tử)");
+  st.close();
+  const st2 = await S.openStore(f1);
+  ok(st2.migrationStatus().state === "ok" && (await st2.stateHash()) === exp.state_sha256, "B5: mở lại → không chuyển nữa, không đổi");
+  st2.close();
+  // Tệp sao lưu của bản dựng cũ.
+  const ov = await S.openBackup(new Uint8Array(readFileSync(join(RD, "backup.lvhv"))), rm.password);
+  const ti = await freshStore();
+  await ti.applyImport(ov, "replace");
+  ok((await ti.stateHash()) === exp.state_sha256, "B5 mục 5: tệp sao lưu của bản dựng cũ nhập được → cùng trạng thái với Rust");
+  // Ca lỗi: dữ liệu hỏng → quay lui, chỉ đọc, dữ liệu cũ còn nguyên, vẫn xuất được.
+  const fbad = await v1Store((d) => { d.persons.find((p) => p.id === "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e02").death.notice.place = "  Quê nhà"; });
+  const sb = await S.openStore(fbad);
+  const bs = sb.migrationStatus();
+  ok(bs.state === "read_only" && bs.to_version === 1 && typeof bs.error === "string", `B5: chuyển đổi lỗi → chỉ đọc (${JSON.stringify(bs)})`);
+  ok(sb.db.version === 1 && (await sb.attachments()).length === 0 && (await sb.person("0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e02")).death.notice.certificate_photo_ids.length === 2,
+    "B5: giao dịch nâng cấp quay lui — kho phiên bản 1 và dữ liệu cũ còn nguyên");
+  ok((await code(() => sb.putPerson(old.persons[0]))) === "read_only" && (await code(() => sb.deletePerson(old.persons[0].id))) === "read_only", "B5: chỉ đọc → mọi thao tác ghi báo read_only");
+  const xf = await sb.exportBackup("mật khẩu thử nghiệm", { version: "0.2.0", platform: "pwa" });
+  ok(xf.length > 1000, "B5: chỉ đọc vẫn xuất được tệp sao lưu");
+  sb.close();
+  // Hàm thuần: cùng kết quả với Rust trên ca biên (ảnh chân dung dùng chung, id thiếu ảnh, chạy lại không đổi).
+  const pure = S.migrate1to2({
+    photos: [
+      { id: "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e01", mime: "image/jpeg", width: 10, height: 20, bytes: 5, sha256: "a".repeat(64), stripped: true, created_at: "2026-01-01T00:00:00Z" },
+      { id: "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e02", mime: "image/webp", width: 10, height: 20, bytes: 6, sha256: "b".repeat(64), stripped: true, created_at: "2026-01-02T00:00:00Z" }],
+    persons: [
+      { id: "p1", photo_id: "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e01", death: { notice: { certificate_photo_ids: ["0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e01", "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e02", "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5eff"] } } },
+      { id: "p2", photo_id: null, death: { notice: { certificate_photo_ids: ["0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e02"] } } },
+      { id: "p3", photo_id: null, death: null }],
+  });
+  ok(pure.doc.photos.length === 1 && pure.doc.attachments.length === 2 && pure.doc.persons[0].legacy.certificate_photo_ids.length === 3
+    && pure.doc.persons[0].legacy.certificate_photos[0].width === 10 && pure.doc.persons[2].death === null
+    && S.altId("0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e0c", new Set()) === "0b8e4f52-3c1a-4d2e-9f60-e5d4c3b2a1f3"
+    && !S.migrate1to2(pure.doc).changed, "B5: migrate1to2 cùng ca biên với Rust (store/src/migrate.rs)");
+  results.released = { frozen, migrated_equals_rust: S.canonicalJson(got) === S.canonicalJson(exp.state) };
 }
 
 writeFileSync(join(OUT, "results.json"), JSON.stringify(results, null, 2) + "\n");

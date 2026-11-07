@@ -704,11 +704,19 @@ const PERSON_KEYS: [&str; 18] = [
 /// Một `Person`: lược đồ (V1) + V2, V4, V5, V6, V8. Không kiểm tham chiếu (V3).
 pub fn person(v: &Value, path: &str) -> R {
     let has_gt = v.as_object().is_some_and(|o| o.contains_key("gioi_tinh"));
+    // `legacy` (04 B5): bản gốc của trường cũ mà phép chuyển đổi không đặt được vào trường mới — đối tượng tự do.
+    let has_legacy = v.as_object().is_some_and(|o| o.contains_key("legacy"));
     let mut keys: Vec<&str> = PERSON_KEYS.to_vec();
     if has_gt {
         keys.push("gioi_tinh");
     }
+    if has_legacy {
+        keys.push("legacy");
+    }
     let o = obj(v, path, &keys)?;
+    if has_legacy && !o["legacy"].is_object() {
+        return Err(v1(&p(path, "legacy"), "phải là đối tượng"));
+    }
     if has_gt && !o["gioi_tinh"].is_null() {
         enum_str(&o["gioi_tinh"], &p(path, "gioi_tinh"), &["nam", "nu"])?;
     }
