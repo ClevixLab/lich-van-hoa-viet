@@ -912,3 +912,47 @@ Kiểm chéo bằng `scripts/check-store.sh` (CI "Lưu trữ + sao lưu"), gồm
 | O-9 `show_names` | Lõi lưu tùy chọn "hiện tên trên màn hình khóa" theo từng máy, mặc định **không** hiện (`lock_screen_names`, chỉ trong kho Rust). PWA không có thông báo trên màn hình khóa nên không có tùy chọn này. Thẻ nhắc trong ứng dụng vẫn ghi tên, vì chỉ hiện khi người dùng đã mở ứng dụng. Khung "Ứng dụng web" ở Sắp tới có câu giải thích (`#web-names`) để thống nhất với ứng dụng điện thoại và máy tính |
 | MA3-15-03 (kiểm thử) | Kiểm thử Esc khi mã hóa trước đây đếm hộp còn mở, nên kết quả phụ thuộc thời gian mã hóa. Nay kiểm thử ghi lại sự kiện `cancel`: phải có ít nhất một lần nhấn Esc khi hộp đang bận và lần đó bị chặn |
 | TK-31 (a), `metrics.json` | Giữ nguyên như hiện tại; điều phối sẽ hỏi chủ dự án |
+
+### 12-Apple. Ứng dụng iPhone, iPad, Mac (PR #23, T7) — sai khác so với đặc tả này
+
+Ứng dụng Apple dùng cùng màn hình, trường, câu chữ, luồng và trạng thái của tài liệu này, theo cách trình bày của
+Apple (HIG). Mọi tính toán qua lõi Rust (UniFFI). Ảnh chụp: `apps/apple/screenshots/` (iPhone mô phỏng: sáng `-light`,
+tối `-dark`, chữ rất lớn Accessibility L `-large`; bố cục iPad `ipad-*`).
+
+**Thích nghi theo HIG (không đổi nội dung):**
+
+| Chỗ trong 08 | Bản Apple |
+|---|---|
+| §1.1 thanh mục 5 ô | Thanh thẻ đáy 5 ô (iPhone, iPad); macOS: nhóm phân đoạn ở thanh trên |
+| §1.2 URL `#/nguoi-than/…` | `NavigationStack` với đường đi chỉ chứa id ngẫu nhiên (không tên, không ngày) |
+| §1.2 nút "‹ Quay lại", TK-21 "‹ Về hồ sơ" | Nút quay lại của hệ thống, ghi tên trang trước ("‹ Người thân", "‹ Hồ sơ") |
+| §2 hộp xác nhận `<dialog>` | Xóa, bỏ thay đổi, "Cập nhật: đã mất", "Thay toàn bộ": `alert` của hệ thống (nút an toàn là nút hủy). Xuất .ics, tạo sao lưu, khôi phục: tấm `sheet` có nút Hủy / nút chính trên thanh công cụ |
+| §2 ô nhập, `datalist` | Ô chữ có nhãn phía trên; gợi ý cách gọi và quan hệ là hàng nút cuộn ngang dưới ô |
+| §2 nhóm nút `aria-pressed` | Nút viên thuốc có đặc tính `isSelected`; Dương/Âm, "Biết đủ ngày / Chỉ biết năm": `Picker` phân đoạn; hộp kiểm: `Toggle` |
+| §3.4–§3.7 biểu mẫu | Thêm nút Hủy / Lưu trên thanh điều hướng (vẫn có hai nút ở cuối biểu mẫu); nút quay lại của hệ thống ẩn ở biểu mẫu để không mất dữ liệu đang nhập |
+| §3.8 A tải tệp .ics | Hộp xác nhận + xem trước (S10) rồi nút "Lưu / chia sẻ tệp .ics" (`ShareLink`); tệp tạm bị xóa khi đóng hộp |
+| §3.8 B, C tải / chọn tệp | `fileExporter` / `fileImporter` của hệ thống |
+| §5.2 vùng `role="status"` | Thẻ thông báo ngắn ở đầu trang, tự ẩn sau 6 giây, có nút đóng |
+| §5.4 "Lời nhắc trên ứng dụng web" | Không áp dụng: ứng dụng có thông báo thật. Trang Sao lưu nói .ics là tùy chọn cho ứng dụng Lịch hoặc máy khác |
+| §6 cỡ chữ A/A+/A++ | Giữ A/A+/A++ của ứng dụng và co thêm theo Dynamic Type của máy |
+| §6 giảm chuyển động | `accessibilityReduceMotion` → khói tĩnh, không có nút Dừng khói / Thắp lại |
+
+**Khác về hành vi:**
+
+| Mã | Khác | Lý do |
+|---|---|---|
+| A-1 | Thẻ nhắc chỉ ở "Sắp tới" (tối đa 3 + "… và n lời nhắc khác hôm nay"); **không** thêm thẻ vào Tờ lịch (§5.5, TK-15) | Ứng dụng có thông báo hệ thống; giữ nguyên Tờ lịch v0.1 |
+| A-2 | Thêm trang **Cài đặt nhắc** (nút chuông ở đầu mô-đun): công tắc chung `reminders_enabled`, trạng thái quyền thông báo (+ "Mở Cài đặt" khi bị từ chối), **hiện tên trên màn hình khóa** (O-9, mặc định tắt, lưu theo máy), mặc định mốc/giờ nhắc cho hồ sơ mới. §11 ghi hai mục đầu "chưa có màn hình" cho PWA | Native cần chỗ đổi O-9 và xin quyền |
+| A-3 | Lỗi trường hiện khi trường đã được sửa (không đợi rời ô) và khi bấm Lưu; câu "Hãy nhập đủ …" của ô ngày chỉ hiện khi bấm Lưu (TK-03) | SwiftUI không có sự kiện rời ô đáng tin cho mọi ô; tránh báo lỗi khi đang gõ dở |
+| A-4 | Màn hình tưởng niệm: dòng ngày khi hôm nay không phải ngày giỗ là "Ngày giỗ tới: 15/6 âm lịch, 18/07/2027" (08 ghi "Ngày giỗ năm nay") | Ngày giỗ năm nay có thể đã qua; dòng này lấy lần giỗ kế tiếp của lõi |
+| A-5 | Biểu tượng loại dùng SF Symbols: giỗ = ngọn lửa, tiên thường = dao nĩa, sinh nhật = hộp quà, sự kiện = ngôi sao; luôn kèm chữ | iOS 16 không có biểu tượng bánh sinh nhật; không vẽ SVG riêng |
+| A-6 | Ảnh lưu bằng `add_photo` trước rồi mới lưu hồ sơ (hai giao dịch), không phải một giao dịch như §12g | FFI chưa có hàm ghi ảnh + hồ sơ trong một giao dịch. Lưu hỏng thì ảnh đã thêm còn lại trong kho (không có FFI xóa ảnh mồ côi) — báo vai lõi |
+| A-7 | Bỏ một ảnh chân dung / ảnh giấy báo tử rồi lưu: ảnh **chưa** bị xóa khỏi máy cho tới khi xóa hồ sơ (§12g "ảnh đó bị xóa khỏi máy") | Lõi chưa dọn ảnh không còn ai dùng khi `save_person_json`; báo vai lõi |
+| A-8 | Không cài `BGAppRefreshTask` (02 §7.4 cho phép, "không dựa vào nó") | Thông báo nhắc mở ứng dụng (`lvhv:sentinel`) đã che trường hợp lâu không mở; giữ 0 lần đánh thức nền (P9) |
+| A-9 | TK-16 (§12h: dòng "Dữ liệu được khôi phục từ bản sao lưu ngày …" sau "Thay toàn bộ") chưa làm | Chờ khóa giao diện tương đương `ui_restored_from` cho native |
+| A-10 | Xuất sao lưu: lõi ghi "đã sao lưu" khi tạo byte, trước hộp "Lưu" của hệ thống; Hủy ở hộp Lưu vẫn tính là đã sao lưu (MA3N-23-01) | Chờ `mark_backup_saved` của lõi (đợt core2); sẽ gọi chỉ khi `fileExporter` báo thành công |
+| A-11 | Kiểm thử giao diện dùng tham số khởi chạy chỉ có ở bản Debug (`-lvhvSeed demo`, `-lvhvToday`, `-lvhvScreen`) để mở thẳng từng màn hình | Ảnh chụp ổn định trên CI; không có trong bản Release |
+
+**Cần máy thật (không làm được trên CI mô phỏng, chưa ký):** R5 trên iPhone thật (thông báo đến đúng giờ, sau khởi
+động lại, xoay vòng 64 khi để lâu), P8 (Argon2id trên iPhone), P9 (bộ nhớ, 0 lần đánh thức nền), thông báo trên macOS
+(app chưa ký), chọn ảnh HEIC thật từ thư viện (S9 với ảnh iPhone).
