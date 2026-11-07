@@ -343,3 +343,23 @@ vẫn còn. Quyết định của điều phối viên, theo ủy quyền của 
    bộ R6 cũ là bị từ chối khi nhập, vì nó chứa ảnh giả.
 3. Bật kiểm tra B6 cho ảnh chân dung ở đường nhập sao lưu, như B6 đã quy định.
 4. Bên kiểm định độc lập chạy lại R6 trên R6v2.
+
+## Bổ sung B8 — ảnh mâm lễ (YC-2026-10, KHÓA 2026-11-07, trước khi viết mã)
+
+Nguyên văn chủ dự án (07/11/2026): "anh muốn software có chế độ cập nhật ảnh mâm lễ, với bức ảnh hiện tại anh đánh giá
+chất lượng thấp, không phù hợp. Khi chưa có ảnh mâm lễ phù hợp thì ngày giỗ sẽ chưa hiện mâm giỗ ra mà chi có bát hương
+với nến bên dưới bia mộ như đã thiết kế"; "clevix cập nhật qua app, còn từng người dùng có thể tự chụp ảnh mâm lễ của
+mình để load lên software cho ngày giỗ của người nhà mình". Thiết kế: 07 §10 (ADR-V02-01), 01 §3.7, 08 §16.
+Khóa theo ủy quyền của chủ dự án ("Em thấy cái gì tối ưu nhất thì anh sẽ quyết làm theo hướng đó").
+
+R8 (a)–(f) giữ nguyên, trừ phần nói tới "mâm": từ nay R8 không đòi vẽ mâm.
+
+### R15 — Ảnh mâm lễ
+
+| Mục | Nội dung |
+|---|---|
+| Mệnh đề | (a) Không có ảnh mâm lễ cho người đó và không có ảnh Clevix đã duyệt cùng `tray_style` → màn hình tưởng niệm **không** có hình mâm hay đồ cúng nào; dưới bia chỉ có bát hương ba nén và hai nến (Công giáo: hai nến và hoa, không hương). (b) Gói ảnh Clevix chỉ dùng mục `trang_thai = "duyet"`; mục đã duyệt mà `sha256` sai, không qua kiểm tra B6, hoặc quá giới hạn (≤ 400 KB mỗi ảnh, ≤ 2 MB cả gói) → **bản dựng thất bại**; gói rỗng → như (a). (c) Ảnh gia đình chọn từ tệp có EXIF/GPS/XMP → ảnh lưu không còn APP1, APP13, EXIF, XMP; cạnh dài ≤ 1600 px; ≤ 1 MB; chỉ hiện trên màn hình tưởng niệm của đúng người đó, ưu tiên hơn ảnh Clevix. (d) Xuất rồi nhập (Thay toàn bộ và Gộp) giữ nguyên ảnh (`sha256` bằng nhau) và liên kết; tệp sao lưu có `tray_photo_id` trỏ ảnh không tồn tại → từ chối (V3); ảnh giả hay còn siêu dữ liệu → từ chối (B6). (e) Dữ liệu và tệp sao lưu của bản trước (không có trường) mở được, `tray_photo_id = null`, không mất gì; tài liệu không dùng trường giống hệt từng byte bản trước (vector 03 §2.5 không đổi). (f) Bỏ ảnh, đổi ảnh, xóa hồ sơ, đổi về đang sống → ảnh cũ bị xóa (bản ghi và tệp) trong cùng giao dịch; ảnh không bao giờ có trong thông báo, .ics, tên tệp, URL. (g) Rust ≡ TS trên kịch bản `tray_photo` của `lvhv-store-tool` |
+| Phương pháp | (a)(b): kiểm thử giao diện trên bốn nền tảng (không có phần tử mâm khi không có ảnh; có ảnh khi có) + ảnh chụp 360 px và 1280 px, sáng và tối; kịch bản kiểm gói chạy trong CI với gói rỗng, gói có mục chờ duyệt, gói có mục sai `sha256`. (c)–(g): kiểm thử lõi hai bản và `lvhv-store-tool`; bên kiểm định độc lập chạy (c)(d)(e)(g) |
+| Ngưỡng | Mọi mệnh đề đúng; 0 ảnh còn siêu dữ liệu; 0 ảnh mồ côi sau (f) |
+| Kết luận | Theo từng nền tảng: ĐẠT / KHÔNG ĐẠT / CHƯA ĐỦ BẰNG CHỨNG. (a) KHÔNG ĐẠT trên nền tảng nào thì **chặn phát hành** nền tảng đó |
+
