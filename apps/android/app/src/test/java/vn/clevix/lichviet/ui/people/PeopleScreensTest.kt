@@ -412,11 +412,14 @@ class PeopleScreensTest {
     @Test
     fun screenshotBackupNag() {
         // Lùi mốc "chờ sao lưu" của kho về đầu năm (bảng meta của lvhv-store) → quá 30 ngày.
-        val db = android.database.sqlite.SQLiteDatabase.openDatabase(
-            File(Seed.lastDir, "lvhv.sqlite").path, null, android.database.sqlite.SQLiteDatabase.OPEN_READWRITE,
-        )
-        db.execSQL("UPDATE meta SET value = '2026-01-01T00:00:00Z' WHERE key = 'backup_pending_since'")
-        db.close()
+        // (SQLite của Robolectric không mở được tệp của kho Rust; dùng công cụ sqlite3 của máy dựng.)
+        val p = runCatching {
+            ProcessBuilder(
+                "sqlite3", File(Seed.lastDir, "lvhv.sqlite").path,
+                "UPDATE meta SET value = '2026-01-01T00:00:00Z' WHERE key = 'backup_pending_since';",
+            ).redirectErrorStream(true).start()
+        }.getOrNull()
+        org.junit.Assume.assumeTrue("cần công cụ sqlite3", p != null && p.waitFor() == 0)
         assertTrue(repo.backupDue())
         show()
         rule.onNodeWithText("Sao lưu ngay").assertExists()
@@ -454,9 +457,10 @@ class PeopleScreensTest {
     /** TKN-A-02: khói đang chạy, nút "Dừng khói" (hoạt ảnh bật — đồng hồ kiểm thử chạy tay). */
     @Test
     fun screenshotSmokeRunning() {
-        show(start = PRoute.Profiles, reduced = false)
+        // Đồng hồ khung hình chạy tay từ đầu (hoạt ảnh vô tận không bao giờ "nghỉ").
         rule.mainClock.autoAdvance = false
-        rule.runOnIdle { nav.tab(PRoute.Profiles); nav.go(PRoute.Memorial(ids.b)) }
+        show(start = PRoute.Memorial(ids.b), reduced = false)
+        rule.mainClock.advanceTimeByFrame()
         rule.mainClock.advanceTimeBy(1_500)
         rule.onNodeWithText("Dừng khói").assertExists()
         for (v in std) {
@@ -593,7 +597,8 @@ class PeopleScreensTest {
                     n.config[androidx.compose.ui.semantics.SemanticsActions.GetTextLayoutResult].action?.invoke(out)
                     for (t in out) {
                         assertFalse(
-                            "${v.suffix} $r: chữ bị cắt/tràn: \"${t.layoutInput.text}\"",
+                            "${v.suffix} $r: chữ bị cắt/tràn: \"${t.layoutInput.text}\" (rộng ${t.didOverflowWidth}, cao " +
+                                "${t.didOverflowHeight}, ${t.size}, ${t.layoutInput.constraints}, maxLines ${t.layoutInput.maxLines})",
                             t.hasVisualOverflow,
                         )
                     }

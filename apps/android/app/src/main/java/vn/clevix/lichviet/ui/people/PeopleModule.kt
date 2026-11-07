@@ -172,9 +172,14 @@ fun Page(content: @Composable ColumnScope.() -> Unit) {
 @Composable
 private fun Header(nav: PeopleNav) {
     val c = LocalLich.current
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        H1("Người thân", Modifier.weight(1f))
+    if (largeText()) {
+        H1("Người thân")
         LinkButton("Cài đặt nhắc") { nav.go(PRoute.Settings) }
+    } else {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            H1("Người thân", Modifier.weight(1f))
+            LinkButton("Cài đặt nhắc") { nav.go(PRoute.Settings) }
+        }
     }
     Text(
         "Ngày giỗ, sinh nhật và sự kiện của gia đình. Dữ liệu chỉ nằm trên máy này.",
