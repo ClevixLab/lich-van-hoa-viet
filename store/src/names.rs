@@ -197,6 +197,12 @@ pub fn normalize_person_names(p: &mut Value) {
             o.remove("gioi_tinh");
         }
     }
+    // YC-2026-10: `memorial.tray_photo_id: null` → bỏ khóa (thiếu ≡ null; tài liệu không dùng trường không đổi).
+    if let Some(m) = p.get_mut("memorial").and_then(Value::as_object_mut) {
+        if m.get("tray_photo_id").is_some_and(Value::is_null) {
+            m.remove("tray_photo_id");
+        }
+    }
 }
 
 #[cfg(test)]
