@@ -93,14 +93,12 @@ Không hương (R8 (f), V6). [N10] "Chúng ta không cúng nhưng cầu nguyện
 cho kiểu này, chỉ nên có nến và hoa; [N10] **không** nhắc nến, hoa hay bàn thờ — phần "nến và hoa" của 01 §3.7 chưa
 có nguồn (PHONG-TUC §5). Cần một nguồn của Giáo hội trước khi duyệt ảnh cho kiểu này.
 
-## 5. Lần thử ảnh mạng ghép từ ảnh lẻ (07/11/2026) — không dùng
+## 5. Lần thử ảnh mạng ghép từ ảnh lẻ (07/11/2026) — đã bỏ
 
-Theo chỉ thị của điều phối viên lúc đó, vai nội dung đã thử ghép mâm truyền thống từ ảnh mạng có giấy phép (Wikimedia
-Commons, Unsplash, Pixabay), cắt nền trên máy chạy GitHub. Sổ giấy phép và kết quả: `content/memorial/SOURCES.md` §1b,
-thư mục `content/memorial/photos/`. **Chủ dự án đánh giá ảnh ghép chất lượng thấp, không phù hợp** (YC-2026-10). Kết
-quả lần thử **không** được đưa vào gói ảnh và **không** được dùng ở bất kỳ nền tảng nào. Bài học: ánh sáng, góc máy và
-tỉ lệ của ảnh từ nhiều nguồn không khớp; bát hương đúng ý chủ dự án không có trên mạng. Cách tốt nhất là **chụp cả
-mâm thật một tấm**.
+Vai nội dung đã thử ghép mâm truyền thống từ ảnh mạng có giấy phép thoáng, cắt nền trên máy chạy GitHub. **Chủ dự án
+đánh giá chất lượng thấp, không phù hợp** (YC-2026-10); điều phối viên quyết định bỏ hẳn, xóa ảnh và quy trình khỏi
+kho mã. Bài học: ánh sáng, góc máy và tỉ lệ của ảnh từ nhiều nguồn không khớp; bát hương đúng ý chủ dự án không có trên
+mạng. Cách tốt nhất là **chụp cả mâm thật một tấm**.
 
 ## 6. Việc cho vai giao diện
 
