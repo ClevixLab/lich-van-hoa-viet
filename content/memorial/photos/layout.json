@@ -57,17 +57,16 @@
     },
     {
       "id": "bat-huong",
-      "photo": "bat-huong-1",
+      "photo": "bat-huong-2",
       "crop": [
-        0.5,
         0.2,
-        0.92,
-        0.99
+        0.25,
+        0.8,
+        0.75
       ],
-      "model": "u2net",
       "cx": 180,
-      "bottom": 158,
-      "width": 84,
+      "bottom": 160,
+      "width": 80,
       "z": 3
     },
     {
@@ -77,12 +76,11 @@
         0.17,
         0.08,
         0.88,
-        1.0
+        0.8
       ],
-      "model": "u2net",
-      "cx": 270,
-      "bottom": 160,
-      "width": 84,
+      "cx": 268,
+      "bottom": 222,
+      "width": 80,
       "z": 4
     },
     {
