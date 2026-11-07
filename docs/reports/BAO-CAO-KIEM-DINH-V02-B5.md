@@ -4,8 +4,61 @@ Ngày lập: 2026-11-07. Người lập: bên không tham gia xây dựng đặc
 Nhánh: `oracle-v02-b5` (từ `origin/main` 6ee647b). Đối tượng kiểm: PR #28, nhánh `v0.2-w3-core2`, chưa gộp.
 - Lần 1: head `5535a49`. Có tệp đính kèm, **chưa** có chuyển đổi.
 - Lần 2: head `8a2ed41`. Có chuyển đổi 1→2 và bộ mẫu đóng băng.
-- **Lần 3 (kết luận hiện hành, mục 0):** `main` 43c3639 (PR #28 đã gộp, gồm B6) cộng PR #36 `9106ae9`, có công cụ
-  hộp đen `lvhv-store-tool` (bản Rust và bản TS, theo `docs/v0.2/10`). Mục 1–9 giữ nguyên kết quả lần 1 và lần 2.
+- Lần 3 (mục 0): `main` 43c3639 (PR #28 đã gộp, gồm B6) cộng PR #36 `9106ae9`, có công cụ hộp đen `lvhv-store-tool`
+  (bản Rust và bản TS, theo `docs/v0.2/10`).
+- **Lần 4 (kết luận hiện hành, mục 00):** `main` 8835cd7 (PR #38, core3). Mục 0 giữ nguyên kết quả lần 3; mục 1–9 giữ
+  nguyên kết quả lần 1 và lần 2.
+
+## 00. Lần 4 — `main` 8835cd7 (kết luận hiện hành)
+
+Ở lần 4 chỉ đọc thêm tài liệu: phần đổi của 01 (§3.1, §7.1), 03 §B1.5–B1.6, 04 B7 và `docs/v0.2/10`. Không đọc mã
+nguồn. Hai tệp `make_r6v2_photos.py` và `make_dev_fixture.rs.txt` là mã, nên cũng không đọc; chỉ kiểm sha256 của
+chúng. Rust và TS cho cùng kết quả ở mọi ca. Số liệu nằm ở `oracle/v02/out/`:
+- `b5_r3_8835cd7.{json,log}`: chạy lại bộ lần 3;
+- `b5_r4_8835cd7.{json,log}`;
+- `b5_r4_flips_independent.json`;
+- `b5_r4_vectors.json`;
+- `b5_r4_r6v2_decrypt.json`;
+- `b5_r4_pwa_export_decrypt.json`.
+
+### 00.1 Kết luận
+
+| Phần | Kết luận | Số liệu |
+|---|---|---|
+| Viết hoa khi lưu và khi hiển thị (lỗi của lần 3) | **ĐẠT** | 28/28 ca × 2 bản × (`save-person`, `display-capitalize`) = 56/56. `"  chú  "` → `"Chú"`, `"   "` → `""`. Lưu `""` chứ không lưu `null` là đúng với 01 §7.1 hiện hành: các trường này là chuỗi trong lược đồ đóng; quy tắc "rỗng → `null`" chỉ áp cho trường cho phép `null`. Kỳ vọng `""` của bên kiểm định (A-N1, `d14f452`) cũng là `""` |
+| Không còn tệp mồ côi sau chuyển đổi lỗi | **ĐẠT** | 11/11 kho ở ca buộc lỗi, và 2/2 ca lỗi thật (M06, M09): thư mục sau khi mở chỉ có `lvhv.sqlite`, `lvhv.sqlite.pre-v2.bak` và `photos/` như trước. Không còn `attachments/` (lần 3: 6/11 kho có tệp mồ côi) |
+| `.pre-v2.bak` giống từng byte bản gốc | **ĐẠT** | 11/11 kho ở ca thường, 11/11 ở ca buộc lỗi, 2/2 ca lỗi thật (lần 3: 0/11) |
+| Dọn `legacy` và `.bak` sau 7 ngày (Rust) | **ĐẠT, giả lập qua dữ liệu** | Công cụ không có tham số thời gian. Bên kiểm định giả lập bằng cách sửa `meta.migrated_at` trong kho đã chuyển đổi (khóa này ghi ở 01 §7.1), rồi mở lại. Lùi 8 ngày: `legacy` bị bỏ khỏi 2/2 hồ sơ, `.bak` bị xóa, có `meta.legacy_pruned_at`, `migrated_at` bị xóa; `rev`, `updated_at`, mọi trường khác và tệp đính kèm không đổi. Lùi 6 ngày: không dọn gì. Ca lỗi: không có `migrated_at`, `.bak` được giữ |
+| Dọn sau 7 ngày (TS) | **CHƯA ĐỦ BẰNG CHỨNG** | Bản TS dựng kho IndexedDB giả lập mới mỗi lần chạy, từ `store-snapshot.json`, nên không giữ được `meta` qua hai lần mở. Công cụ không có tham số thời gian |
+| **R6 (a)** khứ hồi trên R6v2 | **ĐẠT** | Nhập `dataset-r6v2-fixed.lvhv` bằng "Thay toàn bộ" vào kho trống, Rust và TS: `state_sha256` = `9f4f7bb9…` (03 §B1.6) = băm bên kiểm định tự tính; tài liệu kho so trực tiếp: 0 trường khác; byte của 20/20 ảnh trùng. Xuất rồi nhập: 6 tệp do Rust xuất (`cross_platform write`, salt ngẫu nhiên) và 1 tệp do PWA xuất (`r6-from-pwa.lvhv`, sinh khi chạy `pwa/test/store/run.mjs --quick`); cả 7 nhập lại ra đúng `9f4f7bb9…`. Ghi nhận: chế độ "Gộp" vào kho trống giữ `settings` của máy, nên khác 4 trường `settings`. R6 (a) quy định "Thay toàn bộ", nên đây không phải sai lệch |
+| R6 (a2) mật khẩu sai | **ĐẠT** | 19 mật khẩu sai × 2 bản: 0 được nhận (rỗng, sai một ký tự, thêm khoảng trắng ở đầu/cuối, NBSP, chữ hoa, `\n`, `\t`, ZWSP, bỏ dấu…). Bản NFD của mật khẩu đúng được nhận ở cả hai bản, cho đúng `9f4f7bb9…` |
+| R6 (b) lật bit | **ĐẠT** | Bên kiểm định, độc lập: 65 536/65 536 biến thể của R6v2 (lật từng bit của 4 096 B đầu và 4 096 B cuối) bị từ chối, 0 được nhận. Lý do từ chối: `wrong_password_or_corrupt` 65 304, `bad_kdf_params` 72, `not_a_backup` 64, `bad_length` 64, `unsupported` 17, `newer_version` 15. Qua công cụ: 104 biến thể mẫu (gồm mọi byte thứ ba của phần đầu) × 2 bản, 0 được nhận. Công cụ không chạy được cả 65 536 biến thể trong thời gian hợp lý (mỗi lần cần Argon2) |
+| R6 (c) vectơ chuẩn | **ĐẠT** (phía độc lập) | RFC 9106 §5.3 Argon2id (`cryptography`, có secret/AD): khớp. `draft-irtf-cfrg-xchacha` A.3.1: khớp với PyNaCl/libsodium và với HChaCha20 tự cài. Hai thư viện Argon2 (argon2-cffi và `cryptography`) cho cùng khóa với tham số ứng dụng (64 MiB, t = 3, p = 4). Kiểm thử vectơ chuẩn bên trong lõi không lộ ra qua công cụ. Tuy vậy, bộ mã hóa độc lập tạo lại `dataset-r6v2-fixed.lvhv` **giống từng byte** (`c8f511be…`) từ bản rõ đã giải mã |
+| **R6 (d)** bộ giải mã độc lập | **ĐẠT** | Bộ giải mã thứ hai `b5_r6v2.py` (argon2-cffi + PyNaCl), viết từ 03 §2, giải mã đúng 11 tệp do bên xây dựng tạo: `example-v1.lvhv`, `supplement-yc05/notice-v1.lvhv`, `released/…/backup.lvhv`, `r6v2/dataset-r6v2-fixed.lvhv`, 6 tệp Rust xuất và 1 tệp PWA xuất (8 salt khác nhau). Với mỗi tệp: hai bộ giải mã độc lập ra cùng bản rõ; `plaintext_len` khớp; bố cục `LVHVPT01 ‖ u32 ‖ JSON chuẩn ‖ u32 ‖ khối` đúng và đọc hết đúng độ dài; thứ tự khối = ảnh rồi tệp đính kèm; `bytes` và `sha256` từng khối khớp bản ghi; ảnh đúng định dạng và kích thước khai, không có EXIF/XMP. Với R6v2 thêm: sha256 của 20 ảnh khớp `r6v2/manifest.json` và 03 §B1.6; JSON giống `dataset-r6v2.json`; băm trạng thái độc lập = `9f4f7bb9…` |
+| R6 cũ bị từ chối khi nhập | **ĐẠT** (tệp dựng lại) | Tệp R6 cũ với salt cố định không có trong kho; chỉ có sha256 của nó trong `manifest.json`. Bên kiểm định dựng lại tệp từ `dataset-r6.json`, với 20 "ảnh" tổng hợp đúng dạng 03 §B1.6 mô tả (`FF D8 FF E0 … FF D9`), và ghi lại `bytes`/`sha256` để lỗi chỉ có thể đến từ bước kiểm ảnh. Rust và TS đều từ chối ở `open_backup`: `PHOTO /photos: bad_header`, thông báo chung "Sai mật khẩu hoặc tệp bị hỏng". Kết quả này không chứng minh được với đúng tệp có sha256 `b3ccd03f…` |
+| Bộ lần 3 chạy lại | **không đổi so với lần 3, trừ các mục đã sửa ở trên** | 49 tệp thử: nhập, chuyển tại chỗ, gợi ý, `check-media` đều như lần 3. Lần chạy lại này cũng sinh lại 49 tệp thử ra giống từng byte bản đã commit |
+
+**R6 trên R6v2: ĐẠT.** Gồm (a), (a2), (b), (c) phía độc lập, (d), cùng R6 cũ bị từ chối, ở mức lõi. Phần R6 cho các
+cặp nền tảng có giao diện (ứng dụng thật) thuộc các job CI nền tảng. **R14 mức lõi: ĐẠT.** Hai khiếm khuyết của lần 3
+đã được sửa. Chỉ còn phần dọn sau 7 ngày của bản TS là CHƯA ĐỦ BẰNG CHỨNG. **YC-2026-07: ĐẠT** mọi phần.
+
+### 00.2 Trình tự lần 4
+
+| Giờ (+07) | Commit | Việc |
+|---|---|---|
+| 14:2x | — | Đọc phần đổi của 01, 03 §B1.6, 04 B7. Dựng `lvhv-store-tool` và các ví dụ từ `8835cd7`; chạy `npm ci`. Cài argon2-cffi 25.1.0 và PyNaCl 1.6.2. Viết `b5_r6v2.py` (bộ giải mã thứ hai), chạy vectơ chuẩn, giải mã R6v2 |
+| 14:3x | — | Chạy độc lập 65 536 biến thể lật bit (2 phút 31 giây). Chạy lại `b5_round3.py`. Chạy `b5_round4.py` (dọn 7 ngày, R6 (a)/(a2)/(b)/(d), R6 cũ) |
+| 14:47 | `cce9173` | Kết quả lần 4 |
+| 14:5x | — | Chạy `pwa/test/store/run.mjs --quick` như hộp đen để có một tệp do PWA xuất; giải mã độc lập; nhập vào Rust và TS. Sửa một lỗi nhỏ trong `b5_r6v2.py`: so kích thước ảnh với bản ghi `Attachment`, vốn không có `width`/`height` (bỏ qua khi không khai). Lỗi này chỉ ảnh hưởng ô `images_ok` của `notice-v1.lvhv` |
+
+### 00.3 Ghi nhận còn lại
+
+- Không đổi so với các lần trước: N03 (đánh số phiên bản sao lưu giữ là 1, nay ghi là quyết định của điều phối viên
+  theo ủy quyền của chủ dự án); M06 (khóa lạ bị từ chối, không có `legacy`); M08 (NFD giữ nguyên khi nhập).
+- 01 §7.1 hiện ghi: tệp xuất không mang `legacy`. Bên kiểm định chưa kiểm điều này, vì công cụ không in tệp xuất.
+  `read_only_probe` chỉ báo số byte.
+- Tệp R6v2 do Rust xuất (327 973 B) và do PWA xuất (327 969 B) khác nhau 4 byte. Cả hai giải mã ra tài liệu có cùng băm
+  trạng thái. Phần khác nằm ở `app`/`exported_at`, là các khóa không vào băm trạng thái.
 
 ## 0. Lần 3 — `main` 43c3639 + PR #36 `9106ae9` (kết luận hiện hành)
 
