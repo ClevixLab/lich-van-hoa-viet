@@ -104,6 +104,7 @@ enum DemoSeed {
         case "profiles": return (.profiles, [])
         case "backup": return (.backup, [])
         case "person-deceased": return (.profiles, [.person(id("A", m))])
+        case "person-notice": return (.profiles, [.person(id("A", m))])
         case "person-living": return (.profiles, [.person(id("C", m))])
         case "form-deceased": return (.profiles, [.add("deceased")])
         case "form-living": return (.profiles, [.add("living")])

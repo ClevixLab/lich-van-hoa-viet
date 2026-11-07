@@ -477,6 +477,11 @@ struct PhotoView: View {
         Group {
             if let img = image {
                 Image(decorative: img, scale: 1).resizable().scaledToFill()
+            } else if initials.isEmpty || initials == "?" {
+                Image(systemName: "person.fill").resizable().scaledToFit().padding(size.width * 0.25)
+                    .foregroundStyle(dark ? Color(red: 0.91, green: 0.78, blue: 0.48) : C.ink3)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(dark ? Color(red: 0.17, green: 0.14, blue: 0.13) : C.paper2)
             } else {
                 Text(initials).serif(size.width * 0.38, .semibold)
                     .foregroundStyle(dark ? Color(red: 0.91, green: 0.78, blue: 0.48) : C.ink2)

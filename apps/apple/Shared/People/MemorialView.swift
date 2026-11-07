@@ -17,11 +17,14 @@ private enum MC {
 struct SteleShape: Shape {
     func path(in r: CGRect) -> Path {
         var p = Path()
-        let rad = min(r.width / 2, 60)
+        let rad = min(r.width / 2, 70)
         p.move(to: CGPoint(x: r.minX, y: r.maxY))
         p.addLine(to: CGPoint(x: r.minX, y: r.minY + rad))
-        p.addQuadCurve(to: CGPoint(x: r.midX, y: r.minY), control: CGPoint(x: r.minX, y: r.minY))
-        p.addQuadCurve(to: CGPoint(x: r.maxX, y: r.minY + rad), control: CGPoint(x: r.maxX, y: r.minY))
+        p.addArc(center: CGPoint(x: r.minX + rad, y: r.minY + rad), radius: rad, startAngle: .degrees(180),
+                 endAngle: .degrees(270), clockwise: false)
+        p.addLine(to: CGPoint(x: r.maxX - rad, y: r.minY))
+        p.addArc(center: CGPoint(x: r.maxX - rad, y: r.minY + rad), radius: rad, startAngle: .degrees(270),
+                 endAngle: .degrees(0), clockwise: false)
         p.addLine(to: CGPoint(x: r.maxX, y: r.maxY))
         p.closeSubpath()
         return p
@@ -51,6 +54,8 @@ struct MemorialView: View {
         .navigationTitle("Tưởng niệm")
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(MC.bg, for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
         #endif
         .onAppear { light() }
@@ -208,8 +213,9 @@ struct MemorialView: View {
             ForEach(0..<3, id: \.self) { k in
                 let phase = running ? (t / 3.2 + Double(i) * 0.31 + Double(k) / 3).truncatingRemainder(dividingBy: 1) : Double(k) / 3 + 0.15
                 Ellipse()
-                    .fill(Color.white.opacity(0.22 * (1 - phase)))
-                    .frame(width: 8 + 14 * phase, height: 16 + 10 * phase)
+                    .fill(Color.white.opacity(0.16 * (1 - phase)))
+                    .frame(width: 8 + 14 * phase, height: 18 + 12 * phase)
+                    .blur(radius: 3 + 4 * phase)
                     .offset(x: sin((phase * 2 + Double(i)) * .pi) * 6, y: -78 - 64 * phase)
             }
         }
@@ -218,7 +224,10 @@ struct MemorialView: View {
     }
 
     private var bowl: some View {
-        RoundedRectangle(cornerRadius: 8).fill(MC.brass).frame(width: 74, height: 34)
+        ZStack(alignment: .top) {
+            UnevenBowl().fill(MC.brass).frame(width: 78, height: 36)
+            Ellipse().fill(Color(red: 0.55, green: 0.42, blue: 0.22)).frame(width: 78, height: 10)
+        }
     }
 
     private var candle: some View {
@@ -252,5 +261,19 @@ struct MemorialView: View {
             Rectangle().fill(Color.green.opacity(0.7)).frame(width: 3, height: 40)
             RoundedRectangle(cornerRadius: 4).fill(MC.brass).frame(width: 30, height: 30)
         }
+    }
+}
+
+/// Bát hương: miệng rộng, đáy thu lại.
+struct UnevenBowl: Shape {
+    func path(in r: CGRect) -> Path {
+        var p = Path()
+        p.move(to: CGPoint(x: r.minX, y: r.minY + 5))
+        p.addLine(to: CGPoint(x: r.maxX, y: r.minY + 5))
+        p.addQuadCurve(to: CGPoint(x: r.maxX - 12, y: r.maxY), control: CGPoint(x: r.maxX, y: r.maxY - 4))
+        p.addLine(to: CGPoint(x: r.minX + 12, y: r.maxY))
+        p.addQuadCurve(to: CGPoint(x: r.minX, y: r.minY + 5), control: CGPoint(x: r.minX, y: r.maxY - 4))
+        p.closeSubpath()
+        return p
     }
 }

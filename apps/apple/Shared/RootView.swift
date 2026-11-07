@@ -122,7 +122,7 @@ struct RootView: View {
             .labelsHidden()
             .frame(maxWidth: 680)
             #else
-            Text("Lịch Việt").serif(20, .semibold).foregroundStyle(C.ink)
+            Text("Lịch Việt").serif(20, .semibold).foregroundStyle(C.ink).lineLimit(1).minimumScaleFactor(0.6)
             #endif
             Spacer()
             Picker("Cỡ chữ", selection: $size) {

@@ -29,6 +29,7 @@ struct PeopleView: View {
     var body: some View {
         NavigationStack(path: $path) {
             root
+                .navigationTitle("Người thân")
                 .navigationDestination(for: PRoute.self) { r in destination(r) }
                 #if os(iOS)
                 .toolbar(.hidden, for: .navigationBar)

@@ -79,6 +79,12 @@ final class PeopleUITests: XCTestCase {
             snap("delete-confirm-\(v)")
             app.terminate()
         }
+        for dark in [false, true] {
+            app = launch(screen: "person-notice", dark: dark, extra: ["-lvhvExpand", "1"])
+            app.swipeUp(velocity: .slow)
+            snap("person-notice-\(dark ? "dark" : "light")")
+            app.terminate()
+        }
         app = launch(screen: "period", extra: ["-lvhvPeriodKind", "quy"])
         snap("period-quy-light")
         app.terminate()

@@ -261,7 +261,7 @@ struct PersonFormView: View {
                 .pickerStyle(.inline)
             }
             PTextField(label: "Nơi sinh", text: $d.noiSinh, error: err("noi_sinh"), id: "form.noiSinh")
-            if deceased { ageBlock }
+            if deceased && DateCheck.death(d.death, today: m.today).ok { ageBlock }
         }
     }
 

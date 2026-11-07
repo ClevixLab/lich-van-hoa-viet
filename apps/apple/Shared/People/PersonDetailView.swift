@@ -8,6 +8,15 @@ struct PersonDetailView: View {
     @State private var confirmDelete = false
     @State private var deleteEvent: JV?
     @State private var error: String?
+    @State private var noticeOpen = PersonDetailView.expandDefault
+
+    private static var expandDefault: Bool {
+        #if DEBUG
+        return UserDefaults.standard.bool(forKey: "lvhvExpand")
+        #else
+        return false
+        #endif
+    }
 
     var body: some View {
         Group {
@@ -174,7 +183,7 @@ struct PersonDetailView: View {
         let n = p["death"]["notice"]
         if n.isObject {
             PCard {
-                DisclosureGroup {
+                DisclosureGroup(isExpanded: $noticeOpen) {
                     VStack(alignment: .leading, spacing: 8) {
                         InfoRow(label: "Người báo tin", value: n["reported_by"].string)
                         InfoRow(label: "Mất tại", value: n["place"].string)
