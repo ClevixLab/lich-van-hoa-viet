@@ -1,0 +1,123 @@
+//! Tạo bộ mẫu đóng băng `released/0.2.1/android/` (04 B5 / R14, 08-QUY-TRINH §10): kho dữ liệu của mô-đun Người thân
+//! do **lõi 0.2.1** ghi qua đúng API `LvhvStore` của `lvhv-ffi` mà ứng dụng Android gọi (`save_person_json`,
+//! `add_photo`, `add_attachment`, `save_event_json`, `put_settings_json`, `set_lock_screen_names`, `export_backup`).
+//! Ảnh JPEG đầu vào không có siêu dữ liệu (Pillow), như ảnh ứng dụng đã mã hóa lại.
+//!
+//!     cargo run --release -p lvhv-ffi --example make_android_fixture -- <thư mục ảnh> <thư mục ra>
+use lvhv_ffi::LvhvStore;
+use serde_json::{json, Value};
+use std::path::PathBuf;
+
+const PASSWORD: &str = "mật khẩu thử nghiệm";
+const A: &str = "21a00000-0000-4000-8000-00000000000a";
+const B: &str = "21a00000-0000-4000-8000-00000000000b";
+const C: &str = "21a00000-0000-4000-8000-00000000000c";
+const P_PORTRAIT: &str = "21a00000-0000-4000-8000-0000000000f1";
+const P_TRAY: &str = "21a00000-0000-4000-8000-0000000000f2";
+const F_CERT: &str = "21a00000-0000-4000-8000-0000000000a1";
+const F_PDF: &str = "21a00000-0000-4000-8000-0000000000a2";
+const PDF: &[u8] = b"%PDF-1.4\n1 0 obj<</Type/Catalog>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n";
+
+fn rule(id: &str, offs: &[i64], tt: bool) -> Value {
+    json!({ "id": id, "enabled": true, "offsets_days": offs, "time_local": "06:30", "tien_thuong": tt })
+}
+
+fn dv(cal: &str, prec: &str, y: Option<i64>, m: i64, d: i64, leap: bool) -> Value {
+    json!({ "calendar": cal, "precision": prec, "year": y, "month": m, "day": d, "leap": leap })
+}
+
+fn main() {
+    let a: Vec<String> = std::env::args().collect();
+    let img = PathBuf::from(&a[1]);
+    let out = PathBuf::from(&a[2]);
+    let dir = out.join("store");
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let s = LvhvStore::open(dir.to_string_lossy().into_owned()).unwrap();
+    let read = |n: &str| std::fs::read(img.join(n)).unwrap();
+    s.add_photo(P_PORTRAIT.into(), "image/jpeg".into(), 600, 800, read("chan-dung.jpg")).unwrap();
+    s.add_photo(P_TRAY.into(), "image/jpeg".into(), 1600, 1200, read("mam-le.jpg")).unwrap();
+    s.add_attachment(F_CERT.into(), "image/jpeg".into(), Some("giay-chung-tu.jpg".into()), read("giay-chung-tu.jpg")).unwrap();
+    s.add_attachment(F_PDF.into(), "application/pdf".into(), Some("Tin bao tu.pdf".into()), PDF.to_vec()).unwrap();
+
+    // A: người đã mất, ngày mất âm lịch tháng nhuận, ảnh chân dung, ảnh mâm lễ, thông tin báo tử có ảnh + PDF, giới tính.
+    s.save_person_json(json!({
+        "id": A, "kind": "deceased", "danh_xung": "ông", "ho_ten": "Nguyễn Văn Ánh", "ten_hieu": "Phúc Thiện",
+        "quan_he": "ông nội", "gioi_tinh": "nam",
+        "birth": { "input": dv("solar", "day", Some(1940), 5, 1, false), "noi_sinh": "Hà Nội" },
+        "death": {
+            "input": dv("lunar", "day", Some(2025), 6, 15, true),
+            "notice": {
+                "reported_by": "Chú Hải", "place": "Bệnh viện Bạch Mai", "reason": "Tuổi cao",
+                "notice_date": dv("solar", "day", Some(2025), 8, 9, false),
+                "attachments": [
+                    { "id": "21a00000-0000-4000-8000-0000000000b1", "kind": "giay_chung_tu", "file_id": F_CERT },
+                    { "id": "21a00000-0000-4000-8000-0000000000b2", "kind": "tin_bao_tu", "file_id": F_PDF },
+                ],
+                "note": "Ghi chú báo tử",
+            },
+        },
+        "noi_an_tang": "Nghĩa trang quê", "photo_id": P_PORTRAIT,
+        "memorial": {
+            "tray_style": "truyen_thong", "incense": true, "bia_tieu_de": "", "loi_tuong_niem": "Con cháu nhớ ông",
+            "gio_het_nam": 3, "huong_duong_duoi": 60, "tray_photo_id": P_TRAY,
+        },
+        "reminders": { "gio": rule("21a00000-0000-4000-8000-0000000000c1", &[0, 3, 10], true), "sinh_nhat": null, "sinh_nhat_am": null },
+        "sinh_nhat_am": false, "feb29_rule": "feb28", "ghi_chu": "Dòng 1\nDòng 2",
+    }).to_string()).unwrap();
+
+    // B: người đã mất, chỉ biết ngày giỗ (không rõ năm mất), Công giáo, không hương.
+    s.save_person_json(json!({
+        "id": B, "kind": "deceased", "danh_xung": "bà", "ho_ten": "Maria Trần Thị Bé", "ten_hieu": "",
+        "quan_he": "bà ngoại", "gioi_tinh": "nu", "birth": null,
+        "death": { "input": dv("lunar", "month_day", None, 3, 10, false) },
+        "noi_an_tang": "", "photo_id": null,
+        "memorial": { "tray_style": "cong_giao", "incense": false, "bia_tieu_de": "", "loi_tuong_niem": "",
+                      "gio_het_nam": 2, "huong_duong_duoi": 60 },
+        "reminders": { "gio": rule("21a00000-0000-4000-8000-0000000000c2", &[0, 1], false), "sinh_nhat": null, "sinh_nhat_am": null },
+        "sinh_nhat_am": false, "feb29_rule": "feb28", "ghi_chu": "",
+    }).to_string()).unwrap();
+
+    // C: người đang sống, sinh 29/02 (mừng 01/03), có sinh nhật âm lịch.
+    s.save_person_json(json!({
+        "id": C, "kind": "living", "danh_xung": "", "ho_ten": "Lê Văn Cường", "ten_hieu": "", "quan_he": "con trai",
+        "birth": { "input": dv("solar", "day", Some(1992), 2, 29, false), "noi_sinh": "Hà Đông" },
+        "death": null, "noi_an_tang": "", "photo_id": null, "memorial": null,
+        "reminders": {
+            "gio": null,
+            "sinh_nhat": rule("21a00000-0000-4000-8000-0000000000c3", &[0, 1], false),
+            "sinh_nhat_am": rule("21a00000-0000-4000-8000-0000000000c4", &[0], false),
+        },
+        "sinh_nhat_am": true, "feb29_rule": "mar1", "ghi_chu": "",
+    }).to_string()).unwrap();
+
+    // Loại sự kiện tự tạo + hai sự kiện (một lặp lại âm lịch, một một lần gắn hai người).
+    let t: Value = serde_json::from_str(&s.save_event_type_json(json!({
+        "id": "21a00000-0000-4000-8000-0000000000d1", "builtin": null, "ten": "Lên lão", "default_recurring": true,
+    }).to_string()).unwrap()).unwrap();
+    s.save_event_json(json!({
+        "id": "21a00000-0000-4000-8000-0000000000e1", "type_id": t["id"], "tieu_de": "",
+        "date": dv("lunar", "month_day", None, 3, 10, false), "recurring": true, "person_ids": [C], "ghi_chu": "",
+        "reminder": rule("21a00000-0000-4000-8000-0000000000c5", &[0, 5], false),
+    }).to_string()).unwrap();
+    s.save_event_json(json!({
+        "id": "21a00000-0000-4000-8000-0000000000e2", "type_id": "6f1c2a1e-0b6e-4c55-9a51-0d1f2b7c0001",
+        "tieu_de": "Tốt nghiệp", "date": dv("solar", "day", Some(2027), 6, 15, false), "recurring": false,
+        "person_ids": [C, A], "ghi_chu": "", "reminder": null,
+    }).to_string()).unwrap();
+
+    let mut st: Value = serde_json::from_str(&s.settings_json().unwrap()).unwrap();
+    st["backup_nag_days"] = json!(60);
+    st["default_time_local"] = json!("06:30");
+    s.put_settings_json(st.to_string()).unwrap();
+    s.set_lock_screen_names(true).unwrap();
+
+    let bytes = s.export_backup(PASSWORD.into(), "0.2.1".into(), "android".into()).unwrap();
+    std::fs::write(out.join("backup.lvhv"), bytes).unwrap();
+    let mut ds: Value = serde_json::from_str(&s.dataset_json().unwrap()).unwrap();
+    let o = ds.as_object_mut().unwrap();
+    o.remove("app");
+    o.remove("exported_at");
+    std::fs::write(out.join("store-snapshot.json"), serde_json::to_string_pretty(&ds).unwrap() + "\n").unwrap();
+    println!("ok: {} người, migration {:?}", ds["persons"].as_array().unwrap().len(), s.migration_status().state);
+}

@@ -1,0 +1,6 @@
+<?xml version='1.0' encoding='utf-8' standalone='yes' ?>
+<map>
+    <int name="size" value="3" />
+    <int name="theme" value="2" />
+    <string name="nhac_cap_nhat_den">2099-12-31</string>
+</map>

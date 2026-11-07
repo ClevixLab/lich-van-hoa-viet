@@ -107,3 +107,14 @@ Bản web (từ 0.2.0, `docs/reports/PHAT-HANH-PWA-0.2.0.md`):
 - Bộ mẫu đóng băng: `cd pwa && npm run build && node test/tools/freeze-pwa-release.mjs` trên commit phát hành, tạo
   `released/<bản>/pwa/`. Ca (d) của `upgrade.mjs` tự dùng mọi bộ mẫu đó cho các bản sau.
 - Đường lùi: chạy `pwa-pages` (workflow_dispatch) trên thẻ của bản trước.
+
+Bản Android (từ 0.2.1):
+- Khóa ký: một lần, trên máy Windows của chủ dự án, `scripts/tao-khoa-ky-android.ps1` (tạo khóa, in dấu vân tay,
+  đặt 4 secret `LVHV_ANDROID_*`). Mọi bản sau phải ký bằng cùng khóa, nếu không người dùng không cài đè được.
+- Đăng: `android.yml` chạy tay với `publish_release` trên `main` (hoặc thẻ `v*`). Job `publish` chạy sau `build`, `ui`,
+  `upgrade` (R14 trên trình giả lập) và chỉ đăng bản **đã ký**: `LichViet-<VERSION>.apk`, `.aab`, tệp SHA-256, ghi chú
+  từ mục `[<VERSION>]` của CHANGELOG. Chưa ký thì job đỏ, không đăng gì.
+- Bộ mẫu đóng băng: `released/<bản>/android/` (kho `store/`, `shared_prefs/`, `backup.lvhv`, `manifest.json`) và
+  `released/expected/<bản>-android.json`. `apps/android/ci/upgrade-test.sh` tự dùng mọi bộ mẫu đó cho các bản sau
+  (op `verify-released`). Bộ 0.2.1 tạo bằng lõi 0.2.1 qua API FFI mà ứng dụng gọi, không qua giao diện trên máy thật
+  (README của bộ mẫu). Từ bản sau, nên tạo bằng chính APK phát hành trên trình giả lập.

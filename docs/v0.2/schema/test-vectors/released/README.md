@@ -23,6 +23,7 @@ Thư mục này giữ dữ liệu **thật** do các bản đã phát hành (ho�
 |---|---|---|
 | `0.2-dev-before-attachments/` | bản dựng 0.2 trước YC-2026-07 (commit 7338f04) | Kho phiên bản 1 có `death.notice.certificate_photo_ids` — R14 (c). Chuyển 1 → 2 đổi thành `attachments` loại `giay_chung_tu`; danh sách gốc và bản ghi `Photo` gốc giữ trong `legacy` |
 | `0.2.0/pwa/` | bản web 0.2.0 (bản phát hành đầu tiên của v0.2), qua giao diện của chính bản dựng (`pwa/test/tools/freeze-pwa-release.mjs`) | Kho IndexedDB phiên bản 3 chép nguyên (`indexeddb.json`), tệp sao lưu, ảnh chụp tài liệu. Kỳ vọng: `expected/0.2.0-pwa.json` (stateHash kho; stateHash sau khi khôi phục tệp sao lưu vào kho trống). Kiểm: `pwa/test/upgrade.mjs` ca (d) |
+| `0.2.1/android/` | lõi 0.2.1 (commit e3a0276) qua API `LvhvStore` mà ứng dụng Android gọi, trên Linux — **không** qua giao diện trên máy thật (`make_android_fixture.rs.txt`, README của bộ mẫu) | Kho SQLite phiên bản 2 (`store/`: ảnh chân dung, ảnh mâm lễ, tệp đính kèm ảnh + PDF), `shared_prefs/` (viết tay theo khóa bản 0.2.1 đọc), tệp sao lưu, ảnh chụp tài liệu. Kỳ vọng: `expected/0.2.1-android.json`. Kiểm: `apps/android/ci/upgrade-test.sh` (op `verify-released`, trình giả lập), `ReleasedFixtureTest` (JVM), `released.rs` |
 
 ## Kiểm thử
 
