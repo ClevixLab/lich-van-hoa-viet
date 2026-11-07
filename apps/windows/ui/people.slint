@@ -645,7 +645,7 @@ component SubHead inherits VerticalLayout {
 
 component Welcome inherits Group {
     VerticalLayout {
-        spacing: 12px;
+        spacing: 12px; alignment: start;
         T { text: "Chưa có ai trong sổ. Thêm ông bà, cha mẹ đã khuất để được nhắc ngày giỗ theo âm lịch; thêm người đang sống để nhớ sinh nhật và ngày kỷ niệm."; size: 16; color: Theme.ink2; }
         HorizontalLayout {
             spacing: 10px; alignment: start;
@@ -729,7 +729,7 @@ component UpcomingPage inherits PPage {
     Head { }
     if root.wide: HorizontalLayout {
         spacing: 16px;
-        UpMain { horizontal-stretch: 1; }
+        VerticalLayout { horizontal-stretch: 1; alignment: start; UpMain { } }
         VerticalLayout { width: 330px; alignment: start; UpSide { } }
     }
     if !root.wide: UpMain { }
