@@ -1238,8 +1238,8 @@ fn open_memorial(ui: &AppWindow, ps: &mut PState, id: &str) {
         Some(o) => {
             let d = d_iso(o["date"].as_str().unwrap_or(""));
             format!(
-                "Ngày giỗ {}: {}, {}",
-                if d.is_some_and(|x| x.y == today.y) { "năm nay" } else { "sắp tới" },
+                // Mọi nền tảng: "Ngày giỗ sắp tới" (quyết định điều phối, TKN-X-06).
+                "Ngày giỗ sắp tới: {}, {}",
                 lunar_text(&o["lunar"], false),
                 d.map(|x| x.dmy()).unwrap_or_default()
             )

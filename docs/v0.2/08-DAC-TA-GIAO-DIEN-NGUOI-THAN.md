@@ -395,7 +395,7 @@ trên mục giỗ của hôm nay ở "Sắp tới".
 ┌─────────────────────────────────────┐
 │ ‹ Về hồ sơ                          │
 │      Giỗ đầu · hôm nay 15/6 âm lịch │   dòng ngày (chỉ khi hôm nay là giỗ; khác:
-│                                     │   "Ngày giỗ năm nay: 15/6 âm lịch, 28/07/2026" / "Ngày giỗ sắp tới: …")
+│                                     │   "Ngày giỗ sắp tới: 15/6 âm lịch, 28/07/2026")
 │            ╭──────────╮             │
 │            │  (ảnh)   │  khung bầu dục viền vàng đồng
 │            ╰──────────╯             │
@@ -428,9 +428,10 @@ trên mục giỗ của hôm nay ở "Sắp tới".
 - Năm trên bia: `Can Chi năm âm` + năm, không ngoặc — "Canh Thìn 1940 — Ất Tỵ 2025" (thống nhất PWA, Android, Windows;
   TKN-X-02) — cho năm sinh (nếu có) và năm mất (nếu có); thiếu năm sinh → chỉ "Mất năm Ất Tỵ 2025"; không rõ năm mất →
   "Giỗ ngày 10/3 âm lịch".
-- Dòng ngày khi hôm nay không phải ngày giỗ (TKN-X-06): "Ngày giỗ **năm nay**: …" chỉ khi lần giỗ kế tiếp thuộc năm dương
-  hiện tại; nếu đã sang năm sau: "Ngày giỗ **sắp tới**: 15/6 âm lịch, 18/07/2027". Ngày âm ở dòng này là ngày giỗ hằng
-  năm (tháng thường, O-4), không ghi "nhuận".
+- Dòng ngày khi hôm nay không phải ngày giỗ (TKN-X-06, quyết định chung cho mọi nền tảng): luôn "Ngày giỗ **sắp
+  tới**: 15/6 âm lịch, 18/07/2027". Ngày âm ở dòng này là ngày giỗ hằng năm (tháng thường, O-4), không ghi "nhuận".
+- Biểu tượng loại (TKN-X-07, theo PWA, mọi nền tảng): ba nén hương cho giỗ, mâm nhỏ cho tiên thường, bánh có nến cho
+  sinh nhật (dương và âm), ngôi sao cho sự kiện; luôn kèm chữ (§2).
 - Tuổi: "Hưởng thọ 86 tuổi" / "Hưởng dương 45 tuổi" (+ "(khoảng)"); không có tuổi → bỏ dòng.
 - Hình: SVG/CSS viết trong mã (không tệp ảnh ngoài), tông nâu gỗ và vàng đồng, cùng một kiểu ở sáng và tối (nền tối
   ấm cả hai giao diện để bia nổi). Ảnh vẽ bằng canvas; không có ảnh → khung bầu dục trống có chữ cái đầu tên.
