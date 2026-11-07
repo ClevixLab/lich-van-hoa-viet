@@ -138,6 +138,18 @@ const exPhoto = rd(manifest.example.photo);
   let got = "";
   try { S.validate.document(bad); } catch (e) { got = `${e.code} ${e.path}`; }
   ok(got === "V3 /persons/0/death/notice/certificate_photo_ids/0", "YC-2026-05: ảnh giấy báo tử không tồn tại → V3 (cùng đường dẫn với Rust)");
+  // "notice": null ≡ vắng khóa (Rust: serde default + skip_serializing_if) → PWA bỏ khóa khi lưu, stateHash như Rust.
+  const withNull = structuredClone(v.doc);
+  const pB = withNull.persons.find((x) => x.death !== null && !("notice" in x.death));
+  pB.death.notice = null;
+  S.validate.document(withNull);
+  const t2 = await freshStore();
+  await t2.applyImport({ ...v, doc: withNull }, "replace");
+  ok((await t2.stateHash()) === sm.state_sha256, "YC-2026-05: tài liệu có \"notice\": null → lưu không có khóa, stateHash = Rust");
+  const stored = await t2.person(pB.id);
+  ok(!("notice" in stored.death), "YC-2026-05: putPerson/applyImport bỏ \"notice\": null (như Rust skip_serializing_if)");
+  await t2.putPerson(structuredClone({ ...stored, death: { ...stored.death, notice: null } }));
+  ok(!("notice" in (await t2.person(pB.id)).death) && (await t2.stateHash()) === sm.state_sha256, "YC-2026-05: putPerson với \"notice\": null → không ghi khóa");
   results.notice_supplement = { opens: true, js_fixed_rng_equals_rust: sha(f) === sm.file.sha256 };
 }
 
