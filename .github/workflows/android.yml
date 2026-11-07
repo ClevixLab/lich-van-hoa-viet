@@ -95,26 +95,44 @@ jobs:
           LVHV_BUILD_NUMBER: ${{ github.run_number }}
         run: |
           export LVHV_BUILD_DATE="$(date -u +%Y-%m-%d)"
-          gradle --no-daemon --stacktrace :app:testReleaseUnitTest :app:lintRelease :app:assembleRelease :app:bundleRelease
+          # Kiểm thử JVM (logic + giao diện Robolectric) chạy trên biến thể debug (cần ui-test-manifest) và gọi lõi Rust
+          # bản máy tính (target/release/liblvhv_ffi.so, build-rust.sh đã dựng).
+          gradle --no-daemon --stacktrace :app:testDebugUnitTest :app:lintRelease :app:assembleRelease :app:bundleRelease
 
-      - name: Kiểm tra — không xin quyền nào (đặc biệt INTERNET), có đủ 3 ABI
+      - name: Kiểm tra — quyền đúng danh sách cho phép (S6), không INTERNET; có đủ 3 ABI
         working-directory: apps/android
         run: |
           APK=$(find app/build/outputs/apk/release -name "*.apk" | sort | head -1)
           AAPT2="$ANDROID_HOME/build-tools/35.0.0/aapt2"
           "$AAPT2" dump permissions "$APK" | tee "$RUNNER_TEMP/perms.txt"
-          # Ngoại lệ duy nhất: <app>.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION do androidx.core (≥ 1.9) tự
-          # thêm — quyền mức "signature" do chính ứng dụng định nghĩa để bảo vệ receiver nội bộ; không
-          # cấp truy cập hệ thống/mạng nào và người dùng không thấy. Mọi quyền khác → lỗi.
-          OWN="uses-permission: name='vn.clevix.lichviet.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION'"
-          if grep "uses-permission" "$RUNNER_TEMP/perms.txt" | grep -vxF "$OWN"; then
-            echo "::error::APK có khai báo quyền (uses-permission) — ứng dụng phải không có quyền hệ thống nào."; exit 1
+          # S6 (docs/v0.2/04), O-6 (báo thức không chính xác → KHÔNG có SCHEDULE_EXACT_ALARM): đúng và chỉ
+          #   - POST_NOTIFICATIONS: thông báo nhắc ngày giỗ / sinh nhật;
+          #   - RECEIVE_BOOT_COMPLETED: đặt lại chuỗi báo thức sau khi khởi động lại;
+          #   - <app>.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION: quyền mức "signature" do androidx.core (≥ 1.9) tự
+          #     thêm để bảo vệ receiver nội bộ; không cấp truy cập hệ thống/mạng nào, người dùng không thấy.
+          printf '%s\n' \
+            "uses-permission: name='android.permission.POST_NOTIFICATIONS'" \
+            "uses-permission: name='android.permission.RECEIVE_BOOT_COMPLETED'" \
+            "uses-permission: name='vn.clevix.lichviet.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION'" \
+            | sort > "$RUNNER_TEMP/allowed.txt"
+          grep "^uses-permission" "$RUNNER_TEMP/perms.txt" | sed 's/ maxSdkVersion=.*//' | sort -u > "$RUNNER_TEMP/actual.txt"
+          if ! diff -u "$RUNNER_TEMP/allowed.txt" "$RUNNER_TEMP/actual.txt"; then
+            echo "::error::Danh sách quyền của APK khác danh sách cho phép S6 (xem diff ở trên)."; exit 1
           fi
+          if grep -qi "INTERNET" "$RUNNER_TEMP/perms.txt"; then echo "::error::APK có quyền INTERNET."; exit 1; fi
           for abi in arm64-v8a armeabi-v7a x86_64; do
             unzip -l "$APK" | grep -q "lib/$abi/liblvhv_ffi.so" || { echo "::error::Thiếu lib/$abi/liblvhv_ffi.so"; exit 1; }
             unzip -l "$APK" | grep -q "lib/$abi/libjnidispatch.so" || { echo "::error::Thiếu lib/$abi/libjnidispatch.so (JNA)"; exit 1; }
           done
           ls -la app/build/outputs/apk/release app/build/outputs/bundle/release
+
+      - name: Kiểm tra — S5 (allowBackup=false, có quy tắc trích xuất) trong manifest đã gộp
+        working-directory: apps/android
+        run: |
+          APK=$(find app/build/outputs/apk/release -name "*.apk" | sort | head -1)
+          "$ANDROID_HOME/build-tools/35.0.0/aapt2" dump xmltree --file AndroidManifest.xml "$APK" > "$RUNNER_TEMP/manifest.txt"
+          grep -E 'allowBackup.*=false' "$RUNNER_TEMP/manifest.txt" || { echo "::error::allowBackup phải là false (S5)"; exit 1; }
+          grep -q 'dataExtractionRules' "$RUNNER_TEMP/manifest.txt" || { echo "::error::Thiếu dataExtractionRules (S5)"; exit 1; }
 
       - name: Kiểm tra — versionName/versionCode của APK khớp tệp VERSION
         working-directory: apps/android
@@ -146,3 +164,70 @@ jobs:
           name: android-lint-report
           path: apps/android/app/build/reports/
           retention-days: 14
+
+  # Giao diện: kiểm thử Robolectric + ảnh chụp màn hình (Roborazzi) với lõi Rust bản máy tính — không cần NDK.
+  # Trên PR từ chính kho này, ảnh được commit ngược vào nhánh của PR (apps/android/screenshots/and-*.png) vì
+  # tạo phẩm (artifact) không tải được ở nơi duyệt. Commit bằng GITHUB_TOKEN không kích hoạt lại CI.
+  ui:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.head_ref || github.ref }}
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: "platforms;android-35 build-tools;35.0.0"
+
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: android-host
+
+      - name: Dựng lõi Rust bản máy tính + sinh mã Kotlin UniFFI
+        run: |
+          cargo build -p lvhv-ffi --lib --release
+          cargo build -p lvhv-ffi --features bindgen-cli --bin uniffi-bindgen
+          OUT=apps/android/app/build/generated/uniffi/kotlin
+          rm -rf "$OUT" && mkdir -p "$OUT"
+          target/debug/uniffi-bindgen generate --library target/release/liblvhv_ffi.so \
+            --language kotlin --out-dir "$OUT" --config ffi/uniffi.toml --no-format
+          test -s "$OUT/vn/clevix/lichviet/core/lvhv_ffi.kt"
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: ${{ env.GRADLE_VERSION }}
+
+      - name: Kiểm thử JVM + ảnh chụp màn hình
+        id: tests
+        continue-on-error: true
+        working-directory: apps/android
+        run: |
+          rm -f screenshots/and-*.png
+          gradle --no-daemon --stacktrace -Plvhv.hostOnly=true :app:testDebugUnitTest
+          ls -la screenshots
+
+      - name: Commit ảnh chụp vào nhánh PR
+        if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A apps/android/screenshots
+          if git diff --cached --quiet; then echo "Ảnh không đổi."; exit 0; fi
+          git commit -m "Android: ảnh chụp màn hình mô-đun Người thân (CI, run ${{ github.run_number }})"
+          git pull --rebase origin "${{ github.head_ref }}" || true
+          git push origin "HEAD:${{ github.head_ref }}"
+
+      - name: Kết quả kiểm thử
+        if: steps.tests.outcome != 'success'
+        run: |
+          echo "::error::Kiểm thử JVM / giao diện không đạt (xem bước 'Kiểm thử JVM + ảnh chụp màn hình')."
+          exit 1

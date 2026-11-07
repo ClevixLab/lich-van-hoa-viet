@@ -149,6 +149,11 @@ android {
                 t.systemProperty("roborazzi.test.record", "true")
                 t.systemProperty("lvhv.screenshots.dir", rootProject.file("screenshots").absolutePath)
                 t.maxHeapSize = "3g"
+                t.testLogging {
+                    events("failed", "skipped")
+                    exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+                    showStandardStreams = false
+                }
                 t.dependsOn("extractJnaHost")
             }
         }
