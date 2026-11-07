@@ -246,11 +246,10 @@ class SelfCheckActivity : Activity() {
             if (write.isSuccess) return "FAIL ghi được khi chỉ đọc"
             val bytes = runCatching { repo.exportBackup("mật khẩu thử nghiệm", "r14") }
             if (bytes.isFailure) return "FAIL không xuất được sao lưu: ${bytes.exceptionOrNull()?.message}"
-            val opened = PeopleRepo.openBackupFile(bytes.getOrThrow(), "mật khẩu thử nghiệm")
-            val persons = opened.second.persons.toInt()
-            opened.first.destroy()
-            if (persons != n) return "FAIL tệp sao lưu có $persons người, kho có $n"
-            return "OK read_only: $n người xem được, ghi bị từ chối, sao lưu $persons người; ${st.message}"
+            val b = bytes.getOrThrow()
+            val head = runCatching { PeopleRepo.checkBackupHeader(b.copyOf(72), b.size.toLong()) }
+            if (head.isFailure) return "FAIL tệp sao lưu hỏng phần đầu: ${head.exceptionOrNull()?.message}"
+            return "OK read_only: $n người xem được, ghi bị từ chối, tạo được tệp sao lưu ${b.size} byte; ${st.message}"
         }
 
         /** Giá trị CI ghi vào shared_prefs/hien_thi.xml trước khi cài đè (cỡ chữ A++, giao diện tối, "Để sau"). */

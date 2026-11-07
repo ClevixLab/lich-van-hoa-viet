@@ -72,9 +72,10 @@ class MigrationTest {
         assertTrue(!st.message.isNullOrBlank())
         assertEquals(3, repo.persons().size)
         assertTrue("ghi phải bị từ chối", runCatching { repo.putSettings(repo.settings()) }.isFailure)
+        // Vẫn tạo được tệp sao lưu (phần đầu hợp lệ). Như store/tests/released.rs: hồ sơ hỏng vẫn bị kiểm khi nhập, nên
+        // mở lại tệp này báo lỗi cho tới khi dữ liệu được sửa.
         val bytes = repo.exportBackup("mật khẩu thử nghiệm", "0.0.0")
-        val (v, pv) = PeopleRepo.openBackupFile(bytes, "mật khẩu thử nghiệm")
-        v.destroy()
-        assertEquals(3, pv.persons.toInt())
+        PeopleRepo.checkBackupHeader(bytes.copyOf(72), bytes.size.toLong())
+        assertTrue(runCatching { PeopleRepo.openBackupFile(bytes, "mật khẩu thử nghiệm") }.isFailure)
     }
 }
