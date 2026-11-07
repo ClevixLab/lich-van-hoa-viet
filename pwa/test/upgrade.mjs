@@ -255,6 +255,25 @@ try {
     await page.waitForSelector(".people-body > *", { timeout: 30000 });
     const remind = await page.evaluate(async () => { const S = await window.__lvhv.storage.loadStore(); const s = await S.openStore(); const p = await s.persons(); s.close(); return p.filter((x) => x.reminders.gio || x.reminders.sinh_nhat).length; });
     check(remind === 3, "R14: lịch nhắc của cả 3 hồ sơ còn nguyên (quy tắc nhắc giữ trong hồ sơ)");
+    // #38 (core3, 01 §7, BM2-07): 7 ngày sau chuyển đổi, mở kho thì `legacy` được dọn khỏi mọi hồ sơ (không đổi rev,
+    // updated_at); trước 7 ngày thì còn. Đồng hồ của lõi (`OpenOptions.now`) đặt sau mốc `migrated_at` 6 và 8 ngày.
+    const pr = await page.evaluate(async () => {
+      const S = await window.__lvhv.storage.loadStore();
+      const iso = (ms) => new Date(ms).toISOString().replace(/\.\d+Z$/, "Z");
+      let s = await S.openStore(); const at = await s.meta("migrated_at"); const before = await s.persons(); s.close();
+      s = await S.openStore(indexedDB, { now: iso(Date.parse(at) + 6 * 86400000) }); const d6 = (await s.persons()).filter((p) => "legacy" in p).length; s.close();
+      s = await S.openStore(indexedDB, { now: iso(Date.parse(at) + 8 * 86400000) });
+      const after = await s.persons(); const pruned = await s.meta("legacy_pruned_at"); const left = await s.meta("migrated_at"); s.close();
+      const strip = (p) => { const { legacy: _l, ...r } = p; return JSON.stringify(r); };
+      return { at, pruned, left: left ?? null, had: before.filter((p) => "legacy" in p).length, d6, d8: after.filter((p) => "legacy" in p).length,
+        same: before.every((p) => { const q = after.find((x) => x.id === p.id); return q && strip(q) === strip(p); }) };
+    });
+    check(typeof pr.at === "string" && pr.had >= 1 && pr.d6 === pr.had && pr.d8 === 0 && pr.same && typeof pr.pruned === "string" && pr.left === null,
+      `#38: legacy giữ 7 ngày sau chuyển đổi (ngày 6: còn ${pr.d6}/${pr.had}), ngày 8 mở kho → dọn hết, phần còn lại của hồ sơ giữ từng byte (${JSON.stringify(pr)})`);
+    await page.goto(BASE + `#/nguoi-than/nguoi/${old.A}`); await page.reload();
+    await page.waitForSelector("#notice-box", { timeout: 30000 });
+    await page.click("#notice-box > summary");
+    check(((await page.innerText("#notice-box")).match(/Giấy chứng tử \(ảnh hoặc bản quét PDF\)/g) ?? []).length === 2, "#38: sau khi dọn legacy, hồ sơ vẫn hiện 2 tệp đính kèm \"Giấy chứng tử\"");
     check(errors.length === 0, `(b) không có lỗi trang (${errors.join(" | ") || "0"})`);
     await page.screenshot({ path: join(SHOTS, "v02-upgrade-02dev-360.png"), fullPage: true });
     await ctx.close();

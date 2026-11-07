@@ -231,7 +231,7 @@ export async function renderList(root: HTMLElement, nav: Nav): Promise<void> {
       h("div", { class: "plhead" }, h("h2", null, `${label} (${ps.length})`), h("a", { class: "btnlink sm", href: add }, "+ Thêm")),
       ps.length ? h("ul", { class: "plrows" }, ...ps.map((p) => h("li", null, h("button", { type: "button", class: "prow", onclick: () => openPerson(nav)(p.id as string) },
         h("span", { class: "avatar", "aria-hidden": "true" }, [...(p.ho_ten as string).trim().split(/\s+/).pop() ?? "?"][0]?.toUpperCase() ?? "?"),
-        h("span", { class: "pr-main" }, h("span", { class: "pr-name" }, displayName(p)), p.quan_he ? h("span", { class: "pr-sub" }, dispCap(p.quan_he as string)) : null,
+        h("span", { class: "pr-main" }, h("span", { class: "pr-name" }, displayName(p)), dispCap((p.quan_he as string) ?? "") ? h("span", { class: "pr-sub" }, dispCap(p.quan_he as string)) : null,
           h("span", { class: "pr-sub" }, personSummary(p, t)))))))
         : h("p", { class: "empty-hint" }, "Chưa có ai."));
   };
@@ -242,7 +242,8 @@ export async function renderList(root: HTMLElement, nav: Nav): Promise<void> {
 
 // ---------------- Hồ sơ một người ----------------
 function row(k: string, v: string | null | undefined): HTMLElement | null {
-  return v ? h("div", null, h("dt", null, k), h("dd", null, v)) : null;
+  const t = v?.normalize("NFC").trim(); // #38: hiện giá trị đã cắt khoảng trắng; chỉ có khoảng trắng → không hiện dòng
+  return t ? h("div", null, h("dt", null, k), h("dd", null, t)) : null;
 }
 function dvText(dv: JsonObj): string {
   if (dv.precision === "year") return `năm ${dv.year as number}${dv.calendar === "lunar" ? " (âm lịch)" : ""}`;
@@ -325,7 +326,7 @@ export async function renderPerson(root: HTMLElement, id: string, nav: Nav): Pro
   root.append(
     backLink(),
     h("div", { class: "phead" }, canvas,
-      h("div", { class: "phead-t" }, h1, p.quan_he ? h("p", { class: "phead-rel" }, dispCap(p.quan_he as string)) : null,
+      h("div", { class: "phead-t" }, h1, dispCap((p.quan_he as string) ?? "") ? h("p", { class: "phead-rel" }, dispCap(p.quan_he as string)) : null,
         h("div", { class: "phead-acts" },
           dead ? h("a", { class: "btnlink main", href: `#/nguoi-than/tuong-niem/${id}`, id: "open-memorial" }, "Tưởng niệm") : null,
           h("a", { class: "btnlink", href: `#/nguoi-than/sua/${id}`, id: "edit-person" }, "Sửa"),

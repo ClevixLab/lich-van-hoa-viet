@@ -993,6 +993,8 @@ hướng dẫn tạo tệp sao lưu và có nút "Đi tới Sao lưu".
   - sha256 ảnh giấy báo tử = tệp đính kèm;
   - sự kiện, loại sự kiện, cài đặt giữ nguyên;
   - trang hồ sơ hiện 2 tệp "Giấy chứng tử".
+- (b) thêm (#38): mốc `migrated_at` được ghi khi chuyển đổi. Mở kho với đồng hồ của lõi ở ngày 6 thì `legacy` còn; ở
+  ngày 8 thì `legacy` được dọn khỏi mọi hồ sơ, phần còn lại giữ từng byte. Hồ sơ vẫn hiện 2 tệp "Giấy chứng tử".
 - (c) chuyển đổi lỗi: bản mới dựng KIỂM THỬ (`LVHV_TEST_HOOKS=1`, chỉ cho ca này; 05 mục K), cờ `__lvhvFailMigration` → `forceMigrationFailure` của lõi. Kết quả: `stateHash` trước = sau, kho vẫn
   v1, ghi báo `read_only`, có khung hướng dẫn.
 - Bộ mẫu đóng băng `released/0.2-dev-before-attachments` và vectơ `supplement-yc05` (ảnh + PDF) được kiểm chéo Rust ↔

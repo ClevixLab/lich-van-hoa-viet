@@ -91,8 +91,10 @@ export function lunarOf(d: Ymd): string {
 
 export function displayName(p: JsonObj): string {
   // YC-2026-07: viết hoa chữ đầu khi hiển thị (dữ liệu khôi phục từ tệp cũ giữ nguyên byte) — cùng lõi.
-  const dx = (p.danh_xung as string) ?? "";
-  return dx ? `${displayCapitalize(dx)} ${p.ho_ten as string}` : (p.ho_ten as string);
+  // #38: cắt khoảng trắng khi hiển thị (lõi cắt lúc lưu; tệp khôi phục từ bản cũ có thể còn khoảng trắng).
+  const dx = displayCapitalize((p.danh_xung as string) ?? "");
+  const ten = ((p.ho_ten as string) ?? "").normalize("NFC").trim();
+  return dx ? `${dx} ${ten}` : ten;
 }
 
 export type ItemKind = "gio" | "tt" | "sn" | "ev";

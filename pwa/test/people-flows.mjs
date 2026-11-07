@@ -172,7 +172,10 @@ export async function runPeople({ browser, BASE, ORIGIN, ROOT, SHOTS, check, met
     const dxLive = await page.$$eval("#pf-dx-list option", (os) => os.map((o) => o.value));
     check(!["Cụ", "Kỵ", "Ông Tổ họ", "Bà Cô Tổ họ", "Bé đỏ"].some((x) => dxLive.includes(x)) && dxLive.includes("Anh") && await page.isChecked("#pf-gt-none"),
       `YC-2026-07: gợi ý cách gọi người đang sống không có Cụ, Kỵ, Ông Tổ họ, Bà Cô Tổ họ, Bé đỏ; giới tính mặc định "Không ghi" (${dxLive.join(", ")})`);
-    await page.fill("#pf-ten", "Lê Văn C"); await page.fill("#pf-qh", "con trai");
+    // #38 (core3): mọi trường chữ tự do cắt khoảng trắng hai đầu khi lưu; quan hệ viết hoa chữ đầu (sau khi cắt).
+    // page.fill không rời ô → không qua bước viết hoa khi rời ô (forms.ts): kiểm đúng việc chuẩn hóa lúc lưu của lõi.
+    await page.fill("#pf-ten", "  Lê Văn C \u00a0"); await page.fill("#pf-qh", "   con trai  ");
+    await page.fill("#pf-noisinh", "  Huế  "); await page.fill("#pf-note", "\n  học ở Huế  \n");
     await page.fill("#pf-birth-d", "20"); await page.fill("#pf-birth-m", "1"); await page.fill("#pf-birth-y", "1990");
     const res3 = await text("#pf-birth-res");
     check(res3.includes("Âm lịch: 24/12 năm Kỷ Tỵ (1989)") && res3.includes("Hôm nay 36 tuổi (tuổi âm 38)"), `L3: sinh 20/01/1990 → Kỷ Tỵ (1989), 36 tuổi (tuổi âm 38) (${res3})`);
@@ -190,6 +193,12 @@ export async function runPeople({ browser, BASE, ORIGIN, ROOT, SHOTS, check, met
     await page.click(".form-acts .primary");
     await page.waitForSelector("#person-name");
     const idC = /nguoi\/([0-9a-f-]+)/.exec(page.url())[1];
+    const trimC = await store(`async (s) => { const p = await s.person("${idC}"); return { ho_ten: p.ho_ten, quan_he: p.quan_he, ghi_chu: p.ghi_chu, noi_sinh: p.birth.noi_sinh }; }`);
+    const viewC = { name: await text("#person-name"), rel: await page.locator(".phead-rel").first().innerText().catch(() => ""), body: await text(".people-body") };
+    check(trimC.ho_ten === "Lê Văn C" && trimC.quan_he === "Con trai" && trimC.ghi_chu === "học ở Huế" && trimC.noi_sinh === "Huế"
+      && viewC.name === "Lê Văn C" && viewC.rel === "Con trai" && viewC.body.includes("Nơi sinh\nHuế") && viewC.body.includes("Ghi chú\nhọc ở Huế"),
+      `#38: lưu cắt khoảng trắng mọi trường chữ, quan hệ viết hoa; hồ sơ hiện đúng giá trị đã cắt (${JSON.stringify(trimC)})`);
+    await shot("person-living-trimmed-360");
     const remC = await store(`async (s) => (await s.person("${idC}")).reminders`);
     check(remC.sinh_nhat.time_local === "18:05" && remC.sinh_nhat_am.time_local === "18:05" && JSON.stringify(remC.sinh_nhat_am.offsets_days) === JSON.stringify(remC.sinh_nhat.offsets_days) && remC.sinh_nhat_am.id !== remC.sinh_nhat.id,
       `TK-28/29: lưu giờ "18:05"; sinh nhật âm chép cài đặt sinh nhật dương, id riêng (${JSON.stringify(remC.sinh_nhat_am)})`);
