@@ -1796,6 +1796,15 @@ pub fn verify_contents(c: &lvhv_backup::Contents) -> Result<VerifiedBackup> {
             if !attachments.is_empty() {
                 return Err(perr("ảnh phải đứng trước tệp đính kèm"));
             }
+            // 04 B6 + B7 (BM2-01): ảnh chân dung — chữ ký khớp mime, kích thước bằng bản ghi và ≤ 2048, không EXIF/XMP/IPTC.
+            if let Err(e) = media::check_photo(
+                m["mime"].as_str().unwrap_or_default(),
+                &b.bytes,
+                m["width"].as_u64().unwrap_or(0) as u32,
+                m["height"].as_u64().unwrap_or(0) as u32,
+            ) {
+                return Err(perr(e.code()));
+            }
             if photos.insert(id, b.bytes.clone()).is_some() {
                 return Err(perr("ảnh trùng"));
             }

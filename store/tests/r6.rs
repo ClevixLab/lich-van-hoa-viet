@@ -47,8 +47,9 @@ fn seed(store: &mut Store, doc: &Value, photos: &[(String, Vec<u8>)]) {
     store.apply_import(&v, ImportMode::Replace).unwrap();
 }
 
+/// Ảnh của bộ R6v2 (04 Bổ sung B7 — R6 (a)–(d) và lật bit chạy trên bộ này), sắp theo id.
 fn r6_photos() -> Vec<(String, Vec<u8>)> {
-    let (doc, photos) = gen::dataset_r6();
+    let (doc, photos) = gen::dataset_r6v2();
     let ids: Vec<String> = doc["photos"]
         .as_array()
         .unwrap()
@@ -92,6 +93,78 @@ fn vectors_are_deterministic_and_committed() {
         m["key_hex"].as_str().unwrap(),
         key.iter().map(|x| format!("{x:02x}")).collect::<String>()
     );
+}
+
+/// 04 Bổ sung B7: bộ R6v2 đã khóa — sinh lại đúng từng byte, sha256 mọi tệp khớp manifest, tệp salt/nonce cố định
+/// mở được và cho đúng băm trạng thái; mọi ảnh qua kiểm tra chặt B6.
+#[test]
+fn r6v2_vectors_locked() {
+    let d = gen::r6v2_dir();
+    let m: Value =
+        serde_json::from_slice(&std::fs::read(d.join("manifest.json")).unwrap()).unwrap();
+    for (f, h) in m["files"].as_object().unwrap() {
+        assert_eq!(
+            sha256_hex(&std::fs::read(d.join(f)).unwrap()),
+            h.as_str().unwrap(),
+            "{f} khác sha256 đã khóa"
+        );
+    }
+    assert_eq!(m["files"].as_object().unwrap().len(), 23);
+    let (ds, _) = gen::dataset_r6v2();
+    assert_eq!(
+        canonical_json(&ds).into_bytes(),
+        std::fs::read(d.join("dataset-r6v2.json")).unwrap()
+    );
+    let file = std::fs::read(d.join("dataset-r6v2-fixed.lvhv")).unwrap();
+    let v = open_backup(&file, gen::PASSWORD).unwrap();
+    assert_eq!(
+        (v.preview().persons, v.preview().events, v.preview().photos),
+        (60, 30, 20)
+    );
+    let dir = tmpdir("r6v2");
+    let mut s = Store::open(&dir).unwrap();
+    s.apply_import(&v, ImportMode::Replace).unwrap();
+    assert_eq!(
+        s.state_hash().unwrap(),
+        m["store_state_sha256"].as_str().unwrap()
+    );
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+/// 04 Bổ sung B7: bộ R6 cũ (ảnh giả: `FF D8 FF E0 …`, 10 ảnh khai `image/webp`) nay bị **từ chối** khi nhập (B6),
+/// với thông báo chung; vector cũ vẫn sinh lại đúng từng byte (vectors_are_deterministic_and_committed).
+#[test]
+fn old_r6_rejected_on_import() {
+    let (ds, mut photos) = gen::dataset_r6();
+    photos.sort_by(|a, b| a.0.cmp(&b.0));
+    let blobs: Vec<PhotoBlob> = photos
+        .iter()
+        .map(|(id, b)| PhotoBlob {
+            id: lvhv_backup::uuid_from_str(id).unwrap(),
+            bytes: b.clone(),
+        })
+        .collect();
+    let e = lvhv_store::verify_contents(&lvhv_backup::Contents {
+        json: canonical_json(&ds),
+        photos: blobs.clone(),
+    })
+    .unwrap_err();
+    assert_eq!(e.import_message(), "Sai mật khẩu hoặc tệp bị hỏng");
+    // Tệp salt/nonce cố định của R6 cũ (đúng sha256 đã khóa) cũng bị từ chối qua đường nhập thật.
+    let f = lvhv_backup::export_with_fixed_rng(
+        gen::PASSWORD,
+        &canonical_json(&ds),
+        &blobs,
+        gen::SALT,
+        gen::NONCE,
+    )
+    .unwrap();
+    let m: Value = serde_json::from_slice(&read("manifest.json")).unwrap();
+    assert_eq!(
+        m["dataset_r6"]["fixed_rng_file_sha256"],
+        json!(sha256_hex(&f))
+    );
+    assert!(open_backup(&f, gen::PASSWORD).is_err());
 }
 
 #[test]
@@ -142,7 +215,7 @@ fn wrong_passwords_rejected_nfd_accepted_store_unchanged() {
     let file = read("example-v1.lvhv");
     let dir = tmpdir("a2");
     let mut s = Store::open(&dir).unwrap();
-    let (ds, _) = gen::dataset_r6();
+    let (ds, _) = gen::dataset_r6v2();
     seed(&mut s, &ds, &r6_photos());
     let before = s.state_hash().unwrap();
     let pw = gen::PASSWORD;
@@ -193,7 +266,7 @@ fn wrong_passwords_rejected_nfd_accepted_store_unchanged() {
 fn bit_flip_65536_all_rejected() {
     let dir = tmpdir("b");
     let mut s = Store::open(&dir).unwrap();
-    let (ds, photos) = (gen::dataset_r6().0, r6_photos());
+    let (ds, photos) = (gen::dataset_r6v2().0, r6_photos());
     seed(&mut s, &ds, &photos);
     let pw = gen::PASSWORD;
     let file = s
@@ -259,7 +332,7 @@ fn bit_flip_65536_all_rejected() {
 fn roundtrip_replace_identical() {
     let a = tmpdir("a-src");
     let mut s = Store::open(&a).unwrap();
-    let (ds, photos) = (gen::dataset_r6().0, r6_photos());
+    let (ds, photos) = (gen::dataset_r6v2().0, r6_photos());
     seed(&mut s, &ds, &photos);
     let snap1 = s.snapshot(&app(), "2026-11-06T03:15:00Z").unwrap();
     assert_eq!(canonical_json(&snap1), canonical_json(&ds));

@@ -228,12 +228,33 @@ function r6PhotoBytes(i) {
   v.set([0xff, 0xd9], len - 2);
   return v;
 }
-const dsText = readFileSync(join(TV, "dataset-r6.json"), "utf8");
+// 04 Bổ sung B7: R6 (a)–(d) và lật bit chạy trên bộ R6v2 (ảnh JPEG/WebP thật, đã khóa). Bộ R6 cũ nay bị từ chối khi
+// nhập (ảnh giả) — kiểm ở cuối khối này.
+const R6V2 = join(TV, "r6v2");
+const R6V2M = JSON.parse(readFileSync(join(R6V2, "manifest.json"), "utf8"));
+let r6v2Frozen = true;
+for (const [f, h] of Object.entries(R6V2M.files)) if (sha(readFileSync(join(R6V2, f))) !== h) r6v2Frozen = false;
+ok(r6v2Frozen && Object.keys(R6V2M.files).length === 23, "B7: bộ R6v2 đúng sha256 đã khóa (23 tệp)");
+const dsText = readFileSync(join(R6V2, "dataset-r6v2.json"), "utf8");
 const ds = JSON.parse(dsText);
-// Ảnh: id trong dataset sắp theo id; byte theo chỉ số i của nhãn "r6-photo-{i}" → khớp bằng sha256.
-const bySha = new Map(Array.from({ length: 20 }, (_, i) => r6PhotoBytes(i)).map((b) => [sha(b), b]));
-const dsPhotos = ds.photos.map((p) => ({ id: p.id, bytes: bySha.get(p.sha256) }));
-ok(dsPhotos.every((p) => p.bytes), "bộ R6: 20 ảnh tất định khớp sha256");
+const fileOf = new Map(R6V2M.photos.map((p) => [p.id, p.file]));
+const dsPhotos = ds.photos.map((p) => ({ id: p.id, bytes: new Uint8Array(readFileSync(join(R6V2, fileOf.get(p.id)))) }));
+ok(dsPhotos.every((p, i) => sha(p.bytes) === ds.photos[i].sha256 && S.mediaVerdict("photo", ds.photos[i].mime, p.bytes, ds.photos[i].width, ds.photos[i].height) === "ok"),
+  "bộ R6v2: 20 ảnh thật khớp sha256 và qua kiểm tra chặt B6");
+{
+  // Bộ R6 cũ (đã khóa, ảnh giả) → bị từ chối khi nhập, thông báo chung (04 B7 mục 2).
+  const oldText = readFileSync(join(TV, "dataset-r6.json"), "utf8");
+  const old = JSON.parse(oldText);
+  const bySha = new Map(Array.from({ length: 20 }, (_, i) => r6PhotoBytes(i)).map((b) => [sha(b), b]));
+  const oldPhotos = old.photos.map((p) => ({ id: p.id, bytes: bySha.get(p.sha256) }));
+  ok(oldPhotos.every((p) => p.bytes), "bộ R6 cũ: 20 ảnh tất định khớp sha256 (vector đã khóa không đổi)");
+  const fx = await bc.exportWithFixedRng(PW, oldText, oldPhotos.map((p) => ({ id: bc.uuidToBytes(p.id), bytes: p.bytes })), SALT, NONCE);
+  ok(sha(fx) === manifest.dataset_r6.fixed_rng_file_sha256, "bộ R6 cũ: tệp salt/nonce cố định JS = sha256 đã khóa");
+  let m1 = "", m2 = "";
+  try { await S.verifyContents(oldText, oldPhotos); } catch (e) { m1 = e.message; }
+  try { await S.openBackup(fx, PW); } catch (e) { m2 = e.message; }
+  ok(m1 === "Sai mật khẩu hoặc tệp bị hỏng" && m2 === "Sai mật khẩu hoặc tệp bị hỏng", "B7: bộ R6 cũ (ảnh giả) bị TỪ CHỐI khi nhập — thông báo chung");
+}
 
 async function seeded() {
   const s = await freshStore();
@@ -248,11 +269,12 @@ let r6File;
   const s = await seeded();
   const snap = await s.snapshot({ version: "0.2.0", platform: "pwa" }, ds.exported_at);
   snap.app.platform = "windows";
-  ok(S.canonicalJson(snap) === dsText, "bộ R6 nạp vào IndexedDB, ảnh chụp JSON = dataset-r6.json (giống từng byte)");
+  ok(S.canonicalJson(snap) === dsText, "bộ R6v2 nạp vào IndexedDB, ảnh chụp JSON = dataset-r6v2.json (giống từng byte)");
   const h1 = await s.stateHash();
-  ok(h1 === manifest.dataset_r6.store_state_sha256, "stateHash(IndexedDB) = state_hash(SQLite) của Rust");
+  ok(h1 === R6V2M.store_state_sha256, "stateHash(IndexedDB) = state_hash(SQLite) của Rust (R6v2)");
   const fixed = await bc.exportWithFixedRng(PW, dsText, dsPhotos.map((p) => ({ id: bc.uuidToBytes(p.id), bytes: p.bytes })), SALT, NONCE);
-  ok(sha(fixed) === manifest.dataset_r6.fixed_rng_file_sha256, "tệp R6 salt/nonce cố định: JS = Rust (giống từng byte)");
+  ok(sha(fixed) === R6V2M.fixed_rng_file_sha256 && sha(readFileSync(join(R6V2, "dataset-r6v2-fixed.lvhv"))) === R6V2M.fixed_rng_file_sha256,
+    "tệp R6v2 salt/nonce cố định: JS = Rust = tệp đã khóa (giống từng byte)");
   const lastBefore = (await s.settings()).last_backup_at;
   const t0 = performance.now();
   r6File = await s.exportBackup(PW, { version: "0.2.0", platform: "pwa" });
@@ -278,7 +300,7 @@ let r6File;
   await u.applyImport(await S.openBackup(rustFile, PW), "replace");
   ok((await u.stateHash()) === h1, "R6(d) tệp xuất từ Rust (SQLite) nhập vào PWA → giống hệt");
   results.r6_a = { pwa_roundtrip_identical: h2 === h1, state_hash: h1, export_ms_node: Math.round(exportMs), import_ms_node: Math.round(importMs), file_bytes: r6File.length };
-  results.r6_d = { rust_to_pwa: (await u.stateHash()) === h1, pwa_file_for_rust: "pwa/test/store/out/r6-from-pwa.lvhv", fixed_rng_bytes_equal: sha(fixed) === manifest.dataset_r6.fixed_rng_file_sha256 };
+  results.r6_d = { rust_to_pwa: (await u.stateHash()) === h1, pwa_file_for_rust: "pwa/test/store/out/r6-from-pwa.lvhv", fixed_rng_bytes_equal: sha(fixed) === R6V2M.fixed_rng_file_sha256, dataset: "r6v2" };
 
   // (a2) sai mật khẩu
   const before = await s.stateHash();

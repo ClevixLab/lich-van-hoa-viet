@@ -659,6 +659,8 @@ export async function verifyContents(json: string, blobsIn: { id: string; bytes:
     if (m) {
       if (m.sha256 !== (await sha256Hex(b.bytes)) || m.bytes !== b.bytes.length) throw perr("sha256/bytes không khớp");
       if (atts.size) throw perr("ảnh phải đứng trước tệp đính kèm");
+      // 04 B6 + B7 (BM2-01): ảnh chân dung — như Rust.
+      try { checkPhoto(m.mime as string, b.bytes, m.width as number, m.height as number); } catch (e) { if (e instanceof MediaError) throw perr(e.code); throw e; }
       if (out.has(b.id)) throw perr("ảnh trùng");
       out.set(b.id, b.bytes);
       continue;

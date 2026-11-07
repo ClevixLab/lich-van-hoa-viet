@@ -1,4 +1,4 @@
-//! R6(d) kiểm chéo Rust ↔ PWA qua tệp thật (không salt/nonce cố định):
+//! R6(d) kiểm chéo Rust ↔ PWA qua tệp thật (không salt/nonce cố định), trên bộ R6v2 (04 Bổ sung B7):
 //!
 //!     cargo run --release -p lvhv-store --example cross_platform -- write   # Rust xuất bộ R6 → pwa/test/store/out/r6-from-rust.lvhv
 //!     node pwa/test/store/run.mjs                                            # JS mở tệp Rust; JS xuất r6-from-pwa.lvhv
@@ -22,7 +22,8 @@ fn out() -> PathBuf {
 fn seeded(dir: &PathBuf) -> Store {
     let _ = std::fs::remove_dir_all(dir);
     let mut s = Store::open(dir).unwrap();
-    let (ds, mut photos) = gen::dataset_r6();
+    // 04 Bổ sung B7: bộ R6v2 (ảnh thật) — bộ R6 cũ bị kiểm tra chặt B6 từ chối khi nhập.
+    let (ds, mut photos) = gen::dataset_r6v2();
     photos.sort_by(|a, b| a.0.cmp(&b.0));
     let blobs = photos
         .iter()
@@ -119,15 +120,12 @@ fn main() {
     let manifest: Value = serde_json::from_slice(
         &std::fs::read(
             PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-                .join("../docs/v0.2/schema/test-vectors/manifest.json"),
+                .join("../docs/v0.2/schema/test-vectors/r6v2/manifest.json"),
         )
         .unwrap(),
     )
     .unwrap();
-    let want = manifest["dataset_r6"]["store_state_sha256"]
-        .as_str()
-        .unwrap()
-        .to_owned();
+    let want = manifest["store_state_sha256"].as_str().unwrap().to_owned();
     match mode.as_str() {
         "write" => {
             std::fs::create_dir_all(out()).unwrap();
