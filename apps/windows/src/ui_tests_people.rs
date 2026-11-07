@@ -80,7 +80,7 @@ fn fixture(tag: &str) -> (AppWindow, std::rc::Rc<std::cell::RefCell<crate::State
         let (s, o, i) = (save_to.clone(), open_from.clone(), img.clone());
         platform::set_dialog_override(Some(Box::new(move |k| match k {
             Dialog::OpenImage => Some(i.clone()),
-            Dialog::OpenBackup => Some(o.borrow().clone()),
+            Dialog::OpenBackup | Dialog::OpenAttachment => Some(o.borrow().clone()),
             Dialog::Save(_) => Some(s.borrow().clone()),
         })));
     }
@@ -111,12 +111,19 @@ fn nguoi_da_mat_tuong_niem_sua() {
     assert_eq!(p.get_e_ho_ten(), "Họ tên không được để trống");
     assert_eq!(p.get_dd_error(), "Hãy nhập ngày mất");
     // YC-2026-07: gợi ý cách gọi cho người đã mất có Cụ, Kỵ, Ông Tổ họ, Bà Cô Tổ họ, Bé đỏ; bấm nút gợi ý điền ô.
-    for w in crate::people::DX_DEAD {
+    for w in lvhv_ffi::danh_xung_suggestions(true, None) {
         assert_eq!(count_label(&ui, &format!("Cách gọi: {w}")), 1, "gợi ý {w}");
     }
+    for w in lvhv_ffi::quan_he_suggestions(true) {
+        assert_eq!(count_label(&ui, &format!("Quan hệ: {w}")), 1, "gợi ý {w}");
+    }
+    // Giới tính (YC-2026-07): chọn Nữ → gợi ý hợp giới tính lên trước.
+    press(&ui, "Giới tính: Nữ");
+    assert_eq!(p.get_f_gender(), 1);
+    let first = p.get_dx_rows().row_data(0).unwrap().items.row_data(0).unwrap();
+    assert_eq!(first, lvhv_ffi::danh_xung_suggestions(true, Some("nu".into()))[0]);
     press(&ui, "Cách gọi: Bà");
     assert_eq!(p.get_f_danh_xung(), "Bà");
-    assert_eq!(p.get_gender_ok(), crate::people::gender_supported());
     p.set_f_ho_ten("Trần Thị Bình".into());
     p.set_f_quan_he("bà nội (bên nội)".into());
     p.invoke_form_changed();
@@ -164,6 +171,8 @@ fn nguoi_da_mat_tuong_niem_sua() {
     assert_eq!(b["death"]["lunar_source"], "entered");
     assert_eq!(b["danh_xung"], "Bà");
     assert_eq!(b["quan_he"], "Bà nội (bên nội)", "YC-2026-07: viết hoa chữ đầu khi lưu");
+    assert_eq!(b["gioi_tinh"], "nu");
+    assert!(p.get_v_info().iter().any(|kv| kv.k == "Giới tính" && kv.v == "Nữ"), "trang hồ sơ ghi giới tính");
     assert_eq!(b["reminders"]["gio"]["offsets_days"], serde_json::json!([0, 3, 10]));
     assert_eq!(b["reminders"]["gio"]["time_local"], "18:05");
     assert_eq!(b["reminders"]["gio"]["tien_thuong"], true);
@@ -217,7 +226,7 @@ fn nguoi_dang_song_su_kien_bao_tu() {
     press(&ui, "Thêm người đang sống");
     assert!(!p.get_f_dead());
     // Người đang sống: không có năm cách gọi chỉ dành cho người đã mất (YC-2026-07).
-    for w in crate::people::DX_DEAD_ONLY {
+    for w in ["Cụ", "Kỵ", "Ông Tổ họ", "Bà Cô Tổ họ", "Bé đỏ"] {
         assert_eq!(count_label(&ui, &format!("Cách gọi: {w}")), 0, "không gợi ý {w} cho người sống");
     }
     assert_eq!(count_label(&ui, "Cách gọi: Anh"), 1);
@@ -275,8 +284,31 @@ fn nguoi_dang_song_su_kien_bao_tu() {
     p.set_n_by(SECRET.into());
     p.set_n_reason(format!("{SECRET} lý do").into());
     p.invoke_form_changed();
-    press(&ui, "Thêm ảnh giấy báo tử");
-    assert_eq!(p.get_n_photos().row_count(), 1);
+    // YC-2026-07 / 01 §3.8a: tệp đính kèm — một ảnh (nén lại, bỏ EXIF) và một PDF (lưu nguyên bản).
+    *open_from.borrow_mut() = tmp.join("chan-dung.jpg");
+    press(&ui, "Thêm tệp đính kèm");
+    assert_eq!(p.get_n_atts().row_count(), 1);
+    assert!(p.get_n_atts().row_data(0).unwrap().has_thumb);
+    let pdf_path = tmp.join("Giấy chứng tử của Cường.pdf");
+    std::fs::write(&pdf_path, crate::shots::demo_pdf()).unwrap();
+    *open_from.borrow_mut() = pdf_path;
+    press(&ui, "Thêm tệp đính kèm");
+    assert_eq!(p.get_n_atts().row_count(), 2);
+    assert!(p.get_n_atts().row_data(1).unwrap().pdf);
+    press(&ui, "Loại tệp 2: Khác");
+    assert_eq!(p.get_n_atts().row_data(1).unwrap().kind, 2);
+    // Mở PDF: bản sao tạm tên chung trong thư mục riêng của ứng dụng (§5.3), không mang tên người.
+    press(&ui, "Mở tệp đính kèm 2");
+    let opened = ps.borrow().last_opened.clone().unwrap();
+    assert_eq!(opened.file_name().unwrap(), "TepDinhKem.pdf");
+    assert!(opened.starts_with(tmp.join("tmp")));
+    // Tệp không phải PDF/ảnh bị từ chối, không thêm dòng.
+    let fake = tmp.join("gia.pdf");
+    std::fs::write(&fake, b"<html>khong phai pdf</html>").unwrap();
+    *open_from.borrow_mut() = fake;
+    press(&ui, "Thêm tệp đính kèm");
+    assert_eq!(p.get_n_atts().row_count(), 2);
+    assert!(!p.get_e_notice().is_empty());
     press(&ui, "Lưu");
     assert_eq!(p.get_dlg(), "xac-nhan", "hộp xác nhận trước khi đổi");
     assert!(p.get_dlg_lines().iter().any(|l| l.contains("Sẽ không còn nhắc sinh nhật và sự kiện")));
@@ -289,8 +321,21 @@ fn nguoi_dang_song_su_kien_bao_tu() {
     assert_eq!(c2["rev"], c["rev"].as_i64().unwrap() + 1);
     assert_eq!(c2["birth"], c["birth"], "giữ ngày sinh");
     assert_eq!(c2["death"]["notice"]["reported_by"], SECRET);
-    let cert = c2["death"]["notice"]["certificate_photo_ids"][0].as_str().unwrap().to_string();
-    assert!(!crate::photo::has_metadata_segments(&store.photo_bytes(cert).unwrap()));
+    let atts = c2["death"]["notice"]["attachments"].as_array().unwrap().clone();
+    assert_eq!(atts.len(), 2);
+    assert_eq!(atts[0]["kind"], "giay_chung_tu");
+    assert_eq!(atts[1]["kind"], "khac");
+    let img = store.attachment_bytes(atts[0]["file_id"].as_str().unwrap().into()).unwrap();
+    assert!(!crate::photo::has_metadata_segments(&img), "ảnh đính kèm không còn EXIF/APP13");
+    assert!(!img.windows(10).any(|w| w == b"GPS-BI-MAT"));
+    let pdf = store.attachment_bytes(atts[1]["file_id"].as_str().unwrap().into()).unwrap();
+    assert_eq!(pdf, crate::shots::demo_pdf(), "PDF lưu nguyên bản");
+    // Tệp đính kèm không vào lời nhắc, .ics (R-PRIV-2).
+    let ds = store.dataset_json().unwrap();
+    let ics = lvhv_ffi::ics_export(ds.clone(), day0.solar(), platform::now_unix(), None).unwrap();
+    assert!(!ics.content.contains("Giấy chứng tử của Cường") && !ics.content.contains("TepDinhKem"));
+    let rem = lvhv_ffi::reminders_json(ds, platform::now_unix(), crate::platform::device_zone(), 400, true).unwrap();
+    assert!(!rem.contains("Giấy chứng tử của Cường"));
     assert!(p.get_v_dead());
     assert_eq!(p.get_v_events().row_count(), 1, "sự kiện vẫn giữ trên hồ sơ");
     // B4: sinh nhật và sự kiện của người này không còn trong Sắp tới / Theo kỳ.
@@ -305,7 +350,10 @@ fn nguoi_dang_song_su_kien_bao_tu() {
     // Thông tin báo tử chỉ ở trang hồ sơ.
     press(&ui, "Mở thông tin báo tử");
     assert!(p.get_v_notice().iter().any(|kv| kv.v == SECRET));
-    assert_eq!(p.get_v_notice_photos().row_count(), 1);
+    assert_eq!(p.get_v_atts().row_count(), 2);
+    assert_eq!(p.get_v_atts().row_data(1).unwrap().name, "Giấy chứng tử của Cường.pdf");
+    press(&ui, "Mở tệp đính kèm 2");
+    assert!(ps.borrow().last_opened.as_ref().unwrap().ends_with("TepDinhKem.pdf"));
 
     // --- B4: biểu mẫu sự kiện của người đã mất không có khối nhắc ---
     press(&ui, "+ Thêm sự kiện");
@@ -456,33 +504,66 @@ fn theo_ky_ics_sao_luu_the_nhac() {
     let _ = std::fs::remove_dir_all(&tmp);
 }
 
-/// R14 (04 Bổ sung B5 mục 3): chuyển đổi lược đồ lỗi → khung báo chỉ xem, có nút mở thư mục dữ liệu; không tạo kho
-/// mới đè lên, không mất hồ sơ.
+/// R14 (04 Bổ sung B5 mục 3, 01 §7.1): chuyển đổi lỗi thật trên kho của bộ mẫu đóng băng → chế độ chỉ đọc: xem được,
+/// không có nút sửa, xuất sao lưu được (không ghi mốc "đã sao lưu"); kho của bản mới hơn → chỉ còn khung báo.
 #[test]
-fn chuyen_doi_loi_khung_chi_xem() {
-    let (ui, _st, ps, tmp, _s, _o, _d) = fixture("r14");
+fn chuyen_doi_loi_che_do_chi_doc() {
+    let (ui, _st, ps, tmp, save_to, _o, _d) = fixture("r14");
     let p = People::get(&ui);
-    {
-        let s = lvhv_ffi::LvhvStore::open(tmp.to_string_lossy().into_owned()).unwrap();
-        crate::shots::seed_store(&s);
-    }
+    let fix = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../docs/v0.2/schema/test-vectors/released/0.2-dev-before-attachments/store");
+    crate::upgrade::copy_dir(&fix, &tmp).unwrap();
     let c = rusqlite::Connection::open(tmp.join("lvhv.sqlite")).unwrap();
+    c.execute("CREATE TRIGGER kiem_dinh_loi_chuyen_doi BEFORE INSERT ON meta BEGIN SELECT RAISE(ABORT, 'kiểm định: lỗi chuyển đổi'); END", []).unwrap();
     let n: i64 = c.query_row("SELECT count(*) FROM person", [], |r| r.get(0)).unwrap();
-    c.pragma_update(None, "user_version", 0).unwrap();
     drop(c);
     click(&ui, &by_label(&ui, "Người thân"));
-    assert!(ps.borrow().store.is_none());
+    assert!(ps.borrow().store.is_some(), "kho mở được (chỉ đọc)");
+    assert!(p.get_read_only());
+    assert!(!p.get_store_failed());
+    assert!(p.get_store_error().contains("chỉ đọc"), "{}", p.get_store_error());
+    seg(&ui, "Hồ sơ");
+    assert!(p.get_has_any(), "dữ liệu cũ xem được");
+    assert_eq!(count_label(&ui, "Thêm người đã mất"), 0, "không có nút thêm");
+    let first = p.get_dead().row_data(0).unwrap().id.to_string();
+    p.invoke_open_person(first.into());
+    assert_eq!(count_label(&ui, "Sửa hồ sơ"), 0, "không có nút sửa");
+    assert_eq!(count_label(&ui, "Xóa hồ sơ"), 0);
+    // Xuất sao lưu từ chế độ chỉ đọc (nút trên khung báo).
+    seg(&ui, "Sắp tới");
+    *save_to.borrow_mut() = tmp.join("chi-doc.lvhv");
+    click(&ui, &last_by_label(&ui, "Tạo tệp sao lưu…"));
+    assert_eq!(p.get_dlg(), "tao-sao-luu");
+    p.set_pw1("mật khẩu chỉ đọc 2026".into());
+    p.set_pw2("mật khẩu chỉ đọc 2026".into());
+    p.invoke_dlg_confirm();
+    assert!(p.get_toast().starts_with("Đã tạo tệp sao lưu"), "{}", p.get_toast());
+    let b = lvhv_ffi::open_backup(std::fs::read(tmp.join("chi-doc.lvhv")).unwrap(), "mật khẩu chỉ đọc 2026".into()).unwrap();
+    assert_eq!(b.preview().persons as i64, n, "tệp có đủ hồ sơ");
+    let c = rusqlite::Connection::open(tmp.join("lvhv.sqlite")).unwrap();
+    let m: i64 = c.query_row("SELECT count(*) FROM person", [], |r| r.get(0)).unwrap();
+    let v: i64 = c.query_row("PRAGMA user_version", [], |r| r.get(0)).unwrap();
+    assert_eq!((m, v), (n, 1), "không mất hồ sơ, kho cũ giữ phiên bản 1");
+    drop(c);
+
+    // Kho của bản mới hơn: không mở, chỉ còn khung báo và nút mở thư mục dữ liệu.
+    let newer = tmp.join("moi-hon");
+    {
+        let s = lvhv_ffi::LvhvStore::open(newer.to_string_lossy().into_owned()).unwrap();
+        crate::shots::seed_store(&s);
+    }
+    rusqlite::Connection::open(newer.join("lvhv.sqlite")).unwrap().pragma_update(None, "user_version", 99).unwrap();
+    {
+        let mut g = ps.borrow_mut();
+        g.dir = newer.clone();
+        g.store = None;
+    }
+    p.invoke_go("sap-toi".into());
     assert!(p.get_store_failed());
-    assert!(p.get_store_error().contains("vẫn còn nguyên"), "{}", p.get_store_error());
-    assert!(!p.get_has_any());
-    assert_eq!(count_label(&ui, "+ Thêm người đã mất"), 0, "không mời tạo dữ liệu mới khi kho cũ chưa mở được");
+    assert!(p.get_store_error().contains("bản mới hơn"), "{}", p.get_store_error());
     press(&ui, "Mở thư mục dữ liệu");
     seg(&ui, "Hồ sơ");
     assert!(p.get_store_failed(), "không thử lại khi chuyển trang");
-    let c = rusqlite::Connection::open(tmp.join("lvhv.sqlite")).unwrap();
-    let m: i64 = c.query_row("SELECT count(*) FROM person", [], |r| r.get(0)).unwrap();
-    assert_eq!(m, n, "không mất hồ sơ");
-    drop(c);
     platform::set_fake_now(None);
     platform::set_fake_offset(None);
     platform::set_dialog_override(None);

@@ -91,6 +91,8 @@ pub enum Dialog {
     OpenImage,
     /// Chọn tệp sao lưu (.lvhv) để mở.
     OpenBackup,
+    /// Chọn tệp đính kèm báo tử: ảnh hoặc PDF (01 §3.8a).
+    OpenAttachment,
     /// Lưu tệp với tên gợi ý (".ics" hoặc ".lvhv").
     Save(String),
 }
@@ -126,6 +128,12 @@ fn os_pick(owner: Option<isize>, kind: Dialog) -> Option<PathBuf> {
         Dialog::OpenImage => (
             "Ảnh (*.jpg;*.jpeg;*.png;*.webp;*.gif;*.bmp)\0*.jpg;*.jpeg;*.png;*.webp;*.gif;*.bmp\0\0",
             "Chọn ảnh",
+            "",
+            String::new(),
+        ),
+        Dialog::OpenAttachment => (
+            "Ảnh hoặc PDF (*.jpg;*.jpeg;*.png;*.webp;*.pdf)\0*.jpg;*.jpeg;*.png;*.webp;*.gif;*.bmp;*.pdf\0\0",
+            "Chọn tệp đính kèm",
             "",
             String::new(),
         ),

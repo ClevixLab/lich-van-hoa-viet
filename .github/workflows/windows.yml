@@ -102,7 +102,7 @@ jobs:
           Add-Type -AssemblyName System.Drawing
           $shots = Get-ChildItem $out -Filter *.png -ErrorAction SilentlyContinue
           $shots | ForEach-Object { $i = [System.Drawing.Image]::FromFile($_.FullName); "{0}  {1}x{2}  {3:N0} byte" -f $_.Name, $i.Width, $i.Height, $_.Length; $i.Dispose() }
-          if ($shots.Count -lt 192) { Write-Host "::error::Chỉ có $($shots.Count)/192 ảnh"; exit 1 }
+          if ($shots.Count -lt 204) { Write-Host "::error::Chỉ có $($shots.Count)/204 ảnh"; exit 1 }
           $small = $shots | Where-Object { $_.Length -lt 20000 }
           if ($small) { Write-Host "::error::Ảnh quá nhỏ (có thể trống): $($small.Name -join ', ')"; exit 1 }
 
@@ -285,7 +285,30 @@ jobs:
           if (Compare-Object $before $after) { Fail "thư mục dữ liệu đổi sau khi gỡ: $((Compare-Object $before $after | Out-String))" }
           if ((Get-Content (Join-Path $flagDir 'nhac-cap-nhat.txt') -Raw) -ne $flagBefore) { Fail "tệp Để sau đổi sau khi gỡ" }
           Log "Gỡ cài đặt: chương trình đã gỡ; thư mục dữ liệu còn nguyên ($($after.Count) tệp, SHA-256 khớp); tệp Để sau còn nguyên"
-          Log "R14 Windows: ĐẠT (0.1.4 → $env:VERSION bản dựng ${{ github.run_number }}; nâng cấp + gỡ cài đặt)"
+          Log "R14 (a) Windows: ĐẠT (0.1.4 → $env:VERSION bản dựng ${{ github.run_number }}; nâng cấp + gỡ cài đặt)"
+
+          # 6) R14 (c): bộ mẫu đóng băng 0.2-dev-before-attachments (kho SQLite thật do bản dựng 0.2 trước YC-2026-07
+          #    tạo, có certificate_photo_ids). Dữ liệu của ca (a) được dời sang bên cạnh (không xóa), chép kho của bộ mẫu
+          #    vào thư mục dữ liệu, cài MSI mới, bản đã cài phải chuyển 1 → 2 đúng tệp kỳ vọng dùng chung với lõi và PWA.
+          Log ""
+          Rename-Item $data "$data.ca-a"
+          $fix = (Resolve-Path ..\..\docs\v0.2\schema\test-vectors\released\0.2-dev-before-attachments).Path
+          $exp = (Resolve-Path ..\..\docs\v0.2\schema\test-vectors\released\expected\0.2-dev-before-attachments.json).Path
+          Copy-Item (Join-Path $fix 'store') $data -Recurse
+          Log "R14 (c): chép kho của bộ mẫu $(Split-Path $fix -Leaf) vào thư mục dữ liệu ($((Get-ChildItem $data -Recurse -File).Count) tệp)"
+          Msi '/i' (Resolve-Path "dist\LichViet-$env:VERSION-x64.msi").Path 'cai-moi-c'
+          if ((Run $prog @('--kiem-mau-dong-bang', "`"$exp`"") 'kiem-c') -ne 0) { Fail "R14 (c) --kiem-mau-dong-bang báo lỗi (xem trên)" }
+          $before = Hashes $data
+          Msi '/x' (Resolve-Path "dist\LichViet-$env:VERSION-x64.msi").Path 'go-c'
+          if (Compare-Object $before (Hashes $data)) { Fail "R14 (c): thư mục dữ liệu đổi sau khi gỡ" }
+          if (-not (Get-ChildItem $data -Filter 'lvhv.sqlite.pre-v*.bak')) { Fail "R14 (c): không có bản sao trước chuyển đổi" }
+          Log "R14 (c) Windows: ĐẠT (gỡ cài đặt giữ nguyên $($before.Count) tệp, có bản sao trước chuyển đổi)"
+
+          # 7) Ca lỗi: chuyển đổi lỗi thật trên bản chép của bộ mẫu (một hồ sơ hỏng) → chỉ đọc, kho cũ và bản sao giữ
+          #    nguyên, từ chối ghi, vẫn xuất được sao lưu. Chạy bằng LichViet.exe của bản dựng (từ .zip).
+          Log ""
+          if ((Run $zexe @('--kiem-chi-doc', "`"$(Join-Path $fix 'store')`"") 'kiem-loi') -ne 0) { Fail "R14 ca lỗi --kiem-chi-doc báo lỗi (xem trên)" }
+          Log "R14 Windows: ĐẠT — (a) 0.1.4 → bản này, (c) bộ mẫu đóng băng, ca lỗi chỉ đọc"
 
       - uses: actions/upload-artifact@v4
         with:

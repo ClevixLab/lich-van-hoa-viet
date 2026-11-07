@@ -15,6 +15,8 @@ export struct PItem {
 export struct PRow { id: string, initial: string, name: string, rel: string, summary: string }
 export struct KV { k: string, v: string }
 export struct ChipRow { items: [string] }
+// Tệp đính kèm báo tử (01 §3.8a): kind 0 = tin_bao_tu, 1 = giay_chung_tu, 2 = khac.
+export struct AttRow { name: string, kind: int, pdf: bool, thumb: image, has-thumb: bool }
 export struct EvRow { id: string, text: string }
 export struct RemCard { title: string, sub: string, pid: string, memorial: bool }
 export struct ErrItem { text: string, key: string }
@@ -26,6 +28,8 @@ export global People {
     in-out property <string> store-error;
     // R14: kho không mở được (chuyển đổi lỗi) → khung báo chỉ xem + nút mở thư mục dữ liệu để chép dự phòng.
     in-out property <bool> store-failed;
+    // R14 / 01 §7.1: kho mở ở chế độ chỉ đọc (chuyển đổi lỗi) — xem được, xuất sao lưu được, không sửa.
+    in-out property <bool> read-only;
     callback open-data-dir();
     in-out property <string> toast;
     in-out property <bool> has-any;
@@ -89,7 +93,7 @@ export global People {
     in-out property <[PItem]> v-next;
     in-out property <[KV]> v-info;
     in-out property <[KV]> v-notice;
-    in-out property <[image]> v-notice-photos;
+    in-out property <[AttRow]> v-atts;
     in-out property <bool> v-notice-open: false;
     in-out property <[EvRow]> v-events;
     in-out property <string> v-remind;
@@ -108,8 +112,8 @@ export global People {
     // YC-2026-07: giới tính (0 Nam, 1 Nữ, 2 Không ghi) — chỉ hiện khi lõi nhận trường `gioi_tinh`; gợi ý cách gọi theo
     // người sống / đã mất, chia sẵn thành hàng.
     in-out property <int> f-gender: 2;
-    in-out property <bool> gender-ok: false;
     in-out property <[ChipRow]> dx-rows;
+    in-out property <[ChipRow]> qh-rows;
     in-out property <string> e-danh-xung;
     in-out property <string> e-ho-ten;
     in-out property <string> e-ten-hieu;
@@ -159,7 +163,7 @@ export global People {
     in-out property <string> n-y;
     in-out property <string> n-reason;
     in-out property <string> n-note;
-    in-out property <[image]> n-photos;
+    in-out property <[AttRow]> n-atts;
     in-out property <string> e-notice;
     // Nhắc (r-) và sinh nhật âm (r2-)
     in-out property <bool> r-enabled: true;
@@ -279,8 +283,11 @@ export global People {
     callback toggle-off(string, int);
     callback pick-photo();
     callback drop-photo();
-    callback add-notice-photo();
-    callback drop-notice-photo(int);
+    callback add-attachment();
+    callback drop-attachment(int);
+    callback set-att-kind(int, int);
+    callback open-attachment(int);
+    callback open-v-attachment(int);
     callback save-form();
     callback cancel-form();
     callback period-kind(int);
@@ -384,6 +391,7 @@ component NumBox inherits VerticalLayout {
 component Chip inherits Rectangle {
     in property <string> text;
     in property <bool> active;
+    in property <string> group: "Cách gọi";
     callback clicked;
     height: max(34px, lbl.preferred-height + 12px);
     width: lbl.preferred-width + 24px;
@@ -392,7 +400,7 @@ component Chip inherits Rectangle {
     border-color: Theme.outline;
     background: active ? Theme.red-deep : (ta.has-hover ? Theme.paper2 : Theme.paper);
     accessible-role: button;
-    accessible-label: "Cách gọi: " + root.text;
+    accessible-label: root.group + ": " + root.text;
     accessible-checked: root.active;
     accessible-action-default => { root.clicked(); }
     lbl := T { text: root.text; size: 14; color: root.active ? #ffffff : Theme.ink; }
@@ -726,6 +734,11 @@ component Head inherits VerticalLayout {
             alignment: start;
             Btn { text: "Mở thư mục dữ liệu"; kind: "outline"; clicked => { People.open-data-dir(); } }
         }
+        if People.read-only: HorizontalLayout {
+            alignment: start; spacing: 8px;
+            Btn { text: "Tạo tệp sao lưu…"; kind: "primary"; clicked => { People.create-backup(); } }
+            Btn { text: "Mở thư mục dữ liệu"; kind: "outline"; clicked => { People.open-data-dir(); } }
+        }
     }
 }
 
@@ -749,8 +762,8 @@ component Welcome inherits Group {
         T { text: "Chưa có ai trong sổ. Thêm ông bà, cha mẹ đã khuất để được nhắc ngày giỗ theo âm lịch; thêm người đang sống để nhớ sinh nhật và ngày kỷ niệm."; size: 16; color: Theme.ink2; }
         HorizontalLayout {
             spacing: 10px; alignment: start;
-            Btn { text: "+ Thêm người đã mất"; kind: "primary"; clicked => { People.add-dead(); } }
-            Btn { text: "+ Thêm người đang sống"; kind: "outline"; clicked => { People.add-living(); } }
+            if !People.read-only: Btn { text: "+ Thêm người đã mất"; kind: "primary"; clicked => { People.add-dead(); } }
+            if !People.read-only: Btn { text: "+ Thêm người đang sống"; kind: "outline"; clicked => { People.add-living(); } }
         }
     }
 }
@@ -806,8 +819,8 @@ component UpSide inherits VerticalLayout {
     spacing: 14px;
     if People.has-any: Group {
         legend: "Thêm vào sổ";
-        HorizontalLayout { alignment: start; Btn { text: "+ Thêm người đã mất"; kind: "primary"; clicked => { People.add-dead(); } } }
-        HorizontalLayout { alignment: start; Btn { text: "+ Thêm người đang sống"; kind: "outline"; clicked => { People.add-living(); } } }
+        if !People.read-only: HorizontalLayout { alignment: start; Btn { text: "+ Thêm người đã mất"; kind: "primary"; clicked => { People.add-dead(); } } }
+        if !People.read-only: HorizontalLayout { alignment: start; Btn { text: "+ Thêm người đang sống"; kind: "outline"; clicked => { People.add-living(); } } }
     }
     // Thông báo trên máy này (Windows): thay khung "Lời nhắc trên ứng dụng web" của bản PWA (§5.4).
     Group {
@@ -817,8 +830,8 @@ component UpSide inherits VerticalLayout {
             accessible-role: AccessibleRole.text; accessible-label: People.notif-status;
             HorizontalLayout { padding: 10px; T { text: People.notif-status; size: 15; color: People.notif-ok ? Theme.green : Theme.ink; } }
         }
-        Check { text: "Bật lời nhắc"; checked <=> People.rem-enabled; toggled => { People.settings-changed(); } }
-        Check { text: "Hiện tên người trong thông báo"; checked <=> People.show-names; toggled => { People.settings-changed(); } }
+        Check { text: "Bật lời nhắc"; checked <=> People.rem-enabled; enabled: !People.read-only; toggled => { People.settings-changed(); } }
+        Check { text: "Hiện tên người trong thông báo"; checked <=> People.show-names; enabled: !People.read-only; toggled => { People.settings-changed(); } }
         T { text: "Mặc định thông báo không ghi tên (ví dụ \"Sắp đến ngày giỗ\"), để người khác nhìn màn hình không biết là ai. Lời nhắc trong ứng dụng vẫn ghi tên. Cài đặt này chỉ lưu trên máy này, không vào tệp sao lưu."; size: 14; color: Theme.ink3; }
     }
 }
@@ -835,7 +848,7 @@ component UpcomingPage inherits PPage {
     if !root.wide: UpMain { }
     if !root.wide: UpSide { }
     // Thu gọn sẵn (TKN-W-13): người mới mở mô-đun không phải thấy ngay 6 nút và ô giờ.
-    Group {
+    if !People.read-only: Group {
         Rectangle {
             min-height: 44px;
             accessible-role: button;
@@ -921,7 +934,7 @@ component ListPage inherits PPage {
     Group {
         HorizontalLayout {
             S { text: "Người đã mất (" + People.dead.length + ")"; size: 19; vertical-alignment: center; horizontal-stretch: 1; }
-            Btn { text: "+ Thêm"; kind: "outline"; accessible-label: "Thêm người đã mất"; clicked => { People.add-dead(); } }
+            if !People.read-only: Btn { text: "+ Thêm"; kind: "outline"; accessible-label: "Thêm người đã mất"; clicked => { People.add-dead(); } }
         }
         if People.dead.length == 0: T { text: "Chưa có ai."; size: 15; color: Theme.ink3; }
         for r in People.dead: PersonRowBtn { r: r; }
@@ -929,7 +942,7 @@ component ListPage inherits PPage {
     Group {
         HorizontalLayout {
             S { text: "Người đang sống (" + People.living.length + ")"; size: 19; vertical-alignment: center; horizontal-stretch: 1; }
-            Btn { text: "+ Thêm"; kind: "outline"; accessible-label: "Thêm người đang sống"; clicked => { People.add-living(); } }
+            if !People.read-only: Btn { text: "+ Thêm"; kind: "outline"; accessible-label: "Thêm người đang sống"; clicked => { People.add-living(); } }
         }
         if People.living.length == 0: T { text: "Chưa có ai."; size: 15; color: Theme.ink3; }
         for r in People.living: PersonRowBtn { r: r; }
@@ -948,13 +961,13 @@ component BackupPage inherits PPage {
         legend: "Sao lưu dữ liệu";
         T { text: People.last-backup; size: 15; color: Theme.ink2; accessible-role: AccessibleRole.text; accessible-label: People.last-backup; }
         HorizontalLayout { alignment: start; Btn { text: "Tạo tệp sao lưu…"; kind: "primary"; clicked => { People.create-backup(); } } }
-        T { text: "Nhắc sao lưu khi có thay đổi chưa sao lưu sau:"; size: 15; font-weight: 600; color: Theme.ink2; }
-        Choice {
+        if !People.read-only: T { text: "Nhắc sao lưu khi có thay đổi chưa sao lưu sau:"; size: 15; font-weight: 600; color: Theme.ink2; }
+        if !People.read-only: Choice {
             items: ["30 ngày", "60 ngày", "90 ngày", "Không nhắc"]; current: People.nag-index; group: "Nhắc sao lưu";
             picked(i) => { People.nag-changed(i); }
         }
     }
-    Group {
+    if !People.read-only: Group {
         legend: "Khôi phục từ tệp sao lưu";
         HorizontalLayout { alignment: start; Btn { text: "Chọn tệp sao lưu…"; kind: "outline"; clicked => { People.choose-backup(); } } }
         T { text: People.restore-file; size: 15; color: Theme.ink2; accessible-role: AccessibleRole.text; accessible-label: People.restore-file; }
@@ -995,6 +1008,42 @@ export component OvalPhoto inherits Rectangle {
     }
 }
 
+// Một tệp đính kèm: ảnh thu nhỏ (ảnh) hoặc nhãn PDF, tên gốc, loại; trên biểu mẫu chọn được loại và bỏ tệp.
+component AttLine inherits Rectangle {
+    in property <AttRow> item;
+    in property <int> index;
+    in property <bool> editable;
+    property <[string]> kinds: ["Ảnh tin báo tử", "Giấy chứng tử", "Khác"];
+    border-width: 1px; border-color: Theme.rule; border-radius: 10px;
+    HorizontalLayout {
+        padding: 10px; spacing: 12px;
+        Rectangle {
+            width: 72px; height: 90px; border-radius: 6px; clip: true; background: Theme.paper2;
+            if root.item.has-thumb: Image { width: parent.width; height: parent.height; source: root.item.thumb; image-fit: contain; }
+            if root.item.pdf: T { text: "PDF"; size: 16; font-weight: 700; color: Theme.ink2; horizontal-alignment: center; vertical-alignment: center; }
+        }
+        VerticalLayout {
+            spacing: 6px; alignment: start; horizontal-stretch: 1;
+            T { text: root.item.name != "" ? root.item.name : (root.item.pdf ? "Tệp PDF" : "Ảnh"); size: 15; font-weight: 600; wrap: word-wrap; }
+            if !root.editable: T { text: root.kinds[root.item.kind] + (root.item.pdf ? " · Tệp PDF được lưu nguyên bản" : ""); size: 14; color: Theme.ink2; }
+            if root.editable: Choice {
+                items: root.kinds; current: root.item.kind; group: "Loại tệp " + (root.index + 1);
+                picked(k) => { People.set-att-kind(root.index, k); }
+            }
+            if root.editable && root.item.pdf: T { text: "Tệp PDF được lưu nguyên bản"; size: 14; color: Theme.ink3; }
+            HorizontalLayout {
+                spacing: 8px; alignment: start;
+                if root.item.pdf: Btn {
+                    text: "Mở bằng ứng dụng xem PDF"; kind: "outline"; size: 14;
+                    accessible-label: "Mở tệp đính kèm " + (root.index + 1);
+                    clicked => { if (root.editable) { People.open-attachment(root.index); } else { People.open-v-attachment(root.index); } }
+                }
+                if root.editable: Btn { text: "Bỏ tệp"; size: 14; accessible-label: "Bỏ tệp đính kèm " + (root.index + 1); clicked => { People.drop-attachment(root.index); } }
+            }
+        }
+    }
+}
+
 component PersonPage inherits PPage {
     SubHead { title: People.v-missing ? "Không tìm thấy hồ sơ" : ""; }
     if People.v-missing: T { text: "Không tìm thấy hồ sơ này (có thể đã bị xóa)."; size: 16; }
@@ -1011,8 +1060,8 @@ component PersonPage inherits PPage {
                 HorizontalLayout {
                     spacing: 8px; alignment: start; padding-top: 6px;
                     if People.v-dead: Btn { text: "Tưởng niệm"; kind: "primary"; clicked => { People.open-memorial(People.v-id); } }
-                    Btn { text: "Sửa"; kind: "outline"; accessible-label: "Sửa hồ sơ"; clicked => { People.edit-person(); } }
-                    if !People.v-dead: Btn { text: "Cập nhật: đã mất"; kind: "outline"; clicked => { People.mark-deceased(); } }
+                    if !People.read-only: Btn { text: "Sửa"; kind: "outline"; accessible-label: "Sửa hồ sơ"; clicked => { People.edit-person(); } }
+                    if !People.v-dead && !People.read-only: Btn { text: "Cập nhật: đã mất"; kind: "outline"; clicked => { People.mark-deceased(); } }
                 }
             }
         }
@@ -1030,7 +1079,7 @@ component PersonPage inherits PPage {
                 T { text: kv.v; size: 15; horizontal-stretch: 1; }
             }
         }
-        if People.v-dead && (People.v-notice.length > 0 || People.v-notice-photos.length > 0): Group {
+        if People.v-dead && (People.v-notice.length > 0 || People.v-atts.length > 0): Group {
             Rectangle {
                 min-height: 44px;
                 accessible-role: button;
@@ -1050,27 +1099,21 @@ component PersonPage inherits PPage {
                     T { text: kv.k; width: 170px; size: 15; color: Theme.ink3; font-weight: 600; }
                     T { text: kv.v; size: 15; horizontal-stretch: 1; }
                 }
-                HorizontalLayout {
-                    spacing: 10px; alignment: start;
-                    for p in People.v-notice-photos: Rectangle {
-                        width: 150px; height: 190px; border-width: 1px; border-color: Theme.rule; border-radius: 6px; clip: true;
-                        accessible-role: AccessibleRole.text; accessible-label: "Ảnh giấy báo tử";
-                        Image { width: parent.width; height: parent.height; source: p; image-fit: contain; }
-                    }
-                }
+                if People.v-atts.length > 0: T { text: "Tệp đính kèm"; size: 15; font-weight: 600; color: Theme.ink2; }
+                for a[i] in People.v-atts: AttLine { item: a; index: i; editable: false; }
             }
         }
         Group {
             HorizontalLayout {
                 S { text: "Sự kiện"; size: 18; vertical-alignment: center; horizontal-stretch: 1; }
-                Btn { text: "+ Thêm sự kiện"; kind: "outline"; clicked => { People.add-event(); } }
+                if !People.read-only: Btn { text: "+ Thêm sự kiện"; kind: "outline"; clicked => { People.add-event(); } }
             }
             if People.v-events.length == 0: T { text: "Chưa có sự kiện nào."; size: 15; color: Theme.ink3; }
             for e in People.v-events: HorizontalLayout {
                 spacing: 8px;
                 T { text: e.text; size: 15; vertical-alignment: center; horizontal-stretch: 1; accessible-role: AccessibleRole.text; accessible-label: e.text; }
-                Btn { text: "Sửa"; accessible-label: "Sửa sự kiện: " + e.text; clicked => { People.edit-event(e.id); } }
-                Btn { text: "Xóa"; accessible-label: "Xóa sự kiện: " + e.text; clicked => { People.delete-event(e.id); } }
+                if !People.read-only: Btn { text: "Sửa"; accessible-label: "Sửa sự kiện: " + e.text; clicked => { People.edit-event(e.id); } }
+                if !People.read-only: Btn { text: "Xóa"; accessible-label: "Xóa sự kiện: " + e.text; clicked => { People.delete-event(e.id); } }
             }
             if People.v-dead: T { text: "Không nhắc sinh nhật và sự kiện của người đã mất — chỉ nhắc ngày giỗ. Thông tin vẫn được lưu và sao lưu."; size: 14; color: Theme.ink3; }
         }
@@ -1080,7 +1123,7 @@ component PersonPage inherits PPage {
         }
         HorizontalLayout {
             alignment: start;
-            Btn { text: "Xóa hồ sơ"; kind: "danger"; clicked => { People.delete-person(); } }
+            if !People.read-only: Btn { text: "Xóa hồ sơ"; kind: "danger"; clicked => { People.delete-person(); } }
         }
     }
 }
@@ -1116,19 +1159,10 @@ component NoticeBlock inherits Group {
             NumBox { label: "Năm (dương lịch)"; text <=> People.n-y; w: 120px; edited => { People.form-changed(); } }
         }
         Field { label: "Lý do"; text <=> People.n-reason; multiline: true; edited => { People.form-changed(); } }
-        T { text: "Ảnh giấy báo tử (tối đa 4)"; size: 15; font-weight: 600; color: Theme.ink2; }
-        HorizontalLayout {
-            spacing: 10px; alignment: start;
-            for p[i] in People.n-photos: VerticalLayout {
-                spacing: 4px;
-                Rectangle {
-                    width: 96px; height: 120px; border-width: 1px; border-color: Theme.rule; border-radius: 6px; clip: true;
-                    Image { width: parent.width; height: parent.height; source: p; image-fit: contain; }
-                }
-                Btn { text: "Bỏ ảnh"; size: 14; accessible-label: "Bỏ ảnh giấy báo tử " + (i + 1); clicked => { People.drop-notice-photo(i); } }
-            }
-        }
-        if People.n-photos.length < 4: HorizontalLayout { alignment: start; Btn { text: "Thêm ảnh giấy báo tử"; kind: "outline"; clicked => { People.add-notice-photo(); } } }
+        T { text: "Tệp đính kèm (tối đa 6): ảnh tin báo tử, ảnh hoặc bản quét PDF giấy chứng tử, tệp khác"; size: 15; font-weight: 600; color: Theme.ink2; }
+        for a[i] in People.n-atts: AttLine { item: a; index: i; editable: true; }
+        if People.n-atts.length < 6: HorizontalLayout { alignment: start; Btn { text: "Thêm tệp đính kèm"; kind: "outline"; clicked => { People.add-attachment(); } } }
+        T { text: "Ảnh được nén lại và bỏ thông tin vị trí, máy chụp. Tệp PDF được lưu nguyên bản."; size: 14; color: Theme.ink3; }
         Field { label: "Ghi chú"; text <=> People.n-note; multiline: true; edited => { People.form-changed(); } }
         if People.e-notice != "": T { text: People.e-notice; size: 15; color: Theme.red-ink; font-weight: 600; accessible-role: AccessibleRole.text; accessible-label: People.e-notice; }
     }
@@ -1140,6 +1174,14 @@ component PersonFormPage inherits PPage {
     if People.f-summary != "": ErrorSummary { }
     Group {
         legend: People.f-dead ? "Người đã mất" : "Người đang sống";
+        VerticalLayout {
+            spacing: 4px;
+            T { text: "Giới tính"; size: 15; font-weight: 600; color: Theme.ink2; }
+            Choice {
+                items: ["Nam", "Nữ", "Không ghi"]; group: "Giới tính"; current: People.f-gender;
+                picked(i) => { People.f-gender = i; People.form-changed(); }
+            }
+        }
         Field { label: "Cách gọi (đứng trước tên)"; text <=> People.f-danh-xung; error: People.e-danh-xung; box-width: 240px; edited => { People.form-changed(); } }
         VerticalLayout {
             spacing: 6px;
@@ -1153,19 +1195,22 @@ component PersonFormPage inherits PPage {
             }
         }
         Field { label: "Họ và tên *"; text <=> People.f-ho-ten; error: People.e-ho-ten; edited => { People.form-changed(); } }
-        if People.gender-ok: VerticalLayout {
-            spacing: 4px;
-            T { text: "Giới tính"; size: 15; font-weight: 600; color: Theme.ink2; }
-            Choice {
-                items: ["Nam", "Nữ", "Không ghi"]; group: "Giới tính"; current: People.f-gender;
-                picked(i) => { People.f-gender = i; People.form-changed(); }
-            }
-        }
         Field { label: "Tên hiệu / pháp danh"; text <=> People.f-ten-hieu; error: People.e-ten-hieu; edited => { People.form-changed(); } }
         Field {
             label: "Quan hệ với bạn";
-            hint: People.f-dead ? "Ví dụ: Bố, Mẹ, Ông nội, Bà ngoại, Cụ ông, Kỵ bà, Ông cố, Bà sơ… Trang tưởng niệm ghi quan hệ này phía trên tên, ví dụ “Ông nội”, “Mẹ”. Để trống thì chỉ ghi tên." : "Ví dụ: Bố, Mẹ, Anh, Chị, Em, Chồng, Vợ, Con trai, Con gái, Cháu…";
+            hint: People.f-dead ? "Trang tưởng niệm ghi quan hệ này phía trên tên, ví dụ “Ông nội”, “Mẹ”. Để trống thì chỉ ghi tên." : "";
             text <=> People.f-quan-he; error: People.e-quan-he; edited => { People.form-changed(); }
+        }
+        VerticalLayout {
+            spacing: 6px;
+            T { text: "Gợi ý quan hệ — bấm để chọn, hoặc tự gõ:"; size: 14; color: Theme.ink2; }
+            for row in People.qh-rows: HorizontalLayout {
+                spacing: 6px; alignment: start;
+                for it in row.items: Chip {
+                    text: it; group: "Quan hệ"; active: People.f-quan-he == it;
+                    clicked => { People.f-quan-he = it; People.form-changed(); }
+                }
+            }
         }
         Field { label: "Ghi chú"; text <=> People.f-ghi-chu; error: People.e-ghi-chu; multiline: true; edited => { People.form-changed(); } }
     }

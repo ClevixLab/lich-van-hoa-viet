@@ -186,14 +186,18 @@ trong `lvhv-memorial`, `lvhv-store`, `lvhv-backup`. Giao diện chỉ hiển th�
   `--kiem-nang-cap` (so hồ sơ, sự kiện, loại sự kiện, cài đặt, hiện tên, băm SHA-256 từng ảnh, "Để sau"; đặt lại thông
   báo), gỡ cài đặt rồi so băm từng tệp trong thư mục dữ liệu; kết quả ở `apps/windows/screenshots/nang-cap.txt`.
   Bản Windows 0.1.4 không lưu cỡ chữ và sáng/tối giữa các lần mở, nên thứ duy nhất cần giữ từ 0.1.4 là "Để sau".
+  Cùng bước còn chạy R14 (c): chép kho của bộ mẫu đóng băng `0.2-dev-before-attachments` vào thư mục dữ liệu, cài MSI,
+  `--kiem-mau-dong-bang` so trạng thái sau chuyển 1 → 2 với `expected/0.2-dev-before-attachments.json`; và ca lỗi
+  `--kiem-chi-doc` (bản chép của bộ mẫu có một hồ sơ hỏng → chỉ đọc, kho cũ và bản sao giữ nguyên, xuất sao lưu được).
+  `force_migration_failure` của lõi không có qua FFI; kiểm thử Rust của ứng dụng chạy ca đó trực tiếp bằng `lvhv-store`.
 - **Giới hạn đã biết:**
   - bản `.zip` chạy không cài không có lối tắt mang AUMID → Windows có thể không hiện thông báo dù đặt được; giao diện ghi
     "Windows chưa xác nhận…" và khuyên cài `.msi`;
   - gỡ ứng dụng không xóa sổ Người thân (`%LOCALAPPDATA%\ClevixLab\LichVanHoaViet`) và không gỡ thông báo đang chờ — trang
     Giới thiệu ghi rõ cách xóa;
   - R5 Windows (máy thật, khởi động lại) **chưa thử** — cần chủ dự án thử trên Windows 11 (04 R5);
-  - YC-2026-07: cách gọi / quan hệ viết hoa chữ đầu và gợi ý cách gọi theo người sống/mất **đã có**; ô Giới tính chỉ hiện
-    khi lõi nhận `gioi_tinh` (hiện **chưa**); "Tệp đính kèm" (ảnh/PDF, 01 §3.8a) **chưa làm** — chờ lõi.
+  - YC-2026-07 (giới tính, gợi ý và viết hoa của lõi, tệp đính kèm ảnh/PDF) đã làm theo lõi core2 (#28); bản sao tạm
+    của PDF nằm trong `tmp\` của thư mục dữ liệu, xóa khi mở/đóng ứng dụng.
 - **Kiểm thử:** `src/ui_tests_people.rs` bấm qua mọi luồng: L2 (ngày âm, tháng nhuận, các lỗi), nhắc (mốc, giờ 24
   giờ, tiên thường), ảnh, L11 tưởng niệm (dừng/thắp lại khói), L12 sửa (`rev`), L3 người đang sống + sinh nhật âm
   (TK-29), L4 sự kiện, US-M-07 đang sống → đã mất với thông tin báo tử (cùng `id`, B4), B4 biểu mẫu sự kiện, L5

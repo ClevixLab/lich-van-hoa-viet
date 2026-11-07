@@ -719,14 +719,22 @@ fn main() -> Result<(), slint::PlatformError> {
     // R14 (04 Bổ sung B5): `--tao-du-lieu-mau <tệp>` tạo dữ liệu mẫu trong thư mục dữ liệu thật (từ chối nếu đã có
     // kho) và ghi ảnh chụp kỳ vọng; `--kiem-nang-cap <tệp>` chạy sau khi cài MSI mới đè lên: so dữ liệu với ảnh chụp
     // và đặt lại thông báo. Dùng trong CI (bước R14 của windows.yml).
-    if mode == "--tao-du-lieu-mau" || mode == "--kiem-nang-cap" {
+    // `--kiem-mau-dong-bang <expected.json>`: R14 (c) — thư mục dữ liệu đang chứa kho của bộ mẫu đóng băng.
+    // `--kiem-chi-doc <kho bộ mẫu>`: R14 ca lỗi — làm trên bản chép trong thư mục tạm, không đụng dữ liệu thật.
+    if matches!(mode.as_str(), "--tao-du-lieu-mau" | "--kiem-nang-cap" | "--kiem-mau-dong-bang" | "--kiem-chi-doc") {
         platform::init_app_identity();
         let snap = std::path::PathBuf::from(args.get(1).cloned().unwrap_or_default());
         let dir = platform::data_dir();
-        let r = if mode == "--tao-du-lieu-mau" {
-            upgrade::create(&dir, &snap)
-        } else {
-            upgrade::check(&dir, &snap, toasts::system().as_ref(), platform::now_unix())
+        let r = match mode.as_str() {
+            "--tao-du-lieu-mau" => upgrade::create(&dir, &snap),
+            "--kiem-nang-cap" => upgrade::check(&dir, &snap, toasts::system().as_ref(), platform::now_unix()),
+            "--kiem-mau-dong-bang" => {
+                upgrade::check_frozen(&dir, &snap, toasts::system().as_ref(), platform::now_unix())
+            }
+            _ => upgrade::check_read_only(
+                &snap,
+                &std::env::temp_dir().join(format!("lvhv-kiem-chi-doc-{}", std::process::id())),
+            ),
         };
         match r {
             Ok(msg) => {

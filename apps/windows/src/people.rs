@@ -45,9 +45,6 @@ fn st(v: &Value) -> String {
     v.as_str().unwrap_or_default().to_string()
 }
 
-fn upper_first(s: &str) -> String {
-    crate::upper_first(s)
-}
 
 /// Ngày "YYYY-MM-DD" → D.
 fn d_iso(s: &str) -> Option<D> {
@@ -174,11 +171,72 @@ enum PhotoSel {
     New(photo::Encoded),
 }
 
+/// Một tệp đính kèm báo tử trên biểu mẫu (01 §3.8a). Tệp mới chỉ ghi vào kho khi bấm Lưu (`add_attachment`), nên
+/// hủy biểu mẫu không để lại tệp mồ côi.
 #[derive(Clone)]
-struct CertPhoto {
-    id: Option<String>,
-    enc: Option<photo::Encoded>,
-    img: Image,
+struct AttItem {
+    /// `id` của mục trong `notice.attachments` (giữ khi sửa).
+    entry_id: String,
+    /// `file_id` của tệp đã có trong kho; `None` với tệp mới.
+    file_id: Option<String>,
+    kind: String,
+    name: String,
+    pdf: bool,
+    thumb: Option<Image>,
+    new: Option<std::sync::Arc<crate::attach::Prepared>>,
+}
+
+const ATT_KINDS: [&str; 3] = ["tin_bao_tu", "giay_chung_tu", "khac"];
+pub const MAX_ATTACHMENTS: usize = 6;
+
+fn att_row(a: &AttItem) -> AttRow {
+    AttRow {
+        name: ss(&a.name),
+        kind: ATT_KINDS.iter().position(|k| *k == a.kind).unwrap_or(2) as i32,
+        pdf: a.pdf,
+        has_thumb: a.thumb.is_some(),
+        thumb: a.thumb.clone().unwrap_or_default(),
+    }
+}
+
+/// Bản ghi `Attachment` (mime, tên gốc) theo id, từ tài liệu dữ liệu của kho.
+fn attachment_records(ps: &PState) -> HashMap<String, Value> {
+    let ds = ps.s().and_then(|s| s.dataset_json().ok()).map(|j| jv(&j)).unwrap_or(Value::Null);
+    ds["attachments"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .map(|a| (st(&a["id"]), a.clone()))
+        .collect()
+}
+
+/// Các tệp đính kèm của một `notice` đã lưu.
+fn load_atts(ps: &PState, notice: &Value) -> Vec<AttItem> {
+    let recs = attachment_records(ps);
+    notice["attachments"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|e| {
+            let fid = st(&e["file_id"]);
+            let r = recs.get(&fid)?;
+            let pdf = r["mime"] == "application/pdf";
+            let thumb = if pdf {
+                None
+            } else {
+                ps.s().and_then(|s| s.attachment_bytes(fid.clone()).ok()).and_then(|b| photo::to_slint(&b))
+            };
+            Some(AttItem {
+                entry_id: st(&e["id"]),
+                file_id: Some(fid),
+                kind: st(&e["kind"]),
+                name: st(&r["file_name"]),
+                pdf,
+                thumb,
+                new: None,
+            })
+        })
+        .collect()
 }
 
 #[derive(Clone)]
@@ -205,6 +263,8 @@ pub struct PState {
     pub store: Option<Arc<LvhvStore>>,
     /// Câu báo khi mở kho lỗi (chuyển đổi lược đồ hỏng, kho của bản mới hơn) — R14.
     pub store_failed: Option<String>,
+    /// Kho mở ở chế độ chỉ đọc (`migration_status().state == "read_only"`).
+    pub read_only: bool,
     pub dir: PathBuf,
     stack: Vec<String>,
     pkind: usize,
@@ -214,7 +274,11 @@ pub struct PState {
     memorial_back: String,
     form: FormKind,
     photo: PhotoSel,
-    certs: Vec<CertPhoto>,
+    atts: Vec<AttItem>,
+    /// Bản sao tạm mở gần nhất (kiểm thử).
+    pub last_opened: Option<PathBuf>,
+    /// Tệp đính kèm của trang hồ sơ đang xem (để "Mở").
+    view_atts: Vec<AttItem>,
     offs: HashMap<&'static str, Vec<bool>>,
     tried: bool,
     dirty: bool,
@@ -236,6 +300,7 @@ impl PState {
         PState {
             store: None,
             store_failed: None,
+            read_only: false,
             dir,
             stack: vec![],
             pkind: 1,
@@ -245,7 +310,9 @@ impl PState {
             memorial_back: "nguoi".into(),
             form: FormKind::None,
             photo: PhotoSel::Keep(None),
-            certs: vec![],
+            atts: vec![],
+            last_opened: None,
+            view_atts: vec![],
             offs: HashMap::new(),
             tried: false,
             dirty: false,
@@ -287,6 +354,15 @@ pub fn store_open_message(e: &lvhv_ffi::LvhvDataError) -> String {
     }
 }
 
+/// Câu của khung chỉ đọc: thông báo của lõi + hướng dẫn xuất sao lưu.
+pub fn read_only_message(ms: &lvhv_ffi::MigrationStatus) -> String {
+    format!(
+        "{} Bấm \u{201c}Tạo tệp sao lưu\u{201d} để giữ toàn bộ dữ liệu trong một tệp có mật khẩu; khi có bản sửa, tệp này \
+         khôi phục được. Lịch và lời nhắc vẫn dùng bình thường; tạm thời chưa thêm hay sửa được hồ sơ.",
+        ms.message.clone().unwrap_or_else(|| "Chưa nâng cấp được dữ liệu. Dữ liệu cũ vẫn còn nguyên; ứng dụng đang ở chế độ chỉ đọc.".into())
+    )
+}
+
 pub fn ensure_store(ui: &AppWindow, ps: &mut PState) -> bool {
     if ps.store.is_some() {
         return true;
@@ -300,15 +376,23 @@ pub fn ensure_store(ui: &AppWindow, ps: &mut PState) -> bool {
     }
     match LvhvStore::open(ps.dir.to_string_lossy().into_owned()) {
         Ok(s) => {
-            ps.store = Some(s);
-            p.set_store_error(ss(""));
+            // 01 §7.1, 04 B5: chuyển đổi lỗi → lõi quay lui, giữ bản sao dữ liệu cũ và mở ở chế độ chỉ đọc. Vẫn xem và
+            // xuất sao lưu được; giao diện ẩn mọi nút sửa.
+            let ms = s.migration_status();
+            let ro = ms.state == "read_only";
+            ps.read_only = ro;
+            p.set_read_only(ro);
+            p.set_store_error(ss(if ro { read_only_message(&ms) } else { String::new() }));
             p.set_store_failed(false);
+            ps.store = Some(s);
             true
         }
         Err(e) => {
             let m = store_open_message(&e);
             p.set_store_error(ss(&m));
             p.set_store_failed(true);
+            p.set_read_only(false);
+            ps.read_only = false;
             ps.store_failed = Some(m);
             false
         }
@@ -583,7 +667,7 @@ fn render_list(ui: &AppWindow, ps: &PState) {
             id: ss(&id),
             initial: ss(initial),
             name: ss(name),
-            rel: ss(upper_first(st(&v["quan_he"]).trim())),
+            rel: ss(cap(&st(&v["quan_he"]))),
             summary: ss(summary),
         };
         if v["kind"] == "deceased" {
@@ -597,60 +681,45 @@ fn render_list(ui: &AppWindow, ps: &PState) {
     p.set_living(vm(living));
 }
 
-/// Gợi ý cách gọi cho người đã mất (YC-2026-07, 01 §3.1), viết hoa chữ đầu. Lõi chưa đưa danh sách này qua FFI
-/// (PR #28 không có) — khi có sẽ lấy từ lõi.
-pub(crate) const DX_DEAD: [&str; 22] = [
-    "Ông", "Bà", "Cụ", "Kỵ", "Bác", "Cô", "Chú", "Dì", "Cậu", "Mợ", "Thím", "Anh", "Chị", "Em", "Cháu", "Con", "Bạn",
-    "Bố", "Mẹ", "Ông Tổ họ", "Bà Cô Tổ họ", "Bé đỏ",
-];
-/// Người đang sống: như trên nhưng không có năm cách gọi chỉ dành cho người đã mất.
-pub(crate) const DX_DEAD_ONLY: [&str; 5] = ["Cụ", "Kỵ", "Ông Tổ họ", "Bà Cô Tổ họ", "Bé đỏ"];
+/// Gợi ý cách gọi của lõi (YC-2026-07, 01 §3.1): người đã mất có Cụ, Kỵ, Ông Tổ họ, Bà Cô Tổ họ, Bé đỏ; người sống
+/// không có; từ hợp giới tính lên trước.
+pub(crate) fn dx_suggestions(dead: bool, gender: Option<&str>) -> Vec<String> {
+    lvhv_ffi::danh_xung_suggestions(dead, gender.map(str::to_string))
+}
 
-pub(crate) fn dx_suggestions(dead: bool) -> Vec<&'static str> {
-    DX_DEAD.iter().copied().filter(|x| dead || !DX_DEAD_ONLY.contains(x)).collect()
+/// Viết hoa chữ đầu để hiển thị (dữ liệu nhập từ sao lưu cũ có thể còn chữ thường) — hàm của lõi.
+fn cap(s: &str) -> String {
+    lvhv_ffi::display_capitalize(s.trim().to_string())
 }
 
 /// Chia gợi ý thành hàng (Slint 1.8 không có bố cục tự xuống dòng): mỗi hàng tối đa `budget` ký tự (cộng 4 cho lề nút).
-fn chip_rows(items: &[&str], budget: usize) -> Vec<ChipRow> {
+fn chip_rows<S: AsRef<str>>(items: &[S], budget: usize) -> Vec<ChipRow> {
     let mut rows: Vec<Vec<SharedString>> = vec![];
     let mut used = usize::MAX;
     for it in items {
-        let w = it.chars().count() + 4;
+        let w = it.as_ref().chars().count() + 4;
         if used.saturating_add(w) > budget {
             rows.push(vec![]);
             used = 0;
         }
         used += w;
-        rows.last_mut().unwrap().push(ss(*it));
+        rows.last_mut().unwrap().push(ss(it.as_ref()));
     }
     rows.into_iter().map(|r| ChipRow { items: vm(r) }).collect()
 }
 
-/// Viết hoa chữ cái đầu (NFC, bỏ khoảng trắng hai đầu), phần còn lại giữ như người dùng gõ (YC-2026-07, 01 §3.1).
-pub(crate) fn cap_first(s: &str) -> String {
-    use unicode_normalization::UnicodeNormalization;
-    let t: String = s.trim().nfc().collect();
-    upper_first(&t)
-}
-
-/// Lõi đã nhận trường `gioi_tinh` (YC-2026-07) chưa. Lược đồ của lõi đóng (trường lạ → lỗi), nên ô Giới tính chỉ hiện
-/// khi lõi kiểm hợp lệ một hồ sơ mẫu có trường này. Cùng cách của bản Android.
-pub(crate) fn gender_supported() -> bool {
-    static OK: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
-    *OK.get_or_init(|| lvhv_ffi::derive_person_json(gender_probe(true).to_string()).is_ok())
-}
-
-pub(crate) fn gender_probe(with: bool) -> Value {
-    let mut v = json!({
-        "id": "00000000-0000-4000-8000-000000000001", "kind": "living", "danh_xung": "", "ho_ten": "Mẫu",
-        "ten_hieu": "", "quan_he": "", "birth": null, "death": null, "noi_an_tang": "", "photo_id": null,
-        "memorial": null, "reminders": {"gio": null, "sinh_nhat": null, "sinh_nhat_am": null},
-        "sinh_nhat_am": false, "feb29_rule": "feb28", "ghi_chu": ""
-    });
-    if with {
-        v["gioi_tinh"] = json!("nam");
+fn gender_key(i: i32) -> Option<&'static str> {
+    match i {
+        0 => Some("nam"),
+        1 => Some("nu"),
+        _ => None,
     }
-    v
+}
+
+/// Hàng gợi ý cách gọi và quan hệ theo người sống/mất và giới tính đang chọn.
+fn fill_suggestions(p: &People, dead: bool) {
+    p.set_dx_rows(vm(chip_rows(&dx_suggestions(dead, gender_key(p.get_f_gender())), 44)));
+    p.set_qh_rows(vm(chip_rows(&lvhv_ffi::quan_he_suggestions(dead), 52)));
 }
 
 #[cfg(test)]
@@ -658,29 +727,18 @@ mod yc07_tests {
     use super::*;
 
     #[test]
-    fn cap_first_and_lists() {
-        assert_eq!(cap_first("  ông tổ họ "), "Ông tổ họ");
-        assert_eq!(cap_first("bé đỏ"), "Bé đỏ");
-        // Dạng tách dấu (NFD) → NFC rồi viết hoa.
-        assert_eq!(cap_first("e\u{0302}\u{0301}m"), "Ếm");
-        assert_eq!(cap_first("Bà Cô Tổ họ"), "Bà Cô Tổ họ");
-        assert_eq!(cap_first(""), "");
-        let live = dx_suggestions(false);
-        assert_eq!(live.len(), 17);
-        for w in DX_DEAD_ONLY {
-            assert!(!live.contains(&w));
-            assert!(dx_suggestions(true).contains(&w));
+    fn core_lists_and_rows() {
+        let live = dx_suggestions(false, None);
+        let dead = dx_suggestions(true, None);
+        for w in ["Cụ", "Kỵ", "Ông Tổ họ", "Bà Cô Tổ họ", "Bé đỏ"] {
+            assert!(!live.iter().any(|x| x == w), "{w}");
+            assert!(dead.iter().any(|x| x == w), "{w}");
         }
-        let rows = chip_rows(&dx_suggestions(true), 44);
+        assert!(dead.iter().all(|x| x.chars().next().is_some_and(char::is_uppercase)));
+        let rows = chip_rows(&dead, 44);
         let n: usize = rows.iter().map(|r| r.items.row_count()).sum();
-        assert_eq!(n, 22);
-        assert!(rows.len() >= 3);
-    }
-
-    #[test]
-    fn gender_probe_is_meaningful() {
-        // Hồ sơ mẫu không có giới tính phải hợp lệ, để lần dò có giới tính chỉ phụ thuộc vào trường mới.
-        assert!(lvhv_ffi::derive_person_json(gender_probe(false).to_string()).is_ok());
+        assert_eq!(n, dead.len());
+        assert_eq!(cap("bà nội"), "Bà nội");
     }
 }
 
@@ -693,7 +751,7 @@ fn gender_text(v: &Value) -> &'static str {
 }
 
 fn display_name(v: &Value) -> String {
-    let dx = upper_first(v["danh_xung"].as_str().unwrap_or("").trim());
+    let dx = cap(v["danh_xung"].as_str().unwrap_or(""));
     let dx = dx.as_str();
     let ht = v["ho_ten"].as_str().unwrap_or("");
     if dx.is_empty() {
@@ -703,10 +761,6 @@ fn display_name(v: &Value) -> String {
     }
 }
 
-/// Ngày đầu của hôm nay (giờ máy) dạng giây Unix.
-fn local_midnight_unix(today: D) -> i64 {
-    (today.jdn() - 2_440_588) * 86_400 - platform::utc_offset_min() as i64 * 60
-}
 
 /// Thẻ nhắc hôm nay (L7): lời nhắc có ngày theo giờ máy = hôm nay, trừ thẻ đã bấm "Đã biết". Trong ứng dụng có ghi
 /// tên (O-9 chỉ áp cho thông báo của hệ điều hành). Trả (id lời nhắc, thẻ).
@@ -714,14 +768,11 @@ fn today_cards(ps: &PState) -> Vec<(String, RemCard)> {
     let Some(store) = ps.s() else { return vec![] };
     let today = local_today();
     let mut cards = Vec::new();
-    if let Ok(ds) = store.dataset_json() {
-        let from = local_midnight_unix(today) - 60;
-        if let Ok(j) = lvhv_ffi::reminders_json(ds, from, zone(), 2, true) {
+    {
+        // 02 §7.5: lõi trả mọi lời nhắc có giờ máy rơi vào hôm nay (kể cả giờ đã qua), tiêu đề có tên.
+        if let Ok(j) = store.due_today_json(today.solar(), zone()) {
             let pre = iso(today);
             for r in jv(&j).as_array().into_iter().flatten() {
-                if !r["fire_local"].as_str().unwrap_or("").starts_with(&pre) {
-                    continue;
-                }
                 let id = st(&r["id"]);
                 if ps.hidden_cards.contains(&id) || id == "lvhv:sentinel" {
                     continue;
@@ -864,7 +915,7 @@ fn render_ics_state(ui: &AppWindow, ps: &PState) {
     let n = store
         .dataset_json()
         .ok()
-        .and_then(|ds| lvhv_ffi::ics_export(ds, today.solar(), platform::now_unix(), None).ok())
+        .and_then(|ds| lvhv_ffi::ics_summary(ds, today.solar(), None).ok())
         .map(|i| i.events)
         .unwrap_or(0);
     p.set_ics_enabled(n > 0);
@@ -1066,7 +1117,7 @@ fn render_person(ui: &AppWindow, ps: &mut PState, id: &str) {
         .and_then(|w| w.chars().next())
         .map(String::from)
         .unwrap_or_default()));
-    p.set_v_rel(ss(upper_first(st(&v["quan_he"]).trim())));
+    p.set_v_rel(ss(cap(&st(&v["quan_he"]))));
     let hieu = st(&v["ten_hieu"]);
     p.set_v_sub(ss(if hieu.is_empty() {
         String::new()
@@ -1198,14 +1249,10 @@ fn render_person(ui: &AppWindow, ps: &mut PState, id: &str) {
             }
         }
     }
-    let nphotos: Vec<Image> = n["certificate_photo_ids"]
-        .as_array()
-        .into_iter()
-        .flatten()
-        .filter_map(|x| x.as_str().and_then(|i| photo_image(ps, i)))
-        .collect();
+    // Tệp đính kèm chỉ hiện ở đây, cùng thông tin báo tử (R-PRIV-2).
+    ps.view_atts = if n.is_object() { load_atts(ps, n) } else { vec![] };
     p.set_v_notice(vm(nk));
-    p.set_v_notice_photos(vm(nphotos));
+    p.set_v_atts(vm(ps.view_atts.iter().map(att_row).collect()));
     // Sự kiện
     let evs: Vec<EvRow> = events_of(ps, id)
         .iter()
@@ -1299,7 +1346,7 @@ fn open_memorial(ui: &AppWindow, ps: &mut PState, id: &str) {
     let sum = jv(&lvhv_ffi::person_summary_json(v.to_string(), today.solar()).unwrap_or_default());
     let rel = st(&v["quan_he"]);
     let rel = rel.split('(').next().unwrap_or("").trim().to_string();
-    let rel = upper_first(&rel);
+    let rel = cap(&rel);
     let name = if rel.is_empty() {
         display_name(&v)
     } else {
@@ -1422,7 +1469,7 @@ fn num(s: &str) -> Option<i64> {
 
 /// Tháng nhuận của năm âm (None nếu không có).
 fn leap_month(ly: i32) -> Option<i32> {
-    (1..=12).find(|&m| lvhv_ffi::lunar_to_solar(ly, m, 1, true).is_some())
+    lvhv_ffi::lunar_leap_month(ly).ok().flatten().map(|m| m as i32)
 }
 
 enum DateRes {
@@ -1856,8 +1903,8 @@ fn clear_notice(ui: &AppWindow, ps: &mut PState) {
     ] {
         f(&p, ss(""));
     }
-    ps.certs.clear();
-    p.set_n_photos(vm(vec![]));
+    ps.atts.clear();
+    p.set_n_atts(vm(vec![]));
 }
 
 fn open_person_form(ui: &AppWindow, ps: &mut PState, dead: bool, base: Option<Value>) {
@@ -1876,17 +1923,16 @@ fn open_person_form(ui: &AppWindow, ps: &mut PState, dead: bool, base: Option<Va
         (false, false) => "Thêm người đang sống",
     }));
     p.set_f_subtitle(ss(if edit { display_name(&b) } else { String::new() }));
-    p.set_f_danh_xung(ss(upper_first(&st(&b["danh_xung"]))));
-    p.set_dx_rows(vm(chip_rows(&dx_suggestions(dead), 44)));
-    p.set_gender_ok(gender_supported());
+    p.set_f_danh_xung(ss(cap(&st(&b["danh_xung"]))));
     p.set_f_gender(match b["gioi_tinh"].as_str() {
         Some("nam") => 0,
         Some("nu") => 1,
         _ => 2,
     });
+    fill_suggestions(&p, dead);
     p.set_f_ho_ten(ss(st(&b["ho_ten"])));
     p.set_f_ten_hieu(ss(st(&b["ten_hieu"])));
-    p.set_f_quan_he(ss(upper_first(&st(&b["quan_he"]))));
+    p.set_f_quan_he(ss(cap(&st(&b["quan_he"]))));
     p.set_f_ghi_chu(ss(st(&b["ghi_chu"])));
     let dd = fill_date(&b["death"]["input"]);
     p.set_dd_cal(dd.cal);
@@ -1926,18 +1972,8 @@ fn open_person_form(ui: &AppWindow, ps: &mut PState, dead: bool, base: Option<Va
         p.set_n_d(ss(nd.d));
         p.set_n_m(ss(nd.m));
         p.set_n_y(ss(nd.y));
-        for id in n["certificate_photo_ids"].as_array().into_iter().flatten() {
-            if let Some(i) = id.as_str() {
-                if let Some(img) = photo_image(ps, i) {
-                    ps.certs.push(CertPhoto {
-                        id: Some(i.into()),
-                        enc: None,
-                        img,
-                    });
-                }
-            }
-        }
-        p.set_n_photos(vm(ps.certs.iter().map(|c| c.img.clone()).collect()));
+        ps.atts = load_atts(ps, n);
+        p.set_n_atts(vm(ps.atts.iter().map(att_row).collect()));
     }
     let r = &b["reminders"];
     if dead {
@@ -2024,13 +2060,13 @@ fn notice_from(p: &People, today: D) -> Result<Option<Value>, String> {
     };
     let empty = [&by, &place, &reason, &note].iter().all(|s| s.trim().is_empty())
         && date.is_null()
-        && p.get_n_photos().row_count() == 0;
+        && p.get_n_atts().row_count() == 0;
     if empty {
         return Ok(None);
     }
     Ok(Some(json!({
         "reported_by": by, "place": place, "reason": reason, "note": note,
-        "notice_date": date, "certificate_photo_ids": [],
+        "notice_date": date, "attachments": [],
     })))
 }
 
@@ -2206,22 +2242,12 @@ fn build_person_json(ui: &AppWindow, ps: &mut PState, show_err: bool) -> Result<
     let mut v = b.clone();
     let o = v.as_object_mut().ok_or(1usize)?;
     o.insert("kind".into(), json!(if dead { "deceased" } else { "living" }));
-    o.insert("danh_xung".into(), json!(cap_first(&p.get_f_danh_xung())));
+    // Lõi viết hoa chữ đầu khi lưu (save_person_json, YC-2026-07).
+    o.insert("danh_xung".into(), json!(p.get_f_danh_xung().trim()));
     o.insert("ho_ten".into(), json!(p.get_f_ho_ten().trim()));
     o.insert("ten_hieu".into(), json!(p.get_f_ten_hieu().trim()));
-    o.insert("quan_he".into(), json!(cap_first(&p.get_f_quan_he())));
-    if gender_supported() {
-        o.insert(
-            "gioi_tinh".into(),
-            match p.get_f_gender() {
-                0 => json!("nam"),
-                1 => json!("nu"),
-                _ => Value::Null,
-            },
-        );
-    } else {
-        o.remove("gioi_tinh");
-    }
+    o.insert("quan_he".into(), json!(p.get_f_quan_he().trim()));
+    o.insert("gioi_tinh".into(), gender_key(p.get_f_gender()).map_or(Value::Null, |g| json!(g)));
     o.insert("ghi_chu".into(), json!(p.get_f_ghi_chu().trim()));
     o.insert(
         "birth".into(),
@@ -2291,6 +2317,8 @@ fn form_changed(ui: &AppWindow, ps: &mut PState) {
     let today = local_today();
     match ps.form.clone() {
         FormKind::Person { dead, .. } => {
+            // Thứ tự gợi ý cách gọi theo giới tính đang chọn.
+            fill_suggestions(&p, dead);
             let bd = fields_bd(&p);
             p.set_f_feb29(!dead && bd.cal == 0 && bd.prec == 0 && bd.d.trim() == "29" && bd.m.trim() == "2");
             let r = build_person_json(ui, ps, ps.tried);
@@ -2390,16 +2418,36 @@ fn save_photo(store: &LvhvStore, e: &photo::Encoded) -> Result<String, String> {
     Ok(id)
 }
 
-/// Lưu ảnh giấy báo tử mới; trả danh sách id theo thứ tự trên màn hình.
-fn save_certs(store: &LvhvStore, certs: &[CertPhoto]) -> Result<Vec<String>, String> {
-    certs
-        .iter()
-        .map(|c| match (&c.id, &c.enc) {
-            (Some(id), _) => Ok(id.clone()),
-            (None, Some(e)) => save_photo(store, e),
-            _ => Err("Ảnh không hợp lệ".into()),
-        })
-        .collect()
+/// Ghi tệp đính kèm mới vào kho (`add_attachment`); trả danh sách `notice.attachments` theo thứ tự trên màn hình và
+/// id các tệp vừa thêm (để xóa nếu lưu hồ sơ thất bại).
+fn save_atts(store: &LvhvStore, atts: &[AttItem], added: &mut Vec<String>) -> Result<Vec<Value>, String> {
+    let mut out = vec![];
+    for a in atts {
+        let fid = match (&a.file_id, &a.new) {
+            (Some(f), _) => f.clone(),
+            (None, Some(n)) => {
+                let fid = lvhv_ffi::new_uuid().map_err(|e| e.to_string())?;
+                store
+                    .add_attachment(fid.clone(), n.mime.into(), n.file_name.clone(), n.bytes.clone())
+                    .map_err(|e| e.to_string())?;
+                added.push(fid.clone());
+                fid
+            }
+            _ => return Err("Tệp đính kèm không hợp lệ".into()),
+        };
+        out.push(json!({"id": a.entry_id, "kind": a.kind, "file_id": fid}));
+    }
+    Ok(out)
+}
+
+/// Lưu không thành: xóa ảnh và tệp đính kèm vừa thêm (chưa gắn hồ sơ nào) để kho không có tệp mồ côi.
+fn rollback_files(store: &LvhvStore, photo: Option<String>, added: &[String]) {
+    if let Some(id) = photo {
+        let _ = store.delete_photo(id);
+    }
+    for id in added {
+        let _ = store.delete_attachment(id.clone());
+    }
 }
 
 fn save_form(ui: &AppWindow, ps: &mut PState) {
@@ -2412,16 +2460,25 @@ fn save_form(ui: &AppWindow, ps: &mut PState) {
                 update_summary(ui, ps, r.err());
                 return;
             };
+            let mut new_photo: Option<String> = None;
+            let mut added: Vec<String> = vec![];
             let res = (|| -> Result<String, String> {
                 match &ps.photo {
                     PhotoSel::Keep(id) => v["photo_id"] = json!(id),
-                    PhotoSel::New(e) => v["photo_id"] = json!(save_photo(&store, e)?),
+                    PhotoSel::New(e) => {
+                        let id = save_photo(&store, e)?;
+                        new_photo = Some(id.clone());
+                        v["photo_id"] = json!(id);
+                    }
                 }
                 if dead && v["death"]["notice"].is_object() {
-                    v["death"]["notice"]["certificate_photo_ids"] = json!(save_certs(&store, &ps.certs)?);
+                    v["death"]["notice"]["attachments"] = json!(save_atts(&store, &ps.atts, &mut added)?);
                 }
                 store.save_person_json(v.to_string()).map_err(|e| e.to_string())
             })();
+            if res.is_err() {
+                rollback_files(&store, new_photo, &added);
+            }
             match res {
                 Ok(j) => {
                     let id = st(&jv(&j)["id"]);
@@ -2537,10 +2594,11 @@ fn do_mark(ui: &AppWindow, ps: &mut PState, dv: Value, notice: Option<Value>) {
         return;
     };
     let id = st(&person["id"]);
+    let mut added: Vec<String> = vec![];
     let res = (|| -> Result<String, String> {
         let n = match notice {
             Some(mut n) => {
-                n["certificate_photo_ids"] = json!(save_certs(&store, &ps.certs)?);
+                n["attachments"] = json!(save_atts(&store, &ps.atts, &mut added)?);
                 Some(n.to_string())
             }
             None => None,
@@ -2548,6 +2606,7 @@ fn do_mark(ui: &AppWindow, ps: &mut PState, dv: Value, notice: Option<Value>) {
         store
             .mark_deceased_json(id.clone(), dv.to_string(), n, local_today().solar())
             .map_err(|e| e.to_string())
+            .inspect_err(|_| rollback_files(&store, None, &added))
     })();
     match res {
         Ok(_) => {
@@ -2790,16 +2849,9 @@ fn dlg_confirm(ui: &AppWindow, ps: &mut PState) {
         DlgAction::None => close_dialog(ui, ps),
         DlgAction::DeletePerson(id) => {
             close_dialog(ui, ps);
-            let orphan: Vec<String> = events_of(ps, &id)
-                .iter()
-                .filter(|e| e["person_ids"].as_array().is_some_and(|a| a.len() == 1))
-                .map(|e| st(&e["id"]))
-                .collect();
-            match store.delete_person(id) {
-                Ok(()) => {
-                    for e in orphan {
-                        let _ = store.delete_event(e);
-                    }
+            // Lõi xóa người và các sự kiện chỉ gắn người đó trong một giao dịch (MA3N-24-08).
+            match store.delete_person_and_orphan_events(id) {
+                Ok(_) => {
                     ps.person = None;
                     after_change(ui, ps);
                     show(ui, ps, "ho-so");
@@ -2829,18 +2881,13 @@ fn dlg_confirm(ui: &AppWindow, ps: &mut PState) {
         }
         DlgAction::CreateBackup => {
             let (a, b) = (p.get_pw1().to_string(), p.get_pw2().to_string());
-            let e1 = if a.chars().count() < 8 {
-                "Mật khẩu cần ít nhất 8 ký tự"
-            } else {
-                ""
+            // Quy tắc mật khẩu của lõi (03 §2.4: ≥ 8 ký tự sau NFC, so khớp sau NFC — BM2-23).
+            let (e1, e2) = match lvhv_ffi::backup_password_error(a.clone(), None) {
+                Some(e) => (e, String::new()),
+                None => (String::new(), lvhv_ffi::backup_password_error(a.clone(), Some(b)).unwrap_or_default()),
             };
-            let e2 = if e1.is_empty() && a != b {
-                "Hai lần nhập mật khẩu chưa giống nhau"
-            } else {
-                ""
-            };
-            p.set_e_pw1(ss(e1));
-            p.set_e_pw2(ss(e2));
+            p.set_e_pw1(ss(&e1));
+            p.set_e_pw2(ss(&e2));
             if !e1.is_empty() || !e2.is_empty() {
                 ps.dlg = DlgAction::CreateBackup;
                 return;
@@ -2862,6 +2909,13 @@ fn dlg_confirm(ui: &AppWindow, ps: &mut PState) {
                         .export_backup(a, crate::update::VERSION.into(), "windows".into())
                         .map_err(|e| e.to_string())
                         .and_then(|bytes| std::fs::write(&path, bytes).map_err(|e| e.to_string()))
+                        // 03 §2.4: chỉ khi tệp đã ghi xong mới ghi nhận "đã sao lưu" (hủy / lỗi ghi → không gọi).
+                        // Kho chỉ đọc (R14) không ghi được mốc này — tệp vẫn tạo được, bỏ qua lỗi đó.
+                        .map(|()| {
+                            if store.migration_status().state != "read_only" {
+                                let _ = store.mark_backup_saved(platform::now_unix());
+                            }
+                        })
                 },
                 |ui, ps, r| {
                     close_dialog(ui, ps);
@@ -2997,6 +3051,20 @@ fn load_photo(path: std::path::PathBuf) -> Result<photo::Encoded, String> {
     photo::reencode(&bytes)
 }
 
+/// Mở một PDF đính kèm bằng ứng dụng xem PDF của Windows qua bản sao tạm tên chung (§5.3, `attach::open_pdf`).
+fn open_att(ui: &AppWindow, ps: &mut PState, a: Option<AttItem>) {
+    let Some(a) = a.filter(|a| a.pdf) else { return };
+    let bytes = match (&a.new, &a.file_id, ps.s()) {
+        (Some(n), _, _) => Ok(n.bytes.clone()),
+        (None, Some(f), Some(s)) => s.attachment_bytes(f.clone()).map_err(|e| e.to_string()),
+        _ => Err("Không đọc được tệp".into()),
+    };
+    match bytes.and_then(|b| crate::attach::open_pdf(&ps.dir, &b)) {
+        Ok(path) => ps.last_opened = Some(path),
+        Err(e) => toast(ui, ps, &format!("Chưa mở được tệp: {e}")),
+    }
+}
+
 fn export_ics(ui: &AppWindow, ps: &mut PState) {
     let Some(store) = ps.store.clone() else { return };
     let today = local_today();
@@ -3005,39 +3073,23 @@ fn export_ics(ui: &AppWindow, ps: &mut PState) {
     }) else {
         return;
     };
-    // Xem trước 2 mục đầu: DTSTART + SUMMARY của từng VEVENT.
-    let mut prev = Vec::new();
-    let mut date = String::new();
-    for line in ics.content.lines() {
-        if let Some(d) = line.split(':').nth(1).filter(|_| line.starts_with("DTSTART")) {
-            date = format!(
-                "{}/{}/{}",
-                d.get(6..8).unwrap_or(""),
-                d.get(4..6).unwrap_or(""),
-                d.get(..4).unwrap_or("")
-            );
-        }
-        if let Some(s) = line.strip_prefix("SUMMARY:") {
-            prev.push(format!("• {date} — {}", s.replace("\\,", ",").replace("\\;", ";")));
-        }
-    }
-    let end = today.add(3652).map(|d| d.add(-1).unwrap_or(d)).unwrap_or(today);
+    // Hộp xác nhận S10 theo tóm tắt của lõi (`IcsSummary`): câu riêng tư, số ngày và cửa sổ 10 năm, tối đa 5 dòng
+    // xem trước. Thêm một câu: tệp không có thông tin báo tử (TKN-X-04).
+    let sm = &ics.summary;
+    let dmy = |d: &lvhv_ffi::SolarDay| format!("{:02}/{:02}/{:04}", d.d, d.m, d.y);
     let mut lines = vec![
-        format!(
-            "Tệp này chứa tên, ngày giỗ, sinh nhật và sự kiện của {} người. Bất kỳ ai có tệp đều đọc được. Không gồm thông tin báo tử.",
-            ics.persons
-        ),
+        format!("{} Không gồm thông tin báo tử.", sm.privacy_text),
         format!(
             "Gồm {} ngày trong 10 năm tới (từ {} đến {}), mỗi ngày có lời nhắc như đã đặt.",
-            ics.events,
-            today.dmy(),
-            end.dmy()
+            sm.events,
+            dmy(&sm.from),
+            dmy(&sm.to)
         ),
         "Xem trước:".into(),
     ];
-    lines.extend(prev.iter().take(2).cloned());
-    if prev.len() > 2 {
-        lines.push(format!("… và {} ngày khác", prev.len() - 2));
+    lines.extend(sm.preview.iter().map(|l| format!("• {l}")));
+    if sm.events as usize > sm.preview.len() {
+        lines.push(format!("… và {} ngày khác", sm.events as usize - sm.preview.len()));
     }
     lines.push("Mở tệp bằng Outlook hoặc ứng dụng Lịch của máy để nhập.".into());
     open_dialog(
@@ -3059,16 +3111,19 @@ fn create_backup(ui: &AppWindow, ps: &mut PState) {
     let np = ds["persons"].as_array().map_or(0, Vec::len);
     let ne = ds["events"].as_array().map_or(0, Vec::len);
     let nph = ds["photos"].as_array().map_or(0, Vec::len);
-    let mut lines = vec![format!(
-        "Tệp sẽ chứa {np} người, {ne} sự kiện, {nph} ảnh — đã mã hóa bằng mật khẩu."
-    )];
+    let nat = ds["attachments"].as_array().map_or(0, Vec::len);
+    let mut lines = vec![if nat > 0 {
+        format!("Tệp sẽ chứa {np} người, {ne} sự kiện, {nph} ảnh, {nat} tệp đính kèm — đã mã hóa bằng mật khẩu.")
+    } else {
+        format!("Tệp sẽ chứa {np} người, {ne} sự kiện, {nph} ảnh — đã mã hóa bằng mật khẩu.")
+    }];
     if ds["persons"]
         .as_array()
         .into_iter()
         .flatten()
         .any(|p| p["death"]["notice"].is_object())
     {
-        lines.push("Tệp gồm cả thông tin báo tử (người báo tin, nơi mất, lý do, ảnh giấy báo tử) — chỉ ai biết mật khẩu mới đọc được.".into());
+        lines.push("Tệp gồm cả thông tin báo tử (người báo tin, nơi mất, lý do, tệp đính kèm) — chỉ ai biết mật khẩu mới đọc được.".into());
     }
     open_dialog(
         ui,
@@ -3102,12 +3157,37 @@ fn open_backup_file(ui: &AppWindow, ps: &mut PState) {
         return;
     };
     let generic = "Sai mật khẩu hoặc tệp bị hỏng";
-    if std::fs::metadata(&path).map(|m| m.len() > BACKUP_MAX).unwrap_or(true) {
+    let Ok(len) = std::fs::metadata(&path).map(|m| m.len()) else {
+        p.set_restore_error(ss(generic));
+        return;
+    };
+    if len > BACKUP_MAX {
         p.set_restore_error(ss(generic));
         return;
     }
-    p.set_restore_error(ss("Đang mở tệp… (có thể mất vài giây)"));
     let pw = p.get_restore_pw().to_string();
+    // Quy tắc độ dài của lõi (ô khôi phục: không có ô nhập lại).
+    if let Some(e) = lvhv_ffi::backup_password_error(pw.clone(), None) {
+        p.set_restore_error(ss(e));
+        return;
+    }
+    // 72 byte đầu + kích thước tệp, trước khi đọc cả tệp và chạy Argon2 (03 §2.2, MA3N-24-03).
+    let head = {
+        use std::io::Read;
+        let mut h = vec![0u8; 72];
+        match std::fs::File::open(&path).and_then(|mut f| f.read_exact(&mut h)) {
+            Ok(()) => h,
+            Err(_) => {
+                p.set_restore_error(ss(generic));
+                return;
+            }
+        }
+    };
+    if let Err(e) = lvhv_ffi::backup_header_check(head, len) {
+        p.set_restore_error(ss(e.to_string()));
+        return;
+    }
+    p.set_restore_error(ss("Đang mở tệp… (có thể mất vài giây)"));
     bg(
         ui,
         ps,
@@ -3263,6 +3343,18 @@ pub fn wire(ui: &AppWindow, ps: Ps) {
             }
         }};
     }
+    macro_rules! cb2 {
+        ($t:ty, $u:ty, $body:expr) => {{
+            let w = w.clone();
+            let ps = ps.clone();
+            move |a: $t, b: $u| {
+                if let Some(ui) = w.upgrade() {
+                    #[allow(clippy::redundant_closure_call)]
+                    ($body)(&ui, &mut ps.borrow_mut(), a, b);
+                }
+            }
+        }};
+    }
     p.on_go(cb1!(SharedString, |ui: &AppWindow, ps: &mut PState, s: SharedString| go(ui, ps, &s)));
     p.on_back(cb0!(|ui: &AppWindow, ps: &mut PState| back(ui, ps)));
     // R14: mở thư mục dữ liệu bằng Explorer để người dùng chép một bản dự phòng (không mở khi chạy kiểm thử/chụp ảnh).
@@ -3376,19 +3468,29 @@ pub fn wire(ui: &AppWindow, ps: Ps) {
         p.set_f_photo(Image::default());
         ps.dirty = true;
     }));
-    p.on_add_notice_photo(cb0!(|ui: &AppWindow, ps: &mut PState| {
-        if ps.certs.len() >= 4 {
+    p.on_add_attachment(cb0!(|ui: &AppWindow, ps: &mut PState| {
+        if ps.atts.len() >= MAX_ATTACHMENTS {
             return;
         }
-        let Some(path) = platform::pick(platform::hwnd_of(ui.window()), Dialog::OpenImage) else { return };
-        People::get(ui).set_e_notice(ss("Đang đọc ảnh…"));
-        bg(ui, ps, move || load_photo(path), |ui, ps, r| {
+        let Some(path) = platform::pick(platform::hwnd_of(ui.window()), Dialog::OpenAttachment) else { return };
+        People::get(ui).set_e_notice(ss("Đang đọc tệp…"));
+        // Kiểm và nén ảnh ở luồng phụ (giải mã có trần, BM2-10); PDF kiểm kích thước và `%PDF-` trước khi đọc hết.
+        bg(ui, ps, move || crate::attach::prepare(&path), |ui, ps, r| {
             let p = People::get(ui);
             match r {
-                Ok(e) if ps.certs.len() < 4 => {
-                    let img = photo::to_slint(&e.bytes).unwrap_or_default();
-                    ps.certs.push(CertPhoto { id: None, enc: Some(e), img });
-                    p.set_n_photos(vm(ps.certs.iter().map(|c| c.img.clone()).collect()));
+                Ok(f) if ps.atts.len() < MAX_ATTACHMENTS => {
+                    let pdf = f.kept_as_is;
+                    let thumb = if pdf { None } else { photo::to_slint(&f.bytes) };
+                    ps.atts.push(AttItem {
+                        entry_id: lvhv_ffi::new_uuid().unwrap_or_default(),
+                        file_id: None,
+                        kind: "giay_chung_tu".into(),
+                        name: f.file_name.clone().unwrap_or_default(),
+                        pdf,
+                        thumb,
+                        new: Some(std::sync::Arc::new(f)),
+                    });
+                    p.set_n_atts(vm(ps.atts.iter().map(att_row).collect()));
                     p.set_e_notice(ss(""));
                     ps.dirty = true;
                 }
@@ -3397,12 +3499,27 @@ pub fn wire(ui: &AppWindow, ps: Ps) {
             }
         });
     }));
-    p.on_drop_notice_photo(cb1!(i32, |ui: &AppWindow, ps: &mut PState, i: i32| {
-        if (i as usize) < ps.certs.len() {
-            ps.certs.remove(i as usize);
+    p.on_drop_attachment(cb1!(i32, |ui: &AppWindow, ps: &mut PState, i: i32| {
+        if (i as usize) < ps.atts.len() {
+            ps.atts.remove(i as usize);
         }
-        People::get(ui).set_n_photos(vm(ps.certs.iter().map(|c| c.img.clone()).collect()));
+        People::get(ui).set_n_atts(vm(ps.atts.iter().map(att_row).collect()));
         ps.dirty = true;
+    }));
+    p.on_set_att_kind(cb2!(i32, i32, |ui: &AppWindow, ps: &mut PState, i: i32, k: i32| {
+        if let (Some(a), Some(kind)) = (ps.atts.get_mut(i as usize), ATT_KINDS.get(k as usize)) {
+            a.kind = (*kind).into();
+            ps.dirty = true;
+        }
+        People::get(ui).set_n_atts(vm(ps.atts.iter().map(att_row).collect()));
+    }));
+    p.on_open_attachment(cb1!(i32, |ui: &AppWindow, ps: &mut PState, i: i32| {
+        let a = ps.atts.get(i as usize).cloned();
+        open_att(ui, ps, a);
+    }));
+    p.on_open_v_attachment(cb1!(i32, |ui: &AppWindow, ps: &mut PState, i: i32| {
+        let a = ps.view_atts.get(i as usize).cloned();
+        open_att(ui, ps, a);
     }));
     p.on_save_form(cb0!(|ui: &AppWindow, ps: &mut PState| save_form(ui, ps)));
     p.on_cancel_form(cb0!(|ui: &AppWindow, ps: &mut PState| {

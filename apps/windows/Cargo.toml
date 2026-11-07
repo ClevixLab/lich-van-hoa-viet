@@ -31,7 +31,6 @@ slint = { version = "=1.8.0", default-features = false, features = ["std", "comp
 png = "0.17.16"
 # Ảnh chân dung / giấy báo tử (01 §3.8, S9): giải mã rồi mã hóa lại JPEG để bỏ EXIF/GPS/XMP/IPTC. Cùng bản
 # 0.24.9 đã có trong cây phụ thuộc của Slint (không thêm thư viện mới).
-unicode-normalization = "=0.1.26"
 # R14: băm ảnh và đọc phiên bản lược đồ khi tự kiểm sau nâng cấp (cùng phiên bản với lvhv-store).
 sha2 = "=0.11.1"
 rusqlite = { version = "=0.41.1", features = ["bundled"] }
@@ -56,6 +55,8 @@ windows = { version = "=0.58.0", features = [
 [dev-dependencies]
 # Backend kiểm thử của Slint: dựng cửa sổ ảo, bấm chuột giả lập để kiểm tra các nút (src/ui_tests.rs).
 i-slint-backend-testing = "=1.8.0"
+# R14: ca `force_migration_failure` của lõi trên bộ mẫu đóng băng (chỉ kiểm thử).
+lvhv-store = { path = "../../store" }
 
 [build-dependencies]
 slint-build = "=1.8.0"

@@ -8,8 +8,8 @@
 //!    `%LOCALAPPDATA%\ClevixLab\LichVanHoaViet\tmp\` (không phải `%TEMP%` dùng chung), tên chung `TepDinhKem.pdf`
 //!    (không mang tên người hay tên gốc), xóa toàn bộ `tmp\` khi đóng ứng dụng và khi mở lần sau.
 //!
-//! Việc lưu vào kho (`add_attachment`, `attachment_bytes`) và giao diện chờ lõi (PR #28) vào `main`.
-#![allow(dead_code)] // Giao diện tệp đính kèm nối vào khi lõi có `add_attachment` (PR #28).
+//! Lưu vào kho: `add_attachment` khi bấm Lưu (people.rs `save_atts`); đọc: `attachment_bytes`.
+
 
 use std::io::Read;
 use std::path::{Path, PathBuf};

@@ -10,7 +10,7 @@ use std::rc::Rc;
 use std::time::Duration;
 
 use serde_json::{json, Value};
-use slint::{ComponentHandle, Timer, TimerMode};
+use slint::{ComponentHandle, Model, Timer, TimerMode};
 
 use crate::people::{self, local_today, PState};
 use crate::toasts;
@@ -77,6 +77,11 @@ pub fn seed_demo(ps: &mut PState) -> (String, String, String) {
 }
 
 /// Gieo dữ liệu mẫu vào một kho (dùng cả cho `--kiem-thong-bao`).
+/// Một PDF nhỏ hợp lệ (bản quét mẫu) cho ảnh chụp và kiểm thử.
+pub fn demo_pdf() -> Vec<u8> {
+    b"%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Kids[]/Count 0>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n".to_vec()
+}
+
 pub fn seed_store(store: &lvhv_ffi::LvhvStore) -> (String, String, String) {
     let today = local_today();
     // 1) Ông nội — mất 08/08/2025 (15/6 nhuận Ất Tỵ), có ảnh.
@@ -148,15 +153,24 @@ pub fn seed_store(store: &lvhv_ffi::LvhvStore) -> (String, String, String) {
         "sinh_nhat_am": false, "feb29_rule": "feb28",
     });
     let m = serde_json::from_str::<Value>(&store.save_person_json(m.to_string()).unwrap()).unwrap();
-    let cert = crate::photo::reencode(&demo_certificate()).unwrap();
+    // Tệp đính kèm (01 §3.8a): ảnh giấy chứng tử (nén lại, bỏ siêu dữ liệu) và bản quét PDF (lưu nguyên bản).
+    let cert = crate::photo::reencode_with(&demo_certificate(), crate::photo::DOC_SIDE, crate::photo::DOC_STORED).unwrap();
     let cert_id = lvhv_ffi::new_uuid().unwrap();
     store
-        .add_photo(cert_id.clone(), "image/jpeg".into(), cert.width, cert.height, cert.bytes)
+        .add_attachment(cert_id.clone(), "image/jpeg".into(), Some("giay-chung-tu.jpg".into()), cert.bytes)
+        .unwrap();
+    let pdf_id = lvhv_ffi::new_uuid().unwrap();
+    store
+        .add_attachment(pdf_id.clone(), "application/pdf".into(), Some("Ban quet giay chung tu.pdf".into()), demo_pdf())
         .unwrap();
     let notice = json!({
         "reported_by": "Chị Hoa (con gái)", "place": "Bệnh viện tỉnh Nam Định", "reason": "Tuổi cao, bệnh tim",
         "notice_date": {"calendar":"solar","precision":"day","year":2024,"month":7,"day":18,"leap":false},
-        "certificate_photo_ids": [cert_id], "note": "Gia đình đã báo tin cho họ hàng.",
+        "attachments": [
+            {"id": lvhv_ffi::new_uuid().unwrap(), "kind": "giay_chung_tu", "file_id": cert_id},
+            {"id": lvhv_ffi::new_uuid().unwrap(), "kind": "khac", "file_id": pdf_id},
+        ],
+        "note": "Gia đình đã báo tin cho họ hàng.",
     });
     store
         .mark_deceased_json(
@@ -318,6 +332,14 @@ fn steps(ui: &AppWindow, st: Rc<RefCell<State>>) -> Vec<Step> {
             p.set_scroll_frac(0.55);
         })));
     }
+    // Biểu mẫu sửa người đã mất: khối thông tin báo tử với hai tệp đính kèm (ảnh, PDF) — YC-2026-07.
+    screens.push(("_nt-09b-chuan-bi", Rc::new(|ui: &AppWindow| {
+        let p = People::get(ui);
+        p.invoke_edit_person();
+        p.set_n_open(true);
+    })));
+    screens.push(("nt-09b-sua-tep-dinh-kem", Rc::new(|ui: &AppWindow| People::get(ui).set_scroll_frac(0.62))));
+    screens.push(("_nt-09c-ve", Rc::new(|ui: &AppWindow| People::get(ui).invoke_cancel_form())));
     {
         let ids = ids.clone();
         screens.push(("nt-10-nguoi-dang-song", Rc::new(move |ui: &AppWindow| {
@@ -517,6 +539,41 @@ fn steps(ui: &AppWindow, st: Rc<RefCell<State>>) -> Vec<Step> {
             p.set_scroll_frac(0.0);
         })));
         v.push(("nt-23-chuyen-doi-loi-toi".to_string(), Box::new(|ui: &AppWindow| theme(ui, true))));
+        // Chế độ chỉ đọc (01 §7.1): chuyển đổi lỗi thật trên một kho mẫu (phiên bản lược đồ ghi sai) → lõi quay lui.
+        let ps = st.borrow().people.clone();
+        v.push(("nt-24-che-do-chi-doc-sang".to_string(), Box::new(move |ui: &AppWindow| {
+            theme(ui, false);
+            let dir = std::env::temp_dir().join(format!("lvhv-shots-chi-doc-{}", std::process::id()));
+            let _ = std::fs::remove_dir_all(&dir);
+            {
+                let s = lvhv_ffi::LvhvStore::open(dir.to_string_lossy().into_owned()).unwrap();
+                seed_store(&s);
+            }
+            if let Ok(c) = rusqlite::Connection::open(dir.join("lvhv.sqlite")) {
+                let _ = c.pragma_update(None, "user_version", 0);
+            }
+            let mut g = ps.borrow_mut();
+            g.dir = dir;
+            g.store = None;
+            g.store_failed = None;
+            people::go(ui, &mut g, "ho-so");
+            People::get(ui).set_scroll_frac(0.0);
+        })));
+        v.push(("nt-24-che-do-chi-doc-toi".to_string(), Box::new(|ui: &AppWindow| theme(ui, true))));
+        v.push(("nt-24b-che-do-chi-doc-ho-so-sang".to_string(), Box::new(|ui: &AppWindow| {
+            theme(ui, false);
+            let p = People::get(ui);
+            let id = p
+                .get_dead()
+                .iter()
+                .find(|r| r.name.contains("Minh"))
+                .or_else(|| p.get_dead().row_data(0))
+                .map(|r| r.id.to_string())
+                .unwrap_or_default();
+            p.invoke_open_person(id.into());
+            p.set_v_notice_open(true);
+        })));
+        v.push(("nt-24b-che-do-chi-doc-ho-so-toi".to_string(), Box::new(|ui: &AppWindow| theme(ui, true))));
     }
     let _ = ui;
     v
