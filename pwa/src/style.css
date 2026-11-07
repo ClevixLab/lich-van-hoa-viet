@@ -415,6 +415,12 @@ input.num { font-size: 1.35rem; font-weight: 700; text-align: center; font-varia
 .prose p + p { margin-top: .6rem; }
 .prose p { line-height: 1.65; max-width: 68ch; overflow-wrap: anywhere; }
 .prose .warn { margin-top: .8rem; }
+.prose .lead { font-size: 1.05rem; color: var(--ink); }
+.prose h3 { font-size: 1rem; color: var(--red-ink); margin: 1.1rem 0 .45rem; }
+.prose ul.dots li, .prose ol.steps li { line-height: 1.6; max-width: 68ch; margin-top: .35rem; }
+.prose ol.steps { counter-reset: st; padding: 0; list-style: none; }
+.prose ol.steps li { counter-increment: st; position: relative; padding-left: 2.1rem; }
+.prose ol.steps li::before { content: counter(st); position: absolute; left: 0; top: .05rem; width: 1.5rem; height: 1.5rem; border-radius: 50%; background: var(--red-deep); color: #fff; font-weight: 700; font-size: .85rem; display: grid; place-items: center; }
 .sources h3 { font-size: .95rem; margin: .8rem 0 .3rem; }
 .srclist { display: grid; gap: .1rem; }
 .srcitem { padding: .65rem 0; border-top: 1px dashed var(--rule); }
