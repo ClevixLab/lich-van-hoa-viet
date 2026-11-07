@@ -63,6 +63,7 @@ export async function renderMemorial(root: HTMLElement, id: string): Promise<voi
   const t = today();
   const catholic = mem.tray_style === "cong_giao";
   const heading = biaHeading(p);
+  const biaName = heading ? ((p.ho_ten as string) ?? "").normalize("NFC").trim() : displayName(p); // #38: đã cắt khoảng trắng
   const incense = !catholic && mem.incense !== false;
 
   // Dòng ngày
@@ -98,7 +99,7 @@ export async function renderMemorial(root: HTMLElement, id: string): Promise<voi
     h("div", { class: "bia", role: "group", "aria-label": "Bia tưởng niệm" },
       heading ? h("p", { class: "bia-top" }, heading) : null,
       // Dòng trên tên = Quan hệ bằng từ thường ngày ("Ông nội", "Mẹ") — khi có thì không lặp cách gọi trước tên.
-      h("h1", { class: `bia-name${(heading ? (p.ho_ten as string) : displayName(p)).length > 28 ? " long" : ""}`, tabindex: "-1" }, heading ? (p.ho_ten as string) : displayName(p)),
+      h("h1", { class: `bia-name${biaName.length > 28 ? " long" : ""}`, tabindex: "-1" }, biaName),
       p.ten_hieu ? h("p", { class: "bia-hieu" }, p.ten_hieu as string) : null,
       h("p", { class: "bia-years" }, ...years),
       age ? h("p", { class: "bia-age" }, age) : null),
@@ -110,7 +111,7 @@ export async function renderMemorial(root: HTMLElement, id: string): Promise<voi
         svg(VASE, "vase"),
         svg(CANDLE, "candle")),
       h("div", { class: "altar-table" })),
-    mem.loi_tuong_niem ? h("blockquote", { class: "mem-loi" }, mem.loi_tuong_niem as string) : null);
+    ((mem.loi_tuong_niem as string) ?? "").trim() ? h("blockquote", { class: "mem-loi" }, (mem.loi_tuong_niem as string).normalize("NFC").trim()) : null);
 
   let remaining = SMOKE_MS, startedAt = 0, timer = 0;
   const stopAll = () => { window.clearTimeout(timer); timer = 0; scene.classList.remove("lit"); toggle.textContent = "Thắp lại"; };

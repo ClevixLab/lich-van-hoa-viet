@@ -8,6 +8,7 @@
     "build": "node build.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test:smoke": "node test/smoke.mjs",
+    "test:upgrade": "node test/upgrade.mjs",
     "icons": "node scripts/make-icons.mjs",
     "font": "python3 scripts/subset-font.py"
   },

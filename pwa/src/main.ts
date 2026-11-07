@@ -10,7 +10,7 @@ import { renderGoodDays } from "./ui/gooddays";
 import { renderMonth } from "./ui/month";
 import { renderDayNav, renderSheet } from "./ui/sheet";
 import { APP_VERSION } from "./gen/content";
-import { applyUpdate, attachRegistration, autoCheck, onUpdateResult } from "./update";
+import { applyUpdate, attachRegistration, autoCheck, checksStarted, onUpdateResult } from "./update";
 import * as storage from "./storage";
 import type { SolarDate } from "./types";
 
@@ -33,9 +33,11 @@ const state = {
 declare global {
   interface Window { __lvhv?: { renderMs: number[]; mock: boolean; storage: typeof storage } }
 }
-// `storage`: API lưu trữ (đợt 2, chỉ hàm; giao diện ở đợt 3) — kiểm thử khói gọi qua đây.
+// `storage`: API lưu trữ (đợt 2, chỉ hàm; giao diện ở đợt 3) — kiểm thử gọi qua đây. CHỈ ở bản dựng kiểm thử
+// (LVHV_TEST_HOOKS=1, src/testhooks.ts): bản phát hành không có `window.__lvhv` (BM2 vòng 2, smoke quét dist/).
+// Thời gian dựng tờ lịch đo bằng Performance API (`performance.measure("lvhv:render")`) — đọc được ở cả bản phát hành.
 const metrics = { renderMs: [] as number[], mock: IS_MOCK, storage };
-window.__lvhv = metrics;
+if (__LVHV_TEST_HOOKS__) window.__lvhv = metrics;
 
 function clamp(d: SolarDate): SolarDate {
   if (d.y < MIN_YEAR) return { y: MIN_YEAR, m: 1, d: 1 };
@@ -232,6 +234,10 @@ function renderDay(): void {
   window.scrollTo(0, keepScroll);
   metrics.renderMs.push(+(performance.now() - t0).toFixed(2));
   if (metrics.renderMs.length > 50) metrics.renderMs.shift();
+  try {
+    if (performance.getEntriesByName("lvhv:render").length >= 200) performance.clearMeasures("lvhv:render");
+    performance.measure("lvhv:render", { start: t0 });
+  } catch { /* trình duyệt cũ không có measure(name, {start}) */ }
 }
 
 function renderSide(): void {
@@ -359,17 +365,29 @@ void startupReminders();
 // Một lần phát hành thường báo HAI lần (version.json, rồi service worker mới cài xong — update.ts
 // attachRegistration). Nếu nội dung thanh không đổi thì KHÔNG dựng lại: dựng lại sẽ xóa nút đang có tiêu điểm
 // bàn phím (hoặc nút "Đang cập nhật…" đã bấm) — lỗi trợ năng tìm thấy qua kiểm thử khói chập chờn.
+// Sau "Để sau", cùng phiên bản đó KHÔNG tự hiện lại vì lần báo thứ hai của chính phát hành ấy (service worker cài
+// xong), hay vì một lần kiểm tra đã bắt đầu TRƯỚC khi bấm — trước đây thanh tự bật lại vài giây sau khi người dùng
+// đã bấm "Để sau" (tìm thấy qua kiểm thử nâng cấp chập chờn 1/20). Chỉ nhắc lại khi có lần kiểm tra MỚI: tự động
+// (mở lại ứng dụng, tối đa 6 giờ một lần) hoặc người dùng bấm "Kiểm tra cập nhật"; phiên bản khác thì báo ngay.
 let updateBarKey: string | null = null;
-onUpdateResult((r) => {
+let laterAt: number | null = null; // checksStarted() lúc bấm "Để sau"; null = chưa bấm (hoặc đã nhắc lại)
+onUpdateResult((r, info) => {
   if (r.status !== "new") return;
+  updateBar.dataset.reports = String(Number(updateBar.dataset.reports ?? 0) + 1); // để kiểm thử chờ đúng lần báo
   const key = r.version ?? "";
-  if (key === updateBarKey) { updateBar.hidden = false; return; }
+  if (key === updateBarKey) {
+    if (laterAt !== null && (info.source === "install" || info.seq <= laterAt)) return;
+    laterAt = null;
+    updateBar.hidden = false;
+    return;
+  }
+  laterAt = null;
   updateBarKey = key;
   clear(updateBar);
   const now = h("button", { type: "button", class: "ubtn primary", onclick: () => {
     now.setAttribute("disabled", ""); now.textContent = "Đang cập nhật…"; void applyUpdate();
   } }, "Cập nhật ngay");
-  const later = h("button", { type: "button", class: "ubtn", onclick: () => { updateBar.hidden = true; } }, "Để sau");
+  const later = h("button", { type: "button", class: "ubtn", onclick: () => { updateBar.hidden = true; laterAt = checksStarted(); } }, "Để sau");
   updateBar.append(
     h("span", { class: "update-msg" }, r.version ? `Đã có phiên bản mới ${r.version}.` : "Đã có bản cập nhật mới của ứng dụng."),
     h("span", { class: "update-acts" }, now, later));

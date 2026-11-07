@@ -18,6 +18,11 @@ const REPO = resolve(ROOT, "..");
 // cũng ghi ra thư mục riêng (<out>.gen/), không đụng src/gen/ của bản dựng chính.
 const DIST = process.env.LVHV_OUT_DIR ? resolve(process.env.LVHV_OUT_DIR) : join(ROOT, "dist");
 const GEN = process.env.LVHV_OUT_DIR ? DIST + ".gen" : join(ROOT, "src", "gen");
+// LVHV_TEST_HOOKS=1: bật móc chỉ dành cho kiểm thử (src/testhooks.ts), ví dụ giữ bước mã hóa sao lưu để kiểm
+// MA3-15-03 tất định. Chỉ nhận khi dựng vào thư mục riêng (LVHV_OUT_DIR): bản dựng chính dist/ luôn KHÔNG có móc
+// (__LVHV_TEST_HOOKS__ = false → esbuild bỏ hẳn mã móc khi rút gọn).
+const TEST_HOOKS = process.env.LVHV_TEST_HOOKS === "1";
+if (TEST_HOOKS && !process.env.LVHV_OUT_DIR) { console.error("[build] LỖI: LVHV_TEST_HOOKS=1 chỉ dùng cùng LVHV_OUT_DIR (không dựng móc kiểm thử vào dist/)"); process.exit(1); }
 const VERSION_FILE = join(REPO, "VERSION");
 const CHANGELOG = join(REPO, "CHANGELOG.md");
 
@@ -224,6 +229,7 @@ const res = await build({
   entryPoints: { app: join(ROOT, "src", "main.ts"), style: join(ROOT, "src", "style.css") },
   bundle: true,
   minify: true,
+  define: { __LVHV_TEST_HOOKS__: TEST_HOOKS ? "true" : "false" },
   format: "esm",
   target: "es2020",
   outdir: DIST,
