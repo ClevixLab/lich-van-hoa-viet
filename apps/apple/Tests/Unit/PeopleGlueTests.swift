@@ -277,7 +277,7 @@ final class PeopleGlueTests: XCTestCase {
             kCGImagePropertyGPSDictionary: [kCGImagePropertyGPSLatitude: 21.03, kCGImagePropertyGPSLatitudeRef: "N",
                                             kCGImagePropertyGPSLongitude: 105.85, kCGImagePropertyGPSLongitudeRef: "E"],
             kCGImagePropertyTIFFDictionary: [kCGImagePropertyTIFFMake: "MayChupThu", kCGImagePropertyTIFFModel: "X1"],
-            kCGImagePropertyIPTCDictionary: [kCGImagePropertyIPTCCaption: "chu thich"],
+            kCGImagePropertyIPTCDictionary: [kCGImagePropertyIPTCCaptionAbstract: "chu thich"],
         ]
         CGImageDestinationAddImage(dest, img, props as CFDictionary)
         CGImageDestinationFinalize(dest)
