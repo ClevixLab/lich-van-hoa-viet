@@ -191,3 +191,62 @@ Kịch bản cố định (`e_old_backup`): `unchanged = true`, `has_tray_key = 
 Những việc cần làm trên commit sửa (theo thông báo của điều phối viên): chạy lại toàn bộ `run_r15.py`. Thêm ca từ chối
 ảnh mâm lễ > 1600 px khi lưu và khi nhập (theo Bổ sung 01-YC10-a, MA10-02), đăng ký trước khi chạy. Tách việc kiểm
 MA10-03 thành ca riêng nếu được giao.
+
+---
+
+# Vòng 2 — đo lại trên commit sửa `375d6d66530055ed91b77cbdf23e25b522ade767`
+
+## 5. Đăng ký bổ sung V2 (2026-11-07; viết và commit TRƯỚC khi chạy vòng 2, SAU KHI đã thấy kết quả vòng 1)
+
+Phần này được viết sau khi đã thấy kết quả vòng 1 (§2–§4) và sau khi đặc tả có "Bổ sung 01-YC10-a" (01, MA10-02,
+MA10-03) cùng các sửa ở 10 §3.3 và §3.11. Đăng ký này không nới ngưỡng nào của §1. Nó chỉ thêm ca thử cho các quy tắc
+mới. Tài liệu đã đọc thêm: phần đổi của 01 và 10 giữa `eafa96e` và `375d6d6`. Vẫn không đọc mã cài đặt hay kiểm thử
+của bên cài đặt.
+
+- **V2-0 (chạy lại).** Chạy lại `run_r15.py` không sửa, ngưỡng §1 giữ nguyên. Theo 01-YC10-a, c5 (ảnh mâm lễ 2000 px)
+  nay phải bị từ chối. c5 vẫn là ca thăm dò; quy tắc mới được kiểm bằng V2-1.
+- **V2-1 (c, MA10-02 khi lưu).** Hai bản thêm ảnh sạch tự dựng 1601 × 100, 100 × 1601 và 1600 × 100.
+  - Gắn 1601 × 100 hoặc 100 × 1601 làm ảnh mâm lễ → `save-person` từ chối.
+  - Gắn 1600 × 100 → nhận.
+  - Dùng ảnh 1601 × 100 làm **ảnh chân dung** (`photo_id`) → nhận, vì giới hạn này chỉ áp cho ảnh mâm lễ; ảnh chân
+    dung giới hạn 2048 px (01 §3.8).
+  - Ngưỡng: đúng 4/4 ca ở cả hai bản. Ca từ chối không ghi gì: ảnh mâm lễ cũ của người đó, nếu có, còn nguyên.
+- **V2-2 (d, MA10-02 khi nhập).** Tệp tự mã hóa có ảnh mâm lễ 1601 × 100, bản ghi và byte khớp.
+  - Thay toàn bộ và Gộp → từ chối ở `open_backup`, kho không đổi.
+  - Tệp đối chứng có ảnh mâm lễ 1600 × 100 → nhận.
+  - Tệp có ảnh 1601 × 100 làm ảnh chân dung → nhận.
+  - Ngưỡng: 100 % ở cả hai bản.
+- **V2-3 (d, MA10-03 dọn sau Gộp).** Kho trên máy dựng bằng nhập tệp tự mã hóa A:
+  - 5e01: `photo_id` P0 và một tệp đính kèm báo tử F0 (PDF hợp lệ, tự dựng);
+  - 5e02: ảnh mâm lễ T0;
+  - 5e03 (đang sống): ảnh chân dung Q0.
+
+  Sau đó Gộp tệp B. Trong B, 5e01 và 5e02 có `rev` lớn hơn: 5e01 không có `photo_id`, không có tệp đính kèm; 5e02 có
+  ảnh mâm lễ T1. B không có 5e03.
+
+  Kỳ vọng sau Gộp:
+  - P0, F0, T0 không còn (bản ghi; ở Rust, cả tệp `photos/*.img`);
+  - T1 có, `sha256` bằng;
+  - Q0 **còn** (vẫn được dùng; không mất dữ liệu đang dùng);
+  - 0 bản ghi ảnh hoặc tệp đính kèm mà không hồ sơ nào trỏ tới; Rust 0 tệp `photos/*.img` thừa hoặc thiếu.
+
+  Thêm ca ngược: Gộp B vào kho mà 5e01 và 5e02 có `rev` **lớn hơn** B. Kỳ vọng: P0, F0, T0 còn; T1 không được thêm.
+
+  Ngưỡng: đúng hết, cả hai bản.
+- **V2-4 (e, `null` tường minh).**
+  - Nhập tệp có `"tray_photo_id": null` (Thay toàn bộ và Gộp) → nhận; tài liệu kho **không** có khóa `tray_photo_id`;
+    xuất lại → bản rõ không có chuỗi `tray_photo_id`.
+  - `save-person` với `"tray_photo_id": null` → bản đã lưu không có khóa.
+  - Ngưỡng: đúng hết, cả hai bản.
+- **V2-5 (g, tên `stage`).** Mọi lần `save-person` bị từ chối trong V2-0 và V2-1: `stage` giống nhau ở hai bản và thuộc
+  {`read_file`, `open`, `save_person`} (10 §3.3 mới). Ngưỡng g2 của §1 (0 khác biệt) giữ nguyên trên mọi ca của V2-0..V2-4.
+  Thêm g1: kịch bản `tray_photo` của hai bản giống nhau từng byte và bằng `expected-scenario.json` mới. Rust chạy trên
+  một thư mục làm việc có sẵn `keep/file.txt`; sau khi chạy, tệp đó phải còn nguyên và không có gì khác bị để lại
+  (10 §3.11 mới, MA10-01).
+
+Quy tắc kết luận vòng 2 (khóa trước):
+- (c): V2-0 phần c và V2-1 đúng hết → phía lõi đạt. (c) toàn phần vẫn **CHƯA ĐỦ BẰNG CHỨNG** vì thiếu bằng chứng nền
+  tảng, như §1. Một ca sai → KHÔNG ĐẠT.
+- (d): V2-0 phần d, V2-2, V2-3 đúng hết → ĐẠT. Một ca sai → KHÔNG ĐẠT.
+- (e): V2-0 phần e và V2-4 đúng hết → ĐẠT. Một ca sai → KHÔNG ĐẠT.
+- (g): g1 và V2-5 đúng hết, 0 khác biệt → ĐẠT. Một khác biệt → KHÔNG ĐẠT.
