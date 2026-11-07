@@ -1,0 +1,29 @@
+# cargo-deny cho workspace riêng apps/windows (S11; rà soát bảo mật BM2-09). Chạy trên CI: job "deps" của ci.yml.
+# Chỉ xét phụ thuộc thật sự vào bản Windows: crate chỉ dựng trên Linux (wayland-scanner, zbus/atspi của
+# accesskit_unix) không có trong LichViet.exe.
+#
+# Kết quả `cargo audit` trên Cargo.lock (mọi nền tảng, 2026-11-07): 2 lỗ hổng quick-xml 0.30.0 (RUSTSEC-2026-0194,
+# RUSTSEC-2026-0195) — chỉ vào qua zbus_xml ← zbus-lockstep ← atspi ← accesskit_unix (Linux); `cargo tree --target
+# x86_64-pc-windows-msvc -i quick-xml@0.30.0` không in gì. Không nâng được: zbus_xml 4.0.0 khóa quick-xml ^0.30 và
+# accesskit_unix đi theo Slint 1.8 (ghim). Với targets dưới đây cargo-deny không thấy chúng; nếu một bản Slint sau kéo
+# quick-xml vào bản Windows, job này đỏ.
+[graph]
+targets = ["x86_64-pc-windows-msvc", "aarch64-pc-windows-msvc"]
+all-features = false
+
+[advisories]
+yanked = "deny"
+unmaintained = "all"
+# Mỗi ngoại lệ: lý do + ngày xem lại. Đều là "không còn bảo trì" (không phải lỗ hổng), đều đến từ Slint 1.8.0 (ghim);
+# cách gỡ: nâng Slint ở đợt sau.
+ignore = [
+  { id = "RUSTSEC-2024-0436", reason = "paste: proc-macro, chỉ chạy lúc dựng (accesskit_windows, slint); không có trong mã chạy. Xem lại 2027-01" },
+  { id = "RUSTSEC-2026-0441", reason = "pin-utils: qua spin_on của slint-macros/slint-build, chỉ chạy lúc dựng. Xem lại 2027-01" },
+  { id = "RUSTSEC-2026-0206", reason = "rustybuzz 0.14: định hình chữ của Slint 1.8; chỉ đọc phông nhúng trong ứng dụng và phông hệ thống, không đọc dữ liệu từ người dùng hay mạng. Xem lại 2027-01" },
+  { id = "RUSTSEC-2026-0192", reason = "ttf-parser 0.21/0.25: đọc phông của Slint 1.8 (fontdb, fontdue); chỉ phông nhúng và phông hệ thống. Xem lại 2027-01" },
+]
+
+[bans]
+multiple-versions = "allow"
+wildcards = "deny"
+allow-wildcard-paths = true
