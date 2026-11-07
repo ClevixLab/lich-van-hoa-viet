@@ -1,6 +1,7 @@
 # Nội dung tưởng niệm — bản thiết kế ba kiểu mâm lễ
 
-Trạng thái: **BẢN THẢO của vai nội dung (B8), 2026-11-07 — chưa khóa, chờ duyệt thiết kế (docs/08 §6).**
+Trạng thái: **BẢN THẢO của vai nội dung (B8), 2026-11-07 — chưa khóa, chờ duyệt thiết kế (docs/08 §6).** Nội dung
+**mâm truyền thống đã được chủ dự án quyết** (YC-2026-09, 07/11/2026 11:24): ghép từ ảnh thật (§3).
 Tài liệu này là đầu vào cho vai giao diện các nền tảng; vai nội dung không sửa mã ứng dụng.
 
 Căn cứ:
@@ -8,30 +9,30 @@ Căn cứ:
   người dùng); trang nghiêm, không quảng cáo, không âm thanh; hình vẽ mới cho dự án."
 - 08 §3.9 (màn hình đang chạy), §6 (trợ năng), §11 (chọn kiểu mâm chưa có trên giao diện).
 - 04 R8 (khói, CPU, giảm chuyển động, không âm thanh, Công giáo không hương), R9 (biên bản nguồn phong tục).
-- Nguồn phong tục: `content/memorial/PHONG-TUC.md` (mã N1–N10). Bản mẫu hình: `content/memorial/mam-*.svg`.
+- 07 YC-2026-09: mâm truyền thống bằng ảnh thật; 01 §3.7 thêm `toi_gian`.
+- Nguồn phong tục: `content/memorial/PHONG-TUC.md` (mã N1–N10). Bản tạm hình vẽ: `content/memorial/mam-*.svg`.
+  Hướng dẫn chụp: `content/memorial/HUONG-DAN-CHUP-ANH-MAM.md`. Sổ giấy phép ảnh: `content/memorial/SOURCES.md` §1b.
 
-## 1. Ba kiểu và chỗ còn phải quyết
+## 1. Ba kiểu
 
-| Kiểu trong tài liệu này | Tệp mẫu | Giá trị `tray_style` (01 §3.7) |
+| Kiểu | Hình | Giá trị `tray_style` (01 §3.7) |
 |---|---|---|
-| 1. Truyền thống (đơn giản, như bản đang chạy) | `mam-truyen-thong.svg` | `truyen_thong` (mặc định) |
-| 2. Chay (thiên về Phật giáo) | `mam-chay.svg` | `phat_giao` |
-| 3. Tối giản hiện đại | `mam-toi-gian.svg` | **chưa có** — xem câu hỏi Q-1 |
+| 1. Truyền thống — mâm cơm cúng | **Ảnh thật ghép** (§3); bản tạm `mam-truyen-thong.svg` | `truyen_thong` (mặc định) |
+| 2. Chay (thiên về Phật giáo) | Bản tạm hình vẽ `mam-chay.svg` | `phat_giao` |
+| 3. Tối giản hiện đại | Bản tạm hình vẽ `mam-toi-gian.svg` | `toi_gian` (Bổ sung YC-2026-09) |
 
-**Q-1 (cho điều phối viên và chủ dự án).** Mô hình 01 §3.7 đã khóa ba giá trị `phat_giao`, `truyen_thong`,
-`cong_giao`. Kiểu "tối giản hiện đại" không trùng giá trị nào. Hai cách:
-- **(A) Đề xuất:** thêm giá trị `toi_gian` bằng một Bổ sung cho 01 và lược đồ JSON. Cần tính B5 (R14): bản cũ đọc tệp
-  sao lưu có `toi_gian` phải không mất dữ liệu (ví dụ coi như `truyen_thong` khi hiển thị nhưng giữ nguyên giá trị).
-- (B) Không thêm giá trị; kiểu tối giản chỉ là một cách vẽ khác của `truyen_thong`, chọn theo cài đặt hiển thị của máy
-  (không vào sao lưu).
-- **Không** dùng kiểu tối giản thay cho `cong_giao`: Công giáo là lựa chọn tôn giáo, không phải phong cách. Hồ sơ
-  `cong_giao` tiếp tục được vẽ như 08 §3.9 (hai nến và hoa, không bát hương, không khói; R8 (f)).
+**Q-1 — đã quyết (07/11/2026):** thêm `toi_gian` vào 01 §3.7 (phương án A). Kiểu tối giản **không** thay cho
+`cong_giao`: Công giáo là lựa chọn tôn giáo, không phải phong cách; hồ sơ `cong_giao` tiếp tục được vẽ như 08 §3.9
+(hai nến và hoa, không bát hương, không khói; R8 (f)).
 
-Mặc định nếu chưa trả lời: giữ một kiểu `truyen_thong` như hiện nay; hai kiểu còn lại chờ Q-1.
+**Q-2 (mở, cho chủ dự án):** kiểu 2 và kiểu 3 cũng dùng ảnh thật như kiểu 1, hay giữ hình vẽ? Mặc định: giữ hình vẽ
+làm bản tạm, không phát hành hai kiểu này cho tới khi chủ dự án trả lời. Nếu dùng ảnh thật, áp dụng nguyên §3.3–§3.5
+và hướng dẫn chụp.
 
 ## 2. Quy tắc chung cho cả ba kiểu
 
-**Bố cục.** Mâm nằm dưới bia, trên lời tưởng niệm (08 §3.9). Khung vẽ 360 × 200 đơn vị (tỉ lệ 9 : 5). Ở 360 px
+**Bố cục.** Mâm nằm dưới bia, trên lời tưởng niệm (08 §3.9). Khung vẽ 360 × 200 đơn vị (tỉ lệ 9 : 5) cho kiểu 2, 3;
+khung ảnh ghép 360 × 270 cho kiểu 1 (§3.2). Ở 360 px
 khung rộng bằng bia (80 % màn hình); ở 1280 px rộng 360 px, căn giữa. Bát hương luôn ở **chính giữa** [N9] "đặt lư
 hương bằng đồng (bát hương) ở chính giữa"; hai nến ở hai đầu [N9] "Hai chân nến ở hai bên". Đồ vật xếp một hàng trên
 mặt bàn, không chồng lên nhau trừ chén nước đặt trước bát hương [N2].
@@ -52,7 +53,8 @@ hương (`incense = false`, `cong_giao`) thì không có khói.
 - Toàn bộ mâm là **một** hình có nhãn (`role="img"` + `aria-label` hoặc `<title>`/`<desc>`), các phần bên trong ẩn với
   trình đọc màn hình. Nhãn theo §3–§5 ("Mô tả cho trình đọc màn hình"). Nhãn **không** có tên người, không có thông tin
   báo tử.
-- Tương phản đồ họa (WCAG 1.4.11, ≥ 3:1 với nền `#3a1a14` ở giữa khung): các hình nhận biết được nhờ phần sáng (ngọn
+- Tương phản đồ họa (WCAG 1.4.11, ≥ 3:1 với nền `#3a1a14` ở giữa khung; áp cho hình vẽ — với ảnh thật, kiểm bằng mắt
+  trên ảnh chụp màn hình rằng mép đồ vật tách khỏi nền tối, thêm viền sáng mờ 1 điểm nếu cần): các hình nhận biết được nhờ phần sáng (ngọn
   lửa, đồng, hoa, đồ sứ trắng). Bảng đo ở §6. Ba chỗ dưới 3:1 cần sửa khi cài: thân nến đỏ, chân hương, bình xanh của
   kiểu 1 (§6).
 - Không truyền thông tin chỉ bằng màu; mâm là trang trí, mọi thông tin (ngày giỗ, tuổi) đã có bằng chữ trên bia.
@@ -62,41 +64,192 @@ hương (`incense = false`, `cong_giao`) thì không có khói.
 - Quảng cáo, liên kết mua hàng, nút chia sẻ mạng xã hội, âm thanh, video, rung (05 §1, R8 (e)).
 - Thông tin báo tử: người báo tin, nơi mất, lý do, ảnh giấy báo tử, ghi chú báo tử (R-PRIV-2, 08 §12g).
 - Tên người trong tiêu đề tab, URL, tên tệp (08 §3.9, S4').
-- Món mặn vẽ thật (gà, đầu lợn, thịt) — dễ thô ở cỡ nhỏ; mâm cỗ mặn được gợi bằng đĩa quả (và đĩa xôi nếu thêm).
+- Món mặn ở dạng **hình vẽ** (dễ thô ở cỡ nhỏ). Món mặn chỉ xuất hiện ở kiểu 1, bằng **ảnh thật** (§3, YC-2026-09).
+- Ảnh giả: ảnh do máy hay trí tuệ nhân tạo tạo ra, ảnh dựng 3D; ảnh không kiểm được giấy phép.
 - Vàng mã, tiền giấy, bùa chú; hình đầu lâu, ma quỷ, máu; mặt cười hay mắt mũi trên đồ vật (kể cả vô tình — xem §7).
 - Biểu tượng tôn giáo người dùng không chọn: tượng Phật, chữ Vạn, thánh giá, tràng hạt. Kiểu 2 chỉ "thiên về" Phật
   giáo qua đồ cúng chay và hoa sen, không vẽ tượng hay chữ.
 - Hiệu ứng lửa cháy lớn, pháo, hiệu ứng lấp lánh, chữ chạy.
 - Chữ Hán-Việt cổ ("Hiển khảo"…) (quyết định của chủ dự án, PHONG-TUC §1).
 
-## 3. Kiểu 1 — Truyền thống (đơn giản)
+## 3. Kiểu 1 — Truyền thống: mâm cơm cúng ghép từ ảnh thật (YC-2026-09, chủ dự án quyết)
 
-Tệp mẫu: `content/memorial/mam-truyen-thong.svg`. Giữ đúng bố cục của bản đang chạy (`pwa/src/people/memorial.ts`),
-thêm **bát nước trong** trước bát hương.
+**Lời chủ dự án (07/11/2026, 11:24, nguyên văn):** "truyền thống của người việt nam mâm cơm cúng sẽ có bát cơm quả
+chứng luộc, một khoanh giò, một con gà luộc, một đĩa xôi, một đĩa hoa quả tổng hợp, và thắp 3 nén nhang trên một bát
+hương đã có rất nhiều nén hương đã cháy hết và đậu tàn cong đẹp. Lọ hoa thì có thể là hoa ly hoặc hoa cúc vàng. Nên
+là hình ảnh các thứ đều thật, chỉ là phối cảnh thành một mâm cơm cúng chứ đừng lấy ảnh giả"
 
-**Đồ vật, từ trái sang phải**
+Hệ quả:
+- Mâm truyền thống là **ảnh ghép (phối cảnh) từ ảnh chụp thật** của từng món. **Không** hình vẽ, **không** ảnh tạo
+  bằng máy: ảnh do trí tuệ nhân tạo sinh ra, ảnh dựng 3D, ảnh "tổng hợp" đều là **ảnh giả** và bị cấm. Không dùng thao
+  tác "lấp đầy / vẽ thêm bằng máy" khi xử lý ảnh. Được phép: cắt nền, chỉnh sáng, cân màu, thu phóng, xoay nhẹ, ghép
+  lớp, giữ bóng thật tách từ ảnh.
+- Nguồn ảnh: ưu tiên ảnh do chủ dự án và cộng sự tự chụp theo `content/memorial/HUONG-DAN-CHUP-ANH-MAM.md`. Chấp nhận
+  ảnh thật có giấy phép thoáng (phạm vi công cộng / CC0, hoặc CC BY có ghi công) **đã kiểm trên trang nguồn**. Ảnh nào
+  không kiểm được giấy phép thì không dùng. Mỗi ảnh một dòng trong sổ giấy phép (`content/memorial/SOURCES.md` §1b).
+- Cho tới khi có ảnh thật được duyệt, ứng dụng dùng hình vẽ `mam-truyen-thong.svg` làm **bản tạm** (đã ghi rõ trong tệp).
 
-| Vị trí (x) | Đồ vật | Nguồn |
-|---|---|---|
-| 38 | Nến đỏ trên chân đồng | [N9] "Hai chân nến ở hai bên."; [N2] "hai cây đèn tượng trưng cho mặt trời mặt trăng" |
-| 104 | Đĩa quả trên chân đỏ: một quả bưởi xanh, bốn quả cam/quýt | [N9] "Trái cây tươi là lễ vật dâng hằng ngày phổ biến nhất."; [N2] "hai cái đĩa để đặt hoa quả lễ" (vẽ một đĩa — giản lược) |
-| 180 | Bát hương đồng, ba nén hương, khói nhẹ | [N9] bát hương ở chính giữa; [N3] ba nén |
-| 180 (phía trước) | Bát nước trong | [N2] "đặt phía trước bát hương là một bát nước trong" |
-| 256 | Bình hoa cúc vàng | [N9] "Hoa tươi, thường là cúc vạn thọ hoặc hoa huệ, đặt ở một bên." |
-| 322 | Nến đỏ trên chân đồng | như trên |
+### 3.1 Đồ vật
 
-Tùy chọn khi cài (không bắt buộc): một đĩa xôi nhỏ (khối tròn màu `#efe6d6`/`#f2d27a`) giữa đĩa quả và bát hương, gợi
-mâm cỗ [N9] "Xôi, gà luộc và các món thịt heo là phổ biến." Chỉ vẽ xôi, không vẽ món thịt (§2).
+| Mã tệp | Đồ vật | Ghi chú | Nguồn |
+|---|---|---|---|
+| `bat-com-trung` | Bát cơm trắng, trên có một quả trứng luộc bóc vỏ | Bát sứ trắng hoặc men lam, không chữ, không hoa văn hãng | Chủ dự án (YC-2026-09) |
+| `khoanh-gio` | Một khoanh giò lụa (cắt dày, thấy rõ mặt cắt), đặt trên đĩa nhỏ hoặc trên lá chuối | Còn viền lá chuối quanh khoanh giò thì đẹp hơn | Chủ dự án; [N9] "các món thịt heo là phổ biến" |
+| `ga-luoc` | Một con gà luộc nguyên con, da vàng, đặt trên đĩa | Gà đặt ngửa đầu hướng lên (cách bày thường gặp); "gà ngậm hoa" **chưa kiểm chứng** — chỉ làm nếu chủ dự án muốn | Chủ dự án; [N9] "Xôi, gà luộc …" |
+| `dia-xoi` | Một đĩa xôi (xôi trắng, xôi gấc hoặc xôi đỗ), nặn tròn hoặc úp bát | | Chủ dự án; [N9] |
+| `dia-hoa-qua` | Đĩa (hoặc mâm bồng) hoa quả tổng hợp: chuối, bưởi, cam, táo, nho… | Quả tươi, không nhãn dán | Chủ dự án; [N9] "Trái cây tươi là lễ vật dâng hằng ngày phổ biến nhất." |
+| `bat-huong` | Bát hương **có rất nhiều chân hương đã cháy hết**, tàn hương cong đẹp, **ba nén đang cháy** | Bát sứ hoặc đồng; đốm lửa đầu hương thấy rõ | Chủ dự án; [N3] ba nén |
+| `bat-huong-khong-thap` | Cùng bát hương, chưa thắp ba nén mới | Dùng khi `incense = false` | — |
+| `lo-hoa` | Lọ hoa ly **hoặc** cúc vàng (chủ dự án chọn một khi duyệt ảnh) | Hoa tươi, không héo | Chủ dự án; [N9] "Hoa tươi, thường là cúc vạn thọ hoặc hoa huệ" |
+| `nen-trai`, `nen-phai` | Hai cây nến đỏ trên chân nến đồng, đang cháy | Hai ảnh riêng (không lật gương một ảnh — sai hướng sáng) | [N9] "Hai chân nến ở hai bên."; [N2] |
+| `chen-nuoc` | Chén nước trong | Đặt trên bàn, bên phải phía trước bát hương | [N2] "đặt phía trước bát hương là một bát nước trong" |
+| `mam` | Mâm tròn (gỗ sơn, đồng hoặc nhôm) đựng các món mặn | Mâm trống, chụp riêng | — |
+| `mat-ban` | Mặt bàn thờ gỗ (một dải ảnh gỗ thật) | Không bắt buộc; nếu không có thì để nền tối của màn hình | — |
 
-**Màu:** nến `#c4161c`/`#8f1416` (biến `--red`, `--red-deep`), ngọn lửa `#ffd27a` + lõi `#ff8a3a`; chân nến và bát
-hương dải đồng `#8a5e0c → #e8c67a`; đĩa quả chân `#8f1416`, mặt `#c99a4a`; bưởi `#7fae3e`, cam `#e8892b`/`#f0a23a`;
-hoa `#f2b632`, nhụy `#c98a12`, lá `#4f7a3a`; bình `#2f5d8a` (đề xuất đổi `#5a8cc0`, §6); chén nước `#efe6d6`, mặt
-nước `#bcd3dc`; chân hương `#7a5a3a` (đề xuất `#a8845a`), phần đỏ `#a3271b`, đầu hương `#ff8a3a`.
+Nền phía sau là nền màu tối ấm của màn hình tưởng niệm (CSS, 08 §3.9) — nền màu của giao diện, không phải hình vẽ đồ
+vật.
 
-**Mô tả cho trình đọc màn hình:** "Bàn thờ: hai cây nến, đĩa quả, bát hương có ba nén hương, bát nước trong, bình hoa
-cúc." (`incense = false`: bỏ "có ba nén hương".)
+### 3.2 Bố cục (phối cảnh)
 
-**Riêng kiểu này không hiện:** món mặn vẽ thật; hoa đặt giữa thay cho bát hương.
+Khung ghép: **360 × 270 điểm CSS** (tỉ lệ 4 : 3); bản 3× là 1080 × 810 điểm ảnh. Khói được phép tràn lên trên khung
+tới 40 điểm (vùng trong suốt). Ở 360 px khung rộng bằng bia; ở 1280 px rộng 360 px, căn giữa (như 08 §7).
+
+```
+ y=0  ┌──────────────────────────────────────────────┐   (khói tràn lên trên)
+      │                 ~ ~ ~                         │
+      │                 │ │ │       ✿✿ lọ hoa         │
+      │   🕯            │ │ │       ✿✿                │   🕯
+      │  nến     đĩa    ╲▁▁╱      chén   ║            │  nến
+ y=165│  trái   hoa quả bát hương  nước  lọ          │  phải   ← hàng sau, trên mặt bàn
+      │      ╭──────────── mâm ─────────────╮         │
+      │      │ đĩa xôi    gà luộc    bát cơm │         │
+      │      │        khoanh giò     + trứng │         │
+ y=235│      ╰──────────────────────────────╯         │   ← hàng trước, trên mâm
+ y=270└──────────────────────────────────────────────┘
+```
+
+| Lớp (sau → trước) | Đồ vật | Tâm x | Chân (đáy) y | Rộng xấp xỉ |
+|---|---|---|---|---|
+| 0 | `mat-ban` | 180 | 175 (mép trước) | 360 |
+| 1 | `nen-trai`, `nen-phai` | 28, 332 | 165 | 22 |
+| 2 | `dia-hoa-qua` | 92 | 165 | 80 |
+| 3 | `bat-huong` | 180 | 165 | 62 |
+| 4 | `chen-nuoc` | 222 | 168 | 20 |
+| 5 | `lo-hoa` | 272 | 165 | 70 |
+| 6 | `mam` | 180 | 250 | 230 |
+| 7 | `ga-luoc` | 180 | 222 | 110 |
+| 8 | `dia-xoi` | 112 | 232 | 72 |
+| 9 | `bat-com-trung` | 248 | 232 | 48 |
+| 10 | `khoanh-gio` | 160 | 246 | 44 |
+
+Bát hương ở **chính giữa** hàng sau [N9]; mâm ở chính giữa phía trước. Con số là điểm xuất phát; vai ghép được xê
+dịch ± 10 điểm để không che nhau quá nhiều, nhưng **bát hương và ba nén hương không bị món nào che**.
+
+**Tỉ lệ thật.** Lấy chung một thước: hàng trước khoảng **4,4 điểm CSS / cm**, hàng sau nhỏ hơn khoảng 15 % (xa máy
+hơn, ≈ 3,8 điểm / cm). Kích thước thật để đối chiếu (đo lúc chụp, ghi vào sổ): mâm Ø 50 cm; gà dài 25–30 cm; đĩa xôi
+Ø 16–20 cm; bát cơm Ø 11 cm; khoanh giò Ø 9–10 cm; bát hương Ø 15–18 cm; nến cao 20–25 cm; lọ hoa cả hoa 45–55 cm. Mỗi
+món có một ảnh kèm thước dây (HUONG-DAN §4) để ghép đúng tỉ lệ.
+
+### 3.3 Góc máy, ánh sáng, màu, bóng — phải **giống nhau ở mọi ảnh**
+
+- **Góc máy:** chụp từ phía trước, lệch sang trái khoảng 15–20° (góc 3/4 phía trước), **hơi từ trên xuống 25–35°**.
+  Mọi món cùng một góc, nếu không miệng bát, mặt mâm sẽ có độ dẹt khác nhau và ảnh ghép trông giả.
+- **Ống kính:** ống chính 1× hoặc tele 2–3×, **không** dùng ống góc rộng 0,5× (méo hình). Khoảng cách 1–1,5 m.
+- **Ánh sáng:** ánh sáng cửa sổ (trời râm hoặc qua rèm mỏng) **từ bên trái**, chếch khoảng 45° từ trên xuống; một tấm
+  bìa trắng bên phải để đỡ bóng. **Không đèn flash**, không bật đèn trần màu vàng lẫn với ánh sáng cửa sổ.
+- **Nhiệt độ màu:** ánh sáng ban ngày 5000–5600 K, khóa cân bằng trắng (hoặc chụp kèm thẻ xám/tờ giấy trắng để chỉnh
+  về cùng một màu). Khi ghép, đưa mọi lớp về cùng một màu rồi phủ chung một lớp ấm nhẹ (khoảng +300 K) cho hợp nền tối
+  ấm; không chỉnh từng món một kiểu.
+- **Bóng:** bóng đổ về phía **phải – sau** (ngược hướng sáng). Ưu tiên **bóng thật** tách từ ảnh chụp trên nền trơn
+  (một lớp bóng riêng, chế độ hòa trộn nhân). Nếu không tách được, dùng một bóng tiếp xúc mờ (hình elip mờ, độ đậm
+  ≤ 30 %) ngay dưới đáy đồ vật — đây là kỹ thuật ghép, không vẽ thêm đồ vật.
+- **Độ nét:** mọi món nét toàn bộ (khép khẩu hoặc không dùng chế độ xóa phông / chân dung, vì chế độ này làm mờ mép
+  sai và khó cắt nền).
+
+### 3.4 Khói hương trên ảnh thật
+
+- Ảnh `bat-huong` chụp lúc khói **mỏng** (hoặc chọn khung hình ít khói) để khói động không chồng lên khói thật.
+- Tệp kê khai (§3.6) ghi tọa độ **ba đầu hương** (x, y trên ảnh gốc). Ứng dụng đặt ba vệt khói CSS nhỏ đúng ở ba đầu
+  hương: rộng 6–10 điểm, cao 40–60 điểm, màu `#e9e4dc`, độ đậm 0,10–0,18, mờ biên; mỗi vệt 6–9 giây, lệch pha nhau.
+  Không dùng `requestAnimationFrame` (R8). Đốm lửa đầu hương là ảnh thật, **không** nhấp nháy.
+- Khói tự dừng sau 2 phút, dừng khi trang ẩn (R8). `prefers-reduced-motion: reduce` → khói **đứng yên** (một vệt mờ
+  tĩnh, độ đậm 0,12) ngay từ đầu.
+- `incense = false` → dùng ảnh `bat-huong-khong-thap`, không có khói.
+- Lưu ý để chủ dự án xác nhận: vệt khói động là **hiệu ứng** của giao diện (05 §1 "ba nén hương có khói nhẹ"), không
+  phải ảnh đồ vật. Nếu chủ dự án muốn khói cũng phải "thật", phương án thay thế là để khói thật trong ảnh và **bỏ** hiệu
+  ứng động.
+
+### 3.5 Quy cách tệp ảnh
+
+**Bản gốc (master)** cho từng món: PNG nền trong suốt, hệ màu sRGB, **cạnh dài ≥ 2000 điểm ảnh**, mép cắt sạch (không
+viền trắng), đã **xóa siêu dữ liệu** (EXIF, GPS, tên máy). Bản gốc chưa cắt (JPEG/HEIC/RAW từ điện thoại) cũng được giữ.
+Bản gốc **không** đưa vào kho mã (nặng); lưu ở kho ảnh của chủ dự án, ghi đường dẫn và mã băm SHA-256 trong sổ giấy
+phép.
+
+**Bản phát hành:** WebP có kênh trong suốt, ba mật độ **1×, 2×, 3×** theo bề rộng hiển thị ở §3.2 (ví dụ `ga-luoc`
+rộng 110 điểm CSS → 110, 220, 330 điểm ảnh). Chất lượng 75–82, kênh trong suốt chất lượng ≥ 90, không siêu dữ liệu.
+Tên tệp: `mam-tt-<mã>@1x.webp`, `@2x`, `@3x`.
+
+**Ngân sách:** toàn bộ ảnh mâm truyền thống, **cả ba mật độ cộng lại, ≤ 600 KB cho mỗi nền tảng**. Phân bổ gợi ý
+(tổng 1× + 2× + 3× của từng món):
+
+| Mã | KB | Mã | KB |
+|---|---|---|---|
+| `ga-luoc` | 90 | `dia-xoi` | 40 |
+| `bat-huong` | 80 | `bat-com-trung` | 35 |
+| `bat-huong-khong-thap` | 45 | `khoanh-gio` | 25 |
+| `lo-hoa` | 70 | `mam` | 40 |
+| `dia-hoa-qua` | 70 | `nen-trai` + `nen-phai` | 50 |
+| `chen-nuoc` | 15 | `mat-ban` | 30 |
+| | | **Tổng** | **590** |
+
+**Tải lười, không ảnh hưởng lần tải đầu:**
+- PWA: ảnh ở thư mục riêng của mô-đun tưởng niệm, chỉ tải khi mở `#/nguoi-than/tuong-niem/<id>` (`<img srcset>` hoặc
+  `image-set`, `decoding="async"`); **không** nằm trong danh sách tải trước của service worker lúc cài; lưu bộ nhớ đệm
+  sau lần xem đầu để dùng ngoại tuyến. Kiểm thử P3/P6: lần tải đầu có **0 byte** ảnh mâm. Ảnh cùng nguồn gốc nên CSP
+  `img-src 'self'` không đổi.
+- Android: `drawable-mdpi` (1×), `drawable-xhdpi` (2×), `drawable-xxhdpi` (3×). iPhone/iPad/Mac: danh mục tài nguyên
+  `@1x`/`@2x`/`@3x`. Windows: `scale-100`/`scale-200`/`scale-300`. Bản cài đóng gói sẵn ảnh (không tải mạng, R7) và
+  chỉ giải mã khi mở màn hình tưởng niệm.
+
+### 3.6 Tệp kê khai ghép
+
+Khi có ảnh, vai nội dung thêm `content/memorial/anh/mam-truyen-thong.json`: với mỗi lớp ghi mã, tên tệp, thứ tự lớp,
+tâm x, chân y, bề rộng (điểm CSS theo §3.2), và với `bat-huong` thêm `incense_tips: [[x, y], [x, y], [x, y]]` (điểm
+CSS trong khung). Bốn nền tảng đọc chung tệp này để ghép giống nhau.
+
+### 3.7 Lời mô tả (alt) từng món
+
+| Mã | Lời mô tả |
+|---|---|
+| `bat-com-trung` | "Bát cơm trắng, trên có quả trứng luộc" |
+| `khoanh-gio` | "Khoanh giò lụa" |
+| `ga-luoc` | "Gà luộc nguyên con trên đĩa" |
+| `dia-xoi` | "Đĩa xôi" |
+| `dia-hoa-qua` | "Đĩa hoa quả" |
+| `bat-huong` | "Bát hương nhiều chân hương, ba nén hương đang cháy" |
+| `bat-huong-khong-thap` | "Bát hương" |
+| `lo-hoa` | "Lọ hoa ly" hoặc "Lọ hoa cúc vàng" (theo ảnh được chọn) |
+| `nen-trai`, `nen-phai` | "Cây nến đang cháy" |
+| `chen-nuoc` | "Chén nước trong" |
+| `mam` | "Mâm cúng" |
+| `mat-ban` | "" (trang trí, bỏ qua) |
+
+Cả mâm vẫn là **một** hình với một nhãn chung (§2 Trợ năng): "Mâm cơm cúng: bát cơm có trứng luộc, khoanh giò, gà
+luộc, đĩa xôi, đĩa hoa quả; bát hương với ba nén hương đang cháy; lọ hoa; hai cây nến; chén nước." Lời mô tả từng món
+dùng khi một nền tảng hiển thị các lớp như hình riêng có thể đọc được; khi đó nhãn chung ở khung, từng lớp mang lời mô
+tả của mình.
+
+### 3.8 Riêng kiểu này không hiện
+
+- Hình vẽ, ảnh do máy tạo ra, ảnh dựng 3D; ảnh mẫu có hình mờ (watermark); ảnh lấy trên mạng không rõ giấy phép.
+- Người, tay, mặt, đồ dùng có chữ hoặc logo hãng, nhãn giá, túi ni lông, màng bọc thực phẩm, đũa nhựa, điện thoại, phản
+  chiếu người chụp trên đồ đồng.
+- Thịt sống, máu, món cháy, đồ ăn bị cắn dở; hoa héo, quả dập.
+- Lật gương ảnh để làm cặp nến (sai hướng sáng).
+
+Hình vẽ kiểu 1 trước đây (bố cục, màu ở bản tạm SVG) giữ nguyên trong `mam-truyen-thong.svg` cho tới khi có ảnh.
+Màu nền, đồng và chữ bia vẫn theo §2 và §6.
 
 ## 4. Kiểu 2 — Chay (thiên về Phật giáo)
 
@@ -180,7 +333,7 @@ Nền: `#5a2a1e` (phần sáng nhất, trên cùng), `#3a1a14` (giữa, nơi đ�
 nến đỏ giữ `#c4161c` nhưng thêm viền 1 px `#e8c67a` hai bên, hoặc đổi `#e04a3c` (3,90). Chữ bia `#e8c67a` trên đá
 `#2b2422`: 9,28 : 1 (khớp 08 §6).
 
-## 7. Ảnh bản mẫu và những gì đã sửa sau khi xem
+## 7. Bản tạm hình vẽ và những gì đã sửa sau khi xem
 
 Bản mẫu được dựng ra PNG bằng Chromium (Playwright có sẵn), cỡ 1080 × 600, rồi xem bằng mắt:
 - Kiểu 1, bản đầu: đường trang trí trên bình hoa trông như **một khuôn mặt cười** → đổi thành hai đường viền ngang.
@@ -195,8 +348,11 @@ Bản mẫu được dựng ra PNG bằng Chromium (Playwright có sẵn), cỡ 
 ## 8. Việc cho vai giao diện (khi Q-1 đã có trả lời)
 
 1. Thêm lựa chọn "Kiểu mâm" vào nhóm "Tưởng niệm" của biểu mẫu người đã mất (08 §3.4): ba nút có hình nhỏ và chữ
-   "Truyền thống", "Mâm chay", "Tối giản"; giữ `cong_giao` từ sao lưu như hiện nay.
-2. Vẽ theo các tệp mẫu; mọi tệp hình mới thêm dòng vào `content/memorial/SOURCES.md` (R8 phần "Nội dung").
-3. Kiểm thử khói: R8 (a)–(f) cho từng kiểu; ảnh chụp 360/1280 px, sáng/tối, mỗi kiểu một ảnh, và một ảnh
+   "Truyền thống", "Mâm chay", "Tối giản"; giữ `cong_giao` từ sao lưu như hiện nay. Lược đồ và kiểm tra dữ liệu nhận
+   `toi_gian` (01 Bổ sung YC-2026-09).
+2. Kiểu 1: ghép ảnh theo §3 và tệp kê khai §3.6; dùng bản tạm SVG cho tới khi ảnh được duyệt; đo ngân sách 600 KB và
+   kiểm 0 byte ảnh mâm ở lần tải đầu.
+3. Kiểu 2, 3 vẽ theo các tệp mẫu (bản tạm, chờ Q-2); mọi tệp hình mới thêm dòng vào `content/memorial/SOURCES.md` (R8 phần "Nội dung").
+4. Kiểm thử khói: R8 (a)–(f) cho từng kiểu; ảnh chụp 360/1280 px, sáng/tối, mỗi kiểu một ảnh, và một ảnh
    `prefers-reduced-motion`.
-4. Sửa ba màu dưới 3 : 1 ở §6.
+5. Sửa ba màu dưới 3 : 1 ở §6 (cho hình vẽ).
