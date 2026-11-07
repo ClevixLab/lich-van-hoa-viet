@@ -17,7 +17,10 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.unit.Density
 import androidx.test.core.app.ApplicationProvider
 import com.github.takahirom.roborazzi.ExperimentalRoborazziApi
@@ -54,8 +57,14 @@ class PeopleScreensTest {
     @get:Rule val rule = createComposeRule()
 
     private enum class V(val suffix: String, val mode: ThemeMode, val scale: Float) {
-        Light("light", ThemeMode.Light, 1f), Dark("dark", ThemeMode.Dark, 1f), Large("large", ThemeMode.Light, 1.3f)
+        Light("light", ThemeMode.Light, 1f), Dark("dark", ThemeMode.Dark, 1f), Large("large", ThemeMode.Light, 1.3f),
+        XLarge("xlarge", ThemeMode.Light, 2f),
     }
+
+    private val std = listOf(V.Light, V.Dark, V.Large)
+    private val withXl = listOf(V.Light, V.Dark, V.Large, V.XLarge)
+    /** Số lần mô-đun báo "đã ghi" (→ đặt lại chuỗi báo thức trong ứng dụng thật). */
+    private var changes = 0
 
     private lateinit var repo: PeopleRepo
     private lateinit var ids: Seed.Ids
@@ -70,13 +79,13 @@ class PeopleScreensTest {
         ids = Seed.family(repo)
     }
 
-    private fun show(r: PeopleRepo? = repo, start: PRoute = PRoute.Upcoming) {
+    private fun show(r: PeopleRepo? = repo, start: PRoute = PRoute.Upcoming, reduced: Boolean = true) {
         nav.tab(start)
         rule.setContent {
             val d = LocalDensity.current
             CompositionLocalProvider(LocalDensity provides Density(d.density, d.fontScale * variant.scale)) {
                 LichTheme(variant.mode, 1f) {
-                    PeopleModule(r, "Dữ liệu được tạo bởi phiên bản mới hơn — hãy cập nhật ứng dụng", Seed.TODAY, nav, {}, reducedMotion = true)
+                    PeopleModule(r, "Dữ liệu được tạo bởi phiên bản mới hơn — hãy cập nhật ứng dụng", Seed.TODAY, nav, { changes++ }, reducedMotion = reduced)
                 }
             }
         }
@@ -84,8 +93,8 @@ class PeopleScreensTest {
     }
 
     /** Chụp trang hiện tại ở ba biến thể. [prep] chạy sau mỗi lần đổi biến thể (mở hộp thoại, cuộn…). */
-    private fun shoot(name: String, screen: Boolean = false, prep: () -> Unit = {}) {
-        for (v in V.entries) {
+    private fun shoot(name: String, screen: Boolean = false, variants: List<V> = std, prep: () -> Unit = {}) {
+        for (v in variants) {
             variant = v
             rule.waitForIdle()
             prep()
@@ -107,13 +116,13 @@ class PeopleScreensTest {
         shoot("01-sap-toi")
         go(PRoute.Period)
         rule.runOnIdle { nav.tab(PRoute.Period) }
-        shoot("02-theo-ky-thang")
+        shoot("02-theo-ky-thang", variants = withXl)
         rule.onNodeWithText("Quý").performClick()
-        shoot("03-theo-ky-quy")
+        shoot("03-theo-ky-quy", variants = withXl)
         rule.onNodeWithText("Người đã mất").performClick()
-        shoot("04-theo-ky-da-mat")
+        shoot("04-theo-ky-da-mat", variants = withXl)
         rule.runOnIdle { nav.tab(PRoute.Profiles) }
-        shoot("05-ho-so")
+        shoot("05-ho-so", variants = withXl)
         rule.runOnIdle { nav.tab(PRoute.Backup) }
         shoot("06-sao-luu")
         rule.runOnIdle { nav.go(PRoute.Settings) }
@@ -304,6 +313,230 @@ class PeopleScreensTest {
     }
 
     private fun assertNull(v: Any?) = org.junit.Assert.assertNull(v)
+
+    // ---------------------------------------------------------------------------------------------
+    // Vòng duyệt thiết kế native (TKN-A-*) và duyệt mã (MA3N-24-*)
+    // ---------------------------------------------------------------------------------------------
+
+    private fun click(text: String, index: Int = 0) {
+        val n = rule.onAllNodesWithText(text)[index]
+        runCatching { n.performScrollTo() }
+        n.performClick()
+        rule.waitForIdle()
+    }
+
+    /** TKN-A-02: ô ngày âm, tháng nhuận, kết quả đổi lịch — chụp **cả** biểu mẫu (khung nhìn cao). */
+    @Test
+    @Config(qualifiers = "w360dp-h3200dp-xhdpi")
+    fun screenshotsFullFormsLunar() {
+        show(start = PRoute.Profiles)
+        go(PRoute.AddPerson(true))
+        field("Họ và tên *").performTextInput("Trần Thị Bình")
+        click("Nhập theo âm lịch", 0)
+        field("Ngày").performTextInput("15")
+        field("Tháng").performTextInput("6")
+        field("Năm").performTextInput("2025")
+        click("Tháng nhuận (năm 2025 nhuận tháng 6)")
+        rule.onNodeWithText("Dương lịch: Thứ Sáu, 08/08/2025").assertExists()
+        shoot("25-them-da-mat-am-nhuan")
+        // Năm không có tháng nhuận: hộp ẩn, có câu giải thích; "Không rõ năm mất".
+        field("Năm").performTextClearance()
+        field("Năm").performTextInput("2026")
+        rule.onNodeWithText("Năm 2026 không có tháng nhuận").assertExists()
+        shoot("26-am-khong-nhuan")
+        click("Không rõ năm mất")
+        rule.onNodeWithText("Không rõ năm: vẫn nhắc giỗ hằng năm", substring = true).assertExists()
+        shoot("27-am-khong-ro-nam")
+    }
+
+    @Test
+    @Config(qualifiers = "w360dp-h3200dp-xhdpi")
+    fun screenshotsFullFormsSolarAndErrors() {
+        show(start = PRoute.Profiles)
+        go(PRoute.AddPerson(true))
+        field("Ngày").performTextInput("8")
+        field("Tháng").performTextInput("8")
+        field("Năm").performTextInput("2025")
+        rule.onNodeWithText("Âm lịch: 15/6 nhuận năm Ất Tỵ (2025)").assertExists()
+        shoot("28-them-da-mat-duong-ket-qua")
+        // Lỗi: ngày không tồn tại + họ tên trống → chữ đỏ dưới ô và khung "Còn n chỗ cần sửa".
+        field("Ngày").performTextClearance(); field("Ngày").performTextInput("30")
+        field("Tháng").performTextClearance(); field("Tháng").performTextInput("2")
+        field("Năm").performTextClearance(); field("Năm").performTextInput("2026")
+        click("Lưu")
+        rule.onNodeWithText("Còn 2 chỗ cần sửa", substring = true).assertExists()
+        assertEquals(2, rule.onAllNodesWithText("Tháng 2 năm 2026 chỉ có 28 ngày", substring = true).fetchSemanticsNodes().size)
+        shoot("29-them-da-mat-loi") { rule.onNode(hasScrollAction()).performScrollToNode(hasText("Còn 2 chỗ cần sửa", substring = true)) }
+    }
+
+    @Test
+    @Config(qualifiers = "w360dp-h3200dp-xhdpi")
+    fun screenshotsLivingLunarBirthday() {
+        show(start = PRoute.Profiles)
+        go(PRoute.AddPerson(false))
+        field("Họ và tên *").performTextInput("Lê Văn Cường")
+        field("Ngày").performTextInput("20")
+        field("Tháng").performTextInput("1")
+        field("Năm").performTextInput("1990")
+        rule.onNodeWithText("Âm lịch: 24/12 năm Kỷ Tỵ (1989)", substring = true).assertExists()
+        click("Nhắc cả sinh nhật âm lịch hằng năm")
+        click("Nhắc sinh nhật âm lịch giống nhắc sinh nhật dương lịch")
+        assertTrue(rule.onAllNodesWithText("Nhắc sinh nhật âm lịch", useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty())
+        shoot("30-them-dang-song-sinh-nhat-am")
+        // Tất cả biểu mẫu khác, chụp trọn: sửa người đã mất, sự kiện, cập nhật đã mất.
+        go(PRoute.EditPerson(ids.a))
+        shoot("31-sua-da-mat-tron")
+        go(PRoute.EventEdit(ids.c, null))
+        shoot("32-them-su-kien-tron")
+        go(PRoute.MarkDeceased(ids.m))
+        shoot("33-cap-nhat-da-mat-tron")
+    }
+
+    /** TKN-A-02: thẻ "thông báo đang tắt" ở Sắp tới. */
+    @Test
+    fun screenshotNotificationsOff() {
+        shadowOf(ApplicationProvider.getApplicationContext<Application>()).denyPermissions(Manifest.permission.POST_NOTIFICATIONS)
+        show()
+        rule.onNodeWithText("Thông báo của ứng dụng đang tắt", substring = true).assertExists()
+        shoot("34-sap-toi-thong-bao-tat") {
+            rule.onNode(hasScrollAction()).performScrollToNode(hasText("Thông báo của ứng dụng đang tắt", substring = true))
+        }
+    }
+
+    /** TKN-A-02: nhắc sao lưu (dữ liệu đổi từ lâu mà chưa sao lưu). */
+    @Test
+    fun screenshotBackupNag() {
+        // Lùi mốc "chờ sao lưu" của kho về đầu năm (bảng meta của lvhv-store) → quá 30 ngày.
+        val db = android.database.sqlite.SQLiteDatabase.openDatabase(
+            File(Seed.lastDir, "lvhv.sqlite").path, null, android.database.sqlite.SQLiteDatabase.OPEN_READWRITE,
+        )
+        db.execSQL("UPDATE meta SET value = '2026-01-01T00:00:00Z' WHERE key = 'backup_pending_since'")
+        db.close()
+        assertTrue(repo.backupDue())
+        show()
+        rule.onNodeWithText("Sao lưu ngay").assertExists()
+        shoot("35-nhac-sao-luu") { rule.onNode(hasScrollAction()).performScrollToNode(hasText("Sao lưu ngay")) }
+    }
+
+    /** TKN-A-02: hộp xem trước khôi phục và hộp xác nhận thứ hai "Thay toàn bộ". */
+    @Test
+    fun screenshotRestoreDialogs() {
+        var replace by mutableStateOf(false)
+        var second by mutableStateOf(false)
+        val pv = vn.clevix.lichviet.core.BackupPreview(5u, 1u, 0u, "2026-11-01T03:00:00Z", "pwa")
+        rule.setContent {
+            val d = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(d.density, d.fontScale * variant.scale)) {
+                LichTheme(variant.mode, 1f) {
+                    androidx.compose.foundation.layout.Box(
+                        androidx.compose.ui.Modifier.fillMaxSize().background(vn.clevix.lichviet.ui.LocalLich.current.wall),
+                    ) {
+                        RestoreDialogs(pv, 5, replace, second, false, { replace = it }, { second = false }, {
+                            if (replace) second = true
+                        })
+                    }
+                }
+            }
+        }
+        rule.onNodeWithText("Tệp xuất ngày 01/11/2026 từ ứng dụng web", substring = true).assertExists()
+        shoot("36-hop-khoi-phuc", screen = true)
+        rule.onNodeWithText("Thay toàn bộ — xóa dữ liệu", substring = true).performClick()
+        rule.onNodeWithText("Khôi phục").performClick()
+        rule.onNodeWithText("Không hoàn tác được", substring = true).assertExists()
+        shoot("37-hop-thay-toan-bo", screen = true)
+    }
+
+    /** TKN-A-02: khói đang chạy, nút "Dừng khói" (hoạt ảnh bật — đồng hồ kiểm thử chạy tay). */
+    @Test
+    fun screenshotSmokeRunning() {
+        show(start = PRoute.Profiles, reduced = false)
+        rule.mainClock.autoAdvance = false
+        rule.runOnIdle { nav.tab(PRoute.Profiles); nav.go(PRoute.Memorial(ids.b)) }
+        rule.mainClock.advanceTimeBy(1_500)
+        rule.onNodeWithText("Dừng khói").assertExists()
+        for (v in std) {
+            variant = v
+            rule.mainClock.advanceTimeBy(700)
+            rule.onRoot().captureRoboImage(File(shotDir, "and-38-tuong-niem-khoi-chay-${v.suffix}.png").path)
+        }
+        // Dừng → "Thắp lại"; khói tự dừng sau 2 phút.
+        rule.onNodeWithText("Dừng khói").performClick()
+        rule.mainClock.advanceTimeBy(100)
+        rule.onNodeWithText("Thắp lại").assertExists()
+        rule.onNodeWithText("Thắp lại").performClick()
+        rule.mainClock.advanceTimeBy(SMOKE_MS + 1_000)
+        rule.onNodeWithText("Thắp lại").assertExists()
+    }
+
+    /** TKN-A-08: mục sự kiện ghi tên người (người đầu tiên của person_ids). */
+    @Test
+    fun eventItemShowsPersonName() {
+        show()
+        rule.onNodeWithText("Tốt nghiệp đại học · Lê Văn Cường", useUnmergedTree = true).assertExists()
+        go(PRoute.Period)
+        rule.runOnIdle { nav.tab(PRoute.Period) }
+        rule.onNodeWithText("Tốt nghiệp đại học · Lê Văn Cường", useUnmergedTree = true).assertExists()
+    }
+
+    /** MA3N-24-07 (1): mọi lần ghi từ giao diện đều báo "đã ghi" → ứng dụng đặt lại chuỗi báo thức. */
+    @Test
+    fun writesTriggerRearm() {
+        show(start = PRoute.Profiles)
+        // Lưu (sửa) hồ sơ.
+        go(PRoute.EditPerson(ids.c))
+        val c0 = changes
+        click("Lưu")
+        assertEquals(c0 + 1, changes)
+        // Đổi cài đặt nhắc.
+        rule.runOnIdle { nav.tab(PRoute.Upcoming); nav.go(PRoute.Settings) }
+        rule.waitForIdle()
+        val c1 = changes
+        click("Hiện tên người trên màn hình khóa")
+        assertEquals(c1 + 1, changes)
+        assertTrue(repo.lockScreenNames())
+        // Xóa hồ sơ.
+        go(PRoute.PersonPage(ids.m))
+        val c2 = changes
+        click("Xóa hồ sơ")
+        rule.onNode(hasText("Xóa hồ sơ") and androidx.compose.ui.test.hasAnyAncestor(androidx.compose.ui.test.isDialog())).performClick()
+        rule.waitForIdle()
+        assertEquals(c2 + 1, changes)
+        assertNull(repo.person(ids.m))
+    }
+
+    /** TKN-A-01: không chữ nào của mô-đun bị cắt / tràn ở cỡ chữ 1,3 và 2,0. */
+    @Test
+    fun noTextOverflowAtLargeFonts() {
+        show(start = PRoute.Profiles)
+        val routes = listOf(
+            PRoute.Upcoming, PRoute.Period, PRoute.Profiles, PRoute.Backup, PRoute.Settings,
+            PRoute.PersonPage(ids.a), PRoute.PersonPage(ids.c), PRoute.PersonPage(ids.d),
+            PRoute.AddPerson(true), PRoute.AddPerson(false), PRoute.EventEdit(ids.c, null),
+            PRoute.MarkDeceased(ids.m), PRoute.Memorial(ids.a),
+        )
+        for (v in listOf(V.Large, V.XLarge)) {
+            variant = v
+            for (r in routes) {
+                go(r)
+                val nodes = rule.onAllNodes(
+                    androidx.compose.ui.test.SemanticsMatcher.keyIsDefined(androidx.compose.ui.semantics.SemanticsActions.GetTextLayoutResult)
+                        and !androidx.compose.ui.test.hasSetTextAction(),
+                    useUnmergedTree = true,
+                ).fetchSemanticsNodes()
+                assertTrue("$r: không thấy chữ nào", nodes.isNotEmpty())
+                for (n in nodes) {
+                    val out = ArrayList<androidx.compose.ui.text.TextLayoutResult>()
+                    n.config[androidx.compose.ui.semantics.SemanticsActions.GetTextLayoutResult].action?.invoke(out)
+                    for (t in out) {
+                        assertFalse(
+                            "${v.suffix} $r: chữ bị cắt/tràn: \"${t.layoutInput.text}\"",
+                            t.hasVisualOverflow,
+                        )
+                    }
+                }
+            }
+        }
+    }
 
     /** Ô số đầu tiên có nhãn [label] (Ngày / Tháng / Năm của ô ngày đầu trang). */
     private fun field(label: String) =

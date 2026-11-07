@@ -16,8 +16,8 @@ class ReminderReceiver : BroadcastReceiver() {
             Intent.ACTION_MY_PACKAGE_REPLACED,
             Intent.ACTION_TIME_CHANGED,
             Intent.ACTION_TIMEZONE_CHANGED -> {
-                val pending = goAsync()
-                Reminders.rearmAsync(context) { pending.finish() }
+                val pending: PendingResult? = goAsync()
+                Reminders.rearmAsync(context) { pending?.finish() }
             }
         }
     }

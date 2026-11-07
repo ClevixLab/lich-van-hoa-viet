@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
@@ -439,11 +440,16 @@ fun ConfirmDialog(
 fun Initial(name: String, size: Int = 44) {
     val c = LocalLich.current
     val ch = name.trim().substringAfterLast(' ').firstOrNull()?.uppercase() ?: "?"
+    // Lớn dần theo cỡ chữ (không cắt chữ ở cỡ 2,0).
     Box(
-        Modifier.size(size.dp).clip(CircleShape).background(c.redTint),
+        Modifier.clip(CircleShape).background(c.redTint)
+            .androidxSizeIn(size).padding(4.dp),
         contentAlignment = Alignment.Center,
     ) { Text(ch, style = MaterialTheme.typography.titleMedium, color = c.redInk, fontFamily = Serif) }
 }
+
+private fun Modifier.androidxSizeIn(min: Int): Modifier =
+    this.then(Modifier.sizeIn(minWidth = min.dp, minHeight = min.dp))
 
 /** Ảnh đã lưu (giải mã một lần). */
 @Composable

@@ -73,6 +73,10 @@ object Reminders {
         }
     }
 
+    /** Chỉ cho kiểm thử: chờ mọi bước đang xếp hàng chạy xong. */
+    @androidx.annotation.VisibleForTesting
+    fun awaitIdle() { worker.submit {}.get(30, java.util.concurrent.TimeUnit.SECONDS) }
+
     /** Thời gian chờ trước khi thử lại khi một bước lỗi (MA3N-24-04). */
     const val RETRY_S = 6 * 3600L
     private const val KEY_ERR = "last_error_at_unix_s"

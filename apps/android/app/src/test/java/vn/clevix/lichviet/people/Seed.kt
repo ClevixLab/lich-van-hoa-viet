@@ -10,8 +10,12 @@ import vn.clevix.lichviet.core.solarToLunar
 object Seed {
     val TODAY: LocalDate = LocalDate.of(2026, 11, 7)
 
+    /** Thư mục kho của lần newRepo() gần nhất. */
+    lateinit var lastDir: File
+
     fun newRepo(): PeopleRepo {
         val dir: File = Files.createTempDirectory("lvhv-and-test").toFile()
+        lastDir = dir
         return PeopleRepo(LvhvStore.open(dir.absolutePath))
     }
 

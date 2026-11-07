@@ -10,7 +10,9 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import vn.clevix.lichviet.people.JsonW
+import vn.clevix.lichviet.core.remindersJson
+import vn.clevix.lichviet.people.DateValue
+import vn.clevix.lichviet.people.JMap
 import vn.clevix.lichviet.people.PeopleRepo
 import vn.clevix.lichviet.people.ReminderMsg
 import vn.clevix.lichviet.people.Seed
@@ -71,13 +73,22 @@ class AlarmChainTest {
         AlarmChain.run(h, 1_790_000_100)
         assertTrue(h.posted.isEmpty())
         assertEquals(1_790_500_000L, h.scheduled)
-        assertEquals(1_790_000_100L, h.last)
+        // MA3N-24-06: không "tiêu" lời nhắc khi chưa đăng được — lần chạy chưa được ghi nhận.
+        assertNull(h.last)
     }
 
     @Test
-    fun clockMovedBackTreatsLastRunAsUnknown() {
+    fun clockMovedBackUsesNowNotNull() {
+        // MA3N-24-05: last_run ở tương lai (đồng hồ lùi) → truyền now, không truyền null (null = đăng lại 24 giờ trước).
         val h = FakeHost(null, sample)
         h.last = 2_000_000_000
+        AlarmChain.run(h, 1_790_000_100)
+        assertEquals(1_790_000_100L, h.stepArgs!!.second)
+    }
+
+    @Test
+    fun firstRunPassesNull() {
+        val h = FakeHost(null, sample)
         AlarmChain.run(h, 1_790_000_100)
         assertNull(h.stepArgs!!.second)
     }
@@ -90,26 +101,67 @@ class AlarmChainTest {
         assertFalse(a == AlarmChain.notificationId("lvhv:abc:2026:k=3"))
     }
 
-    /** Với lõi thật: báo thức chạy sau thời điểm nhắc → đăng đúng lời nhắc đó, đặt báo thức kế tiếp; chạy lại không đăng lại. */
+    private val vnZone = ZoneId.of("Asia/Ho_Chi_Minh")
+    private fun reminders(repo: PeopleRepo, from: Long, names: Boolean): List<ReminderMsg> =
+        parseArr(remindersJson(repo.datasetJson(), from, Zones.device(vnZone), 400u, names)).map { ReminderMsg.of(it as JMap) }
+
+    /** Lõi thật: báo thức chạy sau thời điểm nhắc → đăng đúng lời nhắc đó, đặt báo thức đúng lời nhắc kế tiếp; chạy lại không đăng lại. */
     @Test
     fun realCoreChain() {
         val repo = Seed.newRepo()
         Seed.family(repo)
-        val zone = Zones.device(ZoneId.of("Asia/Ho_Chi_Minh"))
-        val now0 = Seed.TODAY.atStartOfDay(ZoneId.of("Asia/Ho_Chi_Minh")).toEpochSecond()
-        val first = parseArr(repo.store.remindersJson(now0, zone, 400u)).first().let { ReminderMsg.of(parseObj(JsonW.write(it))) }
+        val now0 = Seed.TODAY.atStartOfDay(vnZone).toEpochSecond()
+        val all = reminders(repo, now0, names = false)
+        val first = all.first()
+        val due = all.filter { it.atUnixS == first.atUnixS }
+        val second = all.first { it.atUnixS > first.atUnixS }
         val h = FakeHost(repo)
         h.last = first.atUnixS - 60
         val s = AlarmChain.run(h, first.atUnixS + 60)
-        assertTrue(s.post.any { it.id == first.id })
-        assertNotNull(h.scheduled)
-        assertTrue(h.scheduled!! > first.atUnixS + 60)
-        // O-9 (mặc định): thông báo không có tên người.
-        assertFalse(h.posted.any { it.title.contains("Nguyễn") || it.body.contains("Nguyễn") || it.title.contains("Trần") })
-        // Thông tin báo tử không bao giờ ở thông báo.
-        assertFalse(h.posted.any { it.body.contains("Bạch Mai") })
+        // Đăng đúng các lời nhắc đến hạn trong (last, now], không hơn không kém.
+        assertEquals(due.map { it.id }.toSet(), s.post.map { it.id }.toSet())
+        assertEquals(due.map { it.id }.toSet(), h.posted.map { it.id }.toSet())
+        // Báo thức kế tiếp = lời nhắc kế tiếp của lõi.
+        assertEquals(second.atUnixS, h.scheduled)
+        // O-9 (mặc định): tiêu đề và nội dung không có tên người nào trong sổ.
+        val names = repo.persons().flatMap { listOf(it.hoTen, it.displayName) }
+        assertFalse(h.posted.any { r -> names.any { r.title.contains(it) || r.body.contains(it) } })
         h.posted.clear()
         AlarmChain.run(h, first.atUnixS + 60)
         assertTrue(h.posted.isEmpty())
     }
+
+    /** R-PRIV-2: thông tin báo tử không có trong lời nhắc, kể cả khi bật hiện tên (chỗ duy nhất có thể lộ). */
+    @Test
+    fun noticeNeverInRemindersEvenWithNames() {
+        val repo = Seed.newRepo()
+        Seed.family(repo)
+        val now0 = Seed.TODAY.atStartOfDay(vnZone).toEpochSecond()
+        val json = remindersJson(repo.datasetJson(), now0, Zones.device(vnZone), 400u, true)
+        for (secret in listOf("Bạch Mai", "Phạm Văn Hải", "Tuổi cao", "báo họ hàng")) assertFalse(secret, json.contains(secret))
+        // Có tên thật khi bật (để chắc phép kiểm trên không rỗng).
+        assertTrue(json.contains("Phạm Thị Dung"))
+    }
+
+    /** B4 qua chuỗi báo thức: người đang sống được cập nhật đã mất → bước kế tiếp không còn lời nhắc sinh nhật của người đó. */
+    @Test
+    fun b4MarkDeceasedRemovesBirthdayFromChain() {
+        val repo = Seed.newRepo()
+        val ids = Seed.family(repo)
+        val now0 = Seed.TODAY.atStartOfDay(vnZone).toEpochSecond()
+        val bday = reminders(repo, now0, names = true).first { it.entityId == ids.m && it.cls == "sinh_nhat" }
+        val h = FakeHost(repo)
+        h.last = bday.atUnixS - 60
+        // Trước khi cập nhật: bước chạy ngay sau thời điểm nhắc có lời nhắc này.
+        val before = parse(repo.store.androidAlarmStepJson(bday.atUnixS + 60, bday.atUnixS - 60, Zones.device(vnZone)))
+        assertTrue(before.post.any { it.id == bday.id })
+        repo.markDeceased(ids.m, DateValue("solar", "day", 2026, 11, 1), null, Seed.TODAY)
+        val s = AlarmChain.run(h, bday.atUnixS + 60)
+        assertFalse(s.post.any { it.id == bday.id })
+        assertFalse(reminders(repo, now0, names = true).any { it.entityId == ids.m && it.cls.startsWith("sinh_nhat") })
+        // Chuỗi vẫn tiếp tục.
+        assertNotNull(h.scheduled)
+    }
+
+    private fun parse(json: String) = AlarmChain.parse(json)
 }
