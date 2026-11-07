@@ -10,6 +10,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.semantics.SemanticsProperties
 import com.github.takahirom.roborazzi.captureRoboImage
 import java.io.File
@@ -247,5 +248,33 @@ class MemorialTrayTest {
         rule.onRoot().captureRoboImage(File(shotDir, "and-yc10-form-co-anh-360-light.png").path)
         assertEquals("Không đọc được ảnh này. Hãy chọn một ảnh khác.", trayError(Exception("x")))
         assertEquals("Ảnh quá lớn (tối đa 25 MB).", trayError(vn.clevix.lichviet.people.Photos.PhotoError("Ảnh lớn hơn 25 MB — hãy chọn ảnh nhỏ hơn")))
+    }
+
+    /**
+     * Hồi quy (rủi ro lõi báo): mọi đường lưu phải giữ `memorial.tray_photo_id` — người có ảnh mâm lễ, sửa một ô khác qua
+     * biểu mẫu thật rồi bấm Lưu → liên kết và ảnh vẫn còn (lõi xóa ảnh nếu tài liệu mới thiếu khóa).
+     */
+    @Test
+    fun editingAnotherFieldKeepsTrayPhoto() {
+        val pid = addFamilyTray()
+        show(ids.a)
+        rule.runOnIdle { nav.tab(PRoute.Profiles); nav.go(PRoute.EditPerson(ids.a)) }
+        rule.waitForIdle()
+        // Ô "Nơi an táng" (khối Tưởng niệm đang thu gọn, mục ảnh mâm lễ không được mở).
+        rule.onNode(hasContentDescription("Nơi an táng")).performScrollTo().performTextInput(", xã Yên Sở")
+        rule.onNode(androidx.compose.ui.test.hasText("Lưu")).performScrollTo().performClick()
+        rule.waitForIdle()
+        val p = repo.person(ids.a)!!
+        assertTrue("đã lưu ô vừa sửa", p.noiAnTang.endsWith("xã Yên Sở"))
+        assertEquals(pid, p.memorial?.get("tray_photo_id"))
+        org.junit.Assert.assertNotNull("ảnh mâm lễ còn trong kho", repo.photo(pid))
+        // Sửa lần nữa, lần này mở khối Tưởng niệm và đổi lời tưởng niệm — vẫn giữ ảnh.
+        rule.runOnIdle { nav.tab(PRoute.Profiles); nav.go(PRoute.EditPerson(ids.a, tray = true)) }
+        rule.waitForIdle()
+        rule.onNode(hasContentDescription("Lời tưởng niệm")).performScrollTo().performTextInput(" Mãi nhớ.")
+        rule.onNode(androidx.compose.ui.test.hasText("Lưu")).performScrollTo().performClick()
+        rule.waitForIdle()
+        assertEquals(pid, repo.person(ids.a)!!.memorial?.get("tray_photo_id"))
+        org.junit.Assert.assertNotNull(repo.photo(pid))
     }
 }
