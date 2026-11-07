@@ -163,6 +163,7 @@ pub fn to_slint(bytes: &[u8]) -> Option<slint::Image> {
 }
 
 /// Byte có đoạn APP1 (EXIF/XMP) hoặc APP13 (IPTC) không — dùng trong kiểm thử S9.
+#[cfg_attr(not(test), allow(dead_code))]
 pub fn has_metadata_segments(b: &[u8]) -> bool {
     let mut i = 2usize;
     while i + 4 <= b.len() && b[i] == 0xFF {

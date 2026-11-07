@@ -7,6 +7,7 @@ use std::path::PathBuf;
 
 /// AppUserModelID của ứng dụng. Phải trùng `System.AppUserModel.ID` của lối tắt Start Menu do bộ cài MSI tạo
 /// (wix/main.wxs) — ứng dụng chưa đóng gói (không MSIX) cần lối tắt này để Windows nhận thông báo (R-WIN-1).
+#[cfg_attr(not(windows), allow(dead_code))]
 pub const AUMID: &str = "ClevixLab.LichVanHoaViet";
 
 /// Thư mục dữ liệu riêng của ứng dụng (01 §4.2): `%LOCALAPPDATA%\ClevixLab\LichVanHoaViet`.

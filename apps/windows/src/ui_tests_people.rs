@@ -8,7 +8,7 @@ use std::rc::Rc;
 
 use i_slint_backend_testing::ElementHandle;
 use serde_json::Value;
-use slint::{ComponentHandle, Model, SharedString};
+use slint::{ComponentHandle, Model};
 
 use crate::platform::{self, Dialog};
 use crate::ui::*;

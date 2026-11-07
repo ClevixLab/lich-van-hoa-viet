@@ -353,16 +353,20 @@ component NumBox inherits VerticalLayout {
     callback edited();
     spacing: 3px;
     T { text: root.label; size: 14; font-weight: 600; color: Theme.ink2; }
-    Boxed {
+    HorizontalLayout {
+      alignment: start;
+      Boxed {
         bad: root.bad;
-        width: root.w * Theme.scale;
         LineEdit {
+            min-width: root.w * Theme.scale;
+            preferred-width: root.w * Theme.scale;
             text <=> root.text;
             input-type: number;
             horizontal-alignment: center;
             accessible-label: root.label;
             edited => { root.edited(); }
         }
+      }
     }
 }
 

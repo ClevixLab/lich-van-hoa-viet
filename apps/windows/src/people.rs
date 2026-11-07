@@ -3339,9 +3339,3 @@ pub fn wire(ui: &AppWindow, ps: Ps) {
         render_upcoming(ui, ps);
     }));
 }
-
-/// Cho kiểm thử: "YYYY-MM-DD" → D.
-#[cfg(test)]
-pub fn tests_date(s: &str) -> D {
-    d_iso(s).expect("ngày ISO")
-}
