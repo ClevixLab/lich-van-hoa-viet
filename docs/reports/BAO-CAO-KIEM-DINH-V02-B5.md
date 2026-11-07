@@ -6,8 +6,34 @@ Nhánh: `oracle-v02-b5` (từ `origin/main` 6ee647b). Đối tượng kiểm: PR
 - Lần 2: head `8a2ed41`. Có chuyển đổi 1→2 và bộ mẫu đóng băng.
 - Lần 3 (mục 0): `main` 43c3639 (PR #28 đã gộp, gồm B6) cộng PR #36 `9106ae9`, có công cụ hộp đen `lvhv-store-tool`
   (bản Rust và bản TS, theo `docs/v0.2/10`).
-- **Lần 4 (kết luận hiện hành, mục 00):** `main` 8835cd7 (PR #38, core3). Mục 0 giữ nguyên kết quả lần 3; mục 1–9 giữ
-  nguyên kết quả lần 1 và lần 2.
+- Lần 4 (mục 00): `main` 8835cd7 (PR #38, core3).
+- **Lần 5 (kết luận hiện hành, mục 000):** `main` 7056353 (PR #39: `--now`, `--state`, `export`, `inspect-export`).
+  Các mục 00, 0 và 1–9 giữ nguyên kết quả các lần trước.
+
+## 000. Lần 5 — `main` 7056353 (kết luận hiện hành)
+
+Mục đích: đóng hai mục còn mở sau lần 4. Ở lần 5 chỉ đọc thêm `docs/v0.2/10` §3.0, §3.1, §3.7, §3.8; không đọc mã nguồn.
+Số liệu: `oracle/v02/out/b5_r5_7056353.json`.
+
+### 000.1 Kết luận
+
+| Phần | Kết luận | Số liệu |
+|---|---|---|
+| Dọn `legacy` sau 7 ngày, **TS** (lần 4: CHƯA ĐỦ BẰNG CHỨNG) | **ĐẠT** | 5 kho: bộ mẫu đóng băng, M01, M02, M03 và M10. Mỗi kho mở bằng `--state` qua 5 mốc `--now`: T0, T0 + 1 ngày, T0 + 7 ngày − 60 giây, T0 + 7 ngày + 60 giây, T0 + 8 ngày (T0 = 1793000000). Kho được dựng lại từ tệp trạng thái (`source: state`). Từ T0 đến T0 + 7 ngày − 60 giây, `legacy` còn ở đủ số hồ sơ (1–2). Từ T0 + 7 ngày + 60 giây, 0 hồ sơ còn `legacy`. Việc dọn chỉ bỏ `legacy`: hồ sơ (kể cả `rev`, `updated_at`) và tệp đính kèm khác không đổi |
+| Dọn sau 7 ngày, **Rust**, bằng `--now` | **ĐẠT** | Cùng 5 kho và 5 mốc như TS. Lần này dùng `--now`, không còn phải sửa CSDL như lần 4. `.pre-v2.bak` còn ở 3 mốc đầu, bị xóa từ T0 + 7 ngày + 60 giây. `legacy` thay đổi như ở TS |
+| **Tệp xuất không mang `legacy`** | **ĐẠT** | 20 tệp xuất: 5 kho × 2 bản × 2 mốc (T0 + 1 ngày, lúc kho còn `legacy`; và T0 + 8 ngày). Mỗi tệp được giải mã bằng bộ giải mã độc lập (`b5_r6v2.py`: argon2-cffi + PyNaCl), rồi kiểm: (i) 0 khóa `legacy` ở mọi mức; (ii) JSON chuẩn; (iii) mọi khối khớp `bytes`/`sha256` của bản ghi; (iv) tài liệu xuất = tài liệu kho bỏ `legacy` (bỏ `app`, `exported_at`, `schema_version`; `settings` so riêng và cũng bằng nhau): 0 trường khác. Thêm `inspect-export` của **cả hai** bản trên mọi tệp: `legacy_paths = []` và cùng tài liệu với bộ giải mã độc lập. Thêm nhập chéo: mỗi tệp nhập được vào cả Rust lẫn TS, và `state_sha256` sau nhập bằng băm bên kiểm định tự tính từ bản rõ |
+
+Sau lần 5, không còn mục CHƯA ĐỦ BẰNG CHỨNG nào ở mức lõi, trong phạm vi B5/R14, YC-2026-07 và R6 trên R6v2. Các
+ghi nhận về thiết kế vẫn giữ như cũ: N03 (đánh số phiên bản sao lưu), M06 (khóa lạ bị từ chối) và M08 (NFD giữ nguyên
+khi nhập). Phần nâng cấp tại chỗ trên từng nền tảng vẫn ngoài phạm vi.
+
+### 000.2 Trình tự lần 5
+
+| Giờ (+07) | Commit (nhánh `oracle-v02-b5-r5`, từ `main` 7056353) | Việc |
+|---|---|---|
+| 15:0x | — | Đọc `docs/v0.2/10` §3.0, §3.1, §3.7, §3.8. Dựng `lvhv-store-tool` từ 7056353; chạy `npm ci` |
+| 15:09 | `9121537` | Commit `b5_round5.py` (tiêu chí và mốc thời gian) **trước** khi chạy |
+| 15:1x | (commit này) | Chạy, ghi kết quả và báo cáo |
 
 ## 00. Lần 4 — `main` 8835cd7 (kết luận hiện hành)
 
