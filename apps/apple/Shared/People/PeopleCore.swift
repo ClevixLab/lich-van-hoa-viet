@@ -495,9 +495,11 @@ final class PeopleModel: ObservableObject {
         return data
     }
 
-    func applyImport(_ b: VerifiedBackup, replace: Bool) throws {
+    /// Ghi tệp đã kiểm tra ở luồng nền (MA3N-23-02); tải lại và lập lịch lại trên luồng chính.
+    func applyImport(_ b: VerifiedBackup, replace: Bool) async throws {
         guard let st = store else { return }
-        try st.applyImport(backup: b, mode: replace ? .replace : .merge)
+        let mode: BackupImportMode = replace ? .replace : .merge
+        try await Task.detached(priority: .userInitiated) { try st.applyImport(backup: b, mode: mode) }.value
         reload()
         Task { await scheduler.reschedule(store: store, reason: .importBackup) }
     }

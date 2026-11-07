@@ -133,7 +133,7 @@ struct BackupSection: View {
             RestoreSheet(preview: box.p) { replace in
                 guard let v = verified else { return }
                 do {
-                    try m.applyImport(v, replace: replace)
+                    try await m.applyImport(v, replace: replace)
                     m.toast = "Đã khôi phục: \(box.p.persons) người, \(box.p.events) sự kiện."
                 } catch {
                     importError = "Chưa khôi phục được — dữ liệu trên máy giữ nguyên."
@@ -156,11 +156,17 @@ struct BackupSection: View {
         let pw = importPassword
         opening = true
         importError = nil
+        let limit = Self.maxBackupBytes
         Task {
-            let scoped = url.startAccessingSecurityScopedResource()
-            defer { if scoped { url.stopAccessingSecurityScopedResource() } }
-            let size = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
-            guard size <= Self.maxBackupBytes, let data = try? Data(contentsOf: url) else {
+            // Đọc tệp (tới 128 MiB) và giải mã ở luồng nền (MA3N-23-02); chỉ cập nhật giao diện trên luồng chính.
+            let data: Data? = await Task.detached(priority: .userInitiated) { () -> Data? in
+                let scoped = url.startAccessingSecurityScopedResource()
+                defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+                let size = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+                guard size <= limit else { return nil }
+                return try? Data(contentsOf: url)
+            }.value
+            guard let data else {
                 importError = "Sai mật khẩu hoặc tệp bị hỏng"
                 opening = false
                 return
@@ -352,11 +358,20 @@ struct BackupExportSheet: View {
 
 struct RestoreSheet: View {
     let preview: BackupPreview
-    var onApply: (Bool) -> Void
+    var onApply: (Bool) async -> Void
     @Environment(\.dismiss) private var dismiss
     @ObservedObject private var m = PeopleModel.shared
     @State private var replace = false
     @State private var confirmReplace = false
+    @State private var busy = false
+
+    private func run(_ r: Bool) {
+        busy = true
+        Task {
+            await onApply(r)
+            busy = false
+        }
+    }
 
     private var platformName: String {
         switch preview.platform {
@@ -382,6 +397,13 @@ struct RestoreSheet: View {
                     }
                     .pickerStyle(.inline)
                     .labelsHidden()
+                    .disabled(busy)
+                    if busy {
+                        HStack(spacing: 10) {
+                            ProgressView()
+                            Text("Đang khôi phục… (có thể mất vài giây)").ps(15).foregroundStyle(C.ink2)
+                        }
+                    }
                 }
                 .padding(20)
             }
@@ -393,16 +415,18 @@ struct RestoreSheet: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Hủy") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Khôi phục") { if replace { confirmReplace = true } else { onApply(false) } }
+                    Button("Khôi phục") { if replace { confirmReplace = true } else { run(false) } }
+                        .disabled(busy)
                 }
             }
             .alert("Thay toàn bộ dữ liệu?", isPresented: $confirmReplace) {
                 Button("Hủy", role: .cancel) {}
-                Button("Thay toàn bộ", role: .destructive) { onApply(true) }
+                Button("Thay toàn bộ", role: .destructive) { run(true) }
             } message: {
                 Text("Dữ liệu hiện có trên máy (\(m.persons.count) người) sẽ bị thay bằng dữ liệu trong tệp xuất ngày \(exported). Không hoàn tác được.")
             }
         }
+        .interactiveDismissDisabled(busy)
     }
 }
 

@@ -221,9 +221,33 @@ final class PeopleGlueTests: XCTestCase {
         let fake = FakeCenter()
         let s = ReminderScheduler(center: fake)
         await s.reschedule(store: st, reason: .save, now: now, zone: vn)
-        XCTAssertLessThanOrEqual(fake.store.count, 64)
-        XCTAssertNotNil(fake.store["lvhv:sentinel"])
-        XCTAssertEqual(fake.store["lvhv:sentinel"]?.title, sentinelInfo().text)
+        XCTAssertEqual(fake.store.count, 64, "63 lời nhắc sớm nhất + thông báo nhắc mở ứng dụng")
+        let sentinel = try XCTUnwrap(fake.store["lvhv:sentinel"])
+        XCTAssertEqual(sentinel.title, sentinelInfo().text)
+        let last = fake.store.values.filter { $0.id != "lvhv:sentinel" }.map(\.atUnix).max()
+        XCTAssertEqual(sentinel.atUnix, last, "cùng phút với lời nhắc thứ 63 (02 §7.4, B2)")
+    }
+
+    /// B4 qua bộ lập lịch: đặt nhắc sinh nhật → cập nhật đã mất → lần lập lịch sau gỡ nhắc sinh nhật, thêm nhắc giỗ.
+    @MainActor
+    func testMarkDeceasedRemovesBirthdayNotifications() async throws {
+        let (st, _) = try tempStore()
+        let settings = JV.parse(try st.settingsJson())!
+        var c = PersonDraft(kind: "living", settings: settings)
+        c.hoTen = "Lê Văn C"; c.birth.day = "20"; c.birth.month = "1"; c.birth.year = "1990"
+        let ruleId = c.sinhNhat.id
+        let id = JV.parse(try st.savePersonJson(json: c.build(photoId: nil, noticePhotoIds: [], today: today).text))!["id"].string
+        let fake = FakeCenter()
+        let s = ReminderScheduler(center: fake)
+        await s.reschedule(store: st, reason: .save, now: now, zone: vn)
+        XCTAssertTrue(fake.store.keys.contains { $0.contains(ruleId) }, "có nhắc sinh nhật trước khi cập nhật")
+        var death = DateDraft(); death.day = "1"; death.month = "11"; death.year = "2026"
+        _ = try st.markDeceasedJson(personId: id, deathDateValueJson: DateCheck.death(death, today: today).value.text,
+                                    noticeJson: nil, today: today.sd)
+        let o = await s.reschedule(store: st, reason: .save, now: now, zone: vn)
+        XCTAssertGreaterThan(o.removed, 0)
+        XCTAssertFalse(fake.store.keys.contains { $0.contains(ruleId) }, "B4: gỡ nhắc sinh nhật")
+        XCTAssertTrue(fake.store.values.contains { $0.title == "Sắp đến ngày giỗ" })
     }
 
     @MainActor
