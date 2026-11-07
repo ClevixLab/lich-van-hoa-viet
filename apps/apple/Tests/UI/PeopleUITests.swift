@@ -60,34 +60,48 @@ final class PeopleUITests: XCTestCase {
     func testScreenshotsDark() { shoot(variant: "dark", dark: true, big: false, screens: Self.screens) }
     func testScreenshotsLargeType() { shoot(variant: "large", dark: false, big: true, screens: Self.screens) }
 
+    /// Cuộn tới khi phần tử bấm được rồi bấm.
+    private func tapScrolling(_ app: XCUIApplication, _ el: XCUIElement) {
+        var n = 0
+        while !(el.exists && el.isHittable) && n < 10 { app.swipeUp(velocity: .slow); n += 1 }
+        el.tap()
+    }
+
+    /// Trạng thái trống, hộp thoại và trang có khối mở sẵn — ở sáng, tối và chữ rất lớn.
     func testScreenshotsEmptyAndDialogs() {
-        var app = launch(screen: "upcoming", seed: "none")
-        snap("empty-light")
-        app.terminate()
-        for dark in [false, true] {
-            let v = dark ? "dark" : "light"
-            app = launch(screen: "backup", dark: dark)
-            app.buttons["backup.ics"].tap()
+        for (v, dark, big) in [("light", false, false), ("dark", true, false), ("large", false, true)] {
+            var app = launch(screen: "upcoming", seed: "none", dark: dark, big: big)
+            snap("empty-\(v)")
+            app.terminate()
+            app = launch(screen: "backup", dark: dark, big: big)
+            tapScrolling(app, app.buttons["backup.ics"])
             snap("ics-confirm-\(v)")
             app.terminate()
-            app = launch(screen: "backup", dark: dark)
-            app.buttons["backup.export"].tap()
+            app = launch(screen: "backup", dark: dark, big: big)
+            tapScrolling(app, app.buttons["backup.export"])
             snap("backup-export-\(v)")
             app.terminate()
-            app = launch(screen: "person-deceased", dark: dark)
-            app.buttons["person.delete"].firstMatch.tap()
+            app = launch(screen: "person-deceased", dark: dark, big: big)
+            tapScrolling(app, app.buttons["person.delete"].firstMatch)
             snap("delete-confirm-\(v)")
             app.terminate()
-        }
-        for dark in [false, true] {
-            app = launch(screen: "person-notice", dark: dark, extra: ["-lvhvExpand", "1"])
+            app = launch(screen: "person-notice", dark: dark, big: big, extra: ["-lvhvExpand", "1"])
             app.swipeUp(velocity: .slow)
-            snap("person-notice-\(dark ? "dark" : "light")")
+            snap("person-notice-\(v)")
+            app.terminate()
+            app = launch(screen: "period", dark: dark, big: big, extra: ["-lvhvPeriodKind", "quy"])
+            snap("period-quy-\(v)")
+            app.terminate()
+            app = launch(screen: "mark", dark: dark, big: big)
+            for (id, val) in [("death.day", "1"), ("death.month", "11"), ("death.year", "2026")] {
+                let f = app.textFields[id]
+                if f.waitForExistence(timeout: 5) { f.tap(); f.typeText(val) }
+            }
+            tapScrolling(app, app.buttons["mark.save"].firstMatch)
+            _ = app.alerts.firstMatch.waitForExistence(timeout: 5)
+            snap("mark-confirm-\(v)")
             app.terminate()
         }
-        app = launch(screen: "period", extra: ["-lvhvPeriodKind", "quy"])
-        snap("period-quy-light")
-        app.terminate()
     }
 
     // MARK: Luồng
@@ -139,7 +153,6 @@ final class PeopleUITests: XCTestCase {
         app.buttons["mark.save"].firstMatch.tap()
         let ok = app.alerts.buttons["Lưu thay đổi"]
         XCTAssertTrue(ok.waitForExistence(timeout: 5))
-        snap("mark-confirm-light")
         ok.tap()
         XCTAssertTrue(app.buttons["person.memorial"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.otherElements["person.notice"].exists || app.buttons["person.notice"].exists
