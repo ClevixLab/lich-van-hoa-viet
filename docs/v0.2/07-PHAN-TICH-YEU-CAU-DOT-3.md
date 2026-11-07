@@ -181,3 +181,11 @@ còn lỗi mức chặn; chủ dự án ký.
 | T27 Duyệt thiết kế và duyệt mã | Rà soát (vai riêng) | — | T21–T26 | Phiếu duyệt |
 | T28 Kiểm định R15 (c)(d)(e)(g) bằng `lvhv-store-tool` | Bên kiểm định độc lập | — | T21 | Báo cáo |
 
+### 10.4 Quyết định bổ sung của chủ dự án (07/11/2026, 20:17)
+
+Nguyên văn: "mâm giỗ như hiện tại là rất xấu không phù hợp nên anh chưa muốn em đưa hình này lên software".
+Hệ quả: không đưa bất kỳ hình mâm vẽ hay ảnh mâm ghép nào vào ứng dụng. Một mục trong gói ảnh Clevix
+(`content/memorial/trays/manifest.json`) chỉ được đặt `trang_thai = "duyet"` khi **chủ dự án đã xem và đồng ý** chính
+ảnh đó; `duyet_boi` ghi tên chủ dự án. Ảnh dùng trong kiểm thử và ảnh chụp màn hình kiểm thử là ảnh tổng hợp, không
+bao giờ được đóng gói vào bản phát hành.
+
