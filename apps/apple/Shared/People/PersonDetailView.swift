@@ -221,6 +221,7 @@ struct PersonDetailView: View {
                 } label: {
                     Text("Thông tin báo tử").serif(20, .semibold).foregroundStyle(C.ink)
                 }
+                .accessibilityElement(children: .contain)
                 .accessibilityIdentifier("person.notice")
             }
         }

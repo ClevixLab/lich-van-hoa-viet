@@ -168,9 +168,14 @@ final class PeopleUITests: XCTestCase {
     /// L1: thêm người đã mất theo ngày dương → thấy "15/6 nhuận" → lưu → trang hồ sơ.
     func testAddDeceasedFlow() {
         let app = launch(screen: "upcoming", seed: "none")
-        app.buttons["people.addDeceased"].firstMatch.tap()
+        let add = app.buttons["people.addDeceased"].firstMatch
+        XCTAssertTrue(add.waitForExistence(timeout: 15))
+        Thread.sleep(forTimeInterval: 1)
+        add.tap()
         let name = app.textFields["form.hoTen"]
-        XCTAssertTrue(name.waitForExistence(timeout: 5))
+        // Lần chạy đầu trên máy mô phỏng mới có thể nuốt mất cú chạm khi trang còn đang dựng: thử chạm lại một lần.
+        if !name.waitForExistence(timeout: 8), add.exists, add.isHittable { add.tap() }
+        XCTAssertTrue(name.waitForExistence(timeout: 15))
         name.tap(); name.typeText("Nguyễn Văn Thử")
         for (id, v) in [("death.day", "8"), ("death.month", "8"), ("death.year", "2025")] {
             let f = app.textFields[id]
