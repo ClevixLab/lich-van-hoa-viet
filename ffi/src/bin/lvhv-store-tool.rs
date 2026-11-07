@@ -7,15 +7,20 @@
 //! Mã thoát: 0 = thành công; 1 = thao tác bị từ chối / lỗi (JSON vẫn in ra stdout); 2 = sai cú pháp lệnh.
 //!
 //! ```text
-//! lvhv-store-tool open <thư-mục> [--force-migration-failure]
+//! lvhv-store-tool open <thư-mục> [--force-migration-failure] [--now <unix_s>]
 //! lvhv-store-tool import <tệp-sao-lưu> <mật-khẩu> [--merge|--replace] [--into <thư-mục>]
 //! lvhv-store-tool save-person <thư-mục> <person.json | ->
 //! lvhv-store-tool suggestions <deceased|living> [nam|nu]
 //! lvhv-store-tool display-capitalize <chuỗi>
 //! lvhv-store-tool check-media <photo|attachment> <mime> <tệp> [width height]
+//! lvhv-store-tool export <thư-mục> <mật-khẩu> <tệp-ra> [--now <unix_s>]
+//! lvhv-store-tool inspect-export <tệp-sao-lưu> <mật-khẩu>
 //! ```
 //!
-//! `--force-migration-failure` dùng `lvhv_store::OpenOptions { force_migration_failure: true }`.
+//! `--force-migration-failure`, `--now` dùng `lvhv_store::OpenOptions { force_migration_failure, now_unix }`.
+//! `export` gọi `Store::export_backup` — hàm mà `LvhvStore::export_backup` của ứng dụng bọc lại (cùng tài liệu, cùng mã
+//! hóa); mở kho bằng `open_with` để `--now` áp cho việc dọn sau 7 ngày như `open`; `inspect-export` giải mã bằng `lvhv_backup::import`
+//! và in bản rõ (JSON + danh sách khối), không kiểm nội dung.
 #![forbid(unsafe_code)]
 
 use lvhv_store::{
@@ -27,12 +32,14 @@ use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 const USAGE: &str = "dùng:
-  lvhv-store-tool open <thư-mục> [--force-migration-failure]
+  lvhv-store-tool open <thư-mục> [--force-migration-failure] [--now <unix_s>]
   lvhv-store-tool import <tệp-sao-lưu> <mật-khẩu> [--merge|--replace] [--into <thư-mục>]
   lvhv-store-tool save-person <thư-mục> <person.json | ->
   lvhv-store-tool suggestions <deceased|living> [nam|nu]
   lvhv-store-tool display-capitalize <chuỗi>
-  lvhv-store-tool check-media <photo|attachment> <mime> <tệp> [width height]";
+  lvhv-store-tool check-media <photo|attachment> <mime> <tệp> [width height]
+  lvhv-store-tool export <thư-mục> <mật-khẩu> <tệp-ra> [--now <unix_s>]
+  lvhv-store-tool inspect-export <tệp-sao-lưu> <mật-khẩu>";
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -43,6 +50,8 @@ fn main() -> ExitCode {
         Some("suggestions") => cmd_suggestions(&args[1..]),
         Some("display-capitalize") => cmd_display(&args[1..]),
         Some("check-media") => cmd_check_media(&args[1..]),
+        Some("export") => cmd_export(&args[1..]),
+        Some("inspect-export") => cmd_inspect_export(&args[1..]),
         _ => Err(Usage(String::new())),
     };
     match r {
@@ -204,9 +213,15 @@ fn files_json(dir: &Path) -> Value {
 fn cmd_open(a: &[String]) -> Out {
     let mut dir = None;
     let mut force = false;
-    for x in a {
+    let mut now = None;
+    let mut it = a.iter();
+    while let Some(x) = it.next() {
         match x.as_str() {
             "--force-migration-failure" => force = true,
+            "--now" => match it.next().map(|v| v.parse::<i64>()) {
+                Some(Ok(v)) => now = Some(v),
+                _ => return usage("--now cần <unix_s> (số nguyên giây)"),
+            },
             s if s.starts_with("--") => return usage(&format!("tùy chọn lạ: {s}")),
             s if dir.is_none() => dir = Some(PathBuf::from(s)),
             s => return usage(&format!("đối số thừa: {s}")),
@@ -220,7 +235,7 @@ fn cmd_open(a: &[String]) -> Out {
         &dir,
         OpenOptions {
             force_migration_failure: force,
-            ..Default::default()
+            now_unix: now,
         },
     ) {
         Ok(s) => s,
@@ -241,6 +256,7 @@ fn cmd_open(a: &[String]) -> Out {
         "command": "open",
         "ok": true,
         "force_migration_failure": force,
+        "now_unix": now,
         "migration_status": status_json(&status),
         "store": store,
         "files_before": files_before,
@@ -519,6 +535,133 @@ fn cmd_check_media(a: &[String]) -> Out {
             "bytes": bytes.len(),
             "sha256": sha256_hex(&bytes),
             "verdict": r.map_or_else(|e| e.code(), |()| "ok"),
+        }),
+        true,
+    ))
+}
+
+// ------------------------------------------------------------------------------------------------
+// export, inspect-export
+// ------------------------------------------------------------------------------------------------
+
+/// Có khóa `legacy` ở bất kỳ mức nào không (01 §7: tệp sao lưu xuất ra không được mang `legacy`).
+fn legacy_paths(v: &Value, path: &str, out: &mut Vec<String>) {
+    match v {
+        Value::Object(o) => {
+            for (k, x) in o {
+                let p = format!("{path}/{k}");
+                if k == "legacy" {
+                    out.push(p.clone());
+                }
+                legacy_paths(x, &p, out);
+            }
+        }
+        Value::Array(a) => {
+            for (i, x) in a.iter().enumerate() {
+                legacy_paths(x, &format!("{path}/{i}"), out);
+            }
+        }
+        _ => {}
+    }
+}
+
+fn cmd_export(a: &[String]) -> Out {
+    let mut pos = Vec::new();
+    let mut now = None;
+    let mut it = a.iter();
+    while let Some(x) = it.next() {
+        match x.as_str() {
+            "--now" => match it.next().map(|v| v.parse::<i64>()) {
+                Some(Ok(v)) => now = Some(v),
+                _ => return usage("--now cần <unix_s> (số nguyên giây)"),
+            },
+            s if s.starts_with("--") => return usage(&format!("tùy chọn lạ: {s}")),
+            s => pos.push(s.to_owned()),
+        }
+    }
+    let [dir, password, out_file] = pos.as_slice() else {
+        return usage("cần <thư-mục> <mật-khẩu> <tệp-ra>");
+    };
+    let mut s = match Store::open_with(
+        dir,
+        OpenOptions {
+            now_unix: now,
+            ..Default::default()
+        },
+    ) {
+        Ok(s) => s,
+        Err(e) => return fail("export", "open", &e),
+    };
+    let ms = status_json(s.migration_status());
+    let bytes = match s.export_backup(
+        password,
+        &AppInfo {
+            version: "0.2.0".into(),
+            platform: "android".into(),
+        },
+    ) {
+        Ok(b) => b,
+        Err(e) => {
+            return Ok((
+                json!({ "command": "export", "ok": false, "stage": "export_backup",
+                        "migration_status": ms, "error": err_json(&e) }),
+                false,
+            ))
+        }
+    };
+    drop(s);
+    if let Err(e) = std::fs::write(out_file, &bytes) {
+        return fail("export", "write_file", &StoreError::Io(e));
+    }
+    Ok((
+        json!({ "command": "export", "ok": true, "now_unix": now, "migration_status": ms,
+                "out_file": out_file, "bytes": bytes.len(), "sha256": sha256_hex(&bytes) }),
+        true,
+    ))
+}
+
+fn cmd_inspect_export(a: &[String]) -> Out {
+    let [file, password] = a else {
+        return usage("cần <tệp-sao-lưu> <mật-khẩu>");
+    };
+    let bytes = match std::fs::read(file) {
+        Ok(b) => b,
+        Err(e) => return fail("inspect-export", "read_file", &StoreError::Io(e)),
+    };
+    let c = match lvhv_backup::import(&bytes, password) {
+        Ok(c) => c,
+        Err(e) => return fail("inspect-export", "decrypt", &StoreError::Backup(e)),
+    };
+    let doc: Value = match serde_json::from_str(&c.json) {
+        Ok(v) => v,
+        Err(e) => {
+            return fail(
+                "inspect-export",
+                "parse_json",
+                &StoreError::Input(format!("JSON bản rõ hỏng: {e}")),
+            )
+        }
+    };
+    let mut legacy = Vec::new();
+    legacy_paths(&doc, "", &mut legacy);
+    let blobs: Vec<Value> = c
+        .photos
+        .iter()
+        .map(|b| {
+            json!({ "id": lvhv_backup::uuid_to_string(&b.id), "bytes": b.bytes.len(),
+                    "sha256": sha256_hex(&b.bytes) })
+        })
+        .collect();
+    Ok((
+        json!({
+            "command": "inspect-export",
+            "ok": true,
+            "file_sha256": sha256_hex(&bytes),
+            "json_sha256": sha256_hex(c.json.as_bytes()),
+            "json_is_canonical": canonical_json(&doc) == c.json,
+            "document": doc,
+            "blobs": blobs,
+            "legacy_paths": legacy,
         }),
         true,
     ))

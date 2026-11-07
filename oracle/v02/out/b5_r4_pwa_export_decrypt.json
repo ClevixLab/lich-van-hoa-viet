@@ -1,0 +1,22 @@
+{
+ "file": "pwa-export.lvhv",
+ "len": 327969,
+ "sha256": "802289edba1f2e0efa86149deca0435c6b0d9522a0337d965e118493824622ab",
+ "two_decryptors_same_plaintext": true,
+ "plaintext_len_matches_header": true,
+ "json_canonical": true,
+ "schema_version": 1,
+ "counts": {
+  "persons": 60,
+  "events": 30,
+  "event_types": 6,
+  "photos": 20,
+  "attachments": 0
+ },
+ "block_order_matches_records": true,
+ "blocks_sha256_and_len_match_records": true,
+ "bad_blocks": [],
+ "images_ok": true,
+ "n_images": 20,
+ "independent_state_sha256": "9f4f7bb9f47d1a497decde0d1a53ec40f0aebddf9a00c20796a60599e1fdf36e"
+}

@@ -1,0 +1,101 @@
+IMPORT M01-cu-giay-chung-tu               rust=KHOP ts=KHOP | 
+IMPORT M02-cu-4-anh                       rust=KHOP ts=KHOP | 
+IMPORT M03-cu-anh-chung                   rust=KHOP ts=KHOP | 
+IMPORT M04-cu-khong-bao-tu                rust=KHOP ts=KHOP | 
+IMPORT M05-cu-bao-tu-rong                 rust=KHOP ts=KHOP | 
+IMPORT M06-cu-khoa-la-legacy              rust=GHI_NHAN_TU_CHOI ts=GHI_NHAN_TU_CHOI | trường lạ "ghi_chu_ban_cu"
+IMPORT M07-cu-chu-thuong-nfc              rust=KHOP ts=KHOP | 
+IMPORT M08-cu-nfd                         rust=GHI_NHAN ts=GHI_NHAN | 
+IMPORT M09-cu-anh-chung-tu-thieu          rust=KHOP ts=KHOP | ảnh không tồn tại
+IMPORT M10-cu-anh-dung-chung              rust=GHI_NHAN ts=GHI_NHAN | 
+IMPORT N01-schema-3                       rust=KHOP ts=KHOP | None
+IMPORT N02-schema-99                      rust=KHOP ts=KHOP | None
+IMPORT N03-v1-dang-moi                    rust=SAI_LECH_CHAP_NHAN ts=SAI_LECH_CHAP_NHAN | 
+IMPORT N04-v2-dang-cu                     rust=SAI_LOP ts=SAI_LOP | None
+IMPORT N05-schema-0                       rust=KHOP ts=KHOP | phải là 1
+IMPORT G01-v2-hop-le                      rust=KHOP ts=KHOP | 
+IMPORT G02-v2-dung-6-tep                  rust=KHOP ts=KHOP | 
+IMPORT G03-v2-gioi-tinh-vang              rust=KHOP ts=KHOP | 
+IMPORT G04-pdf-dung-10MB                  rust=KHOP ts=KHOP | 
+IMPORT G05-anh-dung-2MB                   rust=KHOP ts=KHOP | 
+IMPORT X02-pdf-qua-10MB                   rust=KHOP ts=KHOP | None
+IMPORT X03-anh-qua-2MB                    rust=KHOP ts=KHOP | ngoài khoảng 1–2097152
+IMPORT X01-pdf-sai-magic                  rust=KHOP ts=KHOP | mime_mismatch
+IMPORT X01b-pdf-co-bom-truoc              rust=KHOP ts=KHOP | mime_mismatch
+IMPORT X01c-pdf-chu-thuong                rust=KHOP ts=KHOP | mime_mismatch
+IMPORT X04-trung-id-dinh-kem              rust=KHOP ts=KHOP | id trùng
+IMPORT X04b-trung-id-dinh-kem-hai-ho-so   rust=KHOP ts=KHOP | tệp trùng
+IMPORT X05-trung-id-ban-ghi-tep           rust=KHOP ts=KHOP | id trùng
+IMPORT X06-tep-duoc-tro-nhung-thieu       rust=KHOP ts=KHOP | tệp đính kèm không tồn tại
+IMPORT X07-thieu-byte-tep                 rust=KHOP ts=KHOP | thiếu tệp đính kèm
+IMPORT X08-7-tep                          rust=KHOP ts=KHOP | quá 6 tệp
+IMPORT X09-kind-sai                       rust=KHOP ts=KHOP | giá trị không hợp lệ "giay_bao_tu"
+IMPORT X10-mime-png                       rust=KHOP ts=KHOP | giá trị không hợp lệ "image/png"
+IMPORT X11-sha-sai                        rust=KHOP ts=KHOP | sha256/bytes không khớp
+IMPORT X12-bytes-sai                      rust=KHOP ts=KHOP | sha256/bytes không khớp
+IMPORT X13-pdf-stripped-true              rust=KHOP ts=KHOP | PDF lưu nguyên bản: phải là false
+IMPORT X14-anh-stripped-false             rust=KHOP ts=KHOP | ảnh luôn được mã hóa lại: phải là true
+IMPORT X15-gioi-tinh-Nam                  rust=KHOP ts=KHOP | giá trị không hợp lệ "Nam"
+IMPORT X16-gioi-tinh-khac                 rust=KHOP ts=KHOP | giá trị không hợp lệ "khac"
+IMPORT X17-gioi-tinh-rong                 rust=KHOP ts=KHOP | giá trị không hợp lệ ""
+IMPORT X17b-gioi-tinh-nu-dau              rust=KHOP ts=KHOP | giá trị không hợp lệ "nữ"
+IMPORT X18-ten-tep-121                    rust=KHOP ts=KHOP | độ dài 121 ngoài 1–120
+IMPORT X19-byte-thua                      rust=KHOP ts=KHOP | ảnh thừa
+IMPORT X20-mime-pdf-byte-jpeg             rust=KHOP ts=KHOP | mime_mismatch
+IMPORT X21-mime-jpeg-byte-pdf             rust=KHOP ts=KHOP | mime_mismatch
+IMPORT X22-v2-con-khoa-cu                 rust=KHOP ts=KHOP | có cả attachments lẫn certificate_photo_ids (khóa cũ) — tài liệu dị dạng
+IMPORT X23-ten-tep-dieu-khien             rust=KHOP ts=KHOP | chứa ký tự điều khiển
+IMPORT U01-hai-ho-so-chung-tep            rust=GHI_NHAN ts=GHI_NHAN | 
+IMPORT U02-tep-mo-coi                     rust=GHI_NHAN ts=GHI_NHAN | 
+INPLACE FROZEN                         rust-thuong=KHOP ts-thuong=KHOP rust-loi=KHOP ts-loi=KHOP
+INPLACE M01-cu-giay-chung-tu           rust-thuong=KHOP ts-thuong=KHOP rust-loi=KHOP ts-loi=KHOP
+INPLACE M02-cu-4-anh                   rust-thuong=KHOP ts-thuong=KHOP rust-loi=KHOP ts-loi=KHOP
+INPLACE M03-cu-anh-chung               rust-thuong=KHOP ts-thuong=KHOP rust-loi=KHOP ts-loi=KHOP
+INPLACE M04-cu-khong-bao-tu            rust-thuong=KHOP ts-thuong=KHOP rust-loi=KHOP ts-loi=KHOP
+INPLACE M05-cu-bao-tu-rong             rust-thuong=KHOP ts-thuong=KHOP rust-loi=KHOP ts-loi=KHOP
+INPLACE M06-cu-khoa-la-legacy          rust-thuong=SAI_LECH_TRUONG ts-thuong=SAI_LECH_TRUONG rust-loi=KHOP ts-loi=KHOP
+INPLACE M07-cu-chu-thuong-nfc          rust-thuong=KHOP ts-thuong=KHOP rust-loi=KHOP ts-loi=KHOP
+INPLACE M08-cu-nfd                     rust-thuong=KHOP ts-thuong=KHOP rust-loi=KHOP ts-loi=KHOP
+INPLACE M09-cu-anh-chung-tu-thieu      rust-thuong=SAI_LECH_TRUONG ts-thuong=SAI_LECH_TRUONG rust-loi=KHOP ts-loi=KHOP
+INPLACE M10-cu-anh-dung-chung          rust-thuong=KHOP ts-thuong=KHOP rust-loi=KHOP ts-loi=KHOP
+NAME 'ông'                      rust:save=True disp=True ts:save=True disp=True
+NAME 'bà'                       rust:save=True disp=True ts:save=True disp=True
+NAME 'cụ'                       rust:save=True disp=True ts:save=True disp=True
+NAME 'kỵ'                       rust:save=True disp=True ts:save=True disp=True
+NAME 'ông tổ họ'                rust:save=True disp=True ts:save=True disp=True
+NAME 'bà cô tổ họ'              rust:save=True disp=True ts:save=True disp=True
+NAME 'bé đỏ'                    rust:save=True disp=True ts:save=True disp=True
+NAME 'đứa em'                   rust:save=True disp=True ts:save=True disp=True
+NAME 'ừ'                        rust:save=True disp=True ts:save=True disp=True
+NAME 'ỵ'                        rust:save=True disp=True ts:save=True disp=True
+NAME 'ơ kìa'                    rust:save=True disp=True ts:save=True disp=True
+NAME 'Ông'                      rust:save=True disp=True ts:save=True disp=True
+NAME 'ÔNG'                      rust:save=True disp=True ts:save=True disp=True
+NAME 'bÀ'                       rust:save=True disp=True ts:save=True disp=True
+NAME '  chú  '                  rust:save=True disp=True ts:save=True disp=True
+NAME ''                         rust:save=True disp=True ts:save=True disp=True
+NAME '   '                      rust:save=True disp=True ts:save=True disp=True
+NAME '2 bà'                     rust:save=True disp=True ts:save=True disp=True
+NAME 'ông nội (bên nội)'        rust:save=True disp=True ts:save=True disp=True
+NAME '(bên nội) ông'            rust:save=True disp=True ts:save=True disp=True
+NAME '́a'                       rust:save=True disp=True ts:save=True disp=True
+NAME '«bà»'                     rust:save=True disp=True ts:save=True disp=True
+NAME 'ông'                     rust:save=True disp=True ts:save=True disp=True
+NAME 'ừ'                      rust:save=True disp=True ts:save=True disp=True
+NAME 'ấu'                     rust:save=True disp=True ts:save=True disp=True
+NAME 'ống'                    rust:save=True disp=True ts:save=True disp=True
+NAME 'đ'                        rust:save=True disp=True ts:save=True disp=True
+NAME 'ừ'                       rust:save=True disp=True ts:save=True disp=True
+SUG rust/deceased/None True True 22
+SUG rust/deceased/nam True False 22
+SUG rust/deceased/nu True False 22
+SUG rust/living/None True True 17
+SUG rust/living/nam True False 17
+SUG rust/living/nu True False 17
+SUG ts/deceased/None True True 22
+SUG ts/deceased/nam True False 22
+SUG ts/deceased/nu True False 22
+SUG ts/living/None True True 17
+SUG ts/living/nam True False 17
+SUG ts/living/nu True False 17
+MEDIA {'rust': {'X21 attachment image/jpeg <- PDF': 'mime_mismatch', 'PDF attachment application/pdf': 'ok'}, 'ts': {'X21 attachment image/jpeg <- PDF': 'mime_mismatch', 'PDF attachment application/pdf': 'ok'}}
