@@ -1,5 +1,7 @@
 # Rà soát bảo mật và quyền riêng tư — v0.2 đợt 3 (T10) và mô hình đe dọa v0.2
 
+Trạng thái: **HOÀN TẤT — chờ các vai sửa và chủ dự án xem.**
+
 Vai: rà soát bảo mật và quyền riêng tư (T10, docs/v0.2/07 §7) — bên không tham gia xây dựng đặc tả và không viết mã
 đang duyệt. Ngày: 2026-11-07. Không sửa mã đang duyệt; mọi bản thử nghiệm (PoC) nằm ngoài kho.
 
@@ -358,8 +360,10 @@ rà tĩnh. Khoảng trống nằm ở các đích ngoài danh sách đã đăng 
 - **BM2-22** (#25 `src/platform.rs:20-22`, `wix/main.wxs`): gỡ cài đặt giữ dữ liệu (đúng B5 mục 4) nhưng người dùng gỡ
   ứng dụng thường tin là đã xóa; thêm mục "Xóa toàn bộ dữ liệu trên máy này" và một dòng trong hướng dẫn gỡ. Thiếu
   `LOCALAPPDATA` thì nên báo lỗi thay vì ghi sổ người thân vào `%TEMP%` (bị Disk Cleanup dọn).
-- **BM2-23** (#25 `src/people.rs:2803-2812`, #24 `BackupScreen.kt:145-146`): đếm độ dài bằng `chars()`/`String.length`
-  và so `pw1 != pw2` trên chuỗi chưa NFC; lõi #28 đã có `backup_password_error` — dùng nó để mọi nền tảng cùng quy tắc.
+- **BM2-23** (#25 `src/people.rs:2803-2812`: đếm `chars()` và so `a != b` trên chuỗi chưa NFC; #24
+  `BackupScreen.kt:145-146`: độ dài đã theo NFC (`pwLen`) nhưng so `pw1 != pw2` trên chuỗi thô): cùng một mật khẩu gõ
+  bằng hai bộ gõ (NFC/NFD) bị báo "chưa giống nhau"; lõi #28 đã có `backup_password_error` — dùng nó để mọi nền tảng
+  cùng quy tắc.
 - **BM2-24** (`.github/workflows/*.yml`): ghim action theo SHA đầy đủ (chuỗi cung ứng của bản phát hành).
 
 ### 5.3 Yêu cầu đăng ký trước cho tệp đính kèm trên native (chưa có mã — áp khi làm)
@@ -420,11 +424,46 @@ CHƯA ĐỦ BẰNG CHỨNG nếu chủ dự án ghi chấp nhận rủi ro (04 �
 
 ### 8.1 Kiểm thử của dự án
 
-(điền ở lần cập nhật kế tiếp)
+```
+$ cargo test --release -p lvhv-backup -p lvhv-store -p lvhv-ffi        # #28 5535a49, rustc/cargo 1.97.0, Linux x86_64
+lvhv_backup (unittests)  ok. 2 passed      lvhv_backup tests/vectors.rs  ok. 3 passed
+lvhv_ffi (unittests)     ok. 42 passed     lvhv_store (unittests)        ok. 2 passed
+lvhv_store tests/example.rs ok. 1 passed   lvhv_store tests/notice.rs    ok. 3 passed
+lvhv_store tests/r6.rs   ok. 11 passed (66.90 s)
+EXIT 0
+```
+
+Các kiểm thử này đạt nhưng không chứa ca của BM2-01 (ảnh/tệp đính kèm dị dạng trong tệp sao lưu hợp lệ về mật mã) và
+khẳng định ngược với BM2-02 (`ffi/src/tests_v02.rs:950`: khóa `certificate_photo_ids` phải bị từ chối).
 
 ### 8.2 PoC BM2-01
 
-(điền ở lần cập nhật kế tiếp)
+Crate dùng một lần, ngoài kho (thư mục nháp của người rà soát), phụ thuộc đường dẫn vào `store/` và `backup/` của #28.
+Đầu vào: `supplement-yc05/notice-v1.json` của #28 (có 1 ảnh chân dung, 1 tệp đính kèm ảnh, 1 tệp đính kèm PDF); thay byte
+ba khối, sửa `bytes`/`sha256` cho khớp, giữ nguyên `mime`, `width`, `height`, `stripped`; đóng gói bằng
+`lvhv_backup::export_with_fixed_rng` với mật khẩu của "kẻ gửi"; rồi gọi đúng đường của ứng dụng:
+`lvhv_store::open_backup(file, mật khẩu)` → `Store::apply_import(…, Merge)` trên kho trống.
+
+- Ảnh chân dung: PNG 8 bit xám 20 000 × 20 000 điểm ảnh, **388 871 byte** (dưới trần 1 MiB), sinh bằng `zlib` mức 9
+  từ các dòng toàn 0. Giải mã ra RGBA cần 20 000 × 20 000 × 4 ≈ **1,6 GB**.
+- Tệp đính kèm "ảnh" (`image/jpeg`, `stripped: true`): 38 byte HTML.
+- Tệp đính kèm "PDF": `%PDF-<html>khong phai PDF</html>` (32 byte).
+
+```
+photo 0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09: 388871 byte, PNG=true (meta mime image/jpeg)
+attachment 0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e0c: "<html><script>alert(1)</script></html>"
+meta {"bytes":38,…,"file_name":"tin-bao-tu.jpg",…,"mime":"image/jpeg",…,"stripped":true}
+meta {"bytes":32,…,"file_name":"giay-chung-tu.pdf",…,"mime":"application/pdf",…,"stripped":false}
+
+$ ls -la <kho>/photos <kho>/attachments
+-rw-r--r-- 1 root root 388871 … photos/0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09.img
+-rw-r--r-- 1 root root     38 … attachments/0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e0c.bin
+-rw-r--r-- 1 root root     32 … attachments/0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e0d.bin
+```
+
+Cả ba được nhận và lưu nguyên byte; không có lỗi nào. Trên main (`store/src/lib.rs:1079-1125`) đường ảnh chân dung có
+cùng logic (chỉ so `sha256`/`bytes`). Phần "ứng dụng thoát khi hiển thị" suy từ mã hiển thị của từng nền tảng
+(BM2-10), chưa chạy trên thiết bị.
 
 ### 8.3 Kiểm tra phụ thuộc
 
