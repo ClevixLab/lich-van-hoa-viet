@@ -61,6 +61,39 @@ def expected_states(doc, blobs):
     return out
 
 
+ALT = {"0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09": "0b8e4f52-3c1a-4d2e-9f60-e5d4c3b2a1f6"}  # id thay the, doc tu
+# released/expected cua ben xay dung (anh chan dung 5e09 cung la anh giay chung tu); chi dung cho ung vien bieu dien.
+
+
+def builder_repr(doc, blobs, legacy_on_empty):
+    """Ung vien bieu dien theo 01 §7.1 tren PR (doc SAU doi chieu): ket qua tham chieu + Person.legacy
+    {certificate_photo_ids, certificate_photos}; anh chung voi anh chan dung -> tep id thay the; sv giu 1."""
+    mdoc, mbl = R.migrate_1_to_2(doc, blobs)
+    photos = {p["id"]: p for p in doc.get("photos", [])}
+    portrait = {p.get("photo_id") for p in doc.get("persons", [])}
+    for p0, p in zip(doc.get("persons", []), mdoc.get("persons", [])):
+        n0 = ((p0.get("death") or {}).get("notice")) or None
+        if isinstance(n0, dict) and "certificate_photo_ids" in n0:
+            ids = n0["certificate_photo_ids"]
+            if ids or legacy_on_empty:
+                p.setdefault("legacy", {}).update({"certificate_photo_ids": list(ids),
+                                                   "certificate_photos": [photos[i] for i in ids if i in photos]})
+            for r in p["death"]["notice"]["attachments"]:
+                if r["file_id"] in portrait and r["file_id"] in ALT:
+                    r["file_id"] = ALT[r["file_id"]]
+    for a in mdoc.get("attachments", []):
+        if a["id"] in portrait and a["id"] in ALT:
+            mbl[ALT[a["id"]]] = mbl[a["id"]]; a["id"] = ALT[a["id"]]
+    mdoc["attachments"] = sorted(mdoc.get("attachments", []), key=lambda a: a["id"])
+    mdoc["schema_version"] = 1
+    if not mdoc["attachments"]:
+        del mdoc["attachments"]
+    for p in mdoc.get("persons", []):
+        if p.get("gioi_tinh", 0) is None:
+            del p["gioi_tinh"]
+    return mdoc, mbl
+
+
 rows = []
 for fn in sorted(os.listdir(fxdir)):
     if not fn.endswith(".lvhv"):
@@ -79,6 +112,12 @@ for fn in sorted(os.listdir(fxdir)):
                 del mdoc["attachments"]
             cand = {"chuyen-doi:" + k: v for k, v in expected_states(mdoc, mbl).items()}
             cand.update({"nguyen-tep:" + k: v for k, v in expected_states(doc, blobs).items()})
+            for le in (False, True):
+                try:
+                    bd, bb = builder_repr(doc, blobs, le)
+                    cand["bieu-dien-PR(legacy%s)" % ("+rong" if le else "")] = S.state_hash(bd, bb)
+                except Exception as ex:  # tep loi (vd M09) khong co ung vien
+                    cand["bieu-dien-PR-loi"] = str(ex)[:80]
         else:
             cand = expected_states(doc, blobs)
         row["expected_states"] = cand
