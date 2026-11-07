@@ -159,6 +159,9 @@ final class ReminderScheduler: ObservableObject {
     @discardableResult
     func reschedule(store: LvhvStore?, reason: Reason, now: Date = Date(), zone: DeviceZone? = nil) async -> Outcome {
         guard let store else { return Outcome() }
+        #if DEBUG
+        if UserDefaults.standard.bool(forKey: "lvhvNoNotif") { return Outcome() }
+        #endif
         if running { rerun = true; return last }
         running = true
         defer { running = false }
