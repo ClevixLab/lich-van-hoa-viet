@@ -456,3 +456,14 @@ mất ảnh giấy báo tử của bản nhập (PR #30) — đã sửa ở cả
 - Dữ liệu và tệp sao lưu của các bản trước không có trường này: đọc như `null`, không cần chuyển đổi (R14, R15 (e)).
 - Gói ảnh của Clevix (`content/memorial/trays/`) **không** thuộc mô hình dữ liệu người dùng và không vào tệp sao lưu.
 
+### Bổ sung 01-YC10-a (07/11/2026, SAU KHI THẤY KẾT QUẢ duyệt mã `docs/reviews/DUYET-MA-YC10-CORE.md`)
+
+- **MA10-02:** giới hạn cạnh dài ≤ 1600 px của ảnh mâm lễ (§3.7) được lõi kiểm cả khi lưu hồ sơ lẫn khi nhập sao lưu
+  (ảnh do `memorial.tray_photo_id` trỏ tới có `max(width, height) > 1600` → từ chối, V3 không đủ — thêm lỗi lược đồ tại
+  `/persons/<i>/memorial/tray_photo_id`). Giao diện vẫn thu nhỏ trước khi gọi. Lý do: R15 (c) phải kiểm được ở lõi.
+- **MA10-03:** §6.3 Gộp — sau khi gộp, ảnh trên máy mà **không hồ sơ nào trong kết quả gộp còn trỏ tới** (`photo_id`,
+  `memorial.tray_photo_id`) bị xóa trong cùng giao dịch, như quy tắc dọn ảnh khi lưu hồ sơ. Câu "giữ mọi bản trên máy"
+  chỉ còn áp dụng cho ảnh còn được dùng. Tệp đính kèm báo tử theo cùng quy tắc với `death.notice.attachments[].file_id`.
+  Lý do: ảnh của bản hồ sơ bị thay khi gộp đã không còn chủ, nếu giữ lại sẽ nằm mãi trong mọi tệp sao lưu sau đó (riêng
+  tư, R-PRIV-3). Không mất dữ liệu đang dùng: chỉ xóa thứ không còn hồ sơ nào hiển thị.
+
