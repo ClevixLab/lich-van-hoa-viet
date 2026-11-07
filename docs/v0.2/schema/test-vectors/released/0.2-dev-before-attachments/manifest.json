@@ -1,0 +1,16 @@
+{
+  "fixture": "0.2-dev-before-attachments",
+  "created_by": "bản dựng 0.2 trước YC-2026-07 — commit 7338f04 (nhánh v0.2-w3-core2), make_dev_fixture.rs.txt",
+  "created_at": "2026-11-07",
+  "store_version": 1,
+  "password": "mật khẩu thử nghiệm",
+  "description": "Kho SQLite thật (user_version 1) và tệp sao lưu của bản dựng đó, có death.notice.certificate_photo_ids: hồ sơ 5e01 có một ảnh giấy báo tử (5e0c), hồ sơ 5e02 có hai (5e09 cũng là ảnh chân dung của 5e01; 5e0c dùng chung). Không bao giờ sửa.",
+  "files": {
+    "backup.lvhv": "7a98d468fc4d5dcc4964d27a9897af7d7cd29fa38ea3ab3bb5d5f9c23e4efd90",
+    "make_dev_fixture.rs.txt": "56b5f8a9fa6c3777dc0868a22a7b697cc313714609b345f5158b4a7aca8bacf9",
+    "store-snapshot.json": "bb4253df495bd7a250f261621b28ceb634f4ba54292f0046d9534c32b02d775a",
+    "store/lvhv.sqlite": "04da216457919bdef7562a4ad072ad1a3a0d43688ec4e11eb09f91d32b387fd5",
+    "store/photos/0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09.img": "22a5c04266a6d2e27fa3085bd0623296dfb7e91b5763e8a746c6a4d220dfb7e9",
+    "store/photos/0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e0c.img": "22a5c04266a6d2e27fa3085bd0623296dfb7e91b5763e8a746c6a4d220dfb7e9"
+  }
+}

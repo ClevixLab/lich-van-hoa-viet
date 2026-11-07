@@ -47,8 +47,9 @@ fn seed(store: &mut Store, doc: &Value, photos: &[(String, Vec<u8>)]) {
     store.apply_import(&v, ImportMode::Replace).unwrap();
 }
 
+/// Ảnh của bộ R6v2 (04 Bổ sung B7 — R6 (a)–(d) và lật bit chạy trên bộ này), sắp theo id.
 fn r6_photos() -> Vec<(String, Vec<u8>)> {
-    let (doc, photos) = gen::dataset_r6();
+    let (doc, photos) = gen::dataset_r6v2();
     let ids: Vec<String> = doc["photos"]
         .as_array()
         .unwrap()
@@ -92,6 +93,78 @@ fn vectors_are_deterministic_and_committed() {
         m["key_hex"].as_str().unwrap(),
         key.iter().map(|x| format!("{x:02x}")).collect::<String>()
     );
+}
+
+/// 04 Bổ sung B7: bộ R6v2 đã khóa — sinh lại đúng từng byte, sha256 mọi tệp khớp manifest, tệp salt/nonce cố định
+/// mở được và cho đúng băm trạng thái; mọi ảnh qua kiểm tra chặt B6.
+#[test]
+fn r6v2_vectors_locked() {
+    let d = gen::r6v2_dir();
+    let m: Value =
+        serde_json::from_slice(&std::fs::read(d.join("manifest.json")).unwrap()).unwrap();
+    for (f, h) in m["files"].as_object().unwrap() {
+        assert_eq!(
+            sha256_hex(&std::fs::read(d.join(f)).unwrap()),
+            h.as_str().unwrap(),
+            "{f} khác sha256 đã khóa"
+        );
+    }
+    assert_eq!(m["files"].as_object().unwrap().len(), 23);
+    let (ds, _) = gen::dataset_r6v2();
+    assert_eq!(
+        canonical_json(&ds).into_bytes(),
+        std::fs::read(d.join("dataset-r6v2.json")).unwrap()
+    );
+    let file = std::fs::read(d.join("dataset-r6v2-fixed.lvhv")).unwrap();
+    let v = open_backup(&file, gen::PASSWORD).unwrap();
+    assert_eq!(
+        (v.preview().persons, v.preview().events, v.preview().photos),
+        (60, 30, 20)
+    );
+    let dir = tmpdir("r6v2");
+    let mut s = Store::open(&dir).unwrap();
+    s.apply_import(&v, ImportMode::Replace).unwrap();
+    assert_eq!(
+        s.state_hash().unwrap(),
+        m["store_state_sha256"].as_str().unwrap()
+    );
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+/// 04 Bổ sung B7: bộ R6 cũ (ảnh giả: `FF D8 FF E0 …`, 10 ảnh khai `image/webp`) nay bị **từ chối** khi nhập (B6),
+/// với thông báo chung; vector cũ vẫn sinh lại đúng từng byte (vectors_are_deterministic_and_committed).
+#[test]
+fn old_r6_rejected_on_import() {
+    let (ds, mut photos) = gen::dataset_r6();
+    photos.sort_by(|a, b| a.0.cmp(&b.0));
+    let blobs: Vec<PhotoBlob> = photos
+        .iter()
+        .map(|(id, b)| PhotoBlob {
+            id: lvhv_backup::uuid_from_str(id).unwrap(),
+            bytes: b.clone(),
+        })
+        .collect();
+    let e = lvhv_store::verify_contents(&lvhv_backup::Contents {
+        json: canonical_json(&ds),
+        photos: blobs.clone(),
+    })
+    .unwrap_err();
+    assert_eq!(e.import_message(), "Sai mật khẩu hoặc tệp bị hỏng");
+    // Tệp salt/nonce cố định của R6 cũ (đúng sha256 đã khóa) cũng bị từ chối qua đường nhập thật.
+    let f = lvhv_backup::export_with_fixed_rng(
+        gen::PASSWORD,
+        &canonical_json(&ds),
+        &blobs,
+        gen::SALT,
+        gen::NONCE,
+    )
+    .unwrap();
+    let m: Value = serde_json::from_slice(&read("manifest.json")).unwrap();
+    assert_eq!(
+        m["dataset_r6"]["fixed_rng_file_sha256"],
+        json!(sha256_hex(&f))
+    );
+    assert!(open_backup(&f, gen::PASSWORD).is_err());
 }
 
 #[test]
@@ -142,7 +215,7 @@ fn wrong_passwords_rejected_nfd_accepted_store_unchanged() {
     let file = read("example-v1.lvhv");
     let dir = tmpdir("a2");
     let mut s = Store::open(&dir).unwrap();
-    let (ds, _) = gen::dataset_r6();
+    let (ds, _) = gen::dataset_r6v2();
     seed(&mut s, &ds, &r6_photos());
     let before = s.state_hash().unwrap();
     let pw = gen::PASSWORD;
@@ -193,7 +266,7 @@ fn wrong_passwords_rejected_nfd_accepted_store_unchanged() {
 fn bit_flip_65536_all_rejected() {
     let dir = tmpdir("b");
     let mut s = Store::open(&dir).unwrap();
-    let (ds, photos) = (gen::dataset_r6().0, r6_photos());
+    let (ds, photos) = (gen::dataset_r6v2().0, r6_photos());
     seed(&mut s, &ds, &photos);
     let pw = gen::PASSWORD;
     let file = s
@@ -259,7 +332,7 @@ fn bit_flip_65536_all_rejected() {
 fn roundtrip_replace_identical() {
     let a = tmpdir("a-src");
     let mut s = Store::open(&a).unwrap();
-    let (ds, photos) = (gen::dataset_r6().0, r6_photos());
+    let (ds, photos) = (gen::dataset_r6v2().0, r6_photos());
     seed(&mut s, &ds, &photos);
     let snap1 = s.snapshot(&app(), "2026-11-06T03:15:00Z").unwrap();
     assert_eq!(canonical_json(&snap1), canonical_json(&ds));
@@ -267,9 +340,22 @@ fn roundtrip_replace_identical() {
     let file = s.export_backup("mật khẩu thử nghiệm", &app()).unwrap();
     // Đóng và mở lại kho (R2: đọc lại sau khi đóng/mở).
     drop(s);
-    let s = Store::open(&a).unwrap();
-    assert!(s.settings().unwrap()["last_backup_at"].is_string());
+    let mut s = Store::open(&a).unwrap();
+    // MA3N-23-01: tạo byte chưa phải là đã sao lưu; chỉ mark_backup_saved (sau khi lưu tệp xong) mới ghi nhận.
+    // (Bộ R6 có sẵn last_backup_at = giá trị của tệp; xuất không được đổi nó, cũng không đổi state_hash.)
+    assert_eq!(
+        s.settings().unwrap()["last_backup_at"],
+        snap1["settings"]["last_backup_at"]
+    );
+    assert_eq!(s.state_hash().unwrap(), h1);
+    s.mark_backup_saved("2026-11-07T01:00:00Z").unwrap();
+    assert_eq!(
+        s.settings().unwrap()["last_backup_at"],
+        "2026-11-07T01:00:00Z"
+    );
     assert_eq!(s.backup_pending_since().unwrap(), None);
+    // Ghi nhận hai lần cho một lần tạo tệp → lỗi.
+    assert!(s.mark_backup_saved("2026-11-07T01:00:00Z").is_err());
     let b = tmpdir("a-dst");
     let mut t = Store::open(&b).unwrap();
     let v = open_backup(&file, "mật khẩu thử nghiệm").unwrap();
@@ -469,9 +555,13 @@ fn newer_schema_rejected() {
         let s = Store::open(&dir).unwrap();
         drop(s);
         let c = rusqlite::Connection::open(dir.join(lvhv_store::DB_FILE)).unwrap();
-        c.pragma_update(None, "user_version", 2).unwrap();
+        c.pragma_update(None, "user_version", lvhv_store::migrate::STORE_VERSION + 1)
+            .unwrap();
     }
-    assert!(matches!(Store::open(&dir), Err(StoreError::NewerSchema(2))));
+    assert!(matches!(
+        Store::open(&dir),
+        Err(StoreError::NewerSchema(v)) if v == lvhv_store::migrate::STORE_VERSION + 1
+    ));
 }
 
 #[test]
@@ -511,6 +601,18 @@ fn backup_reminder_hook() {
         lvhv_store::rfc3339_from_unix(lvhv_store::unix_from_rfc3339(&since).unwrap() + 30 * 86_400);
     assert!(s.backup_reminder_due(&later).unwrap());
     let _ = s.export_backup("mật khẩu thử nghiệm", &app()).unwrap();
+    // Chưa lưu tệp (hủy hộp "Lưu") → vẫn nhắc sao lưu (MA3N-23-01).
+    assert!(s.backup_reminder_due(&later).unwrap());
+    assert!(s.settings().unwrap()["last_backup_at"].is_null());
+    s.mark_backup_saved(&lvhv_store::now_rfc3339()).unwrap();
     assert!(!s.backup_reminder_due(&later).unwrap());
+    // Thay đổi sau khi tạo tệp nhưng trước khi ghi nhận vẫn là "chờ sao lưu".
+    let _ = s.export_backup("mật khẩu thử nghiệm", &app()).unwrap();
+    std::thread::sleep(std::time::Duration::from_millis(1100));
+    s.put_event_type(&json!({"id": "a1b2c3d4-0000-4000-8000-000000000002", "builtin": null, "ten": "Lễ thử hai", "default_recurring": false,
+        "created_at": "2026-11-06T03:15:00Z", "updated_at": "2026-11-06T03:15:00Z", "rev": 1})).unwrap();
+    s.mark_backup_saved(&lvhv_store::now_rfc3339()).unwrap();
+    assert!(s.backup_pending_since().unwrap().is_some());
+    assert!(s.mark_backup_saved("không phải thời điểm").is_err());
     let _ = ex;
 }

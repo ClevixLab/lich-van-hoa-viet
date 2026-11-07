@@ -3,8 +3,7 @@ import { noticeBlock } from "./notice";
 import { clear, h, svg } from "../dom";
 import {
   M, addDays, cal, daysBetween, displayName, dm, dmy, lunarText, relText, snap, store, today, tuoiText,
-  type JsonObj, type Snap, type Ymd,
-} from "./core";
+  type JsonObj, type Snap, type Ymd, dispCap, isReadOnly, w } from "./core";
 import type { Nav } from "./forms";
 import { eventsInPeriod, nextPeriod, periodBounds, prevPeriod, type PersonFilter as PeriodFilter, type PeriodKind } from "./period";
 import { drawPhoto } from "./photo";
@@ -16,7 +15,7 @@ export function welcome(): HTMLElement {
   return h("section", { class: "panel welcome" },
     h("h2", null, "Chưa có ai trong sổ"),
     h("p", null, "Thêm ông bà, cha mẹ đã khuất để được nhắc ngày giỗ theo âm lịch; thêm người đang sống để nhớ sinh nhật và ngày kỷ niệm."),
-    addButtons());
+    w(addButtons()));
 }
 export function addButtons(): HTMLElement {
   return h("div", { class: "addrow" },
@@ -52,13 +51,10 @@ export async function storageNotices(sn: Snap): Promise<HTMLElement[]> {
       h("p", null, "Trình duyệt có thể xóa dữ liệu khi máy thiếu chỗ — hãy sao lưu. Trên iPhone, thêm ứng dụng vào Màn hình chính để giữ dữ liệu lâu hơn."),
       h("div", { class: "notice-acts" },
         h("a", { class: "btnlink main sm", href: "#/nguoi-than/sao-luu" }, "Sao lưu ngay"),
-        h("button", { type: "button", class: "btn2 sm", id: "persist-ok", onclick: async () => {
+        isReadOnly() ? null : h("button", { type: "button", class: "btn2 sm", id: "persist-ok", onclick: async () => {
           box.remove();
-          await new Promise<void>((ok) => {
-            const tx = s.db.transaction("meta", "readwrite");
-            tx.objectStore("meta").put(new Date().toISOString().slice(0, 19) + "Z", "ui_persist_notice_hidden_at");
-            tx.oncomplete = () => ok(); tx.onerror = () => ok();
-          });
+          // MA3C-30-04: cờ giao diện qua lõi — chế độ chỉ đọc thì không ghi.
+          await s.putUiMeta("ui_persist_notice_hidden_at", new Date().toISOString().slice(0, 19) + "Z").catch(() => false);
         } }, "Đã hiểu")));
     out.push(box);
   }
@@ -75,11 +71,8 @@ export interface Due { occ: M.Occurrence; t: M.RemType; time: number }
 export function dueToday(sn: Snap, t: Ymd = today()): Due[] {
   const zone = M.Zone.fixed(-new Date().getTimezoneOffset());
   const day = M.ymdJdn(t);
-  return M.allReminders(cal(), sn.ds, t, addDays(t, 61), -Infinity, zone)
-    .filter((r) => Math.floor(r.at_local / 1440) === day)
-    .map((r) => ({ occ: r.occ, t: r.rtype, time: r.at_local - day * 1440 }))
-    // 08 §5.5: theo giờ nhắc rồi theo thứ tự 02 §7.2 (allReminders xếp theo mã lời nhắc ngẫu nhiên khi cùng giờ).
-    .sort((a, b) => a.time - b.time || M.cmpOcc(a.occ, b.occ));
+  // 08 §5.5 / 02 §7.5: hàm dueToday của lõi (cùng bản với Rust due_today; giờ nhắc → thứ tự 02 §7.2 → id).
+  return M.dueToday(cal(), sn.ds, t, zone).map((r) => ({ occ: r.occ, t: r.rtype, time: r.at_local - day * 1440 }));
 }
 
 const dismissed = new Set<string>();
@@ -133,7 +126,7 @@ export async function renderUpcoming(root: HTMLElement, nav: Nav, openIcs: () =>
           h("h2", null, "30 ngày tới"),
           items.length ? list : h("p", { class: "empty-hint" }, "Trong 30 ngày tới không có ngày giỗ, sinh nhật hay sự kiện nào. ",
             h("a", { class: "textlink", href: "#/nguoi-than/theo-ky" }, "Xem theo tháng, quý, năm")))),
-      h("div", { class: "pcol-side" }, webLimitPanel(openIcs), h("section", { class: "panel" }, h("h2", null, "Thêm vào sổ"), addButtons()))));
+      h("div", { class: "pcol-side" }, webLimitPanel(openIcs), w(h("section", { class: "panel" }, h("h2", null, "Thêm vào sổ"), addButtons())))));
 }
 
 // ---------------- Theo kỳ (R13) ----------------
@@ -232,10 +225,10 @@ export async function renderList(root: HTMLElement, nav: Nav): Promise<void> {
   const box = (kind: "deceased" | "living", label: string, add: string) => {
     const ps = sorted.filter((p) => p.kind === kind);
     return h("section", { class: "panel plbox", id: `list-${kind}` },
-      h("div", { class: "plhead" }, h("h2", null, `${label} (${ps.length})`), h("a", { class: "btnlink sm", href: add }, "+ Thêm")),
+      h("div", { class: "plhead" }, h("h2", null, `${label} (${ps.length})`), w(h("a", { class: "btnlink sm", href: add }, "+ Thêm"))),
       ps.length ? h("ul", { class: "plrows" }, ...ps.map((p) => h("li", null, h("button", { type: "button", class: "prow", onclick: () => openPerson(nav)(p.id as string) },
         h("span", { class: "avatar", "aria-hidden": "true" }, [...(p.ho_ten as string).trim().split(/\s+/).pop() ?? "?"][0]?.toUpperCase() ?? "?"),
-        h("span", { class: "pr-main" }, h("span", { class: "pr-name" }, displayName(p)), p.quan_he ? h("span", { class: "pr-sub" }, p.quan_he as string) : null,
+        h("span", { class: "pr-main" }, h("span", { class: "pr-name" }, displayName(p)), dispCap((p.quan_he as string) ?? "") ? h("span", { class: "pr-sub" }, dispCap(p.quan_he as string)) : null,
           h("span", { class: "pr-sub" }, personSummary(p, t)))))))
         : h("p", { class: "empty-hint" }, "Chưa có ai."));
   };
@@ -246,7 +239,8 @@ export async function renderList(root: HTMLElement, nav: Nav): Promise<void> {
 
 // ---------------- Hồ sơ một người ----------------
 function row(k: string, v: string | null | undefined): HTMLElement | null {
-  return v ? h("div", null, h("dt", null, k), h("dd", null, v)) : null;
+  const t = v?.normalize("NFC").trim(); // #38: hiện giá trị đã cắt khoảng trắng; chỉ có khoảng trắng → không hiện dòng
+  return t ? h("div", null, h("dt", null, k), h("dd", null, t)) : null;
 }
 function dvText(dv: JsonObj): string {
   if (dv.precision === "year") return `năm ${dv.year as number}${dv.calendar === "lunar" ? " (âm lịch)" : ""}`;
@@ -288,6 +282,7 @@ export async function renderPerson(root: HTMLElement, id: string, nav: Nav): Pro
       return a !== null ? `${a}${am !== null ? ` (tuổi âm ${am})` : ""}` : null;
     })()) : null,
     b ? row("Nơi sinh", b.noi_sinh as string) : null,
+    row("Giới tính", ({ nam: "Nam", nu: "Nữ" } as Record<string, string>)[(p.gioi_tinh as string | null | undefined) ?? ""] ?? "Không ghi"),
     row("Tên hiệu / pháp danh", p.ten_hieu as string),
     dead ? row("Nơi an táng", p.noi_an_tang as string) : null,
     dead && mem ? row("Giỗ hết", `năm thứ ${mem.gio_het_nam as number} sau năm mất`) : null,
@@ -298,7 +293,7 @@ export async function renderPerson(root: HTMLElement, id: string, nav: Nav): Pro
   const typeName = (e: JsonObj) => (e.tieu_de as string) || ((sn.types.find((x) => x.id === e.type_id)?.ten as string) ?? "Sự kiện");
   const evList = events.length ? h("ul", { class: "evrows" }, ...events.map((e) => h("li", { class: "evrow" },
     h("span", { class: "ev-main" }, h("b", null, typeName(e)), h("span", null, ` · ${dvText(e.date as JsonObj)} · ${e.recurring ? "hằng năm" : "một lần"}`)),
-    h("span", { class: "ev-acts" },
+    isReadOnly() ? null : h("span", { class: "ev-acts" },
       h("a", { class: "btn2 sm", href: `#/nguoi-than/su-kien/${id}/${e.id as string}` }, "Sửa"),
       h("button", { type: "button", class: "btn2 sm danger", onclick: async () => {
         if (await confirmDialog({ title: "Xóa sự kiện?", body: [`Xóa sự kiện “${typeName(e)}”? Không hoàn tác được.`], ok: "Xóa sự kiện", cancel: "Giữ lại", danger: true, focusCancel: true, onOk: async () => { await s.deleteEvent(e.id as string); } })) {
@@ -319,8 +314,7 @@ export async function renderPerson(root: HTMLElement, id: string, nav: Nav): Pro
       title: "Xóa hồ sơ?", danger: true, focusCancel: true, ok: "Xóa hồ sơ", cancel: "Giữ lại",
       body: [`Xóa hồ sơ của ${name}? ${dead ? "Ngày giỗ, lời nhắc và ảnh" : "Sinh nhật, lời nhắc"} của người này sẽ bị xóa khỏi máy. Sự kiện gắn với người này vẫn còn nếu có người khác cùng tham gia. Không hoàn tác được.`],
       onOk: async () => {
-        await s.deletePerson(id);
-        for (const e of await s.events()) if ((e.person_ids as string[]).length === 0 && evIds.has(e.id as string)) await s.deleteEvent(e.id as string);
+        await s.deletePerson(id, { deleteOrphanEvents: true }); // lõi xóa sự kiện chỉ của người này, cùng giao dịch
       },
     });
     if (ok) { toast("Đã xóa hồ sơ."); nav.go("#/nguoi-than/ho-so", true); }
@@ -329,11 +323,11 @@ export async function renderPerson(root: HTMLElement, id: string, nav: Nav): Pro
   root.append(
     backLink(),
     h("div", { class: "phead" }, canvas,
-      h("div", { class: "phead-t" }, h1, p.quan_he ? h("p", { class: "phead-rel" }, p.quan_he as string) : null,
+      h("div", { class: "phead-t" }, h1, dispCap((p.quan_he as string) ?? "") ? h("p", { class: "phead-rel" }, dispCap(p.quan_he as string)) : null,
         h("div", { class: "phead-acts" },
           dead ? h("a", { class: "btnlink main", href: `#/nguoi-than/tuong-niem/${id}`, id: "open-memorial" }, "Tưởng niệm") : null,
-          h("a", { class: "btnlink", href: `#/nguoi-than/sua/${id}`, id: "edit-person" }, "Sửa"),
-          !dead ? h("a", { class: "btnlink", href: `#/nguoi-than/bao-tu/${id}`, id: "convert-person" }, "Cập nhật: đã mất") : null))),
+          w(h("a", { class: "btnlink", href: `#/nguoi-than/sua/${id}`, id: "edit-person" }, "Sửa")),
+          !dead ? w(h("a", { class: "btnlink", href: `#/nguoi-than/bao-tu/${id}`, id: "convert-person" }, "Cập nhật: đã mất")) : null))),
     h("div", { class: "pcols" },
       // TK-08: "Lần tới" ngay dưới đầu trang (trước "Thông tin"); mục chỉ để xem, không phải nút.
       h("div", { class: "pcol-main" },
@@ -343,9 +337,9 @@ export async function renderPerson(root: HTMLElement, id: string, nav: Nav): Pro
         noticeBlock(p)),
       h("div", { class: "pcol-side" },
         h("section", { class: "panel", id: "event-box" },
-          h("div", { class: "plhead" }, h("h2", null, "Sự kiện"), h("a", { class: "btnlink sm", href: `#/nguoi-than/su-kien/${id}/moi`, id: "add-event" }, "+ Thêm sự kiện")), evList,
+          h("div", { class: "plhead" }, h("h2", null, "Sự kiện"), w(h("a", { class: "btnlink sm", href: `#/nguoi-than/su-kien/${id}/moi`, id: "add-event" }, "+ Thêm sự kiện"))), evList,
           b4Note),
         h("section", { class: "panel" }, h("h2", null, "Nhắc"), remBox),
-        h("div", { class: "delrow" }, del))));
+        w(h("div", { class: "delrow" }, del)))));
   h1.focus();
 }

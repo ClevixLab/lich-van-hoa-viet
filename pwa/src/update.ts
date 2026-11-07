@@ -21,7 +21,17 @@ let reg: ServiceWorkerRegistration | null = null;
 let lastAutoCheck = 0;
 let userAskedUpdate = false;
 let controlled = hasSW && !!navigator.serviceWorker.controller;
-const listeners = new Set<(r: CheckResult) => void>();
+/**
+ * Nguồn của một lần kiểm tra: "user" (bấm "Kiểm tra cập nhật"), "auto" (lúc mở / trang hiện lại, tối đa 6 giờ một
+ * lần), "install" (service worker mới vừa cài xong — lần báo thứ hai của cùng một phát hành). `seq` tăng dần theo
+ * thứ tự BẮT ĐẦU kiểm tra, để biết một kết quả có phải của lần kiểm tra bắt đầu trước khi người dùng bấm "Để sau".
+ */
+export type CheckSource = "user" | "auto" | "install";
+export interface CheckInfo { source: CheckSource; seq: number }
+let seq = 0;
+/** Số lần kiểm tra đã bắt đầu tới giờ. */
+export function checksStarted(): number { return seq; }
+const listeners = new Set<(r: CheckResult, info: CheckInfo) => void>();
 
 /** So sánh X.Y.Z; > 0 nếu a mới hơn b. Chuỗi sai dạng coi như 0.0.0. */
 export function cmpVersion(a: string, b: string): number {
@@ -32,11 +42,11 @@ export function cmpVersion(a: string, b: string): number {
 }
 
 /** Đăng ký nghe kết quả kiểm tra (banner, trang Giới thiệu). Trả hàm hủy. */
-export function onUpdateResult(fn: (r: CheckResult) => void): () => void {
+export function onUpdateResult(fn: (r: CheckResult, info: CheckInfo) => void): () => void {
   listeners.add(fn);
   return () => listeners.delete(fn);
 }
-function emit(r: CheckResult): void { listeners.forEach((fn) => fn(r)); }
+function emit(r: CheckResult, info: CheckInfo): void { listeners.forEach((fn) => fn(r, info)); }
 
 async function fetchRemote(): Promise<RemoteVersion> {
   const res = await fetch("version.json", { cache: "no-store" });
@@ -47,7 +57,8 @@ async function fetchRemote(): Promise<RemoteVersion> {
 }
 
 /** Kiểm tra cập nhật: hỏi trình duyệt tải lại sw.js (registration.update()) và đọc version.json. */
-export async function checkForUpdate(): Promise<CheckResult> {
+export async function checkForUpdate(source: CheckSource = "user"): Promise<CheckResult> {
+  const info: CheckInfo = { source, seq: ++seq };
   let result: CheckResult;
   try {
     const [remote] = await Promise.all([fetchRemote(), reg ? reg.update().catch(() => undefined) : Promise.resolve()]);
@@ -59,7 +70,7 @@ export async function checkForUpdate(): Promise<CheckResult> {
   } catch {
     result = { status: "offline" };
   }
-  emit(result);
+  emit(result, info);
   return result;
 }
 
@@ -68,7 +79,7 @@ export function autoCheck(): void {
   const now = Date.now();
   if (now - lastAutoCheck < SIX_HOURS) return;
   lastAutoCheck = now;
-  void checkForUpdate();
+  void checkForUpdate("auto");
 }
 
 /** Chờ service worker đang cài xong (trạng thái installed) — tối đa `ms`. */
@@ -97,7 +108,7 @@ export async function applyUpdate(): Promise<void> {
 /** Gắn với service worker đã đăng ký: bản mới cài xong giữa chừng cũng báo qua banner. */
 export function attachRegistration(r: ServiceWorkerRegistration): void {
   reg = r;
-  const announce = () => { void checkForUpdate(); };
+  const announce = () => { void checkForUpdate("install"); };
   if (r.waiting && navigator.serviceWorker.controller) announce();
   r.addEventListener("updatefound", () => {
     const w = r.installing;

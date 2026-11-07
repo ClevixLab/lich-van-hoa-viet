@@ -1,0 +1,559 @@
+{
+ "tag": "5535a49",
+ "adapter": "schema_version 2->1 cho tai lieu v2; bo 'attachments' goc khi rong",
+ "fixtures": [
+  {
+   "name": "M01-cu-giay-chung-tu",
+   "expect": "accept",
+   "class": [
+    "migrate"
+   ],
+   "builder_schema_raw_ok": false,
+   "builder_schema_adapted_ok": false,
+   "adapted_errors": [
+    "{'input': {'calendar': 'solar', 'day': 8, 'leap': False, 'month': 8, 'precision': 'day', 'year': 202",
+    "{'certificate_photo_ids': ['b5000000-0000-4000-8000-0000000000c1', 'b5000000-0000-4000-8000-00000000",
+    "{'input': {'calendar': 'lunar', 'day': 10, 'leap': False, 'month': 3, 'precision': 'month_day', 'yea"
+   ],
+   "note": "tai lieu cu: luoc do moi cua ben xay dung TU CHOI"
+  },
+  {
+   "name": "M02-cu-4-anh",
+   "expect": "accept",
+   "class": [
+    "migrate"
+   ],
+   "builder_schema_raw_ok": false,
+   "builder_schema_adapted_ok": false,
+   "adapted_errors": [
+    "{'input': {'calendar': 'solar', 'day': 8, 'leap': False, 'month': 8, 'precision': 'day', 'year': 202",
+    "{'certificate_photo_ids': ['b5000000-0000-4000-8000-0000000000d1', 'b5000000-0000-4000-8000-00000000"
+   ],
+   "note": "tai lieu cu: luoc do moi cua ben xay dung TU CHOI"
+  },
+  {
+   "name": "M03-cu-anh-chung",
+   "expect": "accept",
+   "class": [
+    "migrate"
+   ],
+   "builder_schema_raw_ok": false,
+   "builder_schema_adapted_ok": false,
+   "adapted_errors": [
+    "{'input': {'calendar': 'solar', 'day': 8, 'leap': False, 'month': 8, 'precision': 'day', 'year': 202",
+    "{'certificate_photo_ids': ['0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09'], 'note': 'Gia đình đã báo họ hàng"
+   ],
+   "note": "tai lieu cu: luoc do moi cua ben xay dung TU CHOI"
+  },
+  {
+   "name": "M04-cu-khong-bao-tu",
+   "expect": "accept",
+   "class": [
+    "migrate"
+   ],
+   "builder_schema_raw_ok": true,
+   "builder_schema_adapted_ok": true,
+   "adapted_errors": [],
+   "note": "tai lieu cu: luoc do moi cua ben xay dung CHAP NHAN"
+  },
+  {
+   "name": "M05-cu-bao-tu-rong",
+   "expect": "accept",
+   "class": [
+    "migrate"
+   ],
+   "builder_schema_raw_ok": false,
+   "builder_schema_adapted_ok": false,
+   "adapted_errors": [
+    "{'input': {'calendar': 'solar', 'day': 8, 'leap': False, 'month': 8, 'precision': 'day', 'year': 202",
+    "{'certificate_photo_ids': [], 'note': None, 'notice_date': None, 'place': None, 'reason': None, 'rep"
+   ],
+   "note": "tai lieu cu: luoc do moi cua ben xay dung TU CHOI"
+  },
+  {
+   "name": "M06-cu-khoa-la-legacy",
+   "expect": "accept_or_chua_ro",
+   "class": [
+    "migrate",
+    "legacy"
+   ],
+   "builder_schema_raw_ok": false,
+   "builder_schema_adapted_ok": false,
+   "adapted_errors": [
+    "Additional properties are not allowed ('ghi_chu_ban_cu' was unexpected)",
+    "Additional properties are not allowed ('ten_goi_cu' was unexpected)",
+    "{'input': {'calendar': 'solar', 'day': 8, 'leap': False, 'month': 8, 'precision': 'day', 'year': 202"
+   ],
+   "note": "tai lieu cu: luoc do moi cua ben xay dung TU CHOI"
+  },
+  {
+   "name": "M07-cu-chu-thuong-nfc",
+   "expect": "accept",
+   "class": [
+    "migrate",
+    "names"
+   ],
+   "builder_schema_raw_ok": true,
+   "builder_schema_adapted_ok": true,
+   "adapted_errors": [],
+   "note": "tai lieu cu: luoc do moi cua ben xay dung CHAP NHAN"
+  },
+  {
+   "name": "M08-cu-nfd",
+   "expect": "chua_ro",
+   "class": [
+    "migrate",
+    "names"
+   ],
+   "builder_schema_raw_ok": true,
+   "builder_schema_adapted_ok": true,
+   "adapted_errors": [],
+   "note": "tai lieu cu: luoc do moi cua ben xay dung CHAP NHAN"
+  },
+  {
+   "name": "M09-cu-anh-chung-tu-thieu",
+   "expect": "reject",
+   "class": [
+    "V3"
+   ],
+   "builder_schema_raw_ok": false,
+   "builder_schema_adapted_ok": false,
+   "adapted_errors": [
+    "{'input': {'calendar': 'solar', 'day': 8, 'leap': False, 'month': 8, 'precision': 'day', 'year': 202",
+    "{'certificate_photo_ids': ['b5000000-0000-4000-8000-0000000000ee'], 'note': 'Gia đình đã báo họ hàng"
+   ],
+   "note": "tai lieu cu: luoc do moi cua ben xay dung TU CHOI"
+  },
+  {
+   "name": "N01-schema-3",
+   "expect": "reject",
+   "class": [
+    "NEWER"
+   ],
+   "builder_schema_raw_ok": false,
+   "builder_schema_adapted_ok": false,
+   "adapted_errors": [
+    "1 was expected"
+   ]
+  },
+  {
+   "name": "N02-schema-99",
+   "expect": "reject",
+   "class": [
+    "NEWER"
+   ],
+   "builder_schema_raw_ok": false,
+   "builder_schema_adapted_ok": false,
+   "adapted_errors": [
+    "1 was expected"
+   ]
+  },
+  {
+   "name": "N03-v1-dang-moi",
+   "expect": "reject",
+   "class": [
+    "V1"
+   ],
+   "builder_schema_raw_ok": true,
+   "builder_schema_adapted_ok": true,
+   "adapted_errors": []
+  },
+  {
+   "name": "N04-v2-dang-cu",
+   "expect": "reject",
+   "class": [
+    "V1"
+   ],
+   "builder_schema_raw_ok": false,
+   "builder_schema_adapted_ok": false,
+   "adapted_errors": [
+    "{'input': {'calendar': 'solar', 'day': 8, 'leap': False, 'month': 8, 'precision': 'day', 'year': 202",
+    "{'certificate_photo_ids': ['b5000000-0000-4000-8000-0000000000c1', 'b5000000-0000-4000-8000-00000000",
+    "{'input': {'calendar': 'lunar', 'day': 10, 'leap': False, 'month': 3, 'precision': 'month_day', 'yea"
+   ]
+  },
+  {
+   "name": "N05-schema-0",
+   "expect": "reject",
+   "class": [
+    "V1"
+   ],
+   "builder_schema_raw_ok": false,
+   "builder_schema_adapted_ok": false,
+   "adapted_errors": [
+    "1 was expected"
+   ]
+  },
+  {
+   "name": "G01-v2-hop-le",
+   "expect": "accept",
+   "class": [
+    "v2"
+   ],
+   "builder_schema_raw_ok": false,
+   "builder_schema_adapted_ok": true,
+   "adapted_errors": [],
+   "agree": true
+  },
+  {
+   "name": "G02-v2-dung-6-tep",
+   "expect": "accept",
+   "class": [
+    "v2"
+   ],
+   "builder_schema_raw_ok": false,
+   "builder_schema_adapted_ok": true,
+   "adapted_errors": [],
+   "agree": true
+  },
+  {
+   "name": "G03-v2-gioi-tinh-vang",
+   "expect": "accept",
+   "class": [
+    "v2"
+   ],
+   "builder_schema_raw_ok": false,
+   "builder_schema_adapted_ok": true,
+   "adapted_errors": [],
+   "agree": true
+  },
+  {
+   "name": "X01-pdf-sai-magic",
+   "expect": "reject",
+   "class": [
+    "MAGIC"
+   ],
+   "builder_schema_raw_ok": false,
+   "builder_schema_adapted_ok": true,
+   "adapted_errors": [],
+   "agree": null
+  },
+  {
+   "name": "X01b-pdf-co-bom-truoc",
+   "expect": "reject",
+   "class": [
+    "MAGIC"
+   ],
+   "builder_schema_raw_ok": false,
+   "builder_schema_adapted_ok": true,
+   "adapted_errors": [],
+   "agree": null
+  },
+  {
+   "name": "X01c-pdf-chu-thuong",
+   "expect": "reject",
+   "class": [
+    "MAGIC"
+   ],
+   "builder_schema_raw_ok": false,
+   "builder_schema_adapted_ok": true,
+   "adapted_errors": [],
+   "agree": null
+  },
+  {
+   "name": "X04-trung-id-dinh-kem",
+   "expect": "reject",
+   "class": [
+    "DUP"
+   ],
+   "builder_schema_raw_ok": false,
+   "builder_schema_adapted_ok": true,
+   "adapted_errors": [],
+   "agree": null
+  },
+  {
+   "name": "X04b-trung-id-dinh-kem-hai-ho-so",
+   "expect": "reject",
+   "class": [
+    "DUP"
+   ],
+   "builder_schema_raw_ok": false,
+   "builder_schema_adapted_ok": true,
+   "adapted_errors": [],
+   "agree": null
+  },
+  {
+   "name": "X05-trung-id-ban-ghi-tep",
+   "expect": "reject",
+   "class": [
+    "DUP",
+    "BLOB",
+    "V1"
+   ],
+   "builder_schema_raw_ok": false,
+   "builder_schema_adapted_ok": true,
+   "adapted_errors": [],
+   "agree": null
+  },
+  {
+   "name": "X06-tep-duoc-tro-nhung-thieu",
+   "expect": "reject",
+   "class": [
+    "V3"
+   ],
+   "builder_schema_raw_ok": false,
+   "builder_schema_adapted_ok": true,
+   "adapted_errors": [],
+   "agree": null
+  },
+  {
+   "name": "X07-thieu-byte-tep",
+   "expect": "reject",
+   "class": [
+    "BLOB"
+   ],
+   "builder_schema_raw_ok": false,
+   "builder_schema_adapted_ok": true,
+   "adapted_errors": [],
+   "agree": null
+  },
+  {
+   "name": "X08-7-tep",
+   "expect": "reject",
+   "class": [
+    "COUNT",
+    "V1"
+   ],
+   "builder_schema_raw_ok": false,
+   "builder_schema_adapted_ok": false,
+   "adapted_errors": [
+    "{'input': {'calendar': 'solar', 'day': 8, 'leap': False, 'month': 8, 'precision': 'day', 'year': 202",
+    "{'attachments': [{'file_id': 'b5000000-0000-4000-8000-0000000000c1', 'id': 'b5000000-0000-4000-8000-"
+   ],
+   "agree": true
+  },
+  {
+   "name": "X09-kind-sai",
+   "expect": "reject",
+   "class": [
+    "V1"
+   ],
+   "builder_schema_raw_ok": false,
+   "builder_schema_adapted_ok": false,
+   "adapted_errors": [
+    "{'input': {'calendar': 'lunar', 'day': 10, 'leap': False, 'month': 3, 'precision': 'month_day', 'yea",
+    "{'attachments': [{'file_id': 'b5000000-0000-4000-8000-0000000000c3', 'id': 'b5000000-0000-4000-8000-"
+   ],
+   "agree": true
+  },
+  {
+   "name": "X10-mime-png",
+   "expect": "reject",
+   "class": [
+    "V1",
+    "MAGIC"
+   ],
+   "builder_schema_raw_ok": false,
+   "builder_schema_adapted_ok": false,
+   "adapted_errors": [
+    "'image/png' is not one of ['image/jpeg', 'image/webp', 'application/pdf']"
+   ],
+   "agree": null
+  },
+  {
+   "name": "X11-sha-sai",
+   "expect": "reject",
+   "class": [
+    "SHA"
+   ],
+   "builder_schema_raw_ok": false,
+   "builder_schema_adapted_ok": true,
+   "adapted_errors": [],
+   "agree": null
+  },
+  {
+   "name": "X12-bytes-sai",
+   "expect": "reject",
+   "class": [
+    "BYTES",
+    "SHA"
+   ],
+   "builder_schema_raw_ok": false,
+   "builder_schema_adapted_ok": true,
+   "adapted_errors": [],
+   "agree": null
+  },
+  {
+   "name": "X13-pdf-stripped-true",
+   "expect": "reject",
+   "class": [
+    "V1"
+   ],
+   "builder_schema_raw_ok": false,
+   "builder_schema_adapted_ok": false,
+   "adapted_errors": [
+    "False was expected"
+   ],
+   "agree": true
+  },
+  {
+   "name": "X14-anh-stripped-false",
+   "expect": "reject",
+   "class": [
+    "V1"
+   ],
+   "builder_schema_raw_ok": false,
+   "builder_schema_adapted_ok": false,
+   "adapted_errors": [
+    "True was expected"
+   ],
+   "agree": true
+  },
+  {
+   "name": "X15-gioi-tinh-Nam",
+   "expect": "reject",
+   "class": [
+    "V1"
+   ],
+   "builder_schema_raw_ok": false,
+   "builder_schema_adapted_ok": false,
+   "adapted_errors": [
+    "'Nam' is not one of ['nam', 'nu', None]"
+   ],
+   "agree": true
+  },
+  {
+   "name": "X16-gioi-tinh-khac",
+   "expect": "reject",
+   "class": [
+    "V1"
+   ],
+   "builder_schema_raw_ok": false,
+   "builder_schema_adapted_ok": false,
+   "adapted_errors": [
+    "'khac' is not one of ['nam', 'nu', None]"
+   ],
+   "agree": true
+  },
+  {
+   "name": "X17-gioi-tinh-rong",
+   "expect": "reject",
+   "class": [
+    "V1"
+   ],
+   "builder_schema_raw_ok": false,
+   "builder_schema_adapted_ok": false,
+   "adapted_errors": [
+    "'' is not one of ['nam', 'nu', None]"
+   ],
+   "agree": true
+  },
+  {
+   "name": "X17b-gioi-tinh-nu-dau",
+   "expect": "reject",
+   "class": [
+    "V1"
+   ],
+   "builder_schema_raw_ok": false,
+   "builder_schema_adapted_ok": false,
+   "adapted_errors": [
+    "'nữ' is not one of ['nam', 'nu', None]"
+   ],
+   "agree": true
+  },
+  {
+   "name": "X18-ten-tep-121",
+   "expect": "reject",
+   "class": [
+    "V1"
+   ],
+   "builder_schema_raw_ok": false,
+   "builder_schema_adapted_ok": false,
+   "adapted_errors": [
+    "'đđđđđđđđđđđđđđđđđđđđđđđđđđđđđđđđđđđđđđđđđđđđđđđđđđđđđđđđđđđđđđđđđđđđđđđđđđđđđđđđđđđđđđđđđđđđđđđđđđđ"
+   ],
+   "agree": true
+  },
+  {
+   "name": "X19-byte-thua",
+   "expect": "reject",
+   "class": [
+    "BLOB"
+   ],
+   "builder_schema_raw_ok": false,
+   "builder_schema_adapted_ok": true,
+   "adapted_errors": [],
+   "agree": null
+  },
+  {
+   "name": "X20-mime-pdf-byte-jpeg",
+   "expect": "reject",
+   "class": [
+    "MAGIC"
+   ],
+   "builder_schema_raw_ok": false,
+   "builder_schema_adapted_ok": true,
+   "adapted_errors": [],
+   "agree": null
+  },
+  {
+   "name": "X21-mime-jpeg-byte-pdf",
+   "expect": "reject",
+   "class": [
+    "MAGIC"
+   ],
+   "builder_schema_raw_ok": false,
+   "builder_schema_adapted_ok": true,
+   "adapted_errors": [],
+   "agree": null
+  },
+  {
+   "name": "X22-v2-con-khoa-cu",
+   "expect": "reject",
+   "class": [
+    "V1"
+   ],
+   "builder_schema_raw_ok": false,
+   "builder_schema_adapted_ok": false,
+   "adapted_errors": [
+    "{'input': {'calendar': 'solar', 'day': 8, 'leap': False, 'month': 8, 'precision': 'day', 'year': 202",
+    "{'attachments': [{'file_id': 'b5000000-0000-4000-8000-0000000000c1', 'id': 'b5000000-0000-4000-8000-"
+   ],
+   "agree": true
+  },
+  {
+   "name": "X23-ten-tep-dieu-khien",
+   "expect": "reject",
+   "class": [
+    "V1"
+   ],
+   "builder_schema_raw_ok": false,
+   "builder_schema_adapted_ok": false,
+   "adapted_errors": [
+    "'a\\x07b.jpg' is not valid under any of the given schemas"
+   ],
+   "agree": true
+  },
+  {
+   "name": "U01-hai-ho-so-chung-tep",
+   "expect": "chua_ro",
+   "class": [
+    "A-U1"
+   ],
+   "builder_schema_raw_ok": false,
+   "builder_schema_adapted_ok": true,
+   "adapted_errors": []
+  },
+  {
+   "name": "U02-tep-mo-coi",
+   "expect": "chua_ro",
+   "class": [
+    "A-U1"
+   ],
+   "builder_schema_raw_ok": false,
+   "builder_schema_adapted_ok": true,
+   "adapted_errors": []
+  }
+ ],
+ "notes": [],
+ "builder_vector": {
+  "file": "supplement-yc05/notice-v1.lvhv",
+  "decrypt_independent": true,
+  "schema_version": 1,
+  "has_certificate_photo_ids": false,
+  "block_order_photos_then_attachments": true,
+  "oracle_v2_validator_errors": [],
+  "builder_schema_errors": [],
+  "manifest_state_sha256": "ac8a9dce82d41eebbf7279a3c047614315bcfd428c3d11d8bf3c1b3b95334704"
+ }
+}

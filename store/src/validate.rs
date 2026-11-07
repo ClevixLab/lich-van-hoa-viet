@@ -173,7 +173,8 @@ fn enum_str<'a>(v: &'a Value, path: &str, allowed: &[&str]) -> Result<&'a str, V
 }
 
 /// `\s` của JavaScript.
-fn js_space(c: char) -> bool {
+/// Khoảng trắng theo `String.prototype.trim` của JavaScript (cùng tập ở hai bản cài đặt).
+pub fn js_space(c: char) -> bool {
     matches!(
         c,
         '\t' | '\n' | '\u{b}' | '\u{c}' | '\r' | ' ' | '\u{a0}' | '\u{1680}' | '\u{2000}'
@@ -473,10 +474,16 @@ fn opt_trimmed(v: &Value, path: &str, max: usize, multiline: bool) -> R {
     Ok(())
 }
 
-/// Số ảnh giấy báo tử tối đa (01 §3.2a).
-pub const MAX_CERTIFICATE_PHOTOS: usize = 4;
+/// Số tệp đính kèm tối đa của một thông tin báo tử (01 §3.2a, YC-2026-07).
+pub const MAX_NOTICE_ATTACHMENTS: usize = 6;
+/// Ảnh đính kèm tối đa 2 MiB, cạnh dài ≤ 2048 px (01 §3.8a).
+pub const MAX_ATTACHMENT_IMAGE: usize = 2 * 1024 * 1024;
+/// PDF đính kèm tối đa 10 MiB (01 §3.8a).
+pub const MAX_ATTACHMENT_PDF: usize = 10 * 1024 * 1024;
+/// Loại tệp đính kèm (01 §3.2a).
+pub const ATTACHMENT_KINDS: [&str; 3] = ["tin_bao_tu", "giay_chung_tu", "khac"];
 
-/// `DeathNotice` (01 §3.2a, Bổ sung YC-2026-05): đủ sáu khóa, mỗi giá trị tùy chọn.
+/// `DeathNotice` (01 §3.2a, Bổ sung YC-2026-05, YC-2026-07): đủ sáu khóa, mỗi giá trị tùy chọn.
 pub fn death_notice(v: &Value, path: &str) -> R {
     let o = obj(
         v,
@@ -486,7 +493,7 @@ pub fn death_notice(v: &Value, path: &str) -> R {
             "place",
             "reason",
             "notice_date",
-            "certificate_photo_ids",
+            "attachments",
             "note",
         ],
     )?;
@@ -501,40 +508,94 @@ pub fn death_notice(v: &Value, path: &str) -> R {
         }
         Ok(())
     })?;
-    let cp = p(path, "certificate_photo_ids");
-    let ids = o["certificate_photo_ids"]
+    let ap = p(path, "attachments");
+    let list = o["attachments"]
         .as_array()
-        .ok_or_else(|| v1(&cp, "phải là mảng"))?;
-    if ids.len() > MAX_CERTIFICATE_PHOTOS {
-        return Err(v1(&cp, format!("quá {MAX_CERTIFICATE_PHOTOS} ảnh")));
+        .ok_or_else(|| v1(&ap, "phải là mảng"))?;
+    if list.len() > MAX_NOTICE_ATTACHMENTS {
+        return Err(v1(&ap, format!("quá {MAX_NOTICE_ATTACHMENTS} tệp")));
     }
-    let mut seen = HashSet::new();
-    for (i, x) in ids.iter().enumerate() {
-        let id = uuid(x, &format!("{cp}/{i}"))?;
-        if !seen.insert(id) {
-            return Err(v1(&format!("{cp}/{i}"), "ảnh trùng"));
+    let (mut ids, mut files) = (HashSet::new(), HashSet::new());
+    for (i, x) in list.iter().enumerate() {
+        let xp = format!("{ap}/{i}");
+        let a = obj(x, &xp, &["id", "kind", "file_id"])?;
+        if !ids.insert(uuid(&a["id"], &p(&xp, "id"))?) {
+            return Err(v1(&p(&xp, "id"), "id trùng"));
+        }
+        enum_str(&a["kind"], &p(&xp, "kind"), &ATTACHMENT_KINDS)?;
+        if !files.insert(uuid(&a["file_id"], &p(&xp, "file_id"))?) {
+            return Err(v1(&p(&xp, "file_id"), "tệp trùng"));
         }
     }
     Ok(())
 }
 
-/// Mọi id ảnh mà một `Person` tham chiếu: `photo_id` và `death.notice.certificate_photo_ids`.
+/// Mọi id ảnh (`Photo`) mà một `Person` tham chiếu: `photo_id`.
 pub fn person_photo_refs(p: &Value) -> Vec<String> {
-    let mut v: Vec<String> = p["photo_id"]
+    p["photo_id"]
         .as_str()
         .map(str::to_owned)
         .into_iter()
-        .collect();
-    for x in p["death"]["notice"]["certificate_photo_ids"]
+        .collect()
+}
+
+/// Mọi id tệp đính kèm (`Attachment`) mà một `Person` tham chiếu: `death.notice.attachments[].file_id`.
+pub fn person_attachment_refs(p: &Value) -> Vec<String> {
+    p["death"]["notice"]["attachments"]
         .as_array()
         .into_iter()
         .flatten()
-    {
-        if let Some(s) = x.as_str() {
-            v.push(s.to_owned());
-        }
+        .filter_map(|x| x["file_id"].as_str().map(str::to_owned))
+        .collect()
+}
+
+/// `Attachment` (01 §3.8a, YC-2026-07). Ảnh: đã mã hóa lại (`stripped = true`), ≤ 2 MiB; PDF: nguyên byte
+/// (`stripped = false`), ≤ 10 MiB.
+pub fn attachment(v: &Value, path: &str) -> R {
+    let o = obj(
+        v,
+        path,
+        &[
+            "id",
+            "mime",
+            "bytes",
+            "sha256",
+            "stripped",
+            "file_name",
+            "created_at",
+        ],
+    )?;
+    uuid(&o["id"], &p(path, "id"))?;
+    let mime = enum_str(
+        &o["mime"],
+        &p(path, "mime"),
+        &["image/jpeg", "image/webp", "application/pdf"],
+    )?;
+    let pdf = mime == "application/pdf";
+    let max = if pdf {
+        MAX_ATTACHMENT_PDF
+    } else {
+        MAX_ATTACHMENT_IMAGE
+    };
+    int_in(&o["bytes"], &p(path, "bytes"), 1, max as i64)?;
+    let h = string(&o["sha256"], &p(path, "sha256"))?;
+    if h.len() != 64 || !h.bytes().all(is_hex_lower) {
+        return Err(v1(&p(path, "sha256"), "phải là 64 ký tự hex thường"));
     }
-    v
+    if o["stripped"] != Value::Bool(!pdf) {
+        return Err(v1(
+            &p(path, "stripped"),
+            if pdf {
+                "PDF lưu nguyên bản: phải là false"
+            } else {
+                "ảnh luôn được mã hóa lại: phải là true"
+            },
+        ));
+    }
+    nullable(&o["file_name"], &p(path, "file_name"), |x, xp| {
+        text(x, xp, 1, 120, false, true)
+    })?;
+    timestamp(&o["created_at"], &p(path, "created_at"))
 }
 
 fn death_info(v: &Value, path: &str) -> R {
@@ -619,6 +680,7 @@ fn memorial(v: &Value, path: &str) -> R {
     Ok(())
 }
 
+/// `gioi_tinh` (YC-2026-07) là khóa tùy chọn: thiếu ≡ `null`, để tài liệu và vector cũ của lược đồ v1 vẫn hợp lệ.
 const PERSON_KEYS: [&str; 18] = [
     "id",
     "kind",
@@ -642,7 +704,23 @@ const PERSON_KEYS: [&str; 18] = [
 
 /// Một `Person`: lược đồ (V1) + V2, V4, V5, V6, V8. Không kiểm tham chiếu (V3).
 pub fn person(v: &Value, path: &str) -> R {
-    let o = obj(v, path, &PERSON_KEYS)?;
+    let has_gt = v.as_object().is_some_and(|o| o.contains_key("gioi_tinh"));
+    // `legacy` (04 B5): bản gốc của trường cũ mà phép chuyển đổi không đặt được vào trường mới — đối tượng tự do.
+    let has_legacy = v.as_object().is_some_and(|o| o.contains_key("legacy"));
+    let mut keys: Vec<&str> = PERSON_KEYS.to_vec();
+    if has_gt {
+        keys.push("gioi_tinh");
+    }
+    if has_legacy {
+        keys.push("legacy");
+    }
+    let o = obj(v, path, &keys)?;
+    if has_legacy && !o["legacy"].is_object() {
+        return Err(v1(&p(path, "legacy"), "phải là đối tượng"));
+    }
+    if has_gt && !o["gioi_tinh"].is_null() {
+        enum_str(&o["gioi_tinh"], &p(path, "gioi_tinh"), &["nam", "nu"])?;
+    }
     uuid(&o["id"], &p(path, "id"))?;
     let deceased = enum_str(&o["kind"], &p(path, "kind"), &["deceased", "living"])? == "deceased";
     text(&o["danh_xung"], &p(path, "danh_xung"), 0, 40, false, false)?;
@@ -852,21 +930,23 @@ pub fn name_key(ten: &str) -> String {
 
 /// Toàn bộ tài liệu sao lưu: V1–V8.
 pub fn document(v: &Value) -> R {
-    let root = obj(
-        v,
-        "",
-        &[
-            "format",
-            "schema_version",
-            "app",
-            "exported_at",
-            "settings",
-            "event_types",
-            "persons",
-            "events",
-            "photos",
-        ],
-    )?;
+    // `attachments` (01 §3.8a, YC-2026-07) là khóa tùy chọn: thiếu ≡ `[]` (tài liệu và vector cũ giữ nguyên).
+    let has_att = v.as_object().is_some_and(|o| o.contains_key("attachments"));
+    let mut keys = vec![
+        "format",
+        "schema_version",
+        "app",
+        "exported_at",
+        "settings",
+        "event_types",
+        "persons",
+        "events",
+        "photos",
+    ];
+    if has_att {
+        keys.push("attachments");
+    }
+    let root = obj(v, "", &keys)?;
     if root["format"].as_str() != Some("lvhv-backup") {
         return Err(v1("/format", "phải là \"lvhv-backup\""));
     }
@@ -924,6 +1004,13 @@ pub fn document(v: &Value) -> R {
         Ok(s)
     };
     let photo_ids = ids(photos, "photos", photo)?;
+    let no_att = Vec::new();
+    let atts = if has_att {
+        arr("attachments", 10_000)?
+    } else {
+        &no_att
+    };
+    let att_ids = ids(atts, "attachments", attachment)?;
     let type_ids = ids(types, "event_types", event_type)?;
     let person_ids = ids(persons, "persons", person)?;
     ids(events, "events", event)?;
@@ -962,17 +1049,17 @@ pub fn document(v: &Value) -> R {
                 ));
             }
         }
-        for (j, c) in x["death"]["notice"]["certificate_photo_ids"]
+        for (j, c) in x["death"]["notice"]["attachments"]
             .as_array()
             .into_iter()
             .flatten()
             .enumerate()
         {
-            if !photo_ids.contains(c.as_str().unwrap_or_default()) {
+            if !att_ids.contains(c["file_id"].as_str().unwrap_or_default()) {
                 return Err(err(
                     "V3",
-                    &format!("/persons/{i}/death/notice/certificate_photo_ids/{j}"),
-                    "ảnh không tồn tại",
+                    &format!("/persons/{i}/death/notice/attachments/{j}/file_id"),
+                    "tệp đính kèm không tồn tại",
                 ));
             }
         }

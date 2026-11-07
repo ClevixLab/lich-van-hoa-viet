@@ -214,11 +214,16 @@ function optTrimmed(v: Json, path: string, max: number, multiline: boolean): voi
   if ((v as string).trim() !== v) throw v1(path, "chưa cắt khoảng trắng hai đầu");
 }
 
-export const MAX_CERTIFICATE_PHOTOS = 4;
+/** Tối đa 6 tệp đính kèm cho một thông tin báo tử (01 §3.2a, YC-2026-07). */
+export const MAX_NOTICE_ATTACHMENTS = 6;
+/** Ảnh đính kèm ≤ 2 MiB, PDF ≤ 10 MiB (01 §3.8a). */
+export const MAX_ATTACHMENT_IMAGE = 2 * 1024 * 1024;
+export const MAX_ATTACHMENT_PDF = 10 * 1024 * 1024;
+export const ATTACHMENT_KINDS = ["tin_bao_tu", "giay_chung_tu", "khac"] as const;
 
-/** `DeathNotice` (01 §3.2a, YC-2026-05) — mirror of store/src/validate.rs `death_notice`. */
+/** `DeathNotice` (01 §3.2a, YC-2026-05, YC-2026-07) — mirror of store/src/validate.rs `death_notice`. */
 export function deathNotice(v: Json, path: string): void {
-  const o = obj(v, path, ["reported_by", "place", "reason", "notice_date", "certificate_photo_ids", "note"]);
+  const o = obj(v, path, ["reported_by", "place", "reason", "notice_date", "attachments", "note"]);
   optTrimmed(o.reported_by, p(path, "reported_by"), 200, false);
   optTrimmed(o.place, p(path, "place"), 200, false);
   optTrimmed(o.reason, p(path, "reason"), 500, false);
@@ -227,28 +232,48 @@ export function deathNotice(v: Json, path: string): void {
     dateValue(d, dp, ["day"]);
     if ((d as JsonObj).calendar !== "solar") throw v1(dp, "ngày nhận tin phải là ngày dương");
   });
-  const cp = p(path, "certificate_photo_ids");
-  const ids = o.certificate_photo_ids;
-  if (!Array.isArray(ids)) throw v1(cp, "phải là mảng");
-  if (ids.length > MAX_CERTIFICATE_PHOTOS) throw v1(cp, `quá ${MAX_CERTIFICATE_PHOTOS} ảnh`);
-  const seen = new Set<string>();
-  ids.forEach((x, i) => {
-    const id = uuid(x, `${cp}/${i}`);
-    if (seen.has(id)) throw v1(`${cp}/${i}`, "ảnh trùng");
-    seen.add(id);
+  const ap = p(path, "attachments");
+  const list = o.attachments;
+  if (!Array.isArray(list)) throw v1(ap, "phải là mảng");
+  if (list.length > MAX_NOTICE_ATTACHMENTS) throw v1(ap, `quá ${MAX_NOTICE_ATTACHMENTS} tệp`);
+  const ids = new Set<string>(), files = new Set<string>();
+  list.forEach((x, i) => {
+    const xp = `${ap}/${i}`;
+    const a = obj(x, xp, ["id", "kind", "file_id"]);
+    const id = uuid(a.id, p(xp, "id"));
+    if (ids.has(id)) throw v1(p(xp, "id"), "id trùng");
+    ids.add(id);
+    enumStr(a.kind, p(xp, "kind"), ATTACHMENT_KINDS);
+    const f = uuid(a.file_id, p(xp, "file_id"));
+    if (files.has(f)) throw v1(p(xp, "file_id"), "tệp trùng");
+    files.add(f);
   });
 }
 
-/** Every photo id a Person references: `photo_id` and `death.notice.certificate_photo_ids`. */
+/** Every photo id a Person references: `photo_id`. */
 export function personPhotoRefs(pj: JsonObj): string[] {
-  const out: string[] = [];
-  if (typeof pj.photo_id === "string") out.push(pj.photo_id);
+  return typeof pj.photo_id === "string" ? [pj.photo_id] : [];
+}
+
+/** Every attachment id a Person references: `death.notice.attachments[].file_id` (YC-2026-07). */
+export function personAttachmentRefs(pj: JsonObj): string[] {
   const d = pj.death as JsonObj | null | undefined;
   const n = d && isObj(d) ? (d.notice as JsonObj | null | undefined) : null;
-  if (n && isObj(n) && Array.isArray(n.certificate_photo_ids)) {
-    for (const x of n.certificate_photo_ids) if (typeof x === "string") out.push(x);
-  }
-  return out;
+  if (!n || !isObj(n) || !Array.isArray(n.attachments)) return [];
+  return n.attachments.flatMap((x) => (isObj(x) && typeof x.file_id === "string" ? [x.file_id] : []));
+}
+
+/** `Attachment` (01 §3.8a) — mirror of Rust `attachment`. */
+export function attachment(v: Json, path: string): void {
+  const o = obj(v, path, ["id", "mime", "bytes", "sha256", "stripped", "file_name", "created_at"]);
+  uuid(o.id, p(path, "id"));
+  const pdf = enumStr(o.mime, p(path, "mime"), ["image/jpeg", "image/webp", "application/pdf"]) === "application/pdf";
+  intIn(o.bytes, p(path, "bytes"), 1, pdf ? MAX_ATTACHMENT_PDF : MAX_ATTACHMENT_IMAGE);
+  const h = string(o.sha256, p(path, "sha256"));
+  if (!/^[0-9a-f]{64}$/.test(h)) throw v1(p(path, "sha256"), "phải là 64 ký tự hex thường");
+  if (o.stripped !== !pdf) throw v1(p(path, "stripped"), pdf ? "PDF lưu nguyên bản: phải là false" : "ảnh luôn được mã hóa lại: phải là true");
+  nullable(o.file_name, p(path, "file_name"), (x, xp) => text(x, xp, 1, 120, false, true));
+  timestamp(o.created_at, p(path, "created_at"));
 }
 
 function deathInfo(v: Json, path: string): void {
@@ -287,7 +312,13 @@ const PERSON_KEYS = ["id", "kind", "danh_xung", "ho_ten", "ten_hieu", "quan_he",
   "reminders", "sinh_nhat_am", "feb29_rule", "ghi_chu", "created_at", "updated_at", "rev"] as const;
 
 export function person(v: Json, path: string): void {
-  const o = obj(v, path, PERSON_KEYS);
+  // `gioi_tinh` (YC-2026-07): khóa tùy chọn, thiếu ≡ null.
+  const hasGt = isObj(v) && has(v, "gioi_tinh");
+  // `legacy` (04 B5): bản gốc của trường cũ mà phép chuyển đổi không đặt được vào trường mới — đối tượng tự do.
+  const hasLegacy = isObj(v) && has(v, "legacy");
+  const o = obj(v, path, [...PERSON_KEYS, ...(hasGt ? ["gioi_tinh"] : []), ...(hasLegacy ? ["legacy"] : [])]);
+  if (hasLegacy && !isObj(o.legacy)) throw v1(p(path, "legacy"), "phải là đối tượng");
+  if (hasGt && o.gioi_tinh !== null) enumStr(o.gioi_tinh, p(path, "gioi_tinh"), ["nam", "nu"]);
   uuid(o.id, p(path, "id"));
   const deceased = enumStr(o.kind, p(path, "kind"), ["deceased", "living"]) === "deceased";
   text(o.danh_xung, p(path, "danh_xung"), 0, 40, false, false);
@@ -393,7 +424,9 @@ const ROOT_KEYS = ["format", "schema_version", "app", "exported_at", "settings",
 
 /** Toàn bộ tài liệu sao lưu: V1–V8. Ném ValidationError ở lỗi đầu tiên (cùng thứ tự với Rust). */
 export function document(v: Json): void {
-  const root = obj(v, "", ROOT_KEYS);
+  // `attachments` (01 §3.8a): khóa tùy chọn, thiếu ≡ [].
+  const hasAtt = isObj(v) && has(v, "attachments");
+  const root = obj(v, "", hasAtt ? [...ROOT_KEYS, "attachments"] : ROOT_KEYS);
   if (root.format !== "lvhv-backup") throw v1("/format", "phải là \"lvhv-backup\"");
   if (int(root.schema_version) !== 1) throw v1("/schema_version", "phải là 1");
   const app = obj(root.app, "/app", ["name", "version", "platform"]);
@@ -421,6 +454,7 @@ export function document(v: Json): void {
     return s;
   };
   const photoIds = ids(photos, "photos", photo);
+  const attIds = ids(hasAtt ? arr("attachments", 10_000) : [], "attachments", attachment);
   const typeIds = ids(types, "event_types", eventType);
   const personIds = ids(persons, "persons", person);
   ids(events, "events", event);
@@ -441,8 +475,8 @@ export function document(v: Json): void {
     const d = (x as JsonObj).death as JsonObj | null;
     const n = d && isObj(d) ? (d.notice as JsonObj | null | undefined) : null;
     if (n && isObj(n)) {
-      (n.certificate_photo_ids as string[]).forEach((c, j) => {
-        if (!photoIds.has(c)) throw err("V3", `/persons/${i}/death/notice/certificate_photo_ids/${j}`, "ảnh không tồn tại");
+      (n.attachments as JsonObj[]).forEach((c, j) => {
+        if (!attIds.has(c.file_id as string)) throw err("V3", `/persons/${i}/death/notice/attachments/${j}/file_id`, "tệp đính kèm không tồn tại");
       });
     }
   });

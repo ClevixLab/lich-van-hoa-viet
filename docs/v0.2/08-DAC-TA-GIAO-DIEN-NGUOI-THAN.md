@@ -169,7 +169,8 @@ Tiêu đề: "Thêm người đã mất" / "Sửa hồ sơ". Biểu mẫu chia n
 
 | Trường | Điều khiển | Bắt buộc | Kiểm tra → câu báo lỗi |
 |---|---|---|---|
-| Cách gọi (đứng trước tên) | ô chữ + gợi ý (`datalist`): cụ, kỵ, ông, bà, bác, chú, thím, cô, dì, cậu, mợ, anh, chị, em, bố, mẹ, cha, má, ba (trường `danh_xung`) | không | > 40 ký tự → "Cách gọi tối đa 40 ký tự" |
+| Cách gọi (đứng trước tên) | ô chữ + gợi ý (`datalist`) của lõi `danhXungSuggestions(deceased, gioi_tinh)`, **viết hoa chữ cái đầu** (YC-2026-07): người đã mất — Ông, Bà, Cụ, Kỵ, Bác, Cô, Chú, Dì, Cậu, Mợ, Thím, Anh, Chị, Em, Cháu, Con, Bạn, Bố, Mẹ, Ông Tổ họ, Bà Cô Tổ họ, Bé đỏ; người đang sống — như trên nhưng **không có** Cụ, Kỵ, Ông Tổ họ, Bà Cô Tổ họ, Bé đỏ. Rời ô và khi lưu: chữ cái đầu viết hoa (`danh_xung`) | không | > 40 ký tự → "Cách gọi tối đa 40 ký tự" |
+| Giới tính | ba ô chọn (radio) Nam / Nữ / Không ghi (mặc định Không ghi); đổi giới tính thì xếp lại gợi ý cách gọi; `gioi_tinh` = `"nam"` / `"nu"`, "Không ghi" thì không ghi khóa | không | — |
 | Họ và tên | ô chữ, `autocomplete="off"` | **có** | rỗng sau khi cắt khoảng trắng → "Họ tên không được để trống"; > 120 → "Họ tên tối đa 120 ký tự" |
 | Tên hiệu / pháp danh | ô chữ | không | > 120 → "Tên hiệu tối đa 120 ký tự" |
 | Quan hệ với bạn | ô chữ + gợi ý (`datalist`) bằng từ thường ngày: Bố, Mẹ, Ông nội, Bà nội, Ông ngoại, Bà ngoại, Cụ ông, Cụ bà, Kỵ ông, Kỵ bà, Ông cố, Bà cố, Ông sơ, Bà sơ, Bác, Chú, Thím, Cô, Dì, Cậu, Mợ, Anh, Chị, Em, Chồng, Vợ, Con (người đang sống: Bố … Con trai, Con gái, Cháu). Dưới ô (người đã mất): "Trang tưởng niệm ghi quan hệ này phía trên tên, ví dụ “Ông nội”, “Mẹ”. Để trống thì chỉ ghi tên." | không | > 120 → "Quan hệ tối đa 120 ký tự" |
@@ -409,8 +410,8 @@ trên mục giỗ của hôm nay ở "Sắp tới".
 │        ╰────────────────────╯       │
 │   ~ ~ ~   (khói nhẹ)                │
 │    │ │ │   ba nén hương             │
-│   ╭─────╮       ╭───────────╮       │
-│   │bát  │       │ mâm quả   │       │   bàn thờ: bát hương + mâm ngũ quả + hai nến
+│      ╷     ╭─────╮     ╷            │
+│     nến    │bát  │    nến           │   bàn thờ: hai nến + bát hương (không mâm — §16)
 │ ══╧═════╧═══════╧═══════════╧══     │
 │                                     │
 │  "Lời tưởng niệm của gia đình…"     │
@@ -425,8 +426,9 @@ trên mục giỗ của hôm nay ở "Sắp tới".
 - Tên trên bia: khi có dòng quan hệ thì chỉ ghi họ tên, **không** lặp cách gọi ("Ông nội / Nguyễn Văn A", không phải
   "Ông nội / Ông Nguyễn Văn A"); không có dòng quan hệ thì ghi tên hiển thị (cách gọi + họ tên).
 - Tên rất dài (> 28 ký tự): chữ nhỏ lại (lớp `.long`), xuống dòng trong bia, không tràn (TK-35).
-- Năm trên bia: `Can Chi năm âm (năm)` cho năm sinh (nếu có) và năm mất (nếu có); thiếu năm sinh → chỉ "Mất năm Ất Tỵ
-  (2025)"; không rõ năm mất → "Giỗ ngày 10/3 âm lịch".
+- Năm trên bia: `Can Chi năm âm` + năm, không ngoặc — "Canh Thìn 1940 — Ất Tỵ 2025" (thống nhất PWA, Android, Windows;
+  TKN-X-02) — cho năm sinh (nếu có) và năm mất (nếu có); thiếu năm sinh → chỉ "Mất năm Ất Tỵ 2025"; không rõ năm mất →
+  "Giỗ ngày 10/3 âm lịch".
 - Tuổi: "Hưởng thọ 86 tuổi" / "Hưởng dương 45 tuổi" (+ "(khoảng)"); không có tuổi → bỏ dòng.
 - Hình: SVG/CSS viết trong mã (không tệp ảnh ngoài), tông nâu gỗ và vàng đồng, cùng một kiểu ở sáng và tối (nền tối
   ấm cả hai giao diện để bia nổi). Ảnh vẽ bằng canvas; không có ảnh → khung bầu dục trống có chữ cái đầu tên.
@@ -445,8 +447,9 @@ trên mục giỗ của hôm nay ở "Sắp tới".
   kiện gắn với người này vẫn còn nếu có người khác cùng tham gia. Không hoàn tác được." — nút "Xóa hồ sơ" (đỏ) / "Giữ
   lại" (tiêu điểm mặc định). Xong: về "Hồ sơ", thông báo "Đã xóa hồ sơ."
   Sự kiện chỉ gắn với người bị xóa: lớp lưu trữ gỡ id khỏi sự kiện (01 §3.4), sự kiện còn lại không có người. Giao diện
-  **xóa luôn** những sự kiện mà sau khi gỡ không còn ai (để không còn mục mồ côi trong danh sách) — trong cùng thao tác
-  sau khi xóa hồ sơ.
+  **xóa luôn** những sự kiện mà sau khi gỡ không còn ai (để không còn mục mồ côi trong danh sách). Việc này làm trong
+  **cùng giao dịch** với xóa hồ sơ, bằng hàm của lớp lưu trữ `deletePerson(id, { deleteOrphanEvents: true })`
+  (FFI `delete_person_and_orphan_events`). Sự kiện vốn không gắn ai thì giữ.
 - **Xóa sự kiện**: hộp "Xóa sự kiện "Tốt nghiệp"? Không hoàn tác được." — "Xóa sự kiện" / "Giữ lại".
 
 ---
@@ -506,7 +509,8 @@ trên mục giỗ của hôm nay ở "Sắp tới".
 tệp; người dùng mở tệp bằng ứng dụng Lịch.
 
 **L9 — Xuất sao lưu**: "Sao lưu" → "Tạo tệp sao lưu…" → nhập mật khẩu hai lần → "Tạo và tải tệp" → tiến độ → tải tệp →
-"Lần sao lưu gần nhất: hôm nay"; nhắc sao lưu (nếu có) biến mất.
+`markBackupSaved` (03 §2.4) → "Lần sao lưu gần nhất: hôm nay"; nhắc sao lưu (nếu có) biến mất. Tạo byte xong mà
+chưa tải thì chưa tính là đã sao lưu.
 
 **L10 — Nhập sao lưu**: "Sao lưu" → "Chọn tệp sao lưu…" → mật khẩu → "Mở tệp" → xem trước → "Gộp" (mặc định) hoặc
 "Thay toàn bộ" (+ xác nhận thứ hai) → "Khôi phục" → thông báo kết quả.
@@ -615,7 +619,17 @@ nhắc rồi thứ tự 02 §7.2; quá 3 thẻ
 - Lần xuất hiện, nhãn, thứ tự, câu nhắc, .ics: **chỉ** dùng hàm của lõi `tsport/src/memorial*` (`occurrencesWithTt`,
   `upcoming`, `reminderTextNamed`, `generateIcs`, `tuoiDuong`, `tuoiAm`…), không tự viết lại thuật toán ở giao diện.
 - Lưu trữ: `pwa/src/store` (đợt 2): `buildPerson`, `putPerson`, `putEvent`, `putEventType`, `deletePerson`,
-  `deleteEvent`, `exportBackup`, `openBackup`, `applyImport`, `backupReminderDue`, `persistResult`.
+  `deleteEvent`, `exportBackup`, `markBackupSaved`, `openBackup`, `applyImport`, `backupReminderDue`, `persistResult`.
+- Các quy tắc sau trước đây giao diện tự viết, nay gọi hàm của lõi (duyệt mã native MA3N-24-08). Ứng dụng native
+  gọi các hàm FFI cùng tên trong ngoặc.
+  - Thẻ nhắc hôm nay (§5.5, 02 §7.5): `dueToday` (`due_today_json`).
+  - Hộp xác nhận .ics (§3.8 A): `icsSummary` (`ics_summary`, `IcsExport.summary`). Hàm cho số mục, số người, cửa
+    sổ từ–đến, câu riêng tư `privacy_text` và tối đa 5 dòng xem trước. PWA vẫn ghép dòng xem trước có tên người
+    bằng `itemTitle` cho cùng các mục đầu.
+  - Lỗi mật khẩu sao lưu (§3.8 B): `backupPasswordError` (`backup_password_error`).
+  - Xóa người (§3.10): `deletePerson(id, { deleteOrphanEvents: true })` (`delete_person_and_orphan_events`). Các sự
+    kiện chỉ gắn người đó bị xóa cùng giao dịch.
+  - Tháng nhuận cho ô "nhuận": `cal.leapMonth` (`lunar_leap_month`).
 
 ### 8.2 Danh sách theo kỳ (R13) — hàm của lõi
 
@@ -912,3 +926,198 @@ Kiểm chéo bằng `scripts/check-store.sh` (CI "Lưu trữ + sao lưu"), gồm
 | O-9 `show_names` | Lõi lưu tùy chọn "hiện tên trên màn hình khóa" theo từng máy, mặc định **không** hiện (`lock_screen_names`, chỉ trong kho Rust). PWA không có thông báo trên màn hình khóa nên không có tùy chọn này. Thẻ nhắc trong ứng dụng vẫn ghi tên, vì chỉ hiện khi người dùng đã mở ứng dụng. Khung "Ứng dụng web" ở Sắp tới có câu giải thích (`#web-names`) để thống nhất với ứng dụng điện thoại và máy tính |
 | MA3-15-03 (kiểm thử) | Kiểm thử Esc khi mã hóa trước đây đếm hộp còn mở, nên kết quả phụ thuộc thời gian mã hóa. Nay kiểm thử ghi lại sự kiện `cancel`: phải có ít nhất một lần nhấn Esc khi hộp đang bận và lần đó bị chặn |
 | TK-31 (a), `metrics.json` | Giữ nguyên như hiện tại; điều phối sẽ hỏi chủ dự án |
+| YC-2026-07 | Biểu mẫu hồ sơ có ô "Giới tính" (Nam / Nữ / Không ghi). Gợi ý cách gọi lấy từ lõi (`danhXungSuggestions`, theo người sống/mất, từ hợp giới tính lên trước), gợi ý quan hệ từ `quanHeSuggestions`; chữ đầu viết hoa khi lưu (`normalizePersonNames`). Khối thông tin báo tử: "Tệp đính kèm" tối đa 6 tệp, chọn loại (Ảnh tin báo tử / Giấy chứng tử (ảnh hoặc bản quét PDF) / Khác), nhận ảnh (nén lại, ≤ 2048 px, ≤ 2 MB) hoặc PDF (≤ 10 MB, lưu nguyên bản, có câu "Tệp PDF được lưu nguyên bản"); PDF hiện nhãn, không mở trong trang. Tên tệp gốc chỉ hiện trên trang hồ sơ, cùng thông tin báo tử (R-PRIV-2) |
+| TKN-A-08 | Lõi ghép tên người vào tiêu đề sự kiện (02 §8: `Tốt nghiệp đại học · Lê Văn Cường`) cho .ics và thông báo khi bật hiện tên. Giao diện tự ghép tên riêng (`itemTitle`), nên nhãn dùng `headline_plain` (không tên) để tên không lặp hai lần |
+
+### 12i. YC-2026-07 (01 §3.1, §3.2a, §3.8a; PR #29) và ghi chú đa nền tảng — PR #30, trên nền PR #28 (core2)
+
+PR #30 dựng trên lõi của PR #28: lớp lưu trữ, định dạng tệp sao lưu, chuyển đổi, kiểm tra (B6) và gợi ý đều là của
+lõi (`pwa/src/store/*`, `tsport`). PWA chỉ thêm giao diện và kiểm thử.
+
+**Cách gọi và Quan hệ.**
+- Gợi ý lấy từ lõi: `danhXungSuggestions(deceased, gioi_tinh)` và `quanHeSuggestions(deceased)`.
+- Lưu: `normalizePersonNames` của lõi viết hoa chữ cái đầu. Biểu mẫu cũng viết hoa ngay khi rời ô (`capitalizeFirst`).
+- Hiển thị (Quan hệ trên hồ sơ và danh sách, cách gọi trong tên) qua `displayCapitalize` của lõi. Tệp khôi phục từ bản
+  cũ giữ nguyên byte, nên có thể còn chữ thường.
+- Không chuẩn hóa khi nhập sao lưu, theo quy tắc của lõi.
+
+**Giới tính.** Có ở cả hai biểu mẫu người. Trên hồ sơ có dòng "Giới tính: Nam / Nữ / Không ghi".
+
+**Tệp đính kèm báo tử** (lõi: `putPerson(p, newPhoto?, newAttachments)`, `attachments()`, `attachmentBytes()`):
+- Tối đa 6 tệp. Loại tệp chọn trước khi thêm: Tin báo tử / Giấy chứng tử / Tệp khác (một bộ tên chung, §12l TKN3-X-01).
+- Ảnh: vẽ lại bằng canvas (≤ 2048 px, ≤ 2 MB). PDF: lưu nguyên bản; chọn PDF thì phải qua hộp xác nhận (BM2-12, §12k).
+- Gỡ một tệp khỏi danh sách rồi lưu → lõi tự xóa tệp. Xóa hồ sơ → lõi xóa các tệp của hồ sơ đó.
+- Trang hồ sơ: mỗi tệp hiện loại, tên gốc, dung lượng; với PDF có câu "Tệp PDF được lưu nguyên bản". Nút
+  "Tải ảnh…" / "Tải tệp PDF…" mở hộp xác nhận (BM2-05, §12k), rồi tải về bằng `<a download>`: điều hướng tải xuống,
+  không có trình xem nhúng, CSP giữ nguyên từng byte. Tên tệp tải về là tên chung `TepDinhKem-<n>.pdf|jpg`.
+- Tệp sao lưu chở được tệp đính kèm theo định dạng khối của lõi (03 §2.3). Hộp "Tạo tệp sao lưu" ghi số tệp PDF lưu
+  nguyên bản.
+- Riêng tư (R-PRIV-2): tệp đính kèm và tên tệp không bao giờ có trong thẻ nhắc, .ics, màn hình tưởng niệm. Kiểm thử rò
+  rỉ đặt chuỗi canh gác vào tên tệp ảnh, tên tệp PDF và nội dung PDF.
+
+**Hàm dùng chung của core2 trên PWA** (đã có trên `main` từ PR #28):
+- `markBackupSaved` sau khi giao tệp cho trình duyệt tải về: trên web, tải xuống coi là đã lưu.
+- `dueToday` cho thẻ nhắc; `deletePerson(id, {deleteOrphanEvents})`; `icsSummary`; `backupPasswordError`.
+- Tháng nhuận của lõi; tiêu đề sự kiện kèm tên người (`headline_plain` khi tên ghép riêng).
+
+**Ghi chú đa nền tảng** (duyệt thiết kế native, PR #26):
+- Màn hình tưởng niệm: "Ngày giỗ sắp tới: d/m âm lịch, dd/mm/yyyy"; đúng ngày giỗ ghi "<Nhãn> · hôm nay d/m âm lịch"
+  (TKN-X-06).
+- Biểu tượng: ba nén hương cho giỗ, bánh có nến cho sinh nhật, ngôi sao cho sự kiện (TKN-X-07).
+- Hộp .ics có câu "Không gồm thông tin báo tử." (TKN-X-04).
+- Hồ sơ người đang sống: "Sửa" đứng trước "Cập nhật: đã mất" (TKN-X-01).
+
+### 12j. Bổ sung B5 / R14 — nâng cấp không mất dữ liệu (04, PR #31) — bản web
+
+**Chuyển đổi do lõi làm** (PR #28):
+- IndexedDB lên phiên bản 3. Hàm `migrate1to2` (≡ Rust `migrate_1_to_2`) chuyển `certificate_photo_ids` thành
+  `attachments` loại `giay_chung_tu`, giữ nguyên byte ảnh.
+- Bản gốc được giữ trong khóa `legacy` của chính hồ sơ: `certificate_photo_ids` và siêu dữ liệu ảnh.
+- Chuyển đổi lỗi → giao dịch nâng cấp quay lui, kho cũ được mở ở trạng thái `read_only` (`migrationStatus()`); mọi
+  thao tác ghi báo `read_only`; xuất sao lưu vẫn được.
+
+**Giao diện PWA.** Khi `store().migrationStatus().state === "read_only"`, đầu mọi trang Người thân có khung `#ro-banner`:
+"Chưa chuyển được dữ liệu sang bản mới. Dữ liệu cũ vẫn còn nguyên trên máy và đang mở ở chế độ chỉ đọc…". Khung
+hướng dẫn tạo tệp sao lưu và có nút "Đi tới Sao lưu".
+
+**Kiểm thử R14** — `pwa/test/upgrade.mjs`, `npm run test:upgrade`, CI "L7 + PWA" với `fetch-depth: 0`.
+- Bản cũ dựng từ lịch sử git; thay bằng bản mới qua đường cập nhật thật của service worker: thanh cập nhật → "Để sau" →
+  mở lại → "Cập nhật ngay".
+- (a) 0.1.4 (d9650c7): cỡ chữ A++ và giao diện tối giữ nguyên; "Để sau" giữ bản cũ chạy tiếp.
+  - Mã cũ (0.1.4, 0.2-dev) có lỗi "Để sau" bị lần báo thứ hai bỏ qua (05 mục J). Lỗi đã sửa trong app, nhưng mã
+    cũ không sửa được. Vì vậy kiểm thử mở lại khi bản mới đã chờ sẵn và chờ đủ hai lần đọc `version.json` rồi mới
+    bấm "Để sau".
+- (b) 0.2-dev (c4d3128, kho v1): dữ liệu ghi bằng mã của bản cũ — 3 hồ sơ, ảnh chân dung, thông tin báo tử có 2 ảnh
+  giấy báo tử, 2 sự kiện, cài đặt nhắc sao lưu 60 ngày, A+. Sau nâng cấp so **từng byte** với
+  `migrate1to2(tài liệu cũ)` của lõi:
+  - hồ sơ (gồm khóa `legacy`), `attachments`, `photos`: 0 mất, 0 khác;
+  - sha256 ảnh giấy báo tử = tệp đính kèm;
+  - sự kiện, loại sự kiện, cài đặt giữ nguyên;
+  - trang hồ sơ hiện 2 tệp "Giấy chứng tử".
+- (b) thêm (#38): mốc `migrated_at` được ghi khi chuyển đổi. Mở kho với đồng hồ của lõi ở ngày 6 thì `legacy` còn; ở
+  ngày 8 thì `legacy` được dọn khỏi mọi hồ sơ, phần còn lại giữ từng byte. Hồ sơ vẫn hiện 2 tệp "Giấy chứng tử".
+- (c) chuyển đổi lỗi: bản mới dựng KIỂM THỬ (`LVHV_TEST_HOOKS=1`, chỉ cho ca này; 05 mục K), cờ `__lvhvFailMigration` → `forceMigrationFailure` của lõi. Kết quả: `stateHash` trước = sau, kho vẫn
+  v1, ghi báo `read_only`, có khung hướng dẫn.
+- Bộ mẫu đóng băng `released/0.2-dev-before-attachments` và vectơ `supplement-yc05` (ảnh + PDF) được kiểm chéo Rust ↔
+  PWA trong `scripts/check-store.sh` (kiểm thử lưu trữ của lõi). Lần chạy cho PR này: ĐẠT.
+
+**Bản xem trước riêng của chủ dự án** (c4d3128). Chuyển đổi chạy khi bản mới mở kho, không phụ thuộc service worker,
+theo đúng đường (b). Chưa thử trực tiếp trên bản xem trước (không có địa chỉ).
+
+### 12k. Rà soát bảo mật v0.2 (`docs/reviews/RA-SOAT-BAO-MAT-V02.md`, PR #34) và Bổ sung B6 (04, PR #35)
+
+| Mã | Việc |
+|---|---|
+| BM2-03 (chặn) | Đã sửa bằng cách dựng lại PR #30 trên `main` sau PR #28. Định dạng khối tệp đính kèm, chuyển đổi và kiểm tra là của lõi; bỏ toàn bộ phần lưu trữ riêng của PWA (IndexedDB v2 riêng, `legacy_v1`, `ATTACHMENTS_UNSUPPORTED`, hộp "Chưa tạo được tệp sao lưu"). `scripts/check-store.sh` ĐẠT, gồm `supplement-yc05` và `released/0.2-dev-before-attachments` |
+| B6 mục 2 | Kiểm tra chặt khi nhập dùng bộ kiểm của lõi (`pwa/src/store/media.ts` ≡ Rust); PWA không có bộ kiểm riêng |
+| BM2-05 (S10) | Tải tệp đính kèm qua hộp "Tải tệp xuống máy?" + "Tệp có thể chứa thông tin riêng tư." + giải thích thư mục Tải về; PDF thêm câu về thông tin máy quét. "Không tải" có tiêu điểm mặc định. Kiểm thử: "Không tải" → 0 tệp tải xuống |
+| BM2-07 | Theo thiết kế `legacy` của lõi: bản gốc nằm trong chính hồ sơ, nên xóa hồ sơ hay "Thay toàn bộ" thì bản gốc mất cùng hồ sơ. Không còn kho riêng giữ mãi. **Còn cho vai lõi:** 01 §7 "xóa sau 7 ngày" chưa áp cho khóa `legacy` (lõi giữ và chép qua sao lưu), và tệp `lvhv.sqlite.pre-v2.bak` không tự xóa (BM2-06) |
+| BM2-12 (R-PDF-1) | Chọn PDF → hộp "Đính kèm tệp PDF?" (lưu nguyên bản, có thể còn tên máy quét, phần mềm, ngày quét; gợi ý chụp ảnh thay thế); "Không đính kèm" → không thêm. Hộp tạo tệp sao lưu ghi số tệp PDF |
+| B6 mục 3 / BM2-10 (hiển thị) | `drawPhoto` đọc kích thước từ phần đầu tệp. Không rõ kích thước, hoặc > 4096 px mỗi cạnh, hoặc > 16 MP → không giải mã, để khung trống (`data-blocked`). Ảnh trong giới hạn được lấy mẫu xuống ngay khi giải mã. Kiểm thử: "JPEG" khai 20000 × 20000 ghi thẳng vào kho → trang vẫn chạy |
+| BM2-13 (góp ý) | Lúc chọn ảnh, đọc 2 MB đầu để tìm kích thước. Định dạng không nhận ra → "Định dạng ảnh chưa hỗ trợ — hãy chọn ảnh JPEG, PNG, WebP hoặc GIF", không giải mã |
+
+### 12l. Sau duyệt thiết kế vòng cuối (PR #40) và duyệt mã vòng cuối (PR #42) — bản web, PR #30
+
+| Mã | Việc |
+|---|---|
+| TKN3-P-01 (nên sửa) | Chế độ chỉ đọc ẩn mọi việc ghi, như Android và Windows: "+ Thêm", "Sửa", "Xóa hồ sơ", "Cập nhật: đã mất", "+ Thêm sự kiện", sửa/xóa sự kiện, khối "Khôi phục từ tệp sao lưu", "Nhắc sao lưu" và nút "Đã hiểu" của cảnh báo lưu trữ. Vẫn xem được hồ sơ, tạo tệp sao lưu, xuất .ics. Mở thẳng địa chỉ Thêm / Sửa / Cập nhật: đã mất / sự kiện → không dựng biểu mẫu, chỉ có câu "Đang ở chế độ chỉ đọc nên chưa thêm hay sửa được…" |
+| TKN3-P-02 (góp ý) | "Giới tính" là một hàng nút viên thuốc (cùng kiểu chọn lịch), vẫn là nhóm `radio` thật, không viền `fieldset` |
+| TKN3-P-03 (góp ý) | Câu riêng tư của hộp .ics nằm trong thẻ lưu ý vàng như hộp sao lưu, không in đỏ như lỗi |
+| TKN3-X-01 | Tên loại tệp đính kèm chung: **Tin báo tử**, **Giấy chứng tử**, **Tệp khác** (mỗi loại có thể là ảnh hay bản quét PDF) |
+| TKN3-X-02 | Mọi ô ngày dùng một cặp chữ "Nhập theo dương lịch" / "Nhập theo âm lịch" (cả ô ngày sinh, ngày sự kiện) |
+| TKN3-X-03 | Câu chuẩn của khung chỉ đọc cho mọi nền tảng (bản web đang dùng): "**Chưa chuyển được dữ liệu sang bản mới.** Dữ liệu cũ vẫn còn nguyên trên máy và đang mở ở chế độ chỉ đọc: xem được, nhưng chưa thêm hay sửa được." + "Hãy tạo ngay một tệp sao lưu để giữ dữ liệu: vào Sao lưu → “Tạo tệp sao lưu…”, rồi cất tệp ở nơi an toàn. Sau đó thử tải lại trang; nếu vẫn thấy thông báo này, hãy báo cho Clevix Lab kèm tệp sao lưu." + nút "Đi tới Sao lưu". Không hiện mã lỗi kỹ thuật |
+| MA3C-30-01 (nên sửa) | Chế độ chỉ đọc: tạo tệp sao lưu → hộp đóng, báo "Đã tạo tệp sao lưu…"; không gọi `markBackupSaved` (lõi sẽ báo `read_only`), không ghi gì vào kho cũ. Kiểm: `upgrade.mjs` ca (c) xuất từ chế độ chỉ đọc rồi khôi phục tệp đó vào kho trống của bản mới (3 hồ sơ, 2 tệp "Giấy chứng tử") |
+| MA3C-30-02 (nên sửa) | R14 ca (c) thử ghi trên **kho của chính ứng dụng** (`store()` của mô-đun Người thân, chỉ lộ ra ở bản dựng kiểm thử): lưu cài đặt, lưu hồ sơ, xóa hồ sơ, ghi nhận sao lưu đều bị lõi từ chối, stateHash không đổi |
+| MA3C-30-03 (góp ý) | Có hộp "Lưu tệp" của hệ điều hành (`showSaveFilePicker`, Chromium trên máy tính): hỏi nơi lưu trước khi mã hóa; chỉ ghi nhận "đã sao lưu" sau khi ghi xong. Đóng hộp hay ghi lỗi → hộp sao lưu báo rõ, không ghi nhận. **Giới hạn của nền web:** trình duyệt không có hộp này (Safari, Firefox, Chrome trên Android) thì tải về như cũ, và trang không biết người dùng có hủy hộp lưu của trình duyệt hay không — "đã sao lưu" được ghi khi giao tệp cho trình duyệt |
+| MA3C-30-04 (góp ý) | Cờ giao diện trong kho `meta` (`ui_persist_notice_hidden_at`, `ui_restored_from`, `persist`) ghi qua `Store.putUiMeta` — chế độ chỉ đọc thì bỏ qua. Tùy chọn cỡ chữ / sáng tối (`localStorage`, không thuộc kho) vẫn đổi được |
+| §6.1 (góp ý) | `window.__lvhv` chỉ có ở bản dựng kiểm thử; thời gian dựng tờ lịch đo bằng `performance.measure("lvhv:render")`. Smoke quét mọi tệp `dist/` không có `__lvhv`, tên cổng, cờ. `OpenOptions.forceMigrationFailure` ghi rõ "chỉ để kiểm định" (giữ tên như Rust `force_migration_failure`) |
+
+## 13. Android (T6, nhánh `v0.2-w3-android`) — cách áp đặc tả này và sai khác
+
+Android dùng cùng màn hình, trường, câu chữ, luồng và trạng thái như trên, theo quy ước Material 3 (Jetpack Compose).
+Mọi tính toán qua FFI của lõi (`ffi/src/v02.rs`, `LvhvStore`); giao diện chỉ hiển thị. Mã: `apps/android/app/src/main/java/vn/clevix/lichviet/{people,notify,ui/people}`.
+
+| Chỗ | Android |
+|---|---|
+| Điều hướng | Thẻ "Người thân" thứ tư ở thanh điều hướng đáy (giữa "Đổi ngày" và "Giới thiệu"). Bốn trang con là nhóm nút phân đoạn; trang con khác mở chồng lên, nút Quay lại của hệ thống lùi một trang. Không có URL |
+| Cài đặt nhắc (mới, chỉ bản cài) | Nút "Cài đặt nhắc" ở đầu mô-đun → trang: trạng thái quyền thông báo + nút "Cho phép thông báo" (hỏi `POST_NOTIFICATIONS`; đã từ chối thì mở trang cài đặt thông báo của hệ thống), công tắc chung `reminders_enabled`, công tắc "Hiện tên người trên màn hình khóa" (`lock_screen_names`, O-9, mặc định tắt, chỉ trên máy này), câu giải thích báo thức không chính xác (O-6, trễ tới khoảng một giờ) |
+| Quyền thông báo | Hỏi khi người dùng lưu hồ sơ đầu tiên có bật nhắc (hoặc bật công tắc chung) — một lần; về sau chỉ qua trang Cài đặt nhắc |
+| §5.4 "Lời nhắc trên ứng dụng web" | Không áp dụng (có thông báo thật). Thay bằng thẻ cảnh báo ở Sắp tới khi thông báo bị tắt: "Thông báo của ứng dụng đang tắt — điện thoại sẽ không tự nhắc…" + nút "Cài đặt nhắc" |
+| Thẻ nhắc trên **Tờ lịch** (§5.5) | Chưa làm trên Android: điện thoại đã nhắc bằng thông báo; thẻ nhắc hôm nay có ở "Sắp tới" (tối đa 3 thẻ + "… và n lời nhắc khác") |
+| Xuất .ics (§3.8 A) | Hộp xác nhận như đặc tả (+ câu "Không gồm thông tin báo tử") → bảng chia sẻ của hệ thống (`ACTION_SEND`, `text/calendar`, FileProvider chỉ thư mục `cache/ics/`). Nút "Chia sẻ tệp .ics" thay cho "Tải tệp .ics". Hộp xác nhận lấy câu riêng tư, khoảng ngày và tối đa 5 dòng xem trước từ `ics_summary` của lõi; tệp chỉ sinh khi bấm chia sẻ |
+| Sao lưu (§3.8 B, C) | "Tạo tệp sao lưu…" mở các ô mật khẩu **ngay trong khung** "Sao lưu dữ liệu" (cùng câu chữ, lỗi dưới ô, thẻ lưu ý vàng, "Tạo và lưu tệp" / "Hủy") thay vì trong hộp thoại — ô nhập trong hộp thoại làm kiểm thử giao diện không về trạng thái nghỉ. Mật khẩu hai lần → hộp "Lưu tệp" của hệ thống (Storage Access Framework, `CreateDocument`) → mã hóa có thanh tiến độ → ghi. Khôi phục: "Chọn tệp sao lưu…" (`OpenDocument`), "Đã chọn: <tên>", mật khẩu, "Mở tệp" → hộp xem trước Gộp / Thay toàn bộ → hộp xác nhận thứ hai khi Thay toàn bộ. Tệp > 72 + 128 MiB + 16 byte bị từ chối trước khi đọc (S12). TK-16: ngày bản sao lưu đã khôi phục ghi ở SharedPreferences giao diện (`nguoi_than_ui`), không vào dữ liệu. Quy tắc mật khẩu của lõi (`backup_password_error`); `mark_backup_saved` chỉ sau khi hệ điều hành báo ghi tệp xong; tệp khôi phục kiểm 72 byte đầu + kích thước (`backup_header_check`) trước khi đọc cả tệp |
+| Ảnh (§3.4, §12g) | Photo Picker (`PickVisualMedia`, không quyền bộ nhớ). Giải mã (`ImageDecoder` xoay theo EXIF; API 26–27: `BitmapFactory` + xoay theo `ExifInterface`), cạnh dài ≤ 1024 px, vẽ lại và mã hóa JPEG (`Bitmap.compress` không chép siêu dữ liệu) → S9 |
+| Gợi ý Cách gọi / Quan hệ, Giới tính | Không có `datalist`: dưới ô có nút "Gợi ý ▾" mở hàng nút chọn nhanh. Danh sách của lõi (`danh_xung_suggestions` theo người đã mất/đang sống và giới tính, `quan_he_suggestions`). Ô "Giới tính" Nam / Nữ / Không ghi. Lõi viết hoa chữ đầu khi lưu; hiển thị qua `display_capitalize` (dữ liệu nhập từ sao lưu giữ nguyên chữ gốc) |
+| Nhãn ô nhập (mọi ô) | Nhãn cố định phía trên ô, cỡ chữ đầy đủ (không thu nhỏ vào viền khi ô có chữ) — đọc được ở cỡ chữ lớn (TKN-A-14) |
+| Nhóm nút chọn (loại kỳ, bộ lọc, Dương/Âm, thanh phân đoạn) | Ô bo góc rời nhau, nhãn không giới hạn số dòng. Cỡ chữ hệ thống ≥ 1,15: nhóm 4 ô thành lưới 2 × 2, nhóm 3 ô thành ba hàng dọc (như PWA ở A++) — TKN-A-01 |
+| Mục sự kiện | Dòng 1 của sự kiện ghi "Tên sự kiện · tên người" (người đầu tiên của `person_ids`); dòng 3 "Hưởng thọ … tuổi" cho giỗ; chữ loại của lõi (`class_text`: "Ngày giỗ", "Sinh nhật"…) dưới biểu tượng. Chữ lớn: loại + khoảng cách xuống dưới, một cột (TKN-A-03, A-08, A-10) |
+| Sao lưu, khung A | Tiêu đề "Để lịch điện thoại cùng nhắc: xuất lịch (.ics)" và câu "Ứng dụng đã tự nhắc bằng thông báo trên máy này…" (bản cài đã có thông báo hệ thống; .ics để lịch của máy khác cũng nhắc) — TKN-A-12 |
+| Ô "Loại" sự kiện | Ô chọn M3 (`ExposedDropdownMenuBox`): ô viền, chữ trái, mũi tên phải (TKN-A-13) |
+| Nút thu gọn | "Mở ▾" / "Xem ▾" khi đang gọn, "Thu gọn ▴" khi đang mở (TKN-A-11) |
+| Chọn lịch | Một cặp chữ "Nhập theo dương lịch / Nhập theo âm lịch" cho mọi ô ngày của mô-đun (TKN-X-05) |
+| Hồ sơ người đang sống | "Sửa" trước, "Cập nhật: đã mất" sau (TKN-X-01) |
+| Thông báo khi bật hiện tên | `VISIBILITY_PRIVATE` + bản công khai không tên ("Sắp đến ngày giỗ" / "Sắp đến sinh nhật" / "Sắp đến sự kiện"), để cài đặt "Ẩn nội dung nhạy cảm" của máy vẫn có hiệu lực (MA3N-24-06) |
+| Lỗi đặt lời nhắc | Bước chuỗi báo thức lỗi → báo thức thử lại sau 6 giờ; trang Cài đặt nhắc hiện "Lần đặt lời nhắc gần nhất bị lỗi…" (MA3N-24-04) |
+| Tưởng niệm, dòng ngày | Giỗ năm nay đã qua → "Ngày giỗ sắp tới: d/m âm lịch, dd/mm/yyyy" (thay "năm nay") |
+| Thông báo | Kênh "Nhắc ngày giỗ, sinh nhật"; nội dung chỉ lấy `title`/`body` của lõi (mặc định không có tên, O-9); chạm → mở hồ sơ người đó. Không bao giờ có thông tin báo tử |
+| Chuỗi báo thức (02 §7.3) | `LvhvStore.android_alarm_step_json` → đăng thông báo đến hạn, **một** báo thức `setAndAllowWhileIdle(RTC_WAKEUP)` cho lời nhắc kế tiếp. Đặt lại khi: báo thức chạy, `BOOT_COMPLETED`, `MY_PACKAGE_REPLACED`, `TIME_SET`, `TIMEZONE_CHANGED`, mở ứng dụng (onResume), lưu/xóa, nhập sao lưu. Lần chạy trước lưu ở SharedPreferences (chỉ một số giây Unix) |
+| Giảm chuyển động | Theo cài đặt "Xóa hiệu ứng"/tỷ lệ hoạt ảnh = 0 của Android: khói tĩnh, không có nút "Dừng khói" |
+| Dữ liệu (S5) | `files/lvhv.sqlite`, `files/photos/`; `allowBackup=false` + quy tắc trích xuất loại trừ mọi miền; CI kiểm manifest đã gộp |
+| Quyền (S6) | Đúng và chỉ `POST_NOTIFICATIONS`, `RECEIVE_BOOT_COMPLETED` (+ quyền nội bộ `DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION`); không `INTERNET`, không `SCHEDULE_EXACT_ALARM`; CI so khớp chính xác danh sách |
+| Ảnh chụp | CI (job `ui`) chụp bằng Robolectric + Roborazzi với lõi thật: `apps/android/screenshots/and-*-{light,dark,large}.png`, điện thoại 360 × 800 dp |
+| Nâng cấp (B5, R14) | Dữ liệu ở bộ nhớ trong (`files/`), `allowBackup=false`, không có mã nào xóa dữ liệu khi cập nhật. Job CI `upgrade` (trình giả lập API 34): (a) v0.1.4 (d9650c7) → mới và main → mới giữ cỡ chữ, sáng/tối, "Để sau"; (b) dữ liệu người thân đủ loại (ảnh, thông tin báo tử có ảnh và PDF đính kèm, giới tính, sự kiện, cài đặt, tùy chọn tên trên màn hình khóa) còn nguyên từng trường, từng tệp (sha256) sau `install -r`, chuỗi báo thức đặt lại qua `MY_PACKAGE_REPLACED`; (c) kho SQLite **thật** của bản 0.2-dev (bộ mẫu đóng băng `0.2-dev-before-attachments`, phiên bản 1) chép vào máy → mở bằng bản mới → `migrated`, dữ liệu đúng từng trường như `expected/0.2-dev-before-attachments.json` (tệp chung với bản Rust và bản web), tệp đính kèm đúng sha256, có bản sao dữ liệu cũ; (d) chuyển đổi lỗi → `read_only`: kho cũ giống hệt từng dòng mọi bảng (`settings photo person event_type event event_person meta`, `user_version`) và từng ảnh (sha256), không có tệp đính kèm mồ côi; ghi bị từ chối; tệp sao lưu xuất ở chế độ chỉ đọc mở lại được trọn vẹn qua lõi và nhập vào kho trống cho đúng hồ sơ, sự kiện, loại sự kiện như tệp kỳ vọng chung, tệp đính kèm đúng sha256 (MA3C-24-01). Lõi chỉ có `force_migration_failure` ở API Rust (không qua FFI), nên ca (d) làm lỗi như Windows `upgrade.rs`: thêm trigger chặn ghi bảng `meta` vào bản sao bộ mẫu — bước chuyển lỗi thật ở câu SQL cuối giao dịch, dữ liệu cũ vẫn hợp lệ. Phạm vi (MA3C-24-02): R14 chạy trên APK debug (chép kho vào máy cần `run-as`, chỉ dùng được với bản debuggable); bản release đi qua cùng mã chuyển đổi của lõi nhưng phần rút gọn mã R8 chưa được thử trên kho thật; ca (b) là cài đè cùng một bản (giữ `files/`, đặt lại báo thức), không có chuyển đổi. Chế độ chỉ đọc: thẻ đỏ trên mọi trang với câu chuẩn như bản web ("Chưa chuyển được dữ liệu sang bản mới. Dữ liệu cũ vẫn còn nguyên trên máy và đang mở ở chế độ chỉ đọc…" + hướng dẫn tạo tệp sao lưu) và nút "Đi tới Sao lưu"; câu lỗi của lõi (`migration_status().message`, có mã kỹ thuật) chỉ trong mục thu gọn "Chi tiết kỹ thuật" (TKN3-A-01); ẩn thêm/sửa/xóa, khôi phục, nhắc sao lưu; biểu mẫu không mở. Kho không mở được (dữ liệu của bản mới hơn) → thẻ đỏ "dữ liệu vẫn còn nguyên trên máy" |
+| Ảnh đa nhiệm (BM2-04) | `FLAG_SECURE` chỉ khi đang hiện: trang hồ sơ có thông tin báo tử, biểu mẫu "Cập nhật: đã mất", biểu mẫu thêm/sửa người đã mất (khối báo tử), màn hình Sao lưu (ô mật khẩu, xem trước tệp). Ảnh Recents là khung trống; các màn hình khác vẫn chụp được (tờ lịch). Gỡ khi rời màn hình (đếm tham chiếu, không hở khi chuyển giữa hai màn hình cần che) |
+| Giải mã ảnh hiển thị (BM2-10) | Mọi đường hiển thị (chân dung, ảnh giấy tờ, tưởng niệm, xem trước biểu mẫu) qua `Photos.bitmap`: đọc kích thước trước, khai > 12 000 px một cạnh hoặc > 50 Mpx → khung trống; còn lại lấy mẫu xuống cạnh dài ≤ 2048. Thêm ảnh cũng chặn cùng ngưỡng trước khi giải mã |
+| Mở hồ sơ từ thông báo (BM2-19) | Intent mở hồ sơ phải kèm mã ngẫu nhiên 128 bit của ứng dụng (chỉ PendingIntent của thông báo có); Intent từ ứng dụng khác chỉ mở ứng dụng |
+| Tệp tạm (BM2-16, BM2-17) | `cache/ics/` xóa khi mở ứng dụng và mỗi lần quay lại (tệp > 30 s). Mật khẩu sao lưu xóa ở mọi nhánh (xong, hủy, lỗi, sai mật khẩu); hai lần nhập so sau NFC (BM2-23); bản rõ đã giải mã thả ngay khi đóng tấm xem trước hoặc rời màn hình |
+| Tệp đính kèm báo tử (YC-2026-07, RA-SOAT-BAO-MAT-V02 §5.3) | Trong khối "Thông tin báo tử": tối đa 6 tệp, chọn loại trước (Tin báo tử / Giấy chứng tử / Tệp khác — bộ tên chung đề xuất ở TKN3-X-01; tin báo tử có thể là ảnh hay PDF), "Thêm ảnh" (Photo Picker → giải mã, xoay, cạnh dài ≤ 2048 px, JPEG ≤ 2 MB, bỏ siêu dữ liệu) hoặc "Thêm tệp PDF" (bộ chọn tệp; kiểm ≤ 10 MB theo kích thước bộ chọn **trước khi** đọc, đọc tối đa 10 MB, kiểm `%PDF-` ở đầu và `%%EOF` trong 1 024 byte cuối như `media::check_attachment` của lõi (lõi kiểm lại khi lưu; MA3C-24-03); lưu nguyên bản, câu "Tệp PDF được lưu nguyên bản" hiện trước khi chọn). Tệp chỉ ghi vào kho khi bấm Lưu; lưu lỗi → xóa tệp/ảnh vừa ghi (`delete_attachment`, `delete_photo`). Trang hồ sơ: ảnh hiện trong trang (giải mã có giới hạn), PDF chỉ có nhãn + tên tệp gốc + "Mở bằng ứng dụng khác…" → hộp xác nhận → bản tạm `cache/att/TepDinhKem.pdf`, `ACTION_VIEW` với `FLAG_GRANT_READ_URI_PERMISSION` chỉ cho Intent đó; quay lại ứng dụng (và mỗi lần mở ứng dụng) → thu hồi quyền, xóa bản tạm. FileProvider không exported, chỉ `cache/ics/` và `cache/att/`. Không bao giờ vào thông báo, .ics, trang tưởng niệm |
+| CI (BM2-09, 18, 24) | Action ghim theo SHA; APK release không có `SelfCheckActivity`; thành phần exported chỉ có MainActivity (và `ProfileInstallReceiver` của androidx, chỉ nhận từ `android.permission.DUMP`); tệp khóa Gradle sinh từ đồ thị đã phân giải và quét bằng osv-scanner |
+| Cần máy thật | R5 (thông báo đúng giờ, sau khởi động lại), P8 (Argon2id trên điện thoại tầm trung), P9 (bộ nhớ, số lần đánh thức) — chưa đo |
+
+## 16. YC-2026-10 — ảnh mâm lễ (07/11/2026; 07 §10, ADR-V02-01; 04 R15)
+
+Áp dụng cho cả bốn nền tảng. Phần nào khác §3.4, §3.9 thì theo mục này.
+
+### 16.1 Màn hình tưởng niệm (§3.9)
+
+- Thứ tự chọn hình mâm: (1) ảnh mâm lễ của gia đình (`memorial.tray_photo_id`); (2) ảnh Clevix đã duyệt cùng
+  `tray_style` trong gói đi kèm ứng dụng; (3) **không có mâm**.
+- Không có mâm: hàng bàn thờ dưới bia chỉ có **nến · bát hương ba nén (có khói) · nến**. Bỏ hẳn hình mâm quả vẽ và lọ
+  hoa (`TRAY`, `VASE` ở PWA và hình tương ứng trên native). Công giáo: nến · hoa · nến, không hương (như cũ).
+- Có ảnh: ảnh nằm **dưới** hàng bàn thờ, rộng tối đa 480 px (360 px: toàn chiều rộng trừ lề 16 px), tỉ lệ gốc, cắt
+  vừa khung 4:3 ở giữa, bo góc 12 px, viền mảnh vàng đồng; nhãn trợ năng "Ảnh mâm lễ của gia đình" hoặc "Ảnh mâm lễ".
+  Ảnh Clevix có giấy phép cần ghi công thì có dòng nhỏ dưới ảnh: "Ảnh: <tác giả> · <giấy phép>".
+- Không có ảnh gia đình: dưới lời tưởng niệm có nút chữ nhỏ "Thêm ảnh mâm lễ của gia đình" → mở biểu mẫu sửa hồ sơ, cuộn
+  tới mục §16.2. Có ảnh gia đình → không có nút này.
+- Khói, nút "Dừng khói"/"Thắp lại", giảm chuyển động: như §3.9 (R8).
+
+### 16.2 Biểu mẫu người đã mất (§3.4) — mục "Ảnh mâm lễ ngày giỗ"
+
+Đặt ngay sau ô "Lời tưởng niệm".
+
+| Trạng thái | Hiển thị |
+|---|---|
+| Chưa có ảnh | Chữ: "Chưa có ảnh. Ngày giỗ chỉ hiện bát hương và nến." · nút "Chọn ảnh mâm lễ…" (điện thoại: hộp chọn của hệ thống có cả chụp ảnh và thư viện) |
+| Đang xử lý | "Đang xử lý ảnh…" (vô hiệu hóa nút Lưu tới khi xong) |
+| Có ảnh | Ảnh thu nhỏ 120 × 90 px · nút "Đổi ảnh" · nút "Bỏ ảnh" |
+| Lỗi | Như ảnh chân dung: "Không đọc được ảnh này. Hãy chọn một ảnh khác." / "Ảnh quá lớn (tối đa 25 MB)." |
+
+- Dòng gợi ý dưới mục: "Ảnh chỉ lưu trên máy này và trong tệp sao lưu mã hóa. Ứng dụng tự bỏ thông tin vị trí và máy
+  chụp trong ảnh."
+- Xử lý ảnh như ảnh chân dung (01 §3.8): giải mã, thu nhỏ cạnh dài ≤ 1600 px, mã hóa lại JPEG hoặc WebP ≤ 1 MB; không
+  phóng to. Ảnh đã thêm mà hủy biểu mẫu → xóa (`delete_photo`). Bỏ ảnh hay đổi ảnh có hiệu lực khi bấm "Lưu".
+- Hộp xác nhận đổi người đã mất thành đang sống: có ảnh mâm lễ thì thêm câu "Ảnh mâm lễ cũng sẽ bị xóa."
+- Trang hồ sơ một người (§3.6): dòng "Ảnh mâm lễ: Đã có" / "Ảnh mâm lễ: Chưa có".
+
+### 16.3 Gói ảnh Clevix
+
+`content/memorial/trays/manifest.json` (vai nội dung, T22). Mỗi nền tảng nhúng gói lúc dựng; chỉ mục đã duyệt, có tệp,
+đúng `sha256`. Gói hiện **rỗng**. Không tải gì qua mạng.
+
+### 16.4 Kiểm thử
+
+Mỗi nền tảng: (1) người đã mất không có ảnh, gói rỗng → không có phần tử mâm, có hai nến và bát hương; (2) thêm ảnh có
+EXIF → ảnh hiện dưới bàn thờ, ảnh lưu không còn EXIF; (3) bỏ ảnh → về (1), không còn tệp; (4) Công giáo → nến, hoa, không
+hương; (5) gói thử có một ảnh đã duyệt → ảnh Clevix hiện khi người đó chưa có ảnh gia đình, ảnh gia đình thắng khi có.
+Ảnh chụp: (1), (2), (4) ở 360 px và 1280 px, sáng và tối.
+

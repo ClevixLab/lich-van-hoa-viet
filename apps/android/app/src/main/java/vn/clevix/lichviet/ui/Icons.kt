@@ -49,6 +49,12 @@ object LichIcons {
         "M5.5,5h13a2,2 0 0 1 2,2v11a2,2 0 0 1 -2,2h-13a2,2 0 0 1 -2,-2v-11a2,2 0 0 1 2,-2z",
         "M3.5 10h17M8 5v-2M16 5v-2M8.5 14h1M11.5 14h1M14.5 14h1M8.5 17h1M11.5 17h1",
     )
+    /** Người thân: hai người (chép nét từ pwa/src/icons.ts "people"). */
+    val People = icon(
+        "people",
+        "M5.8,7.7a3.2,3.2 0 1,0 6.4,0a3.2,3.2 0 1,0 -6.4,0z", "M3 19.5c0-3.4 2.7-5.8 6-5.8s6 2.4 6 5.8",
+        "M13.6,8.4a2.6,2.6 0 1,0 5.2,0a2.6,2.6 0 1,0 -5.2,0z", "M16.5 13.2c2.6.3 4.5 2.4 4.5 5.3",
+    )
     val Close = icon("close", "M6 6l12 12M18 6 6 18")
     val Down = icon("down", "M6 9l6 6 6-6")
     val Contrast = icon("auto", CIRCLE_8_5, filled = "M12 3.5v17a8.5 8.5 0 0 0 0-17z")

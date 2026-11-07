@@ -306,3 +306,60 @@ Nguyên tắc (bổ sung cho 01 §7):
 | Phương pháp | Bản web: trình duyệt tự động nạp bản cũ, ghi dữ liệu vào IndexedDB, thay bằng bản mới qua service worker như người dùng thật. Android: trình giả lập trên CI, `adb install` bản cũ, tạo dữ liệu, `adb install -r` bản mới. Windows: trên máy CI, cài MSI cũ, tạo dữ liệu, cài MSI mới (nâng cấp lớn), rồi gỡ cài đặt và kiểm tra thư mục dữ liệu còn nguyên. iPhone/Mac: trình giả lập, cài đè bản mới. Mọi nền tảng: so dữ liệu sau nâng cấp với dữ liệu kỳ vọng do hàm chuyển đổi thuần (01 §7) sinh ra; thử thêm một ca chuyển đổi lỗi và kiểm tra bản sao dữ liệu cũ còn nguyên |
 | Ngưỡng | 0 bản ghi mất; 0 trường khác với kỳ vọng; ca lỗi không mất dữ liệu; lịch nhắc được đặt lại sau nâng cấp |
 | Kết luận | Theo từng nền tảng: ĐẠT / KHÔNG ĐẠT / CHƯA ĐỦ BẰNG CHỨNG. **Chặn phát hành** nếu KHÔNG ĐẠT |
+
+## Bổ sung B6 — kiểm tra ảnh và tệp đính kèm khi nhập sao lưu (2026-11-07, SAU KHI ĐÃ THẤY KẾT QUẢ)
+
+Lý do: bản rà soát bảo mật `docs/reviews/RA-SOAT-BAO-MAT-V02.md` (BM2-01) chứng minh đường nhập sao lưu lưu nguyên byte
+ảnh và tệp đính kèm, không kiểm định dạng hay kích thước điểm ảnh. Một ảnh PNG 20000×20000 dán nhãn `image/jpeg`
+(cần khoảng 1,6 GB để giải mã) đã được nhận. 03 §BK-S1 ghi biện pháp "ảnh mã hóa lại", nhưng §2.3 không quy định cách
+làm.
+
+Quyết định của điều phối viên, theo ủy quyền của chủ dự án (B2):
+1. **Không** mã hóa lại ảnh khi nhập. Lý do: mã hóa lại làm đổi byte và `sha256`, trái với R6 (a)/(d), vốn yêu cầu dữ
+   liệu sau khôi phục giống hệt. Ảnh do ứng dụng tạo đã được mã hóa lại và bỏ siêu dữ liệu lúc chụp hoặc chọn (01 §3.8),
+   nên tệp sao lưu hợp lệ vẫn qua được.
+2. Thay vào đó, lõi (Rust và TypeScript, giống hệt nhau) **kiểm tra chặt** mọi ảnh và tệp đính kèm, trước khi ghi bất
+   cứ thứ gì, ở cả bốn đường: nhập sao lưu, `add_photo`, `add_attachment` và chuyển đổi lược đồ.
+   - Chữ ký tệp khớp `mime`.
+   - JPEG và WebP: đọc kích thước từ phần đầu tệp, không giải mã; kích thước phải bằng bản ghi và ≤ giới hạn của
+     01 §3.8 / §3.8a.
+   - JPEG: không được có đoạn APP1 (EXIF/XMP) hay APP13 (IPTC). WebP: không được có khối EXIF hay XMP.
+   - PDF: bắt đầu bằng `%PDF-`, có `%%EOF` gần cuối, kích thước ≤ 10 MiB. PDF vẫn được lưu nguyên bản (R-PDF-1).
+   - Sai bất kỳ điều nào thì từ chối **toàn bộ** tệp sao lưu, với thông báo chung.
+3. Mỗi nền tảng giải mã ảnh để hiển thị phải đặt giới hạn kích thước điểm ảnh, lấy mẫu xuống trước khi giải mã đầy
+   đủ (BM2-10).
+4. Bổ sung vào bộ kiểm thử của S9 và S12 các tệp độc hại sau: ảnh khổng lồ, ảnh sai nhãn, ảnh còn EXIF, "ảnh" thực chất
+   là HTML, PDF giả. Ngưỡng của S9 và S12 giữ nguyên.
+
+## Bổ sung B7 — bộ dữ liệu R6 dùng ảnh thật (2026-11-07, SAU KHI ĐÃ THẤY KẾT QUẢ)
+
+Lý do: không thể bật đầy đủ kiểm tra ảnh khi nhập sao lưu theo B6 (BM2-01). Bộ dữ liệu R6 đã khóa (`dataset-r6.json` và
+tệp có salt cố định) chứa 20 "ảnh" chỉ là byte giả, không có phần đầu ảnh hợp lệ, trong đó 10 tệp còn mang nhãn
+`image/webp`. Bật kiểm tra thì chính bộ R6 bị từ chối. Bỏ kiểm tra ảnh chân dung khi nhập thì lỗ hổng làm sập ứng dụng
+vẫn còn. Quyết định của điều phối viên, theo ủy quyền của chủ dự án (B2), ưu tiên an toàn:
+1. Tạo bộ **R6v2**: cùng cấu trúc, cùng số hồ sơ và số ảnh như R6, nhưng ảnh là JPEG và WebP thật cỡ nhỏ, đã bỏ siêu
+   dữ liệu, kích thước khớp bản ghi. Bộ này được khóa từ khi tạo, kèm `sha256` của mọi tệp.
+2. R6 (a)–(d) chạy trên R6v2, ngưỡng giữ nguyên. Bộ R6 cũ giữ nguyên trong kho để đối chiếu lịch sử. Kỳ vọng mới với
+   bộ R6 cũ là bị từ chối khi nhập, vì nó chứa ảnh giả.
+3. Bật kiểm tra B6 cho ảnh chân dung ở đường nhập sao lưu, như B6 đã quy định.
+4. Bên kiểm định độc lập chạy lại R6 trên R6v2.
+
+## Bổ sung B8 — ảnh mâm lễ (YC-2026-10, KHÓA 2026-11-07, trước khi viết mã)
+
+Nguyên văn chủ dự án (07/11/2026): "anh muốn software có chế độ cập nhật ảnh mâm lễ, với bức ảnh hiện tại anh đánh giá
+chất lượng thấp, không phù hợp. Khi chưa có ảnh mâm lễ phù hợp thì ngày giỗ sẽ chưa hiện mâm giỗ ra mà chi có bát hương
+với nến bên dưới bia mộ như đã thiết kế"; "clevix cập nhật qua app, còn từng người dùng có thể tự chụp ảnh mâm lễ của
+mình để load lên software cho ngày giỗ của người nhà mình". Thiết kế: 07 §10 (ADR-V02-01), 01 §3.7, 08 §16.
+Khóa theo ủy quyền của chủ dự án ("Em thấy cái gì tối ưu nhất thì anh sẽ quyết làm theo hướng đó").
+
+R8 (a)–(f) giữ nguyên, trừ phần nói tới "mâm": từ nay R8 không đòi vẽ mâm.
+
+### R15 — Ảnh mâm lễ
+
+| Mục | Nội dung |
+|---|---|
+| Mệnh đề | (a) Không có ảnh mâm lễ cho người đó và không có ảnh Clevix đã duyệt cùng `tray_style` → màn hình tưởng niệm **không** có hình mâm hay đồ cúng nào; dưới bia chỉ có bát hương ba nén và hai nến (Công giáo: hai nến và hoa, không hương). (b) Gói ảnh Clevix chỉ dùng mục `trang_thai = "duyet"`; mục đã duyệt mà `sha256` sai, không qua kiểm tra B6, hoặc quá giới hạn (≤ 400 KB mỗi ảnh, ≤ 2 MB cả gói) → **bản dựng thất bại**; gói rỗng → như (a). (c) Ảnh gia đình chọn từ tệp có EXIF/GPS/XMP → ảnh lưu không còn APP1, APP13, EXIF, XMP; cạnh dài ≤ 1600 px; ≤ 1 MB; chỉ hiện trên màn hình tưởng niệm của đúng người đó, ưu tiên hơn ảnh Clevix. (d) Xuất rồi nhập (Thay toàn bộ và Gộp) giữ nguyên ảnh (`sha256` bằng nhau) và liên kết; tệp sao lưu có `tray_photo_id` trỏ ảnh không tồn tại → từ chối (V3); ảnh giả hay còn siêu dữ liệu → từ chối (B6). (e) Dữ liệu và tệp sao lưu của bản trước (không có trường) mở được, `tray_photo_id = null`, không mất gì; tài liệu không dùng trường giống hệt từng byte bản trước (vector 03 §2.5 không đổi). (f) Bỏ ảnh, đổi ảnh, xóa hồ sơ, đổi về đang sống → ảnh cũ bị xóa (bản ghi và tệp) trong cùng giao dịch; ảnh không bao giờ có trong thông báo, .ics, tên tệp, URL. (g) Rust ≡ TS trên kịch bản `tray_photo` của `lvhv-store-tool` |
+| Phương pháp | (a)(b): kiểm thử giao diện trên bốn nền tảng (không có phần tử mâm khi không có ảnh; có ảnh khi có) + ảnh chụp 360 px và 1280 px, sáng và tối; kịch bản kiểm gói chạy trong CI với gói rỗng, gói có mục chờ duyệt, gói có mục sai `sha256`. (c)–(g): kiểm thử lõi hai bản và `lvhv-store-tool`; bên kiểm định độc lập chạy (c)(d)(e)(g) |
+| Ngưỡng | Mọi mệnh đề đúng; 0 ảnh còn siêu dữ liệu; 0 ảnh mồ côi sau (f) |
+| Kết luận | Theo từng nền tảng: ĐẠT / KHÔNG ĐẠT / CHƯA ĐỦ BẰNG CHỨNG. (a) KHÔNG ĐẠT trên nền tảng nào thì **chặn phát hành** nền tảng đó |
+

@@ -109,7 +109,10 @@ export interface Person {
   rev: number;
 }
 
-export const displayName = (p: Person): string => (p.danh_xung === "" ? p.ho_ten : `${p.danh_xung} ${p.ho_ten}`);
+/** Chữ đầu tiên (một điểm mã) viết hoa, phần còn lại giữ nguyên — cùng Rust `upper_first`. */
+export const upperFirst = (s: string): string => { const c = [...s.trim()]; return c.length ? c[0].toUpperCase() + c.slice(1).join("") : ""; };
+/** Tên hiển thị: cách gọi viết hoa chữ đầu khi hiển thị (YC-2026-07) + họ tên. */
+export const displayName = (p: Person): string => (p.danh_xung === "" ? p.ho_ten : `${upperFirst(p.danh_xung)} ${p.ho_ten}`);
 
 export interface EventType { id: string; builtin: string | null; ten: string }
 export interface Event {

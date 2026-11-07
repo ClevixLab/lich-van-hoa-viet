@@ -2,9 +2,10 @@
 // Mật mã nằm trong mô-đun tải lười của lớp lưu trữ (store/backup-crypto, chỉ nạp khi xuất/nhập — P6).
 import { clear, h } from "../dom";
 import { APP_VERSION } from "../gen/content";
-import { M, cal, dmy, nowTs, snap, store, today, type JsonObj } from "./core";
+import { M, cal, dmy, isReadOnly, nowTs, snap, store, today, type JsonObj } from "./core";
 import { confirmDialog, itemTitle, toast } from "./ui";
 import { openBackup, type VerifiedBackup } from "../store/index";
+import { testGate } from "../testhooks";
 
 const iso = (d: M.Ymd) => M.iso(d);
 
@@ -22,6 +23,19 @@ function localDmy(ts: string): string {
 }
 
 /** Tải một tệp qua thẻ <a download> (không gửi mạng). blob: chỉ dùng cho điều hướng tải xuống, không cho ảnh. */
+/**
+ * MA3C-30-03 / MA3N-23-01: hộp "Lưu tệp" của hệ điều hành (File System Access, `showSaveFilePicker` — Chromium trên máy
+ * tính). Có thì dùng, và chỉ ghi nhận "đã sao lưu" sau khi ghi xong (`close()` thành công). Trình duyệt không có (Safari,
+ * Firefox, Chrome Android): tải về như cũ — trang KHÔNG biết người dùng có hủy hộp lưu của trình duyệt hay không (08 §12l).
+ * Phải gọi ngay trong lượt bấm của người dùng (trước khi mã hóa), vì hộp này cần "user activation".
+ */
+type SaveHandle = { createWritable(): Promise<{ write(d: BlobPart): Promise<void>; close(): Promise<void>; abort?(): Promise<void> }> };
+type SavePicker = (o: { suggestedName: string; types: { description: string; accept: Record<string, string[]> }[] }) => Promise<SaveHandle>;
+export function savePicker(): SavePicker | null {
+  const f = (globalThis as { showSaveFilePicker?: unknown }).showSaveFilePicker;
+  return typeof f === "function" ? (f as SavePicker).bind(globalThis) : null;
+}
+
 export function download(name: string, bytes: Uint8Array | string, type: string): void {
   const blob = new Blob([bytes as BlobPart], { type });
   const url = URL.createObjectURL(blob);
@@ -37,31 +51,23 @@ export async function openIcsDialog(): Promise<void> {
   const sn = await snap();
   const t = today();
   const opt: M.IcsOptions = { today: t, dtstamp: nowTs().replace(/[-:]/g, ""), only_ids: null };
-  const occ = M.icsOccurrences(cal(), sn.ds, opt);
-  if (!occ.length) {
+  // Tóm tắt của lõi (MA3N-24-08; cùng bản với Rust ics::summary): số mục, số người, loại dữ liệu, xem trước.
+  const sum = M.icsSummary(cal(), sn.ds, opt);
+  if (!sum.events) {
     await confirmDialog({ title: "Xuất tệp lịch", body: [h("p", null, "Chưa có hồ sơ hay sự kiện nào bật nhắc, nên chưa có gì để xuất.")], ok: "Đã hiểu", cancel: "Đóng" });
     return;
   }
-  const people = new Set<string>();
-  for (const [o] of occ) {
-    if (o.class.startsWith("su_kien")) { const e = sn.events.find((x) => x.id === o.entity_id); for (const pid of (e?.person_ids as string[]) ?? []) people.add(pid); }
-    else people.add(o.entity_id);
-  }
-  const end = M.ymdFromJdn(M.ymdJdn(M.tenYearsEnd(t)) - 1);
-  const preview = occ.slice(0, 5).map(([o]) => h("li", null, `${dmy(o.date)} — ${itemTitle(sn, o)}`));
-  // TK-11: câu riêng tư nói đúng loại dữ liệu có trong tệp.
-  const kinds: string[] = [];
-  if (occ.some(([o]) => o.class === "gio" || o.class === "tien_thuong")) kinds.push("ngày giỗ");
-  if (occ.some(([o]) => o.class === "sinh_nhat" || o.class === "sinh_nhat_am")) kinds.push("sinh nhật");
-  if (occ.some(([o]) => o.class.startsWith("su_kien"))) kinds.push("sự kiện");
-  const what = kinds.length > 1 ? `${kinds.slice(0, -1).join(", ")} và ${kinds[kinds.length - 1]}` : kinds[0];
+  // Xem trước: PWA ghi thêm người gắn với sự kiện (itemTitle), nên lấy 5 mục đầu từ cùng danh sách của lõi.
+  const preview = M.icsOccurrences(cal(), sn.ds, opt).slice(0, sum.preview.length).map(([o]) => h("li", null, `${dmy(o.date)} — ${itemTitle(sn, o)}`));
   const ok = await confirmDialog({
     title: "Xuất tệp lịch", ok: "Tải tệp .ics", cls: "ics-dialog",
     body: [
-      h("p", { class: "pd-privacy" }, `Tệp này chứa tên, ${what} của ${people.size} người. Bất kỳ ai có tệp đều đọc được.`),
-      h("p", null, `Gồm ${occ.length} ngày trong 10 năm tới (từ ${dmy(t)} đến ${dmy(end)}), mỗi ngày có lời nhắc như đã đặt.`),
+      h("p", { class: "notice pd-note pd-privacy", id: "ics-privacy" }, sum.privacy_text), // TKN3-P-03: thẻ lưu ý vàng như hộp sao lưu (TK-14), không đỏ như lỗi
+      // TKN-X-04 (duyệt thiết kế native): mọi nền tảng nói rõ .ics không gồm thông tin báo tử (R-PRIV-2).
+      h("p", { class: "fine", id: "ics-no-notice" }, "Không gồm thông tin báo tử."),
+      h("p", null, `Gồm ${sum.events} ngày trong 10 năm tới (từ ${dmy(sum.from)} đến ${dmy(sum.to)}), mỗi ngày có lời nhắc như đã đặt.`),
       h("p", { class: "flabel" }, "Xem trước:"),
-      h("ul", { class: "dots pd-preview" }, ...preview, occ.length > 5 ? h("li", null, `… và ${occ.length - 5} ngày khác`) : null),
+      h("ul", { class: "dots pd-preview" }, ...preview, sum.events > sum.preview.length ? h("li", null, `… và ${sum.events - sum.preview.length} ngày khác`) : null),
       h("p", { class: "fine" }, "Mở tệp bằng ứng dụng Lịch của điện thoại hoặc máy tính để nhập. Một số ứng dụng lịch dùng lời nhắc mặc định của chúng thay cho lời nhắc trong tệp."),
     ],
     onOk: () => { download(M.fileName(t), M.generateIcs(cal(), sn.ds, opt), "text/calendar;charset=utf-8"); },
@@ -86,6 +92,8 @@ export async function renderBackup(root: HTMLElement, rerender: () => void): Pro
   // B. xuất sao lưu
   const expBtn = h("button", { type: "button", class: "primary", id: "bk-export", disabled: sn.persons.length === 0 && sn.events.length === 0, onclick: () => void exportFlow() }, "Tạo tệp sao lưu…");
   async function exportFlow(): Promise<void> {
+    // BM2-12 / R-PDF-1: hộp xuất ghi số tệp PDF lưu nguyên bản.
+    const nPdf = (await s.attachments()).filter((a) => a.mime === "application/pdf").length;
     const pw1 = h("input", { type: "password", id: "bk-pw1", autocomplete: "new-password", autocapitalize: "off", spellcheck: "false", class: "tin" }) as HTMLInputElement;
     const pw2 = h("input", { type: "password", id: "bk-pw2", autocomplete: "new-password", autocapitalize: "off", spellcheck: "false", class: "tin" }) as HTMLInputElement;
     const e1 = h("p", { class: "ferr", id: "bk-pw1-err", role: "alert", hidden: true });
@@ -102,7 +110,8 @@ export async function renderBackup(root: HTMLElement, rerender: () => void): Pro
       title: "Tạo tệp sao lưu", ok: "Tạo và tải tệp", cls: "bk-dialog",
       body: [
         h("p", null, `Tệp sẽ chứa ${sn.persons.length} người, ${sn.events.length} sự kiện, ${photos} ảnh — đã mã hóa bằng mật khẩu.`),
-        ...(sn.persons.some((p) => (p.death as JsonObj | null)?.notice) ? [h("p", { class: "fine", id: "bk-notice" }, "Tệp gồm cả thông tin báo tử (người báo tin, nơi mất, lý do, ảnh giấy báo tử) — chỉ ai biết mật khẩu mới đọc được.")] : []),
+        ...(sn.persons.some((p) => (p.death as JsonObj | null)?.notice) ? [h("p", { class: "fine", id: "bk-notice" }, "Tệp gồm cả thông tin báo tử (người báo tin, nơi mất, lý do, ghi chú, tệp đính kèm) — chỉ ai biết mật khẩu mới đọc được.")] : []),
+        ...(nPdf ? [h("p", { class: "fine", id: "bk-pdf" }, `Tệp gồm ${nPdf} tệp PDF đính kèm, lưu nguyên bản — có thể còn thông tin của máy quét (tên máy, phần mềm, ngày quét).`)] : []),
         h("div", { class: "field" }, h("label", { for: "bk-pw1" }, "Mật khẩu (ít nhất 8 ký tự)"), pw1, e1),
         h("div", { class: "field" }, h("label", { for: "bk-pw2" }, "Nhập lại mật khẩu"), pw2, e2),
         h("p", { class: "notice pd-note" }, "Lưu ý: quên mật khẩu là mất dữ liệu trong tệp — không ai lấy lại được, kể cả Clevix Lab."),
@@ -112,12 +121,33 @@ export async function renderBackup(root: HTMLElement, rerender: () => void): Pro
       onOk: async () => {
         const a = pw1.value, b = pw2.value;
         mark(pw1, e1, null); mark(pw2, e2, null);
-        if ([...a.normalize("NFC")].length < 8) { mark(pw1, e1, "Mật khẩu cần ít nhất 8 ký tự"); pw1.focus(); return false; }
-        if (a.normalize("NFC") !== b.normalize("NFC")) { mark(pw2, e2, "Hai lần nhập mật khẩu chưa giống nhau"); pw2.focus(); return false; }
+        // Quy tắc mật khẩu của lõi (MA3N-24-08), cùng bản với Rust lvhv_backup::password_error.
+        const e1m = M.backupPasswordError(a, null);
+        if (e1m) { mark(pw1, e1, e1m); pw1.focus(); return false; }
+        const e2m = M.backupPasswordError(a, b);
+        if (e2m) { mark(pw2, e2, e2m); pw2.focus(); return false; }
+        const name = `LichVanHoaViet-saoluu-${iso(today())}.lvhv`;
+        // MA3C-30-03: có hộp "Lưu tệp" của hệ điều hành → hỏi nơi lưu TRƯỚC khi mã hóa (cần lượt bấm của người dùng).
+        const picker = savePicker();
+        let handle: SaveHandle | null = null;
+        if (picker) {
+          try { handle = await picker({ suggestedName: name, types: [{ description: "Tệp sao lưu Lịch Việt", accept: { "application/octet-stream": [".lvhv"] } }] }); }
+          catch (e) { return (e as Error)?.name === "AbortError" ? "Chưa lưu tệp — bạn đã đóng hộp chọn nơi lưu. Bấm “Tạo và tải tệp” để thử lại." : "Không mở được hộp chọn nơi lưu tệp."; }
+        }
         prog.hidden = false; progTxt.hidden = false;
+        if (__LVHV_TEST_HOOKS__) await testGate("backup-encrypt"); // chỉ bản dựng kiểm thử: giữ bước mã hóa tới khi kiểm thử cho chạy (MA3-15-03)
         const bytes = await s.exportBackup(a, { version: APP_VERSION, platform: "pwa" }, (x) => { prog.value = x; });
         pw1.value = ""; pw2.value = ""; // MA3-15-08: không giữ mật khẩu trong ô sau khi xuất
-        download(`LichVanHoaViet-saoluu-${iso(today())}.lvhv`, bytes, "application/octet-stream");
+        if (handle) {
+          // Ghi xong (close() thành công) mới là "đã lưu". Lỗi ghi (đầy ổ, mất quyền) → báo, không ghi nhận.
+          try { const wr = await handle.createWritable(); await wr.write(bytes as BlobPart); await wr.close(); }
+          catch { bytes.fill(0); return "Chưa lưu được tệp vào nơi đã chọn (ổ đầy hoặc không có quyền ghi). Hãy thử lại hoặc chọn nơi khác."; }
+        } else {
+          download(name, bytes, "application/octet-stream");
+        }
+        // MA3N-23-01 / MA3C-30-01: ghi nhận "đã sao lưu" — trừ chế độ chỉ đọc (TKN3-P-01, B5 mục 3): tệp vẫn tạo và lưu
+        // được, hộp báo thành công, nhưng không ghi gì vào kho cũ (markBackupSaved của lõi sẽ báo "read_only").
+        if (s.migrationStatus().state !== "read_only") await s.markBackupSaved(nowTs());
         return true;
       },
     });
@@ -169,14 +199,9 @@ export async function renderBackup(root: HTMLElement, rerender: () => void): Pro
             body: [`Dữ liệu hiện có trên máy (${n} người) sẽ bị thay bằng dữ liệu trong tệp xuất ngày ${exp}. Không hoàn tác được.`] });
           if (!sure) return false;
         }
+        if (__LVHV_TEST_HOOKS__) await testGate("backup-restore"); // chỉ bản dựng kiểm thử: giữ bước khôi phục (MA3-15-03)
         try { await s.applyImport(v, mode); } catch { return "Chưa khôi phục được — dữ liệu trên máy giữ nguyên."; }
-        if (mode === "replace") {
-          await new Promise<void>((done) => {
-            const tx = s.db.transaction("meta", "readwrite");
-            tx.objectStore("meta").put(pv.exported_at, "ui_restored_from");
-            tx.oncomplete = () => done(); tx.onerror = () => done();
-          });
-        }
+        if (mode === "replace") await s.putUiMeta("ui_restored_from", pv.exported_at).catch(() => false); // MA3C-30-04
         return true;
       },
     });
@@ -199,7 +224,7 @@ export async function renderBackup(root: HTMLElement, rerender: () => void): Pro
         restoredFrom ? h("p", { id: "bk-restored", class: "fine" }, `Dữ liệu được khôi phục từ bản sao lưu ngày ${localDmy(restoredFrom)}.`) : null,
         h("p", { class: "fine" }, "Tệp sao lưu được mã hóa bằng mật khẩu của bạn và chỉ nằm ở nơi bạn cất. Ứng dụng không gửi dữ liệu đi đâu."),
         expBtn)),
-    h("div", { class: "pcol-side" },
+    isReadOnly() ? null : h("div", { class: "pcol-side" },
       h("section", { class: "panel", id: "bk-in" }, h("h2", null, "Khôi phục từ tệp sao lưu"),
         h("div", { class: "field" }, h("span", { class: "flabel" }, "Tệp sao lưu (.lvhv)"), fileIn, h("button", { type: "button", class: "btn2 filebtn", id: "bk-file-btn", onclick: () => fileIn.click() }, "Chọn tệp sao lưu…"), fileName),
         h("div", { class: "field" }, h("label", { for: "bk-ipw" }, "Mật khẩu của tệp"), pwIn),

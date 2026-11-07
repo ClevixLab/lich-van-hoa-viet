@@ -12,6 +12,9 @@ export class PhotoError extends Error {}
 
 /** MA3-15-07: giới hạn kích thước điểm ảnh trước khi giải mã (ảnh nén nhỏ vẫn có thể giải mã ra hàng GB). */
 export const MAX_SIDE = 12_000;
+/** Giới hạn giải mã để HIỂN THỊ (ảnh trong kho ≤ 2048 px theo 01 §3.8/§3.8a; dư để an toàn) — 04 B6 mục 3. */
+export const MAX_DISPLAY_SIDE = 4096;
+export const MAX_DISPLAY_PIXELS = 16_000_000;
 export const MAX_PIXELS = 50_000_000;
 
 /**
@@ -48,11 +51,16 @@ function toBlob(c: HTMLCanvasElement, q: number): Promise<Blob | null> {
   return new Promise((ok) => c.toBlob(ok, "image/jpeg", q));
 }
 
-export async function processPhoto(file: Blob): Promise<Processed> {
+/** Giới hạn cho ảnh tệp đính kèm báo tử (01 §3.8a): cạnh dài ≤ 2048 px để giấy tờ còn đọc được, ≤ 2 MB. */
+export const ATTACHMENT_LIMITS = { maxEdge: 2048, maxStored: 2 * 1024 * 1024 } as const;
+
+export async function processPhoto(file: Blob, lim: { maxEdge: number; maxStored: number } = { maxEdge: MAX_EDGE, maxStored: MAX_STORED }): Promise<Processed> {
   if (file.size > MAX_INPUT) throw new PhotoError("Ảnh lớn hơn 25 MB — hãy chọn ảnh nhỏ hơn");
-  // Chỉ đọc 256 KB đầu để tìm kích thước điểm ảnh (đủ cho JPEG có EXIF/ảnh nhỏ kèm theo).
-  const head = new Uint8Array(await file.slice(0, 256 * 1024).arrayBuffer());
+  // Đọc 2 MB đầu để tìm kích thước điểm ảnh (JPEG có ảnh thu nhỏ EXIF lớn đặt SOF muộn — BM2-13).
+  const head = new Uint8Array(await file.slice(0, 2 * 1024 * 1024).arrayBuffer());
   const dim = sniffSize(head);
+  // BM2-13: không nhận ra định dạng (HEIC, AVIF, TIFF, BMP…) → không biết kích thước → không giải mã.
+  if (!dim) throw new PhotoError("Định dạng ảnh chưa hỗ trợ — hãy chọn ảnh JPEG, PNG, WebP hoặc GIF");
   if (dim && (dim.w > MAX_SIDE || dim.h > MAX_SIDE || dim.w * dim.h > MAX_PIXELS)) {
     throw new PhotoError(`Ảnh quá lớn (${dim.w} × ${dim.h} điểm ảnh) — hãy chọn ảnh nhỏ hơn`);
   }
@@ -62,7 +70,7 @@ export async function processPhoto(file: Blob): Promise<Processed> {
   } catch {
     throw new PhotoError("Không đọc được ảnh này (định dạng không hỗ trợ)");
   }
-  const scale = Math.min(1, MAX_EDGE / Math.max(bmp.width, bmp.height));
+  const scale = Math.min(1, lim.maxEdge / Math.max(bmp.width, bmp.height));
   const w = Math.max(1, Math.round(bmp.width * scale)), hh = Math.max(1, Math.round(bmp.height * scale));
   const c = document.createElement("canvas");
   c.width = w; c.height = hh;
@@ -74,17 +82,27 @@ export async function processPhoto(file: Blob): Promise<Processed> {
   for (const q of [0.86, 0.75, 0.62, 0.5]) {
     const b = await toBlob(c, q);
     if (!b) break;
-    if (b.size <= MAX_STORED) return { bytes: new Uint8Array(await b.arrayBuffer()), width: w, height: hh, mime: "image/jpeg" };
+    if (b.size <= lim.maxStored) return { bytes: new Uint8Array(await b.arrayBuffer()), width: w, height: hh, mime: "image/jpeg" };
   }
-  throw new PhotoError("Ảnh quá chi tiết, chưa nén được dưới 1 MB");
+  throw new PhotoError(`Ảnh quá chi tiết, chưa nén được dưới ${Math.round(lim.maxStored / (1024 * 1024))} MB`);
 }
 
 /** Vẽ ảnh (cắt vừa khung, giữ tỷ lệ) lên canvas. */
 export async function drawPhoto(canvas: HTMLCanvasElement, bytes: Uint8Array, mime = "image/jpeg", contain = false): Promise<void> {
-  const bmp = await createImageBitmap(new Blob([bytes as Uint8Array<ArrayBuffer>], { type: mime }));
   const dpr = Math.min(2, window.devicePixelRatio || 1);
   const cw = canvas.clientWidth || Number(canvas.getAttribute("width")) || 160;
   const ch = canvas.clientHeight || Number(canvas.getAttribute("height")) || 200;
+  // 04 B6 mục 3 / BM2-10: đọc kích thước từ phần đầu, KHÔNG giải mã ảnh không rõ kích thước hoặc quá lớn (byte độc có
+  // thể đã nằm trong kho từ trước khi lõi kiểm chặt) — để khung trống, không treo trang.
+  const dim = sniffSize(bytes.subarray(0, 2 * 1024 * 1024));
+  if (!dim || dim.w < 1 || dim.h < 1 || dim.w > MAX_DISPLAY_SIDE || dim.h > MAX_DISPLAY_SIDE || dim.w * dim.h > MAX_DISPLAY_PIXELS) {
+    canvas.dataset.blocked = dim ? `${dim.w}x${dim.h}` : "unknown";
+    return;
+  }
+  // Lấy mẫu xuống ngay khi giải mã (không cần bản đầy đủ lớn hơn khung).
+  const fit = Math.min(1, (contain ? Math.min : Math.max)((cw * dpr) / dim.w, (ch * dpr) / dim.h));
+  const rw = Math.max(1, Math.round(dim.w * fit)), rh = Math.max(1, Math.round(dim.h * fit));
+  const bmp = await createImageBitmap(new Blob([bytes as Uint8Array<ArrayBuffer>], { type: mime }), fit < 1 ? { resizeWidth: rw, resizeHeight: rh, resizeQuality: "high" } : {});
   canvas.width = Math.round(cw * dpr); canvas.height = Math.round(ch * dpr);
   const ctx = canvas.getContext("2d")!;
   // `contain`: giấy tờ (giấy báo tử) — thấy cả tờ, không cắt.

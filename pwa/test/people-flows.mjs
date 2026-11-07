@@ -15,6 +15,8 @@ export async function runPeople({ browser, BASE, ORIGIN, ROOT, SHOTS, check, met
   const ctx = await browser.newContext({ viewport: { width: 360, height: 780 }, deviceScaleFactor: 2, hasTouch: true, isMobile: true, locale: "vi-VN", timezoneId: "Asia/Ho_Chi_Minh", reducedMotion: "reduce", colorScheme: "light" });
   const page = await ctx.newPage();
   await page.clock.setFixedTime(FIXED);
+  // Đường tải về (<a download>): tắt hộp "Lưu tệp" của hệ điều hành (showSaveFilePicker); đường đó kiểm ở runSavePicker().
+  await page.addInitScript(() => { Object.defineProperty(window, "showSaveFilePicker", { value: undefined, configurable: true }); });
   const errors = [], external = [], csp = [];
   page.on("console", (m) => { if (m.type() === "error" || m.type() === "warning") errors.push(`${m.type()}: ${m.text()}`); if (/Content.Security.Policy/i.test(m.text())) csp.push(m.text()); });
   page.on("pageerror", (e) => errors.push(`pageerror: ${e.message}`));
@@ -72,7 +74,10 @@ export async function runPeople({ browser, BASE, ORIGIN, ROOT, SHOTS, check, met
     await page.click(".form-acts .primary");
     const sum0 = await text(".errsum");
     check(sum0.includes("Họ tên không được để trống") && sum0.includes("Hãy nhập ngày mất"), `L1: lưu khi trống → "Họ tên không được để trống", "Hãy nhập ngày mất" (${sum0.replace(/\n/g, " | ")})`);
-    await page.fill("#pf-dx", "Ông");
+    const dxDead = await page.$$eval("#pf-dx-list option", (os) => os.map((o) => o.value));
+    check(dxDead.includes("Bé đỏ") && dxDead.includes("Ông Tổ họ") && dxDead.includes("Kỵ") && dxDead.every((x) => x[0] === x[0].toLocaleUpperCase("vi")), `YC-2026-07: gợi ý cách gọi (lõi) cho người đã mất viết hoa chữ đầu, có Cụ/Kỵ/Ông Tổ họ/Bà Cô Tổ họ/Bé đỏ (${dxDead.length} mục)`);
+    await page.check("#pf-gt-nam");
+    await page.fill("#pf-dx", "ông");
     await page.fill("#pf-ten", "Nguyễn Văn A");
     const sum1 = await page.locator(".errsum").innerText();
     check(await page.locator("#pf-ten-err").isHidden() && !sum1.includes("Họ tên") && sum1.includes("Hãy nhập ngày mất"), `TK-03: gõ tên → lỗi dưới ô mất, khung tóm tắt bỏ dòng "Họ tên" (${sum1.replace(/\n/g, " | ")})`);
@@ -98,7 +103,7 @@ export async function runPeople({ browser, BASE, ORIGIN, ROOT, SHOTS, check, met
     const withExif = Buffer.concat([jpg.subarray(0, 2), app1, jpg.subarray(2)]);
     await page.setInputFiles("#pf-file", { name: "khong-phai-anh.jpg", mimeType: "image/jpeg", buffer: Buffer.from("đây không phải ảnh", "utf8") });
     await page.waitForSelector(".photo-acts .ferr:not([hidden])");
-    check((await text(".photo-acts .ferr")).includes("Không đọc được ảnh này"), "ảnh hỏng → \"Không đọc được ảnh này (định dạng không hỗ trợ)\"");
+    check((await text(".photo-acts .ferr")) === "Định dạng ảnh chưa hỗ trợ — hãy chọn ảnh JPEG, PNG, WebP hoặc GIF", "ảnh hỏng / định dạng không nhận ra → không giải mã, báo \"Định dạng ảnh chưa hỗ trợ…\" (BM2-13)");
     const bigPng = Buffer.alloc(64);
     Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]).copy(bigPng); bigPng.writeUInt32BE(13, 8); bigPng.write("IHDR", 12); bigPng.writeUInt32BE(20000, 16); bigPng.writeUInt32BE(20000, 20);
     await page.setInputFiles("#pf-file", { name: "rat-lon.png", mimeType: "image/png", buffer: bigPng });
@@ -121,6 +126,10 @@ export async function runPeople({ browser, BASE, ORIGIN, ROOT, SHOTS, check, met
     const recA = await store(`async (s) => { const p = await s.person("${idA}"); const ph = new Uint8Array(await s.photoBytes(p.photo_id)); let i = 2, app1 = false; while (i + 4 < ph.length && ph[i] === 0xff && ph[i+1] !== 0xda) { if (ph[i+1] === 0xe1 || ph[i+1] === 0xed) app1 = true; i += 2 + ((ph[i+2] << 8) | ph[i+3]); } return { lunar: p.death.lunar, src: p.death.lunar_source, rev: p.rev, persist: await s.persistResult(), app1, mime: (await s.photos())[0].mime }; }`);
     check(JSON.stringify(recA.lunar) === JSON.stringify({ day: 15, leap: true, month: 6, year: 2025 }) || (recA.lunar.year === 2025 && recA.lunar.month === 6 && recA.lunar.day === 15 && recA.lunar.leap === true), `L1: lưu death.lunar = 15/6 nhuận 2025 (${JSON.stringify(recA.lunar)})`);
     check(recA.src === "converted" && recA.rev === 1, "L1: lunar_source = converted, rev = 1");
+    const gA = await store(`async (s) => { const p = await s.person("${idA}"); return [p.gioi_tinh, p.danh_xung, p.quan_he]; }`);
+    const pfacts = await text(".people-body");
+    check(JSON.stringify(gA) === JSON.stringify(["nam", "Ông", "Ông nội"]) && /Giới tính\s*Nam/.test(pfacts),
+      `YC-2026-07: lưu gioi_tinh = "nam"; gõ "ông"/"ông nội" → lưu "Ông"/"Ông nội"; hồ sơ hiện "Giới tính: Nam" (${JSON.stringify(gA)})`);
     check(recA.app1 === false && recA.mime === "image/jpeg", "S9: ảnh lưu đã mã hóa lại, không còn đoạn APP1/APP13 (EXIF/GPS)");
     check(typeof recA.persist === "boolean", `R-PWA-1: navigator.storage.persist() đã gọi khi lưu hồ sơ đầu tiên (${recA.persist})`);
     await page.waitForSelector(".pp-photo[data-drawn]");
@@ -162,7 +171,13 @@ export async function runPeople({ browser, BASE, ORIGIN, ROOT, SHOTS, check, met
 
     // ---------- L3 + L4: người đang sống, sự kiện ----------
     await go("#/nguoi-than/them/dang-song", "#pf-ten");
-    await page.fill("#pf-ten", "Lê Văn C"); await page.fill("#pf-qh", "con trai");
+    const dxLive = await page.$$eval("#pf-dx-list option", (os) => os.map((o) => o.value));
+    check(!["Cụ", "Kỵ", "Ông Tổ họ", "Bà Cô Tổ họ", "Bé đỏ"].some((x) => dxLive.includes(x)) && dxLive.includes("Anh") && await page.isChecked("#pf-gt-none"),
+      `YC-2026-07: gợi ý cách gọi người đang sống không có Cụ, Kỵ, Ông Tổ họ, Bà Cô Tổ họ, Bé đỏ; giới tính mặc định "Không ghi" (${dxLive.join(", ")})`);
+    // #38 (core3): mọi trường chữ tự do cắt khoảng trắng hai đầu khi lưu; quan hệ viết hoa chữ đầu (sau khi cắt).
+    // page.fill không rời ô → không qua bước viết hoa khi rời ô (forms.ts): kiểm đúng việc chuẩn hóa lúc lưu của lõi.
+    await page.fill("#pf-ten", "  Lê Văn C \u00a0"); await page.fill("#pf-qh", "   con trai  ");
+    await page.fill("#pf-noisinh", "  Huế  "); await page.fill("#pf-note", "\n  học ở Huế  \n");
     await page.fill("#pf-birth-d", "20"); await page.fill("#pf-birth-m", "1"); await page.fill("#pf-birth-y", "1990");
     const res3 = await text("#pf-birth-res");
     check(res3.includes("Âm lịch: 24/12 năm Kỷ Tỵ (1989)") && res3.includes("Hôm nay 36 tuổi (tuổi âm 38)"), `L3: sinh 20/01/1990 → Kỷ Tỵ (1989), 36 tuổi (tuổi âm 38) (${res3})`);
@@ -180,6 +195,12 @@ export async function runPeople({ browser, BASE, ORIGIN, ROOT, SHOTS, check, met
     await page.click(".form-acts .primary");
     await page.waitForSelector("#person-name");
     const idC = /nguoi\/([0-9a-f-]+)/.exec(page.url())[1];
+    const trimC = await store(`async (s) => { const p = await s.person("${idC}"); return { ho_ten: p.ho_ten, quan_he: p.quan_he, ghi_chu: p.ghi_chu, noi_sinh: p.birth.noi_sinh }; }`);
+    const viewC = { name: await text("#person-name"), rel: await page.locator(".phead-rel").first().innerText().catch(() => ""), body: await text(".people-body") };
+    check(trimC.ho_ten === "Lê Văn C" && trimC.quan_he === "Con trai" && trimC.ghi_chu === "học ở Huế" && trimC.noi_sinh === "Huế"
+      && viewC.name === "Lê Văn C" && viewC.rel === "Con trai" && viewC.body.includes("Nơi sinh\nHuế") && viewC.body.includes("Ghi chú\nhọc ở Huế"),
+      `#38: lưu cắt khoảng trắng mọi trường chữ, quan hệ viết hoa; hồ sơ hiện đúng giá trị đã cắt (${JSON.stringify(trimC)})`);
+    await shot("person-living-trimmed-360");
     const remC = await store(`async (s) => (await s.person("${idC}")).reminders`);
     check(remC.sinh_nhat.time_local === "18:05" && remC.sinh_nhat_am.time_local === "18:05" && JSON.stringify(remC.sinh_nhat_am.offsets_days) === JSON.stringify(remC.sinh_nhat.offsets_days) && remC.sinh_nhat_am.id !== remC.sinh_nhat.id,
       `TK-28/29: lưu giờ "18:05"; sinh nhật âm chép cài đặt sinh nhật dương, id riêng (${JSON.stringify(remC.sinh_nhat_am)})`);
@@ -328,7 +349,7 @@ export async function runPeople({ browser, BASE, ORIGIN, ROOT, SHOTS, check, met
     await page.click(".form-acts .primary");
     await page.waitForSelector("#person-name");
     const rev2 = await store(`async (s) => { const p = await s.person("${idA}"); return [p.rev, p.quan_he, p.photo_id !== null]; }`);
-    check(rev2[0] === 2 && rev2[1] === "ông nội (bên nội)" && rev2[2], `L12: sửa → rev = 2, giữ ảnh (${JSON.stringify(rev2)})`);
+    check(rev2[0] === 2 && rev2[1] === "Ông nội (bên nội)" && rev2[2], `L12: sửa → rev = 2, giữ ảnh; gõ "ông nội (bên nội)" → lưu "Ông nội (bên nội)" (YC-2026-07 viết hoa chữ đầu) (${JSON.stringify(rev2)})`);
 
     // ---------- L11: tưởng niệm ----------
     await page.click("#open-memorial");
@@ -349,6 +370,7 @@ export async function runPeople({ browser, BASE, ORIGIN, ROOT, SHOTS, check, met
     await page.click("#ics-open");
     await page.waitForSelector(".ics-dialog[open]");
     const icsTxt = await text(".ics-dialog");
+    check(icsTxt.includes("Không gồm thông tin báo tử."), "TKN-X-04: hộp .ics nói rõ \"Không gồm thông tin báo tử.\"");
     check(icsTxt.includes("Tệp này chứa tên, ngày giỗ, sinh nhật và sự kiện của 4 người. Bất kỳ ai có tệp đều đọc được.") && icsTxt.includes("Xem trước") && icsTxt.includes("Tốt nghiệp · Lê Văn C"), `L8 (S10, TK-11): câu riêng tư đúng nội dung tệp, xem trước có tên người (${icsTxt.split("\n")[1]})`);
     await shot("ics-dialog-360", false);
     const [dl] = await Promise.all([page.waitForEvent("download"), page.click('.ics-dialog .dbtn.main')]);
@@ -385,18 +407,11 @@ export async function runPeople({ browser, BASE, ORIGIN, ROOT, SHOTS, check, met
     await page.fill("#bk-pw2", "nhà có cây bàng");
     await shot("backup-dialog-360", false);
     const dlP = page.waitForEvent("download", { timeout: 120000 });
-    // MA3-15-03: ghi lại mọi sự kiện "cancel" (Esc) và việc nó có bị chặn không, để kết quả không phụ thuộc thời gian mã hóa.
-    await page.evaluate(() => { window.__esc = []; window.addEventListener("cancel", (e) => { const busy = e.target.getAttribute("aria-busy"); setTimeout(() => window.__esc.push({ busy, prevented: e.defaultPrevented })); }, true); });
+    // MA3-15-03 (Esc trong lúc mã hóa) kiểm tất định ở runEscGate() bên dưới, trên bản dựng kiểm thử có cổng giữ bước mã hóa.
     await page.click(".bk-dialog .dbtn.main");
-    await page.waitForSelector('.bk-dialog[aria-busy="true"]', { timeout: 5000 }).catch(() => {});
-    await page.keyboard.press("Escape"); // đang mã hóa → Esc không đóng được hộp
-    const escOpen = await page.locator(".bk-dialog[open]").count();
     const bk = await dlP;
     const bkBytes = readFileSync(await bk.path());
     check(bk.suggestedFilename() === `LichVanHoaViet-saoluu-${TODAY}.lvhv` && bkBytes.subarray(0, 7).toString() === "LVHVBAK", `L9: tải ${bk.suggestedFilename()} (${bkBytes.length} byte)`);
-    const esc = await page.evaluate(() => window.__esc);
-    check(esc.length >= 1 && esc.every((x) => x.busy !== "true" || x.prevented) && esc.some((x) => x.busy === "true" && x.prevented) && escOpen <= 1,
-      `MA3-15-03: nhấn Esc trong lúc mã hóa — Esc bị chặn, hộp không bị hủy, tệp vẫn được tải (${JSON.stringify(esc)})`);
     // Trang Sao lưu dựng lại sau khi xuất xong — chờ đúng dòng mới, không đọc bản cũ.
     const lastOk = await page.waitForSelector('#bk-last:has-text("Lần sao lưu gần nhất: 25/07/2026")', { timeout: 30000 }).then(() => true, () => false);
     check(lastOk, `L9: ghi lần sao lưu gần nhất (${await text("#bk-last")})`);
@@ -435,8 +450,7 @@ export async function runPeople({ browser, BASE, ORIGIN, ROOT, SHOTS, check, met
     await page.check("#bk-mode-replace");
     await page.click(".imp-dialog .dbtn.main");
     await page.waitForSelector('.pdialog[open] .dbtn.danger');
-    await page.click('.pdialog[open] .dbtn.danger');
-    await page.keyboard.press("Escape"); // MA3-15-03: đang khôi phục → Esc không đóng hộp; kết quả vẫn được báo
+    await page.click('.pdialog[open] .dbtn.danger'); // MA3-15-03 (Esc trong lúc khôi phục): kiểm tất định ở runEscGate()
     await page.waitForSelector('.toast:has-text("Đã khôi phục: 3 người, 4 sự kiện.")', { timeout: 60000 });
     const h2 = await store(`async (s) => s.stateHash()`);
     check(h1 === h2, "L9/L10: xuất → xóa một hồ sơ → nhập \"Thay toàn bộ\" → dữ liệu giống hệt (stateHash)");
@@ -446,7 +460,7 @@ export async function runPeople({ browser, BASE, ORIGIN, ROOT, SHOTS, check, met
     check(restoredTxt === `Dữ liệu được khôi phục từ bản sao lưu ngày ${TODAY.slice(8, 10)}/${TODAY.slice(5, 7)}/${TODAY.slice(0, 4)}.` && /^(Chưa sao lưu lần nào trên máy này|Lần sao lưu gần nhất: )/.test(lastAfter) && h1 === h2,
       `TK-16: sau khôi phục "${lastAfter}" + "${restoredTxt}"; stateHash không đổi`);
     await shot("backup-restored-360");
-    check((await text(".toast")).startsWith("Đã khôi phục: 3 người") && await page.locator(".pdialog[open]").count() === 0, "MA3-15-03: nhấn Esc trong lúc khôi phục — hộp không bị hủy giữa chừng, có thông báo \"Đã khôi phục\", không còn hộp mở");
+    check((await text(".toast")).startsWith("Đã khôi phục: 3 người") && await page.locator(".pdialog[open]").count() === 0, "L10: khôi phục xong — có thông báo \"Đã khôi phục\", không còn hộp mở");
 
     // ---------- Ảnh chụp mọi màn hình mới: 360/1280 × sáng/tối; bố cục (TK-02) và vùng chạm (TK-05) ở A và A++ ----------
     const screens = [
@@ -612,8 +626,27 @@ export async function runPeople({ browser, BASE, ORIGIN, ROOT, SHOTS, check, met
     const SEN = { by: "SENTINEL-BAOTIN-7731", place: "SENTINEL-NOIMAT-7731", reason: "SENTINEL-LYDO-7731", note: "SENTINEL-GHICHU-7731" };
     await page.fill("#nf-by", SEN.by); await page.fill("#nf-place", SEN.place); await page.fill("#nf-reason", SEN.reason); await page.fill("#nf-note", SEN.note);
     await page.fill("#nf-date-d", "18"); await page.fill("#nf-date-m", "7"); await page.fill("#nf-date-y", "2024");
-    await page.setInputFiles("#nf-file", { name: "giay-bao-tu.jpg", mimeType: "image/jpeg", buffer: withExif });
+    // Tên tệp gốc cũng là chuỗi canh gác: chỉ được nằm trong bản ghi Attachment (R-PRIV-2, YC-2026-07).
+    await page.selectOption("#nf-kind", "tin_bao_tu");
+    await page.setInputFiles("#nf-file", { name: "SENTINEL-TENTEP-7731.jpg", mimeType: "image/jpeg", buffer: withExif });
     await page.waitForSelector(".cert-item canvas[data-drawn]");
+    // YC-2026-07 + BM2-12: PDF — hộp báo "lưu nguyên bản" trước khi nhận; "Không đính kèm" → không thêm.
+    const pdfBytes = Buffer.from("%PDF-1.4\n1 0 obj<</Type/Catalog>>endobj\n% SENTINEL-NOIDUNG-PDF\ntrailer<<>>\n%%EOF\n");
+    await page.selectOption("#nf-kind", "giay_chung_tu");
+    await page.setInputFiles("#nf-file", { name: "SENTINEL-TENPDF-7731.pdf", mimeType: "application/pdf", buffer: pdfBytes });
+    await page.waitForSelector(".pdf-warn-dialog[open]");
+    const pdfWarn = await text(".pdf-warn-dialog");
+    await page.click(".pdf-warn-dialog .dbtn:not(.main)");
+    check(pdfWarn.includes("PDF được lưu nguyên bản, có thể còn tên máy quét") && await page.locator("#nf-certs .cert-pdf").count() === 0, "BM2-12: chọn PDF → hộp báo lưu nguyên bản; \"Không đính kèm\" → không thêm");
+    await page.setInputFiles("#nf-file", { name: "SENTINEL-TENPDF-7731.pdf", mimeType: "application/pdf", buffer: pdfBytes });
+    await page.waitForSelector(".pdf-warn-dialog[open]");
+    await page.click(".pdf-warn-dialog .dbtn.main");
+    await page.waitForSelector("#nf-certs .cert-pdf");
+    await page.setInputFiles("#nf-file", { name: "khong-phai.pdf", mimeType: "application/pdf", buffer: Buffer.from("hello") });
+    await page.waitForSelector(".pdf-warn-dialog[open]");
+    await page.click(".pdf-warn-dialog .dbtn.main");
+    await page.waitForSelector("#nf .ferr:not([hidden])");
+    check(await page.locator("#nf-certs .cert-item").count() === 2, "YC-2026-07: tệp .pdf không phải PDF → báo lỗi, không thêm; còn 2 tệp (ảnh tin báo tử + PDF giấy chứng tử)");
     const cvLay = await layout();
     check(layoutOk(cvLay), `US-M-07: biểu mẫu cập nhật không tràn ở 360 px (${layoutTxt(cvLay)})`);
     await shot("convert-form-360");
@@ -625,30 +658,72 @@ export async function runPeople({ browser, BASE, ORIGIN, ROOT, SHOTS, check, met
     await shot("convert-confirm-360", false);
     await page.click(".cv-dialog .dbtn.main");
     await page.waitForSelector("#person-name");
-    const recM = await store(`async (s) => { const p = await s.person("${idM}"); const n = p.death.notice; const ph = new Uint8Array(await s.photoBytes(n.certificate_photo_ids[0])); let i = 2, app1 = false; while (i + 4 < ph.length && ph[i] === 0xff && ph[i+1] !== 0xda) { if (ph[i+1] === 0xe1 || ph[i+1] === 0xed) app1 = true; i += 2 + ((ph[i+2] << 8) | ph[i+3]); } return { id: p.id, kind: p.kind, created: p.created_at, rev: p.rev, birth: p.birth && p.birth.input.year, sn: p.reminders.sinh_nhat, gio: !!p.reminders.gio, n, app1, evs: (await s.events()).filter((e) => e.person_ids.includes(p.id)).length }; }`);
+    const recM = await store(`async (s) => { const p = await s.person("${idM}"); const n = p.death.notice; const ph = new Uint8Array(await s.attachmentBytes(n.attachments[0].file_id)); const am = (await s.attachments()).find((a) => a.id === n.attachments[0].file_id); const pdf = (await s.attachments()).find((a) => a.id === n.attachments[1].file_id); const pdfB = await s.attachmentBytes(n.attachments[1].file_id); let i = 2, app1 = false; while (i + 4 < ph.length && ph[i] === 0xff && ph[i+1] !== 0xda) { if (ph[i+1] === 0xe1 || ph[i+1] === 0xed) app1 = true; i += 2 + ((ph[i+2] << 8) | ph[i+3]); } return { am, pdf, pdfB64: btoa(String.fromCharCode(...pdfB)), id: p.id, kind: p.kind, created: p.created_at, rev: p.rev, birth: p.birth && p.birth.input.year, sn: p.reminders.sinh_nhat, gio: !!p.reminders.gio, n, app1, evs: (await s.events()).filter((e) => e.person_ids.includes(p.id)).length }; }`);
     check(recM.id === idM && page.url().endsWith(`/nguoi/${idM}`) && recM.kind === "deceased" && recM.created === createdM && recM.rev === 2 && recM.birth === 1950 && recM.sn === null && recM.gio && recM.evs === 1,
       `US-M-07: CÙNG hồ sơ (id giữ nguyên, rev 2) chuyển sang đã mất; giữ ngày sinh và sự kiện; nhắc giỗ bật, không còn nhắc sinh nhật (${JSON.stringify({ kind: recM.kind, rev: recM.rev, evs: recM.evs })})`);
-    check(recM.n.reported_by === SEN.by && recM.n.place === SEN.place && recM.n.reason === SEN.reason && recM.n.note === SEN.note && recM.n.notice_date.day === 18 && recM.n.certificate_photo_ids.length === 1,
-      "01 §3.2a: lưu death.notice đủ trường, đúng tên trường");
-    check(recM.app1 === false, "S9: ảnh giấy báo tử đã mã hóa lại, không còn EXIF/GPS (APP1/APP13)");
+    check(recM.n.reported_by === SEN.by && recM.n.place === SEN.place && recM.n.reason === SEN.reason && recM.n.note === SEN.note && recM.n.notice_date.day === 18 && recM.n.attachments.length === 2 && recM.n.attachments[0].kind === "tin_bao_tu" && recM.n.attachments[1].kind === "giay_chung_tu"
+      && recM.am.file_name === "SENTINEL-TENTEP-7731.jpg" && recM.am.stripped === true,
+      "01 §3.2a, §3.8a: lưu death.notice đủ trường (tệp đính kèm loại giấy chứng tử, tên gốc trong bản ghi Attachment)");
+    check(recM.app1 === false, "S9: ảnh đính kèm đã mã hóa lại, không còn EXIF/GPS (APP1/APP13)");
+    check(Buffer.from(recM.pdfB64, "base64").equals(pdfBytes) && recM.pdf.stripped === false && recM.pdf.mime === "application/pdf", "01 §3.8a: PDF lưu nguyên byte (stripped = false)");
     // Tài liệu sao lưu có notice qua được kiểm tra; trỏ tới ảnh không có → V3; notice có chuỗi rỗng → V1.
     const vdoc = await page.evaluate(`(async () => { const S = await window.__lvhv.storage.loadStore(); const s = await S.openStore(); try {
       const doc = await s.snapshot({ version: "0.1.4", platform: "pwa" }, "2026-07-25T02:00:00Z");
       const r = []; const tryV = (d) => { try { S.validate.document(JSON.parse(JSON.stringify(d))); return "OK"; } catch (e) { return (e.code || "?") + " " + (e.path || ""); } };
       r.push(tryV(doc));
       const m = doc.persons.find((p) => p.id === "${idM}");
-      const bad1 = JSON.parse(JSON.stringify(doc)); bad1.persons.find((p) => p.id === "${idM}").death.notice.certificate_photo_ids = ["0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e6f"]; r.push(tryV(bad1));
+      const bad1 = JSON.parse(JSON.stringify(doc)); bad1.persons.find((p) => p.id === "${idM}").death.notice.attachments[0].file_id = "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e6f"; r.push(tryV(bad1));
       const bad2 = JSON.parse(JSON.stringify(doc)); bad2.persons.find((p) => p.id === "${idM}").death.notice.place = ""; r.push(tryV(bad2));
-      r.push(String(doc.photos.some((ph) => ph.id === m.death.notice.certificate_photo_ids[0])));
+      r.push(String((doc.attachments || []).some((a) => a.id === m.death.notice.attachments[0].file_id)));
       return r; } finally { s.close(); } })()`);
-    check(vdoc[0] === "OK" && vdoc[1].startsWith("V3") && vdoc[2].startsWith("V1") && vdoc[3] === "true", `01 §3.2a: tài liệu sao lưu có notice hợp lệ, ảnh giấy báo tử có trong photos; ảnh không tồn tại → V3; chuỗi rỗng → V1 (${vdoc.join(" | ")})`);
+    check(vdoc[0] === "OK" && vdoc[1].startsWith("V3") && vdoc[2].startsWith("V1") && vdoc[3] === "true", `01 §3.2a: tài liệu sao lưu có notice hợp lệ, tệp đính kèm có trong attachments; tệp không tồn tại → V3; chuỗi rỗng → V1 (${vdoc.join(" | ")})`);
     const nb = page.locator("#notice-box");
     check(await nb.count() === 1 && await page.locator("#notice-box[open]").count() === 0, "Trang hồ sơ: khối \"Thông tin báo tử\" thu gọn");
     await page.click("#notice-box > summary");
     await page.waitForSelector("#notice-box .cert-thumb[data-drawn]");
     const nbTxt = await text("#notice-box");
-    check(nbTxt.includes(SEN.reason) && nbTxt.includes("18/07/2024"), "Trang hồ sơ: mở khối thì thấy lý do, ngày nhận tin, ảnh giấy báo tử");
+    check(nbTxt.includes(SEN.reason) && nbTxt.includes("18/07/2024") && nbTxt.includes("Tin báo tử") && nbTxt.includes("Giấy chứng tử") && nbTxt.includes("Tệp PDF được lưu nguyên bản"),
+      "Trang hồ sơ: mở khối thì thấy lý do, ngày nhận tin, hai tệp đính kèm theo loại");
+    // S10 / BM2-05: tải tệp đính kèm phải qua hộp xác nhận; "Không tải" → không có tệp nào được tải.
+    let dlCount = 0; const onDl = () => { dlCount++; }; page.on("download", onDl);
+    await page.click('#notice-box .att-dl[data-i="1"]');
+    await page.waitForSelector(".att-dl-dialog[open]");
+    const dlTxt = await text(".att-dl-dialog");
+    await page.click(".att-dl-dialog .dbtn:not(.main)");
+    await page.waitForTimeout(500);
+    page.off("download", onDl);
+    check(dlTxt.includes("Tải tệp xuống máy?") && dlTxt.includes("Tệp có thể chứa thông tin riêng tư.") && dlTxt.includes("Tệp PDF còn thông tin của máy quét") && dlCount === 0,
+      "S10 / BM2-05: tải tệp đính kèm → hộp \"Tải tệp xuống máy?\"; \"Không tải\" → 0 tệp tải xuống");
+    await page.click('#notice-box .att-dl[data-i="1"]');
+    await page.waitForSelector(".att-dl-dialog[open]");
+    await shot("attachment-download-dialog-360", false);
+    const [pdfDl] = await Promise.all([page.waitForEvent("download"), page.click(".att-dl-dialog .dbtn.main")]);
+    check(readFileSync(await pdfDl.path()).equals(pdfBytes) && pdfDl.suggestedFilename() === "TepDinhKem-2.pdf", `YC-2026-07: tải PDF từ trang hồ sơ → đúng từng byte, tên tệp chung "${pdfDl.suggestedFilename()}" (không lộ tên gốc)`);
     await shot("person-notice-360");
+    // 04 B6 mục 3 / BM2-10: byte độc đã có trong kho từ trước (ghi thẳng IndexedDB) — "JPEG" khai 20000 × 20000 → không
+    // giải mã khi hiển thị, khung trống, trang vẫn chạy.
+    const bomb = Buffer.from([0xff, 0xd8, 0xff, 0xc0, 0x00, 0x11, 0x08, 0x4e, 0x20, 0x4e, 0x20, 0x03, 0x01, 0x22, 0x00, 0x02, 0x11, 0x01, 0x03, 0x11, 0x01, 0xff, 0xd9]);
+    const bombSaved = await page.evaluate(async ([b64, fid]) => {
+      const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+      const db = await new Promise((ok) => { const r = indexedDB.open("lvhv"); r.onsuccess = () => ok(r.result); });
+      const rec = await new Promise((ok) => { const r = db.transaction("attachments").objectStore("attachments").get(fid); r.onsuccess = () => ok(r.result); });
+      const orig = new Uint8Array(await rec.blob.arrayBuffer()); let bin = ""; for (const x of orig) bin += String.fromCharCode(x);
+      const hash = [...new Uint8Array(await crypto.subtle.digest("SHA-256", bytes))].map((x) => x.toString(16).padStart(2, "0")).join("");
+      await new Promise((ok) => { const tx = db.transaction("attachments", "readwrite"); tx.objectStore("attachments").put({ ...rec, meta: { ...rec.meta, bytes: bytes.length, sha256: hash }, blob: new Blob([bytes], { type: "image/jpeg" }) }); tx.oncomplete = ok; });
+      db.close();
+      return { rec: { ...rec, blob: null }, b64: btoa(bin) };
+    }, [bomb.toString("base64"), recM.n.attachments[0].file_id]);
+    await page.reload();
+    await page.waitForSelector("#notice-box");
+    await page.click("#notice-box > summary");
+    await page.waitForSelector('#notice-box .cert-thumb[data-blocked="20000x20000"]', { timeout: 10000 });
+    check(await page.locator('#notice-box .cert-thumb[data-blocked="20000x20000"]').count() === 1 && (await text("#person-name")) !== "", "04 B6 mục 3 / BM2-10: ảnh khai 20000 × 20000 trong kho → không giải mã khi hiển thị, khung trống, trang vẫn chạy");
+    await page.evaluate(async (sv) => {
+      const bytes = Uint8Array.from(atob(sv.b64), (c) => c.charCodeAt(0));
+      const db = await new Promise((ok) => { const r = indexedDB.open("lvhv"); r.onsuccess = () => ok(r.result); });
+      await new Promise((ok) => { const tx = db.transaction("attachments", "readwrite"); tx.objectStore("attachments").put({ ...sv.rec, blob: new Blob([bytes], { type: sv.rec.meta.mime }) }); tx.oncomplete = ok; });
+      db.close();
+    }, bombSaved);
     // B4 sau khi chuyển: sinh nhật và sự kiện của M không còn trong Sắp tới / Theo kỳ; giỗ hôm nay có thẻ nhắc.
     await page.goto(BASE + "#/nguoi-than"); await page.reload();
     await page.waitForSelector("#upcoming-list");
@@ -674,6 +749,7 @@ export async function runPeople({ browser, BASE, ORIGIN, ROOT, SHOTS, check, met
     await page.click("#bk-export");
     await page.waitForSelector(".bk-dialog[open]");
     check((await text("#bk-notice")).startsWith("Tệp gồm cả thông tin báo tử"), "R-PRIV-2: hộp tạo tệp sao lưu nói rõ tệp gồm cả thông tin báo tử");
+    check((await text("#bk-pdf")).startsWith("Tệp gồm 1 tệp PDF đính kèm, lưu nguyên bản"), "BM2-12 / R-PDF-1: hộp tạo tệp sao lưu ghi số tệp PDF lưu nguyên bản");
     await shot("backup-notice-dialog-360", false);
     await page.click(".bk-dialog .dbtn:not(.main)");
     // Người đã mất thêm mới: khối báo tử thu gọn.
@@ -715,4 +791,173 @@ export async function runPeople({ browser, BASE, ORIGIN, ROOT, SHOTS, check, met
   }
   await ctx.close();
   return shots;
+}
+
+/**
+ * MA3-15-03, tất định: nhấn Esc trong lúc mã hóa sao lưu → Esc bị chặn, hộp vẫn mở, tệp vẫn được tải.
+ * Chạy trên bản dựng KIỂM THỬ (LVHV_TEST_HOOKS=1, smoke.mjs dựng vào thư mục tạm): cổng "backup-encrypt"
+ * (src/testhooks.ts) giữ bước mã hóa cho tới khi kiểm thử đã nhấn Esc và kiểm xong hộp còn mở, rồi mới cho chạy tiếp.
+ * Không phụ thuộc mã hóa nhanh hay chậm. Bản dựng chính không có cổng (smoke.mjs kiểm).
+ */
+export async function runEscGate({ browser, BASE, check }) {
+  const ctx = await browser.newContext({ viewport: { width: 360, height: 780 }, deviceScaleFactor: 2, hasTouch: true, isMobile: true, locale: "vi-VN", timezoneId: "Asia/Ho_Chi_Minh", acceptDownloads: true });
+  const page = await ctx.newPage();
+  await page.clock.setFixedTime(FIXED);
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  // Đường tải về (<a download>): tắt hộp "Lưu tệp" của hệ điều hành (showSaveFilePicker); đường đó kiểm ở runSavePicker().
+  await page.addInitScript(() => { Object.defineProperty(window, "showSaveFilePicker", { value: undefined, configurable: true }); });
+  await page.addInitScript(() => {
+    window.__gate = { reached: 0, release: null, restoreReached: 0, restoreRelease: null };
+    window.__lvhvGates = {
+      "backup-encrypt": () => new Promise((ok) => { window.__gate.reached++; window.__gate.release = ok; }),
+      "backup-restore": () => new Promise((ok) => { window.__gate.restoreReached++; window.__gate.restoreRelease = ok; }),
+    };
+    window.__esc = [];
+    window.addEventListener("cancel", (e) => { const busy = e.target.getAttribute?.("aria-busy"); setTimeout(() => window.__esc.push({ busy, prevented: e.defaultPrevented })); }, true);
+  });
+  try {
+    await page.goto(BASE + "#/nguoi-than/them/dang-song");
+    await page.waitForSelector("#pf-ten", { timeout: 15000 });
+    await page.fill("#pf-ten", "Trần Thị Esc");
+    await page.fill("#pf-birth-d", "25"); await page.fill("#pf-birth-m", "7"); await page.fill("#pf-birth-y", "2000");
+    await page.click(".form-acts .primary");
+    await page.waitForSelector("#person-name", { timeout: 15000 });
+    await page.goto(BASE + "#/nguoi-than/sao-luu");
+    await page.waitForSelector("#bk-export:not([disabled])", { timeout: 15000 });
+    await page.click("#bk-export");
+    await page.fill("#bk-pw1", "nhà có cây bàng");
+    await page.fill("#bk-pw2", "nhà có cây bàng");
+    const dlP = page.waitForEvent("download", { timeout: 60000 });
+    await page.click(".bk-dialog .dbtn.main");
+    // Bước mã hóa đã tới cổng và đang bị giữ: hộp chắc chắn đang bận.
+    await page.waitForFunction(() => window.__gate.reached === 1, null, { timeout: 15000 });
+    const busy = await page.getAttribute(".bk-dialog", "aria-busy");
+    await page.keyboard.press("Escape");
+    await page.waitForFunction(() => window.__esc.length >= 1, null, { timeout: 5000 }).catch(() => {});
+    const esc = await page.evaluate(() => window.__esc);
+    const open = await page.locator(".bk-dialog[open]").count();
+    const prog = await page.locator("#bk-prog:not([hidden])").count();
+    check(busy === "true" && esc.length === 1 && esc[0].busy === "true" && esc[0].prevented === true && open === 1 && prog === 1,
+      `MA3-15-03: nhấn Esc trong lúc mã hóa (bước mã hóa đang giữ) — Esc bị chặn, hộp vẫn mở và đang chạy (busy ${busy}, Esc ${JSON.stringify(esc)}, hộp mở ${open})`);
+    await page.evaluate(() => window.__gate.release()); // cho bước mã hóa chạy tiếp
+    const bk = await dlP.catch(() => null);
+    await page.waitForSelector(".bk-dialog", { state: "detached", timeout: 30000 }).catch(() => {});
+    const toast = await page.locator(".toast").first().innerText().catch(() => "");
+    check(!!bk && bk.suggestedFilename() === `LichVanHoaViet-saoluu-${TODAY}.lvhv` && await page.locator(".bk-dialog").count() === 0 && toast.startsWith("Đã tạo tệp sao lưu"),
+      `MA3-15-03: sau khi mã hóa xong — tệp vẫn được tải (${bk ? bk.suggestedFilename() : "không có"}), hộp đóng, có thông báo`);
+
+    // Esc trong lúc khôi phục: mở chính tệp vừa tải, "Thay toàn bộ", giữ bước khôi phục ở cổng "backup-restore".
+    await page.goto(BASE + "#/nguoi-than/sao-luu");
+    await page.waitForSelector("#bk-file", { state: "attached", timeout: 15000 });
+    await page.setInputFiles("#bk-file", { name: bk.suggestedFilename(), mimeType: "application/octet-stream", buffer: readFileSync(await bk.path()) });
+    await page.fill("#bk-ipw", "nhà có cây bàng");
+    await page.click("#bk-open");
+    await page.waitForSelector(".imp-dialog[open]", { timeout: 60000 });
+    await page.check("#bk-mode-replace");
+    await page.click(".imp-dialog .dbtn.main");
+    await page.waitForSelector(".pdialog[open] .dbtn.danger");
+    await page.click(".pdialog[open] .dbtn.danger");
+    await page.waitForFunction(() => window.__gate.restoreReached === 1, null, { timeout: 15000 });
+    const rBusy = await page.getAttribute(".imp-dialog", "aria-busy");
+    await page.evaluate(() => { window.__esc = []; });
+    await page.keyboard.press("Escape");
+    await page.waitForFunction(() => window.__esc.length >= 1, null, { timeout: 5000 }).catch(() => {});
+    const rEsc = await page.evaluate(() => window.__esc);
+    const rOpen = await page.locator(".imp-dialog[open]").count();
+    check(rBusy === "true" && rEsc.length === 1 && rEsc[0].busy === "true" && rEsc[0].prevented === true && rOpen === 1,
+      `MA3-15-03: nhấn Esc trong lúc khôi phục (bước khôi phục đang giữ) — Esc bị chặn, hộp vẫn mở và đang chạy (busy ${rBusy}, Esc ${JSON.stringify(rEsc)}, hộp mở ${rOpen})`);
+    await page.evaluate(() => window.__gate.restoreRelease());
+    const restored = await page.waitForSelector('.toast:has-text("Đã khôi phục: 1 người")', { timeout: 30000 }).then(() => true, () => false);
+    check(restored && await page.locator(".pdialog[open]").count() === 0, "MA3-15-03: sau khi khôi phục xong — có thông báo \"Đã khôi phục\", không còn hộp mở");
+    check(errors.length === 0, `MA3-15-03: không có lỗi trang (${errors.join(" | ") || "0"})`);
+  } finally {
+    await ctx.close();
+  }
+}
+
+/**
+ * MA3C-30-03: hộp "Lưu tệp" của hệ điều hành (showSaveFilePicker, Chromium trên máy tính). Chỉ ghi nhận "đã sao lưu"
+ * sau khi ghi xong; hủy hộp hay ghi lỗi → hộp sao lưu báo rõ, không ghi nhận. Chạy trên bản dựng CHÍNH (dist/); hộp của
+ * hệ điều hành được thay bằng bản giả trong trang (kiểm thử không bấm được hộp thật).
+ */
+export async function runSavePicker({ browser, BASE, check }) {
+  const ctx = await browser.newContext({ viewport: { width: 360, height: 780 }, deviceScaleFactor: 2, hasTouch: true, isMobile: true, locale: "vi-VN", timezoneId: "Asia/Ho_Chi_Minh" });
+  const page = await ctx.newPage();
+  await page.clock.setFixedTime(FIXED);
+  const errors = [], downloads = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  page.on("download", (d) => downloads.push(d.suggestedFilename()));
+  await page.addInitScript(() => {
+    window.__pick = { mode: "ok", calls: [], saved: [] };
+    window.showSaveFilePicker = async (o) => {
+      window.__pick.calls.push(o.suggestedName);
+      if (window.__pick.mode === "cancel") throw new DOMException("Người dùng đóng hộp", "AbortError");
+      const parts = [];
+      return { createWritable: async () => ({
+        write: async (d) => { parts.push(new Uint8Array(await new Blob([d]).arrayBuffer())); },
+        close: async () => {
+          if (window.__pick.mode === "fail") throw new DOMException("Ổ đầy", "QuotaExceededError");
+          const n = parts.reduce((a, b) => a + b.length, 0), all = new Uint8Array(n); let i = 0;
+          for (const b of parts) { all.set(b, i); i += b.length; }
+          window.__pick.saved.push({ head: String.fromCharCode(...all.slice(0, 7)), bytes: n });
+        },
+      }) };
+    };
+  });
+  try {
+    await page.goto(BASE + "#/nguoi-than/them/dang-song");
+    await page.waitForSelector("#pf-ten", { timeout: 15000 });
+    await page.fill("#pf-ten", "Phạm Văn Lưu");
+    await page.fill("#pf-birth-d", "2"); await page.fill("#pf-birth-m", "3"); await page.fill("#pf-birth-y", "1985");
+    await page.click(".form-acts .primary");
+    await page.waitForSelector("#person-name", { timeout: 15000 });
+    const openBackup = async () => {
+      await page.goto(BASE + "#/nguoi-than/sao-luu"); await page.waitForSelector("#bk-export:not([disabled])", { timeout: 15000 });
+      await page.click("#bk-export");
+      await page.fill("#bk-pw1", "nhà có cây bàng"); await page.fill("#bk-pw2", "nhà có cây bàng");
+    };
+    const lastTxt = async () => (await page.innerText("#bk-last")).trim();
+    const last0 = await (async () => { await page.goto(BASE + "#/nguoi-than/sao-luu"); await page.waitForSelector("#bk-last"); return lastTxt(); })();
+
+    // 1. Hủy hộp chọn nơi lưu → không mã hóa, không ghi nhận, hộp sao lưu vẫn mở và nói rõ.
+    await openBackup();
+    await page.evaluate(() => { window.__pick.mode = "cancel"; });
+    await page.click(".bk-dialog .dbtn.main");
+    await page.waitForSelector(".bk-dialog .ferr:not([hidden])", { timeout: 15000 });
+    const cancelMsg = await page.innerText(".bk-dialog .ferr:not([hidden])");
+    const cancelOpen = await page.locator(".bk-dialog[open]").count();
+    await page.click(".bk-dialog .dbtn:not(.main)");
+    await page.waitForSelector(".bk-dialog", { state: "detached" });
+    const lastAfterCancel = await (async () => { await page.goto(BASE + "#/nguoi-than/sao-luu"); await page.waitForSelector("#bk-last"); return lastTxt(); })();
+    check(cancelOpen === 1 && cancelMsg.startsWith("Chưa lưu tệp") && lastAfterCancel === last0,
+      `MA3C-30-03: đóng hộp chọn nơi lưu → hộp sao lưu vẫn mở, báo "${cancelMsg.split("—")[0].trim()}", không ghi nhận đã sao lưu ("${lastAfterCancel}")`);
+
+    // 2. Ghi lỗi (ổ đầy) → báo lỗi, không ghi nhận.
+    await openBackup();
+    await page.evaluate(() => { window.__pick.mode = "fail"; });
+    await page.click(".bk-dialog .dbtn.main");
+    await page.waitForSelector(".bk-dialog .ferr:not([hidden])", { timeout: 60000 });
+    const failMsg = await page.innerText(".bk-dialog .ferr:not([hidden])");
+    await page.click(".bk-dialog .dbtn:not(.main)");
+    await page.waitForSelector(".bk-dialog", { state: "detached" });
+    const lastAfterFail = await (async () => { await page.goto(BASE + "#/nguoi-than/sao-luu"); await page.waitForSelector("#bk-last"); return lastTxt(); })();
+    check(failMsg.startsWith("Chưa lưu được tệp") && lastAfterFail === last0, `MA3C-30-03: ghi tệp lỗi → báo "${failMsg.split("(")[0].trim()}", không ghi nhận đã sao lưu`);
+
+    // 3. Lưu xong → có tệp đúng định dạng, thông báo thành công, "Lần sao lưu gần nhất" cập nhật; không có tải về.
+    await openBackup();
+    await page.evaluate(() => { window.__pick.mode = "ok"; });
+    await page.click(".bk-dialog .dbtn.main");
+    await page.waitForSelector(".bk-dialog", { state: "detached", timeout: 60000 });
+    const toast = await page.locator(".toast").first().innerText().catch(() => "");
+    await page.waitForSelector('#bk-last:has-text("Lần sao lưu gần nhất")', { timeout: 15000 }).catch(() => {});
+    const pick = await page.evaluate(() => window.__pick);
+    const lastOk = await lastTxt();
+    check(pick.saved.length === 1 && pick.saved[0].head === "LVHVBAK" && pick.calls.every((n) => n === `LichVanHoaViet-saoluu-${TODAY}.lvhv`) && toast.startsWith("Đã tạo tệp sao lưu")
+      && lastOk === `Lần sao lưu gần nhất: ${TODAY.slice(8, 10)}/${TODAY.slice(5, 7)}/${TODAY.slice(0, 4)}` && downloads.length === 0,
+      `MA3C-30-03: lưu qua hộp "Lưu tệp" → tệp ${pick.saved[0]?.bytes ?? 0} byte, ghi nhận sau khi ghi xong ("${lastOk}"), không dùng tải về (${downloads.length})`);
+    check(errors.length === 0, `MA3C-30-03: không có lỗi trang (${errors.join(" | ") || "0"})`);
+  } finally {
+    await ctx.close();
+  }
 }

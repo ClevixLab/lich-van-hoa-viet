@@ -281,3 +281,75 @@ chạy), mở trong Chromium, rồi máy chủ đổi sang bản 0.1.1.
 - Khi kiểm tra `sw.js`, trình duyệt bỏ qua bộ nhớ đệm HTTP của chính nó (mặc định `updateViaCache: "imports"`).
   Bộ nhớ đệm phía máy chủ/CDN của GitHub Pages có thể làm chậm vài phút sau khi phát hành (chưa đo được từ
   sandbox vì proxy chặn truy cập trang).
+
+## J. "Để sau" bị bỏ qua — thanh cập nhật tự hiện lại (PWA, 2026-11-07)
+
+**Triệu chứng.** Thanh "Đã có phiên bản mới X.Y.Z. [Cập nhật ngay] [Để sau]": người dùng bấm **Để sau**, vài giây sau
+thanh tự hiện lại. Tìm thấy qua kiểm thử nâng cấp `pwa/test/upgrade.mjs` chập chờn: 1 lỗi trong 20 lần chạy, đúng
+kiểm tra `(a) "Để sau" → ẩn thanh, bản cũ chạy tiếp` (nhật ký lần 13). 19 lần còn lại đạt.
+
+**Nguyên nhân.** Một lần phát hành được báo tới thanh hai lần:
+- lần 1 khi đọc `version.json` (autoCheck lúc mở ứng dụng);
+- lần 2 khi service worker mới cài xong (`attachRegistration`).
+
+Lúc mở lại ứng dụng mà đã có bản chờ, hai lần kiểm tra chạy song song. Mỗi lần báo cùng phiên bản đều đặt
+`updateBar.hidden = false`. Nếu người dùng bấm "Để sau" sau lần báo thứ nhất nhưng trước lần báo thứ hai, lần báo thứ
+hai bỏ qua lựa chọn đó. Lỗi có trong bản 0.1.4 đang phát hành và bản 0.2-dev. Không liên quan tới IndexedDB hay
+việc kích hoạt service worker.
+
+**Sửa (trong ứng dụng).**
+- `update.ts`: mỗi lần kiểm tra mang nguồn (`user` / `auto` / `install`) và số thứ tự lúc bắt đầu.
+- `main.ts`: sau "Để sau", cùng phiên bản đó không tự hiện lại vì lần báo `install`, cũng không vì một lần kiểm tra đã
+  bắt đầu trước khi bấm.
+- Vẫn nhắc lại khi có lần kiểm tra mới: mở lại ứng dụng (tối đa 6 giờ một lần) hoặc bấm **Kiểm tra cập nhật**.
+- Phiên bản khác thì báo ngay, như hướng dẫn sử dụng (06) đã mô tả.
+
+**Kiểm thử.**
+- `smoke.mjs` mục 1b, kiểm tất định. Sau "Để sau", cho một service worker mới cài xong, chờ đúng lần báo của nó tới
+  thanh (`data-reports` tăng), rồi kiểm thanh vẫn ẩn. Trước khi sửa: LỖI mỗi lần. Sau khi sửa: ĐẠT.
+- `upgrade.mjs`. Bản cũ là mã đã phát hành, không sửa được, nên kiểm thử mở lại ứng dụng khi bản mới đã ở trạng thái
+  chờ, rồi chờ đủ hai lần đọc `version.json` của bản cũ (và mạng yên) mới bấm "Để sau". Đây là chờ đúng điều kiện,
+  không thử lại. Kết quả: 20/20 lần đạt.
+- Người đang dùng 0.1.4 có thể còn gặp lỗi này một lần cho tới khi cập nhật lên bản có bản sửa.
+
+## K. MA3-15-03 (Esc trong lúc mã hóa / khôi phục) — kiểm thử tất định; không móc kiểm thử nào trong bản phát hành (PWA, 2026-11-07)
+
+**Triệu chứng.** Kiểm tra MA3-15-03 (Esc trong lúc mã hóa sao lưu) thỉnh thoảng lỗi với `esc: []`. Mã hóa xong trước
+khi kiểm thử kịp nhấn Esc. Kiểm tra Esc trong lúc khôi phục thì luôn đạt nhưng không thật sự thử chốt chặn: khôi phục
+xong trước khi nhấn Esc thì Esc không chạm hộp nào. Đây là lỗi của kiểm thử. Chốt chặn Esc trong
+`src/people/ui.ts` vẫn đúng.
+
+**Móc chỉ có ở bản dựng kiểm thử.**
+- `src/testhooks.ts` có `testGate(name)` và `testFlag(name)`. Cờ `__LVHV_TEST_HOOKS__` do `build.mjs` thay lúc dựng
+  (khai báo ở `src/globals.d.ts`). Mọi nơi gọi đều bọc `if (__LVHV_TEST_HOOKS__)`.
+- `LVHV_TEST_HOOKS=1` chỉ được nhận cùng `LVHV_OUT_DIR`. Bản dựng chính `dist/` luôn có cờ false, nên esbuild bỏ hẳn
+  lời gọi và tên móc.
+- Cổng `backup-encrypt` nằm ngay trước bước mã hóa. Cổng `backup-restore` nằm ngay trước `applyImport`.
+- Cờ `__lvhvFailMigration` (R14 ca chuyển đổi lỗi) trước đây có trong bản phát hành. Nay chỉ có ở bản dựng kiểm thử,
+  qua `testFlag`.
+- Smoke kiểm mọi tệp trong `dist/` không chứa `__lvhvGates`, `__lvhvFailMigration`, `backup-encrypt`, `backup-restore`,
+  `testGate`, `testFlag`, `__LVHV_TEST_HOOKS__`.
+
+**Kiểm thử.**
+- Smoke mục 1e dựng bản kiểm thử vào thư mục tạm và chạy `runEscGate()`:
+  1. bấm "Tạo và tải tệp", giữ bước mã hóa;
+  2. nhấn Esc, kiểm `cancel` bị chặn và hộp vẫn mở, đang bận;
+  3. mở cổng, kiểm tệp được tải;
+  4. mở lại chính tệp đó, chọn "Thay toàn bộ", giữ bước khôi phục;
+  5. nhấn Esc, kiểm như bước 2;
+  6. mở cổng, kiểm có thông báo "Đã khôi phục".
+- Luồng L9/L10 trên bản dựng chính vẫn xuất và khôi phục thật, chỉ bỏ phần nhấn Esc phụ thuộc thời gian.
+- `upgrade.mjs`:
+  - ca (a) và (b) dùng bản mới dựng chính `dist/`. Ca (b) còn đặt cờ `__lvhvFailMigration`, và bản chính bỏ qua: chuyển
+    đổi bình thường;
+  - chỉ ca (c) phát hành bản mới dựng kiểm thử (`test/out-upgrade/dist-new-testhooks`);
+  - bản cũ (0.1.4, 0.2-dev) vẫn là bản dựng chính của commit cũ.
+
+**Chứng minh kiểm thử bắt lỗi.** Tạm gỡ chốt chặn Esc trong `ui.ts` → cả hai kiểm tra LỖI
+(`Esc [{"busy":"true","prevented":false}], hộp mở 0`). Trả lại chốt chặn → ĐẠT.
+
+**Còn lại trong bản phát hành.**
+- ~~`window.__lvhv`~~ — đã chuyển sau `__LVHV_TEST_HOOKS__` (08 §12l). Smoke 1c/1d/1e chạy trên bản dựng kiểm thử;
+  `upgrade.mjs` ca (b) (bản dựng chính) tự nạp mã lưu trữ vào trang để đo.
+- Tên tùy chọn `forceMigrationFailure` trong mã lưu trữ của lõi (`store/db.ts`, dùng cho `store-tool`). Ứng dụng
+  luôn truyền `{}` nên trang không chạm tới được.

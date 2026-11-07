@@ -253,12 +253,38 @@ pub struct Person {
 
 impl Person {
     /// Tên hiển thị = `danh_xung + " " + ho_ten` (02 §7.1); bỏ dấu cách khi không có danh xưng.
+    /// Tên hiển thị: cách gọi (viết hoa chữ cái đầu khi hiển thị — YC-2026-07, kể cả dữ liệu nhập từ sao lưu cũ
+    /// còn viết thường) + họ tên.
     pub fn display_name(&self) -> String {
         if self.danh_xung.is_empty() {
             self.ho_ten.clone()
         } else {
-            format!("{} {}", self.danh_xung, self.ho_ten)
+            format!("{} {}", upper_first(&self.danh_xung), self.ho_ten)
         }
+    }
+}
+
+/// Khoảng trắng theo `String.prototype.trim` của JavaScript.
+fn js_space(c: char) -> bool {
+    matches!(
+        c,
+        '\t' | '\n' | '\u{b}' | '\u{c}' | '\r' | ' ' | '\u{a0}' | '\u{1680}' | '\u{2000}'
+            ..='\u{200a}'
+                | '\u{2028}'
+                | '\u{2029}'
+                | '\u{202f}'
+                | '\u{205f}'
+                | '\u{3000}'
+                | '\u{feff}'
+    )
+}
+
+/// Cắt khoảng trắng hai đầu rồi viết hoa chữ đầu, phần còn lại giữ nguyên (cùng `upperFirst` của tsport).
+pub fn upper_first(s: &str) -> String {
+    let mut it = s.trim_matches(js_space).chars();
+    match it.next() {
+        None => String::new(),
+        Some(c) => c.to_uppercase().chain(it).collect(),
     }
 }
 

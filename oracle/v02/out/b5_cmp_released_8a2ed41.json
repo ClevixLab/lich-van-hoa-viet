@@ -1,0 +1,21 @@
+{
+ "tag": "8a2ed41",
+ "old_schema_version": 1,
+ "old_has_certificate_photo_ids": true,
+ "expected_file_keys": [
+  "state",
+  "state_sha256"
+ ],
+ "diff_ref_vs_builder_expected": [],
+ "builder_legacy": {
+  "/persons/0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e01": "{'certificate_photo_ids': ['0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e0c'], 'certificate_photos': [{'bytes': 33714, 'created_at': '2026-11-06T03:15:00Z', 'height': 1024, 'id': '0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e0c', 'mime': 'image/jpeg', 'sha256': '22a5c04266a6d2e27fa3085bd0623296dfb7e91b5763e8a746c6a4d220dfb7e9', 'stripped': True, 'width': 768}]}",
+  "/persons/0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e02": "{'certificate_photo_ids': ['0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09', '0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e0c'], 'certificate_photos': [{'bytes': 33714, 'created_at': '2026-11-06T03:15:00Z', 'height': 1024, 'id': '0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09', 'mime': 'image/jpeg', 'sha256': '22a5c04266a6d2e27fa3085bd0623296dfb7e91b5763e8a746c6a4d220dfb7e9', 'stripped': True, 'width': 768}, {'bytes': 33714, 'c"
+ },
+ "ref_legacy": {},
+ "builder_ids_ok_bad": [
+  "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e0c"
+ ],
+ "old_string_values_absent_in_builder_expected": [],
+ "builder_expected_state_sha256": "067cfb6b7141bb94cd6233cd635a6d16abc0d39547ccca46179fae5ec957a836",
+ "independent_state_sha256_of_builder_doc": "thieu byte '0b8e4f52-3c1a-4d2e-9f60-e5d4c3b2a1f6' (id thay the)"
+}

@@ -215,5 +215,22 @@ eq(M.cmpCodepoints("\u{1F600}", "￿") > 0, true, "code-point order (not UTF-16)
   eq([ids.map((r) => q2.some((p) => p.id.includes(r))), q2.some((p) => p.id.includes("0000000000aa"))], [[false, false, false], true], "B4 after death update: removed at next reschedule");
 }
 
+// Quy tắc mật khẩu sao lưu (03 §2.4) — cùng ca với ffi/src/tests_v02.rs password_rules_leap_month_header_check.
+{
+  const nfd = "Ma\u0323\u0302t kha\u0302\u0309u";
+  const cases = [
+    ["1234567", null, "Mật khẩu cần ít nhất 8 ký tự"],
+    ["12345678", null, null],
+    ["😀😀😀😀", null, "Mật khẩu cần ít nhất 8 ký tự"],
+    [nfd, "Mật khẩu", null],
+    ["mật khẩu đúng", "mật khẩu sai", "Hai lần nhập mật khẩu chưa giống nhau"],
+    ["mật khẩu đúng", "mật khẩu đúng", null],
+  ];
+  for (const [pw, c, want] of cases) eq(M.backupPasswordError(pw, c), want, `backupPasswordError ${pw}`);
+  eq(M.backupPasswordError("12345678"), null, "backupPasswordError no confirm arg");
+  const calJ2 = M.Cal.get("jpl");
+  eq([calJ2.leapMonth(2025), calJ2.leapMonth(2026), calJ2.leapMonth(2028)], [6, null, 5], "leapMonth 2025/2026/2028");
+}
+
 console.log(`memorial_unit: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

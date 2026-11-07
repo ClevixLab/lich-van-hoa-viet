@@ -25,6 +25,7 @@ const COMPRESS = new Set([".html", ".js", ".css", ".svg", ".webmanifest", ".txt"
 let bytesSent = 0;
 let online = true;
 let serveDir = DIST; // mục 1b đổi sang bản B để mô phỏng phát hành bản mới
+let swExtra = ""; // mục 1b: thêm vài byte vào sw.js → trình duyệt coi là service worker mới (cài lại, báo lần nữa)
 const served = [];
 const server = createServer((req, res) => {
   const url = new URL(req.url, "http://x");
@@ -34,6 +35,7 @@ const server = createServer((req, res) => {
   if (!online) { req.socket.destroy(); return; }
   if (!f.startsWith(serveDir) || !existsSync(f) || statSync(f).isDirectory()) { res.writeHead(404); res.end("not found"); return; }
   let body = readFileSync(f);
+  if (p === "sw.js" && swExtra) body = Buffer.concat([body, Buffer.from(swExtra)]);
   const ext = extname(f);
   const headers = { "content-type": TYPES[ext] ?? "application/octet-stream", "cache-control": "no-cache" };
   if (COMPRESS.has(ext) && /gzip/.test(req.headers["accept-encoding"] ?? "")) { body = gzipSync(body, { level: 9 }); headers["content-encoding"] = "gzip"; }
@@ -110,7 +112,7 @@ async function newCtx(vp, opts = {}) {
   check(await page.locator(".lnum").innerText() === "27", "ngày âm 27");
   check((await page.locator(".bignum").innerText()) === "5", "số ngày lớn = 5");
   check(await page.locator(".foot .mock").count() === 0, "không có nhãn MOCK (lõi thật tsport)");
-  check(await page.evaluate(() => window.__lvhv.mock === false), "window.__lvhv.mock = false");
+  check(await page.evaluate(() => window.__lvhv === undefined), "bản phát hành không có window.__lvhv (chỉ bản dựng kiểm thử)");
 
   // Ngọc Hạp 2026-11-05 — đối chiếu trang lịch công khai (content/ngochap/rules.md §5)
   const tags = async (sel) => (await page.locator(sel).allTextContents()).map((t) => t.trim());
@@ -135,9 +137,10 @@ async function newCtx(vp, opts = {}) {
   await cdp.send("HeapProfiler.collectGarbage");
   const heap = await cdp.send("Runtime.getHeapUsage");
   // Render: chuyển 20 ngày bằng phím
-  await page.evaluate(() => { window.__lvhv.renderMs.length = 0; });
+  // Thời gian dựng tờ lịch: Performance API (performance.measure "lvhv:render"), không qua biến toàn cục.
+  await page.evaluate(() => { performance.clearMeasures("lvhv:render"); });
   for (let i = 0; i < 20; i++) await page.keyboard.press("ArrowRight");
-  const renderMs = await page.evaluate(() => window.__lvhv.renderMs.slice());
+  const renderMs = await page.evaluate(() => performance.getEntriesByName("lvhv:render").map((e) => +e.duration.toFixed(2)));
   check(renderMs.length === 20, "phím mũi tên đổi ngày (20 lần)");
   const maxRender = Math.max(...renderMs);
   check(maxRender < 16, `render tờ lịch < 16 ms (max ${maxRender.toFixed(2)} ms, bao gồm lõi tsport)`);
@@ -366,6 +369,14 @@ async function newCtx(vp, opts = {}) {
   await ctx.close();
 }
 
+// ---------- Bản dựng kiểm thử (LVHV_TEST_HOOKS=1) cho 1c, 1d, 1e ----------
+// Các mục cần lối vào lớp lưu trữ (`window.__lvhv`) hay cổng kiểm thử chạy trên bản dựng kiểm thử, dựng vào thư mục tạm.
+// Bản phát hành dist/ không có móc nào (kiểm ở 1e) — mục 1, 1b, 2, 3 chạy trên dist/.
+const TMP_T = mkdtempSync(join(tmpdir(), "lvhv-t-"));
+const DIST_T = join(TMP_T, "dist");
+execFileSync(process.execPath, [join(ROOT, "build.mjs")], { cwd: ROOT, env: { ...process.env, LVHV_TEST_HOOKS: "1", LVHV_OUT_DIR: DIST_T }, stdio: "ignore" });
+const LAZY_T = JSON.parse(readFileSync(join(DIST_T, "lazy-manifest.json"), "utf8"));
+
 // ---------- 1c. Lưu trữ và sao lưu v0.2 (đợt 2): tải lười, CSP không đổi, IndexedDB, Argon2id trong Chromium ----------
 const LAZY = JSON.parse(readFileSync(join(DIST, "lazy-manifest.json"), "utf8"));
 {
@@ -376,6 +387,7 @@ const LAZY = JSON.parse(readFileSync(join(DIST, "lazy-manifest.json"), "utf8"));
   check(LAZY.lazy_js.every((f) => !metrics.viewports["360x780"].first_load_paths.includes("/" + f)), "P6: lần tải đầu không yêu cầu tệp lưu trữ/mật mã");
 
   bytesSent = 0; served.length = 0;
+  serveDir = DIST_T; // cần window.__lvhv.storage
   const { ctx, page, errors, external } = await newCtx({ width: 360, height: 780 }, { touch: true });
   const csp = [];
   page.on("console", (m) => { if (/Content.Security.Policy|CSP/i.test(m.text())) csp.push(m.text()); });
@@ -422,7 +434,7 @@ const LAZY = JSON.parse(readFileSync(join(DIST, "lazy-manifest.json"), "utf8"));
   check(r.wrong === "Sai mật khẩu hoặc tệp bị hỏng", `Chromium: sai mật khẩu → "${r.wrong}"`);
   check(r.rustPersons === 3, "Chromium: mở được tệp mẫu do Rust tạo (example-v1.lvhv)");
   check(typeof r.persist === "boolean", `navigator.storage.persist() đã gọi khi lưu hồ sơ đầu tiên (kết quả ${r.persist})`);
-  check(LAZY.lazy_js.every((f) => lazyServed.includes("/" + f)), `tệp tải lười được nạp khi dùng (${lazyServed.join(", ")})`);
+  check(LAZY_T.lazy_js.every((f) => lazyServed.includes("/" + f)), `tệp tải lười được nạp khi dùng (${lazyServed.join(", ")})`);
   check(csp.length === 0, `0 vi phạm CSP khi chạy Argon2id/XChaCha20 (${csp.join(" | ") || "0"})`);
   check(r.dbs.includes("lvhv") && r.ls.every((k) => k === "lvhv.ui"), "dữ liệu chỉ ở IndexedDB 'lvhv'; localStorage chỉ lvhv.ui (S4')");
   check(errors.length === 0, `không lỗi console (lưu trữ) ${errors.join(" | ")}`);
@@ -442,17 +454,45 @@ const LAZY = JSON.parse(readFileSync(join(DIST, "lazy-manifest.json"), "utf8"));
     persist_granted_headless: r.persist, roundtrip_identical: r.same, csp_violations: csp,
   };
   await ctx.close();
+  serveDir = DIST;
 }
 
 // ---------- 1d. Mô-đun Người thân (v0.2 đợt 3, docs/v0.2/08): luồng người dùng thật, R13, ảnh chụp ----------
 {
   const { runPeople } = await import("./people-flows.mjs");
+  serveDir = DIST_T; // luồng Người thân đọc kho qua window.__lvhv.storage (chỉ bản dựng kiểm thử)
   try {
     await runPeople({ browser, BASE, ORIGIN, ROOT, SHOTS, check, metrics });
   } catch (e) {
     console.log(e.message);
     check(false, `Người thân: luồng kiểm thử dừng giữa chừng (${e.message.split("\n")[0]})`);
   }
+  serveDir = DIST;
+}
+
+// ---------- 1e. MA3-15-03 tất định: bản dựng kiểm thử có cổng giữ bước mã hóa (LVHV_TEST_HOOKS=1) ----------
+{
+  // Mọi tên móc kiểm thử (src/testhooks.ts và nơi gọi): cổng, cờ, tên hàm. Chỉ được có ở bản dựng LVHV_TEST_HOOKS=1.
+  const HOOK_NAMES = /__lvhv|backup-encrypt|backup-restore|testGate|testFlag|__LVHV_TEST_HOOKS__/;
+  const hooksIn = (d) => (function list(x) { return readdirSync(x).flatMap((n) => { const p = join(x, n); return statSync(p).isDirectory() ? list(p) : [p]; }); })(d)
+    .filter((f) => HOOK_NAMES.test(readFileSync(f, "latin1"))).length;
+  check(hooksIn(DIST) === 0, `bản dựng chính dist/ (mọi tệp) không chứa tên móc kiểm thử (${HOOK_NAMES.source})`);
+  check(hooksIn(DIST_T) > 0, "bản dựng kiểm thử (LVHV_TEST_HOOKS=1) có móc kiểm thử");
+  serveDir = DIST_T;
+  const { runEscGate } = await import("./people-flows.mjs");
+  try { await runEscGate({ browser, BASE, check }); }
+  catch (e) { console.log(e.message); check(false, `MA3-15-03: kiểm thử dừng giữa chừng (${e.message.split("\n")[0]})`); }
+  serveDir = DIST;
+  rmSync(TMP_T, { recursive: true, force: true });
+  rmSync(DIST_T + ".gen", { recursive: true, force: true });
+}
+
+// ---------- 1f. MA3C-30-03: hộp "Lưu tệp" của hệ điều hành — bản dựng chính ----------
+{
+  serveDir = DIST;
+  const { runSavePicker } = await import("./people-flows.mjs");
+  try { await runSavePicker({ browser, BASE, check }); }
+  catch (e) { console.log(e.message); check(false, `MA3C-30-03: kiểm thử dừng giữa chừng (${e.message.split("\n")[0]})`); }
 }
 
 // ---------- 1b. Phiên bản và cập nhật (bản A → bản B), ngoại tuyến ----------
@@ -529,6 +569,19 @@ const DIST_B = join(TMP_B, "dist");
   check((await page.innerText(".foot")).includes(`Phiên bản ${VERSION_A}`), `trước khi đồng ý vẫn chạy bản ${VERSION_A} (RS-08)`);
   await page.click(".update-bar .ubtn:not(.primary)");
   check(await page.locator(".update-bar").isHidden(), "Để sau → ẩn thanh");
+  // "Để sau" phải giữ cho tới lần kiểm tra kế tiếp. Một phát hành báo HAI lần (version.json, rồi service worker mới
+  // cài xong); trước đây lần báo sau bỏ "Để sau" của người dùng — thanh tự hiện lại (kiểm thử nâng cấp chập chờn
+  // 1/20). Kiểm tất định: sau "Để sau", cho một service worker mới cài xong (sw.js đổi vài byte) và chờ ĐÚNG lần báo
+  // của nó tới thanh (data-reports tăng), rồi kiểm thanh vẫn ẩn.
+  const rep0 = await page.evaluate(() => Number(document.querySelector(".update-bar").dataset.reports ?? 0));
+  swExtra = "\n// b2\n";
+  await page.evaluate(async () => {
+    const r = await navigator.serviceWorker.getRegistration();
+    const got = new Promise((ok) => r.addEventListener("updatefound", () => { const w = r.installing; w.addEventListener("statechange", () => { if (w.state === "installed") ok(); }); }, { once: true }));
+    await r.update(); await got;
+  });
+  await page.waitForFunction((n) => Number(document.querySelector(".update-bar").dataset.reports ?? 0) > n, rep0, { timeout: 15000 });
+  check(await page.locator(".update-bar").isHidden(), "Để sau giữ nguyên khi bản mới cài xong và báo lần nữa (thanh không tự hiện lại)");
 
   // Cập nhật ngay → kích hoạt SW mới, tải lại một lần
   await page.goto(BASE + "#/gioi-thieu");

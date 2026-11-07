@@ -1,0 +1,67 @@
+//! Chạy trên mã nguồn ở commit 7338f04 (bản dựng 0.2 trước YC-2026-07) để tạo bộ mẫu đóng băng
+//! `released/0.2-dev-before-attachments/`: kho SQLite thật (user_version 1, `certificate_photo_ids`), ảnh chụp kho dạng
+//! tài liệu, và tệp sao lưu của bản dựng đó.
+//!
+//!     cargo run --release -p lvhv-store --example make_dev_fixture -- <notice-v1.lvhv của 7338f04> <thư mục ra>
+use lvhv_store::{canonical_json, open_backup, AppInfo, ImportMode, Store};
+use serde_json::json;
+use std::path::PathBuf;
+
+const PASSWORD: &str = "mật khẩu thử nghiệm";
+const SALT: [u8; 16] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+const NONCE: [u8; 24] = [
+    16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39,
+];
+
+fn main() {
+    let a: Vec<String> = std::env::args().collect();
+    let src = std::fs::read(&a[1]).unwrap();
+    let out = PathBuf::from(&a[2]);
+    let store_dir = out.join("store");
+    let _ = std::fs::remove_dir_all(&store_dir);
+    {
+        let mut s = Store::open(&store_dir).unwrap();
+        s.apply_import(&open_backup(&src, PASSWORD).unwrap(), ImportMode::Replace)
+            .unwrap();
+        // Hồ sơ thứ hai: thông tin báo tử có hai ảnh giấy báo tử — một ảnh cũng là ảnh chân dung của hồ sơ thứ nhất,
+        // một ảnh dùng chung với giấy báo tử của hồ sơ thứ nhất (các ca biên của phép chuyển đổi).
+        let mut b = s.person("0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e02").unwrap();
+        b["death"]["notice"] = json!({
+            "reported_by": null, "place": "Quê nhà", "reason": null, "notice_date": null,
+            "certificate_photo_ids": ["0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09", "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e0c"],
+            "note": null,
+        });
+        b["rev"] = json!(3);
+        b["updated_at"] = json!("2026-11-06T04:00:00Z");
+        s.put_person(&b).unwrap();
+    }
+    // Gộp WAL vào tệp chính để bộ mẫu là một tệp SQLite duy nhất.
+    {
+        let c = rusqlite::Connection::open(store_dir.join(lvhv_store::DB_FILE)).unwrap();
+        let _: String = c
+            .query_row("PRAGMA journal_mode=DELETE", [], |r| r.get(0))
+            .unwrap();
+    }
+    let s = Store::open(&store_dir).unwrap();
+    let app = AppInfo {
+        version: "0.2.0".into(),
+        platform: "android".into(),
+    };
+    let at = "2026-11-06T04:30:00Z";
+    std::fs::write(
+        out.join("store-snapshot.json"),
+        canonical_json(&s.snapshot(&app, at).unwrap()),
+    )
+    .unwrap();
+    std::fs::write(
+        out.join("backup.lvhv"),
+        s.export_backup_fixed(PASSWORD, &app, at, SALT, NONCE).unwrap(),
+    )
+    .unwrap();
+    println!("state_sha256 (bản dựng cũ) {}", s.state_hash().unwrap());
+    drop(s);
+    let c = rusqlite::Connection::open(store_dir.join(lvhv_store::DB_FILE)).unwrap();
+    let _: String = c
+        .query_row("PRAGMA journal_mode=DELETE", [], |r| r.get(0))
+        .unwrap();
+}

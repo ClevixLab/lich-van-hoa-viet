@@ -1,20 +1,40 @@
 // Dữ liệu và cách diễn đạt của mô-đun Người thân (docs/v0.2/08). Mọi tính toán giỗ/sinh nhật/nhắc/.ics gọi lõi
 // tsport (memorial*), không viết lại thuật toán ở giao diện (08 §8.1). Mô-đun này chỉ được nạp lười.
+import { testFlag } from "../testhooks";
 import * as M from "../../../tsport/src/memorial.ts";
 import { DEFAULT_METHOD } from "../gen/content";
 import { weekday as coreWeekday } from "../../../tsport/src/jd.ts";
 import { WEEKDAY, WEEKDAY_SHORT } from "../format";
-import { openStore, type Store, type JsonObj } from "../store/index";
+import { displayCapitalize, openStore, type Store, type JsonObj } from "../store/index";
 
 export { M };
 export type { JsonObj, Store };
 export type Ymd = M.Ymd;
 
 let storeP: Promise<Store> | null = null;
+
+// TKN3-P-01: chế độ chỉ đọc (04 B5 mục 3 — chuyển đổi lỗi). index.ts đặt cờ từ `migrationStatus()` trước mỗi lần dựng
+// trang; các trang ẩn mọi việc ghi (thêm, sửa, xóa, "Cập nhật: đã mất", khôi phục, cài đặt nhắc) — như Android và
+// Windows. Vẫn xem được, tạo tệp sao lưu và xuất .ics được.
+let readOnlyMode = false;
+export function setReadOnly(v: boolean): void { readOnlyMode = v; }
+export function isReadOnly(): boolean { return readOnlyMode; }
+// MA3C-30-02: bản dựng kiểm thử cho kiểm thử R14 dùng ĐÚNG kho mà mô-đun Người thân đang dùng (không tự dựng Store).
+if (__LVHV_TEST_HOOKS__) (globalThis as { __lvhvTest?: unknown }).__lvhvTest = { peopleStore: () => store() };
+
+/** Phần tử ghi dữ liệu: ở chế độ chỉ đọc thì không dựng. */
+export function w<T>(el: T): T | null { return readOnlyMode ? null : el; }
 /** Một kết nối kho dùng chung cho cả mô-đun. */
 export function store(): Promise<Store> {
-  return (storeP ??= openStore().catch((e) => { storeP = null; throw e; }));
+  // Móc kiểm thử R14 (ca chuyển đổi lỗi, pwa/test/upgrade.mjs) — CHỈ ở bản dựng kiểm thử (LVHV_TEST_HOOKS=1,
+  // src/testhooks.ts). Bản dựng chính: __LVHV_TEST_HOOKS__ = false → esbuild bỏ hẳn, trang không đặt được cờ nào.
+  const opts = __LVHV_TEST_HOOKS__ ? { forceMigrationFailure: testFlag("__lvhvFailMigration") } : {};
+  return (storeP ??= openStore(indexedDB, opts).catch((e) => { storeP = null; throw e; }));
 }
+
+/** Hiển thị `danh_xung` / `quan_he` đã lưu: viết hoa chữ đầu bằng hàm của lõi (`display_capitalize`) — tệp khôi phục
+ *  từ bản cũ giữ nguyên byte nên có thể còn chữ thường. */
+export const dispCap = (s: string): string => displayCapitalize(s);
 
 export const cal = (): M.Cal => M.Cal.get(DEFAULT_METHOD);
 
@@ -82,8 +102,11 @@ export function lunarOf(d: Ymd): string {
 }
 
 export function displayName(p: JsonObj): string {
-  const dx = (p.danh_xung as string) ?? "";
-  return dx ? `${dx} ${p.ho_ten as string}` : (p.ho_ten as string);
+  // YC-2026-07: viết hoa chữ đầu khi hiển thị (dữ liệu khôi phục từ tệp cũ giữ nguyên byte) — cùng lõi.
+  // #38: cắt khoảng trắng khi hiển thị (lõi cắt lúc lưu; tệp khôi phục từ bản cũ có thể còn khoảng trắng).
+  const dx = displayCapitalize((p.danh_xung as string) ?? "");
+  const ten = ((p.ho_ten as string) ?? "").normalize("NFC").trim();
+  return dx ? `${dx} ${ten}` : ten;
 }
 
 export type ItemKind = "gio" | "tt" | "sn" | "ev";
@@ -106,7 +129,7 @@ export function occLabel(o: M.Occurrence): string {
     }
     case "sinh_nhat": return o.n !== null ? `Sinh nhật thứ ${o.n}` : "Sinh nhật";
     case "sinh_nhat_am": return o.n !== null ? `Sinh nhật âm lịch (tuổi âm ${o.n + 1})` : "Sinh nhật âm lịch";
-    default: return o.headline;
+    default: return o.headline_plain; // tên người ghép riêng (itemTitle)
   }
 }
 
@@ -119,14 +142,8 @@ export function ownerOf(sn: Snap, o: M.Occurrence): JsonObj | null {
 }
 
 // ---------------- cách gọi thường ngày (quyết định của chủ dự án 07/11: không dùng từ Hán-Việt cổ như "Hiển khảo") ----------------
-/** Quan hệ gợi ý cho người đã mất — từ thường ngày (PHONG-TUC.md §1): cụ/kỵ (miền Bắc), cố/sơ (miền Nam). */
-export const RELATIONS_DECEASED = ["Bố", "Mẹ", "Ông nội", "Bà nội", "Ông ngoại", "Bà ngoại", "Cụ ông", "Cụ bà", "Kỵ ông", "Kỵ bà",
-  "Ông cố", "Bà cố", "Ông sơ", "Bà sơ", "Bác", "Chú", "Thím", "Cô", "Dì", "Cậu", "Mợ", "Anh", "Chị", "Em", "Chồng", "Vợ", "Con"];
-/** Quan hệ gợi ý cho người đang sống. */
-export const RELATIONS_LIVING = ["Bố", "Mẹ", "Ông nội", "Bà nội", "Ông ngoại", "Bà ngoại", "Bác", "Chú", "Thím", "Cô", "Dì", "Cậu", "Mợ",
-  "Anh", "Chị", "Em", "Chồng", "Vợ", "Con trai", "Con gái", "Cháu"];
-/** Cách gọi (danh xưng) gợi ý — chữ thường, đứng trước họ tên ("ông Nguyễn Văn A"). */
-export const DANH_XUNG = ["cụ", "kỵ", "ông", "bà", "bác", "chú", "thím", "cô", "dì", "cậu", "mợ", "anh", "chị", "em", "bố", "mẹ", "cha", "má", "ba"];
+// Gợi ý quan hệ và cách gọi: hàm của lõi lưu trữ (store/names.ts ≡ store/src/names.rs, YC-2026-07) —
+// danhXungSuggestions, quanHeSuggestions; bốn giao diện dùng chung.
 
 /** Chữ quan hệ trên bia: lấy từ ô "Quan hệ" (bỏ phần trong ngoặc), viết hoa chữ đầu — "ông nội (bên nội)" → "Ông nội". */
 export function biaFromRelation(quanHe: string): string {

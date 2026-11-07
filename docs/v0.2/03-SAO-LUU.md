@@ -68,12 +68,40 @@ bản rõ := "LVHVPT01" (8 byte ASCII)
           ‖ photo_count × ( 16 byte UUID ảnh (nhị phân) ‖ u32 len ‖ len byte ảnh )
 ```
 
-- Không nén (ảnh đã nén sẵn; tránh "bom giải nén"). Giới hạn: `json_len` ≤ 64 MiB, mỗi ảnh ≤ 1 MiB (01 §3.8),
-  tổng bản rõ ≤ **128 MiB**. Vượt giới hạn khi xuất → báo "Quá nhiều ảnh để sao lưu trong một tệp" (v0.2 mã hóa một
+(YC-2026-07, 2026-11-07) Danh sách khối chứa **ảnh rồi tệp đính kèm** (01 §3.8a): trước hết các `Photo` theo thứ
+tự `photos`, sau đó các `Attachment` theo thứ tự `attachments`. `photo_count` là tổng số khối. Tệp không có tệp đính
+kèm giữ nguyên từng byte như trước (khóa `attachments` của JSON chỉ có khi khác rỗng), nên vector 03 §2.5 không đổi.
+
+- Không nén (ảnh đã nén sẵn; tránh "bom giải nén"). Giới hạn: `json_len` ≤ 64 MiB, mỗi khối ≤ 10 MiB (ảnh ≤ 1 MiB
+  theo 01 §3.8, ảnh đính kèm ≤ 2 MiB, PDF ≤ 10 MiB theo 01 §3.8a; giới hạn từng loại kiểm theo bản ghi JSON), tối đa
+  20 000 khối, tổng bản rõ ≤ **128 MiB** (giữ nguyên). Vượt giới hạn khi xuất → báo "Quá nhiều ảnh để sao lưu trong một tệp" (v0.2 mã hóa một
   lần trong bộ nhớ; mã hóa theo luồng để dành cho v0.3, rủi ro R-BAK-2).
-- Mỗi ảnh phải có bản ghi `Photo` cùng `id` trong JSON và `sha256` khớp; thừa hoặc thiếu → từ chối toàn bộ.
+- Mỗi ảnh phải có bản ghi `Photo` cùng `id` trong JSON và `sha256` khớp; thừa hoặc thiếu → từ chối toàn bộ. Cùng
+  quy tắc cho tệp đính kèm (bản ghi `Attachment`, `sha256` và `bytes` khớp, PDF bắt đầu bằng `%PDF-`); khối ảnh
+  đứng sau một khối tệp đính kèm → từ chối.
 - Ảnh nhập từ tệp sao lưu **được giải mã và mã hóa lại** qua đúng quy trình thêm ảnh (01 §3.8) trước khi lưu, để
   ảnh do người khác tạo không đưa siêu dữ liệu hay dữ liệu dị dạng vào kho.
+- (04 Bổ sung B6, 2026-11-07 — thay biện pháp ở dòng trên: **không** mã hóa lại khi nhập, vì sẽ đổi byte và `sha256`,
+  trái R6 (a)/(d).) Lõi kiểm **chặt** từng khối trước khi ghi bất cứ thứ gì (`lvhv_store::media` ≡
+  `pwa/src/store/media.ts`, cùng mã lỗi; bộ tệp độc hại và mã kỳ vọng ở `schema/test-vectors/media/`): chữ ký khớp
+  `mime`; JPEG/WebP đọc kích thước từ phần đầu, không giải mã, phải bằng bản ghi (`Photo`) và ≤ 2048 px; JPEG không có
+  APP1/APP13, WebP không có khối hay cờ EXIF/XMP; PDF bắt đầu `%PDF-`, có `%%EOF` trong 1024 byte cuối, ≤ 10 MiB. Sai bất
+  kỳ khối nào → từ chối **toàn bộ** tệp, thông báo chung. Cùng bộ kiểm ở `add_photo`, `add_attachment` (lỗi `Input` có
+  câu cụ thể) và trong chuyển đổi lược đồ (lỗi → chỉ đọc).
+- (Rà soát bảo mật vòng 2, BM3-04/BM3-05, 2026-11-07) Kiểm tra trên **siết thêm** (cả Rust và TS, cùng mã):
+  JPEG được duyệt qua mọi đoạn và mọi lượt quét (kể cả ảnh lũy tiến) tới EOI — APP1/APP13 ở bất kỳ đâu bị từ chối, EOI
+  phải là 2 byte cuối của tệp; WebP: khối RIFF phải là cả tệp (`riff + 8 == len`, thêm đúng một byte 0 đệm nếu `riff`
+  lẻ) và các khối phải phủ đúng tới cuối khối RIFF. Có byte nối sau ảnh → mã mới `trailing_data` (một JPEG có EXIF GPS
+  nối sau EOI của ảnh hợp lệ nay bị từ chối). JPEG có SOF cao hoặc rộng = 0 (DNL), WebP có kích thước 0 → `bad_header`.
+  PNG không được nhận ở đâu (`bad_mime`), nên không có quy tắc PNG. Ca mới ở `schema/test-vectors/media/` (39 ca; 25 ca
+  và 14 tệp cũ giữ nguyên từng byte). Mọi ảnh của vector đã khóa (03 §2.5, R6v2, bộ mẫu đóng băng) kết thúc đúng ở EOI /
+  cuối khối RIFF nên không đổi kết quả.
+- (04 Bổ sung B7, 2026-11-07) Kiểm tra trên **bật cho cả ảnh chân dung** (`Photo`) khi nhập. R6 chạy trên bộ R6v2 ảnh thật
+  (§B1.6); bộ R6 cũ có ảnh giả nay bị từ chối. Tệp đính kèm (01 §3.8a) được kiểm như trước (gồm X21: byte PDF khai
+  `image/jpeg`).
+- Định dạng khối của tệp đính kèm (khối ảnh rồi khối tệp đính kèm, mục trên) là định dạng **chuẩn** cho mọi bản
+  cài đặt (rà soát BM2-03); vector `supplement-yc05` (một ảnh và một PDF đính kèm) và `scripts/check-store.sh` kiểm Rust ↔
+  PWA đọc được tệp của nhau.
 
 ### 2.4 Quy trình
 
@@ -86,8 +114,9 @@ export(password):
   hdr := header(…, len(pt))
   ct  := XChaCha20Poly1305.encrypt(key, nonce, pt, aad = hdr)
   zeroize(key, pt)
+  trả byte tệp                                    # lõi: export_backup — KHÔNG đổi last_backup_at
   ghi tệp qua hộp thoại lưu của hệ điều hành / tải về (không ghi tệp tạm bản rõ)
-  settings.last_backup_at := now
+  chỉ khi ghi xong: mark_backup_saved(now)        # settings.last_backup_at := now (xem dưới)
 
 import(file, password):
   kiểm tra §2.2
@@ -97,6 +126,18 @@ import(file, password):
   unpack → kiểm tra 01 §6.3 → xem trước → Thay toàn bộ / Gộp → một giao dịch
 ```
 
+- **Tạo byte và ghi nhận "đã sao lưu" là hai bước** (duyệt mã native MA3N-23-01). `export_backup` chỉ tạo byte
+  tệp và nhớ thời điểm tạo (`meta.last_export_at`). Ứng dụng gọi `mark_backup_saved(now)` **một lần**, chỉ khi hệ
+  điều hành báo ghi tệp xong. Khi đó `settings.last_backup_at := now`, và `backup_pending_since` chỉ bị xóa nếu nó
+  không muộn hơn lần tạo tệp (thay đổi xảy ra giữa lúc tạo tệp và lúc lưu chưa có trong tệp, nên vẫn chờ sao lưu).
+  Hủy hộp "Lưu" hoặc ghi lỗi thì **không** gọi, nên nhắc sao lưu vẫn còn. Gọi khi chưa tạo tệp nào (hoặc gọi lần thứ
+  hai cho cùng một tệp) → lỗi đầu vào. Byte tệp không đổi: vectơ R6 giữ nguyên.
+- Mật khẩu: ứng dụng dùng `backup_password_error(password, confirm)` của lõi (tsport `backupPasswordError`).
+  Hàm trả `null` nếu hợp lệ, "Mật khẩu cần ít nhất 8 ký tự" nếu dưới 8 điểm mã sau NFC, và "Hai lần nhập mật khẩu
+  chưa giống nhau" nếu ô nhập lại có giá trị và khác sau NFC. Ô mật khẩu khi khôi phục gọi với `confirm = null`.
+- Trước khi đọc cả tệp, ứng dụng native gọi `backup_header_check(72 byte đầu, kích thước tệp)`. Hàm kiểm §2.2,
+  kể cả `plaintext_len` khớp kích thước, nên tệp quá lớn hay không phải tệp sao lưu bị từ chối mà không phải đọc
+  hết vào bộ nhớ.
 - Không phân biệt "sai mật khẩu" với "tệp bị sửa" (AEAD không cho biết, và không nên đoán).
 - Bản rõ chỉ ở trong bộ nhớ; không ghi tệp tạm, không đưa vào bộ nhớ đệm của Service Worker.
 - Không giới hạn số lần thử trong ứng dụng (kẻ tấn công ngoại tuyến cũng không bị giới hạn); sức chống dò mật khẩu
@@ -261,8 +302,10 @@ mục Security), đọc 2026-11-06; §4.2 cho phần Rust.
   vào kho `meta` (`persist`); giao diện đợt 3 đọc `persistResult()` để hiện cảnh báo 01 §4.1.
 - Hook nhắc sao lưu: `backupReminderDue(now)` = có thay đổi chưa sao lưu (`meta.backup_pending_since`, ghi ở thay
   đổi đầu tiên sau lần xuất gần nhất) và `now − backup_pending_since ≥ backup_nag_days` ngày; `backup_nag_days = 0`
-  tắt. Xuất thành công đặt `settings.last_backup_at` và xóa `backup_pending_since`. Cùng quy tắc ở Rust
-  (`Store::backup_reminder_due`).
+  tắt. `exportBackup` chỉ tạo byte và ghi `meta.last_export_at`. Sau khi tải tệp, giao diện gọi
+  `markBackupSaved(now)`: đặt `settings.last_backup_at`, xóa `backup_pending_since` nếu không có thay đổi nào sau
+  lúc tạo tệp, và xóa `last_export_at` (§2.4). Cùng quy tắc ở Rust (`Store::backup_reminder_due`,
+  `Store::mark_backup_saved`).
 
 ### B1.4 Những điểm đặc tả chưa nói rõ — cách đã cài (cả hai bản như nhau)
 
@@ -295,3 +338,47 @@ gen_test_vectors`; CI sinh lại và so từng byte): `example-v1.lvhv` (+ `exam
 `file_version` = 2 …) với mã lỗi mong đợi trong `manifest.json`, `dataset-r6.json` (60 người, 30 sự kiện, 20 ảnh),
 `validation-cases.json` (63 ca V1–V8 + độ sâu JSON), `merge-cases.json` (31 ca gộp, kết quả mong đợi viết tường minh
 và băm kết quả). `scripts/check-store.sh` chạy toàn bộ phía Rust và PWA và kiểm chéo qua tệp thật (job CI `store`).
+
+### B1.6 Bộ R6v2 — ảnh thật (04 Bổ sung B7; KHÓA 2026-11-07)
+
+Bộ R6 cũ (`dataset-r6.json`, 20 "ảnh" là byte tổng hợp `FF D8 FF E0 … FF D9`, 10 ảnh khai `image/webp`) giữ nguyên trong
+kho để đối chiếu lịch sử; mọi tệp và giá trị đã khóa của nó (`manifest.json` → `dataset_r6`) **không đổi**. Từ khi bật
+kiểm tra chặt B6 cho ảnh chân dung ở đường nhập sao lưu, bộ R6 cũ **bị từ chối** khi nhập ("Sai mật khẩu hoặc tệp bị
+hỏng") — kiểm thử `old_r6_rejected_on_import` (Rust) và mục tương ứng trong `pwa/test/store/run.mjs`.
+
+R6 (a)–(d) và R6 (b) lật bit chạy trên **R6v2** ở `docs/v0.2/schema/test-vectors/r6v2/`: cùng cấu trúc, cùng id, cùng 60
+người, 30 sự kiện, 20 ảnh, cùng kiểu và kích thước khai báo (ảnh i: (300 + i) × (400 + i), JPEG khi i chẵn, WebP khi i
+lẻ) như R6; chỉ byte ảnh (và `bytes`/`sha256` của bản ghi) khác. Ảnh là dải màu tất định, mã hóa một lần bằng
+`make_r6v2_photos.py` (Pillow, tham số cố định), không siêu dữ liệu (JPEG chỉ JFIF APP0; WebP dạng `VP8 ` đơn giản),
+qua kiểm tra B6. `dataset-r6v2.json` và `dataset-r6v2-fixed.lvhv` (salt/nonce cố định như §2.5, mật khẩu
+"mật khẩu thử nghiệm") sinh tất định bằng `gen_test_vectors` từ các ảnh đã khóa; CI sinh lại và so từng byte.
+
+- `store_state_sha256` (băm kho sau khi nhập vào SQLite và IndexedDB): `9f4f7bb9f47d1a497decde0d1a53ec40f0aebddf9a00c20796a60599e1fdf36e`
+- `fixed_rng_file_sha256`: `c8f511be1967cde710fe01e193fee339a6852f862dc5d71007fb5f2ea26222b3` (327973 byte)
+
+| Tệp (`r6v2/`) | sha256 |
+|---|---|
+| `dataset-r6v2-fixed.lvhv` | `c8f511be1967cde710fe01e193fee339a6852f862dc5d71007fb5f2ea26222b3` |
+| `dataset-r6v2.json` | `ff2bb5fb36d9006b3771538d4564078e7f6d36b22ebb8c406d1124383515d735` |
+| `make_r6v2_photos.py` | `bdbd644749e03faed54eb03e3808d9300ea782bb20b47be954816f480773d694` |
+| `photo-00.jpg` | `ac6b71b54ed164f3dfcba4b554cba2605c46822b51151ae928871478ef33808a` |
+| `photo-01.webp` | `3dab4ed58d25b443033860425f8a293a831c03f9bb2518fcf88afde94584e493` |
+| `photo-02.jpg` | `58c5416386fde10cd522bbbf1deef2b03f20e5b35462bba2cd16288d583a327a` |
+| `photo-03.webp` | `151c65fa88b1163dd7b2ff8ae4813291ae2f2fd4584f5742a706bb6c54fb67c8` |
+| `photo-04.jpg` | `bd77168d7095335d412845529dc1ecb6477e89647033fe4f2c84e39cddc08796` |
+| `photo-05.webp` | `112fa95eb8b7d6b47d2ce39cb514049877285bf151569f53b022830af56cc2df` |
+| `photo-06.jpg` | `dd82cc004402c4aa3660b7e8612f786ee6dd0570b87acb25825cd4a97b5b65f8` |
+| `photo-07.webp` | `3609e02c8e3d11b07392ed93528fa0fc19d25b6e0a906ef0aad58a03c015ad5b` |
+| `photo-08.jpg` | `e58f56eb2e86c53344b09e13b56358bf961f46d556d02c83fe6cdbaf33d1fdd1` |
+| `photo-09.webp` | `71563132c54b9180ed2e7498ab1fa137b207a99acc21868a75e31d97fa703b24` |
+| `photo-10.jpg` | `c82916a2d5b33e4b89bcc96c54e1f721d3b0bd3359753f87b413622d7bb4e6f8` |
+| `photo-11.webp` | `7852a36cc2f52fe0e0b550f515021e906fe3a28d766f386d71d86fe89abcccc0` |
+| `photo-12.jpg` | `4b3e39cd6a58b7e797bbeb79233987741dd9f6c585a9c2eb7aabdc34ea34404a` |
+| `photo-13.webp` | `01f328e0a7260f5e5a9e4ba45a10f23f701e469594597594665494de88ef8d51` |
+| `photo-14.jpg` | `36878d5ac99420499875ad7b657fca98ae614d4491a09427594be9fae735c798` |
+| `photo-15.webp` | `d875245a87198a20d1557b18ebf773fa5c4698b032bb7f6eb234a36cadf6f1af` |
+| `photo-16.jpg` | `cbbc05476e12effbe6c71ba4ee5761226dec75662c779af3989d2bbaf381967d` |
+| `photo-17.webp` | `88dd823b78d10f3cc941aebcd4d342297e660eff0eb94155f59711800b6f29b7` |
+| `photo-18.jpg` | `7f1ef9dbb363c03111c345e1987b7ef1c507b1d42d63e5c84bbc2d70fc35546d` |
+| `photo-19.webp` | `bf7f5c80c09042806c2247420d72659e9e37d02303e349d59bc41f4bbd388dd3` |
+
