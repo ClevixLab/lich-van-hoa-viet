@@ -229,7 +229,18 @@ mục tạm; `Store::open_with(now = T0)`; mở lại với `now = T0 + 8 ngày`
 
 ### 8.1 Kiểm thử của dự án (main `8835cd7`)
 
-(xem mục 8.1 bên dưới — điền sau khi chạy xong)
+```
+$ cargo test --release -p lvhv-backup -p lvhv-store          # main 8835cd7, rustc/cargo 1.97.0, Linux x86_64
+lvhv_backup (unittests)        ok. 2 passed      lvhv_backup tests/vectors.rs  ok. 3 passed
+lvhv_store (unittests)         ok. 5 passed      lvhv_store tests/example.rs   ok. 1 passed
+lvhv_store tests/media.rs      ok. 3 passed      lvhv_store tests/notice.rs    ok. 4 passed
+lvhv_store tests/r6.rs         ok. 13 passed (44.01 s)
+lvhv_store tests/released.rs   ok. 8 passed
+EXIT 0
+```
+
+Các kiểm thử đạt; `released.rs` chưa có ca "sau 7 ngày không còn tệp ảnh mồ côi" (BM3-01), `media.rs` chưa có ca phần
+nối sau EOI và SOF cao = 0 (BM3-04, BM3-05).
 
 ### 8.2 CI Android `ab83b9b` (run 42351718963, job `build`)
 
@@ -280,7 +291,7 @@ found 0 vulnerabilities
 
 | Tiêu chí | PWA | Android | iOS | macOS | Windows | Ghi chú |
 |---|---|---|---|---|---|---|
-| S1, S2 | ĐẠT | ĐẠT | ĐẠT | ĐẠT | ĐẠT | `core/` không đổi từ vòng 1 (`git diff 6ee647b 8835cd7 -- core` rỗng); mật mã/lưu trữ ở crate riêng |
+| S1, S2 | ĐẠT (lõi) | — | — | — | — | `core/` không đổi từ vòng 1 (`git diff 6ee647b 8835cd7 -- core` rỗng), `#![forbid(unsafe_code)]`; mật mã/lưu trữ ở crate riêng |
 | S2b | **ĐẠT** | — | — | — | — | `dist/index.html` của #30 dựng lại: CSP giống từng byte 0.1.1 |
 | S4' | CHƯA ĐỦ BẰNG CHỨNG | — | — | — | — | `smoke.mjs`/`people-flows.mjs` kiểm `localStorage` (chỉ `lvhv.ui`), `sessionStorage`, cookie, IndexedDB `lvhv`; chưa thấy kiểm Cache Storage và URL lịch sử sau kịch bản R7 |
 | S5 | — | CHƯA ĐỦ BẰNG CHỨNG | CHƯA ĐỦ BẰNG CHỨNG | CHƯA ĐỦ BẰNG CHỨNG | không áp dụng | Android: CI kiểm manifest đã gộp của APK release (`allowBackup=false`, có `dataExtractionRules`) — thiếu `bmgr backupnow`. Apple: `PeopleGlueTests.swift:180` khẳng định `isExcludedFromBackup` trên mô phỏng, nhưng CI Apple của commit đang rà chưa xong |
