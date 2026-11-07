@@ -1,0 +1,12 @@
+{
+  "fixture": "0.2.0/pwa",
+  "state_hash": "8a480c15dbe04d9f1daa0fed7a33b34e24515d4ec1dc8d8c31ba9b111fa9c2c5",
+  "store_version": 3,
+  "backup_import_state_hash": "4e9d9118e2bbc22cb147dec3490070aceb49e5486e547381d306fb2b52c47c4b",
+  "persons": 4,
+  "events": 2,
+  "person_ids": {
+    "A": "2eac64fe-712f-4982-aa02-ef26a2e6b2f2",
+    "D": "1800511a-cb87-4758-a550-39fb0e86b8b9"
+  }
+}

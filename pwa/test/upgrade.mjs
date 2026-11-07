@@ -10,7 +10,9 @@
 // Chạy: npm run build && node test/upgrade.mjs   (cần git có lịch sử: CI checkout fetch-depth: 0)
 import { execFileSync } from "node:child_process";
 import { createServer } from "node:http";
-import { existsSync, mkdirSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { DUMP_IN_PAGE, restoreInPage } from "./tools/idb-dump.mjs";
 import { dirname, extname, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright-core";
@@ -24,6 +26,10 @@ const SHOTS = join(ROOT, "test", "shots");
 mkdirSync(OUT, { recursive: true });
 mkdirSync(SHOTS, { recursive: true });
 const OLD = { v014: "d9650c7", v02dev: "c4d3128" };
+// Bản MỚI = tệp VERSION của cây mã đang kiểm (bản dựng dist/). Ca (a) phải là nâng cấp THẬT từ 0.1.4 lên số này — cùng
+// số phiên bản thì kiểm thử không chứng minh được gì cho bản phát hành (08-QUY-TRINH §10).
+const NEW_VERSION = readFileSync(join(REPO, "VERSION"), "utf8").trim();
+const footVersion = (page) => page.evaluate(() => (/Phiên bản (\d+\.\d+\.\d+)/.exec((document.querySelector(".foot")?.textContent ?? "").replace(/\u00a0/g, " ")) ?? [])[1] ?? null);
 
 const failures = [];
 const check = (ok, msg) => { if (!ok) failures.push(msg); console.log(`${ok ? "  ok " : "FAIL "} ${msg}`); };
@@ -130,13 +136,16 @@ async function releaseNew(page, hash, newDir = DIST) {
   const stillOld = await page.evaluate(() => navigator.serviceWorker.controller?.scriptURL ?? "");
   const hasWaiting = await page.evaluate(async () => !!(await navigator.serviceWorker.getRegistration())?.waiting);
   const reports2 = await reopenWithPending(page);
+  const barText = (await page.innerText(".update-bar")).replace(/\n/g, " ");
+  const versionBefore = await footVersion(page);
   await Promise.all([
     page.waitForEvent("framenavigated", { timeout: 30000 }),
     page.click(".update-bar .ubtn.primary"),
   ]);
   await page.waitForLoadState("load");
   await page.waitForFunction(() => !!document.querySelector('.tab[data-r="nguoi-than"]') && !!navigator.serviceWorker.controller, null, { timeout: 30000 });
-  return { laterHidden, stillOld, hasWaiting, reports1, reports2 };
+  await page.waitForFunction(() => /Phiên bản/.test(document.querySelector(".foot")?.textContent ?? ""), null, { timeout: 30000 }).catch(() => {});
+  return { laterHidden, stillOld, hasWaiting, reports1, reports2, barText, versionBefore, versionAfter: await footVersion(page) };
 }
 
 // Ghi dữ liệu bằng mã của BẢN CŨ (window.__lvhv.storage của bản 0.2-dev): 3 hồ sơ, ảnh chân dung, thông tin báo tử có
@@ -191,6 +200,8 @@ try {
     const before = await page.evaluate(() => localStorage.getItem("lvhv.ui"));
     const r = await releaseNew(page, "#/ngay/2026-07-25");
     check(r.laterHidden && /sw\.js/.test(r.stillOld) && r.hasWaiting, `(a) "Để sau" → ẩn thanh, bản cũ chạy tiếp; mở lại → nhắc lại (${JSON.stringify(r)})`);
+    check(NEW_VERSION !== "0.1.4" && r.versionBefore === "0.1.4" && r.versionAfter === NEW_VERSION && r.barText.includes(`Đã có phiên bản mới ${NEW_VERSION}.`),
+      `R14 (a): nâng cấp THẬT 0.1.4 → ${NEW_VERSION} qua service worker — thanh "${r.barText.split("Cập nhật")[0].trim()}", chân trang ${r.versionBefore} → ${r.versionAfter}`);
     const after = await page.evaluate(() => ({ ls: localStorage.getItem("lvhv.ui"), size: document.documentElement.dataset.size, theme: document.documentElement.dataset.theme }));
     check(JSON.parse(before).size === "3" && JSON.parse(before).theme === "dark" && JSON.parse(after.ls).size === "3" && JSON.parse(after.ls).theme === "dark" && after.size === "3",
       `R14 (a) 0.1.4 → mới qua "Cập nhật ngay": cỡ chữ A++ và giao diện tối giữ nguyên (${before} → ${after.ls})`);
@@ -405,6 +416,80 @@ try {
     await page.screenshot({ path: join(SHOTS, "v02-upgrade-readonly-360.png"), fullPage: true });
     await ctx.close();
   }
+  // ---------- (d) bộ mẫu đóng băng của các bản web đã phát hành (released/<phiên bản>/pwa, 08-QUY-TRINH §10) ----------
+  // Mỗi bản phát hành web thêm bộ mẫu tạo bằng giao diện của chính nó (pwa/test/tools/freeze-pwa-release.mjs). Mọi bản
+  // sau phải: (1) bộ mẫu còn nguyên (sha256); (2) mở được kho đó — dựng lại từ indexeddb.json rồi để bản đang kiểm mở
+  // (tự chuyển lược đồ nếu cần); (3) khôi phục được tệp sao lưu của bản đó vào kho trống; (4) khi đã có thẻ git
+  // v<phiên bản>: nâng cấp THẬT từ bản dựng của thẻ (dữ liệu nằm trong kho của bản cũ) qua service worker.
+  const TV_REL = join(REPO, "docs", "v0.2", "schema", "test-vectors", "released");
+  for (const rel of readdirSync(TV_REL).filter((d) => existsSync(join(TV_REL, d, "pwa", "manifest.json"))).sort()) {
+    const dir = join(TV_REL, rel, "pwa");
+    const man = JSON.parse(readFileSync(join(dir, "manifest.json"), "utf8"));
+    const exp = JSON.parse(readFileSync(join(TV_REL, "expected", `${rel}-pwa.json`), "utf8"));
+    const bad = Object.entries(man.files).filter(([f, h]) => createHash("sha256").update(readFileSync(join(dir, f))).digest("hex") !== h).map(([f]) => f);
+    check(bad.length === 0, `(d) ${rel}: bộ mẫu đóng băng còn nguyên (sha256 ${Object.keys(man.files).length} tệp${bad.length ? `; KHÁC: ${bad.join(", ")}` : ""})`);
+    const dump = JSON.parse(readFileSync(join(dir, "indexeddb.json"), "utf8"));
+    const backupBytes = readFileSync(join(dir, "backup.lvhv"));
+    const measureNow = async (page) => {
+      await withStoreLib(page);
+      return page.evaluate(`(async () => { const S = window.__testStoreLib; const s = await S.openStore(); try {
+        const doc = await s.snapshot({ version: ${JSON.stringify(NEW_VERSION)}, platform: "pwa" }, "2026-11-07T02:00:00Z");
+        let valid = "OK"; try { S.validate.document(doc); } catch (e) { valid = (e.code ?? "?") + " " + (e.path ?? ""); }
+        return { hash: await s.stateHash(), v: s.db.version, state: s.migrationStatus().state, persons: doc.persons.length, events: doc.events.length, valid }; } finally { s.close(); } })()`);
+    };
+    // Cùng phiên bản kho → phải giống từng byte (stateHash); kho đã nâng phiên bản → đủ hồ sơ, sự kiện, hợp lệ.
+    const sameData = (m, hash) => m.persons === exp.persons && m.events === exp.events && m.valid === "OK" && m.state !== "read_only" && (m.v !== exp.store_version || m.hash === hash);
+    // (2) kho của bản đó, mở bằng bản đang kiểm
+    {
+      serveDir = DIST;
+      const { ctx, page, errors } = await newPage();
+      await page.goto(BASE + "__dung_lai_kho__"); // trang 404 cùng nguồn gốc: dựng kho trước khi ứng dụng mở
+      await page.evaluate(restoreInPage(dump));
+      await page.goto(BASE + "#/nguoi-than/ho-so"); await page.waitForSelector("#list-deceased", { timeout: 30000 });
+      const rows = await page.locator(".prow").count();
+      await page.goto(BASE + `#/nguoi-than/nguoi/${exp.person_ids.D}`); await page.waitForSelector("#notice-box", { timeout: 30000 });
+      await page.click("#notice-box > summary");
+      const certs = ((await page.innerText("#notice-box")).match(/Giấy chứng tử|Tin báo tử/g) ?? []).length;
+      await page.goto(BASE + `#/nguoi-than/tuong-niem/${exp.person_ids.A}`); await page.waitForSelector(".bia-name", { timeout: 30000 });
+      const m = await measureNow(page);
+      check(sameData(m, exp.state_hash) && rows === exp.persons && certs >= 2 && errors.length === 0,
+        `(d) ${rel}: kho IndexedDB của bản ${rel} mở bằng bản đang kiểm (${NEW_VERSION}) — ${m.persons} hồ sơ, ${m.events} sự kiện, kho v${m.v}, ${m.v === exp.store_version ? (m.hash === exp.state_hash ? "stateHash giống từng byte" : "stateHash KHÁC") : "đã chuyển lược đồ"}; trang hồ sơ, tệp đính kèm, tưởng niệm mở được (${errors.join(" | ") || "0 lỗi trang"}; ${JSON.stringify({ ...m, hash: undefined, rows, certs })})`);
+      await ctx.close();
+    }
+    // (3) tệp sao lưu của bản đó → kho trống
+    {
+      serveDir = DIST;
+      const { ctx, page, errors } = await newPage();
+      await page.goto(BASE + "#/nguoi-than/sao-luu"); await page.waitForSelector("#bk-file", { state: "attached", timeout: 30000 });
+      await page.setInputFiles("#bk-file", { name: "backup.lvhv", mimeType: "application/octet-stream", buffer: backupBytes });
+      await page.fill("#bk-ipw", man.password); await page.click("#bk-open");
+      await page.waitForSelector(".imp-dialog[open]", { timeout: 60000 }); await page.click(".imp-dialog .dbtn.main");
+      const ok = await page.waitForSelector('.toast:has-text("Đã khôi phục")', { timeout: 60000 }).then(() => true, () => false);
+      const m = await measureNow(page);
+      check(ok && sameData(m, exp.backup_import_state_hash) && errors.length === 0,
+        `(d) ${rel}: tệp sao lưu của bản ${rel} khôi phục vào kho trống bằng bản đang kiểm — ${m.persons} hồ sơ, ${m.v === exp.store_version ? (m.hash === exp.backup_import_state_hash ? "stateHash giống từng byte" : "stateHash KHÁC") : "kho mới hơn"} (${JSON.stringify({ ...m, hash: undefined, ok })})`);
+      await ctx.close();
+    }
+    // (4) nâng cấp thật từ bản dựng của thẻ v<rel>
+    let tagged = false;
+    try { execFileSync("git", ["-C", REPO, "rev-parse", "-q", "--verify", `refs/tags/v${rel}`], { stdio: "ignore" }); tagged = true; } catch { /* chưa phát hành thẻ */ }
+    if (!tagged || rel === NEW_VERSION) {
+      console.log(`  --   (d) ${rel}: nâng cấp thật từ thẻ v${rel} — ${tagged ? "bản đang kiểm chính là bản này" : "chưa có thẻ"}, bỏ qua (chạy ở bản phát hành sau)`);
+    } else {
+      const dOld = buildOld(`v${rel}`);
+      serveDir = dOld;
+      const { ctx, page, errors } = await newPage();
+      await page.goto(BASE + "__dung_lai_kho__"); await page.evaluate(restoreInPage(dump));
+      await page.goto(BASE + "#/nguoi-than", { waitUntil: "load" }); await page.waitForSelector(".people-body", { timeout: 30000 });
+      await controlled(page);
+      await releaseNew(page, "#/nguoi-than/ho-so");
+      await page.goto(BASE + "#/nguoi-than/ho-so"); await page.waitForSelector("#list-deceased", { timeout: 30000 });
+      const m = await measureNow(page);
+      check(sameData(m, exp.state_hash) && errors.length === 0, `(d) ${rel} → ${NEW_VERSION}: nâng cấp thật qua service worker, dữ liệu của bản ${rel} còn đủ (${m.persons} hồ sơ, kho v${m.v})`);
+      await ctx.close();
+    }
+  }
+  void DUMP_IN_PAGE;
 } catch (e) {
   failures.push(String(e?.stack ?? e));
   console.error(e);

@@ -1,8 +1,8 @@
 // Biểu mẫu: thêm/sửa người đã mất (08 §3.4), người đang sống (08 §3.5), sự kiện (08 §3.7).
 import { append, clear, h } from "../dom";
-import { buildPerson, capitalizeFirst, danhXungSuggestions, normalizePersonNames, quanHeSuggestions, validate } from "../store/index";
+import { buildPerson, capitalizeFirst, danhXungSuggestions, normalizePersonNames, quanHeSuggestions, validate, type NewPhoto } from "../store/index";
 import { M, cal, clean, cpLen, displayName, lunarText, nowTs, snap, store, today, tuoiText, uuid, type JsonObj, type Ymd } from "./core";
-import { drawPhoto, processPhoto, type Processed } from "./photo";
+import { MAX_INPUT, drawPhoto, processPhoto, type Processed } from "./photo";
 import { noticeSection } from "./notice";
 import { backLink, confirmDialog, dateInput, pressGroup, ruleInput, solarLong, toast, type DateInput, type DateValueJ } from "./ui";
 
@@ -88,7 +88,7 @@ function birthPreview(v: DateValueJ, living: boolean): { text: string | null; er
 }
 
 // ======================================================================================================
-export async function renderPersonForm(root: HTMLElement, kindIn: "deceased" | "living" | null, id: string | null, nav: Nav): Promise<void> {
+export async function renderPersonForm(root: HTMLElement, kindIn: "deceased" | "living" | null, id: string | null, nav: Nav, focus: "mam-le" | null = null): Promise<void> {
   const sn = await snap();
   const s = await store();
   const old = id ? sn.byId.get(id) ?? null : null;
@@ -156,11 +156,12 @@ export async function renderPersonForm(root: HTMLElement, kindIn: "deceased" | "
   const photoErr = h("p", { class: "ferr", role: "alert", hidden: true });
   const file = h("input", { type: "file", id: "pf-file", accept: "image/*", class: "sr-only", tabindex: "-1", "aria-hidden": "true" }) as HTMLInputElement;
   // Nút thật (bàn phím bấm được) mở hộp chọn tệp; ô chọn tệp gốc ẩn hẳn (TK-01, TK-06).
-  const pickLbl = h("button", { type: "button", class: "btn2", id: "pf-pick", onclick: () => file.click() }, photo.oldId ? "Đổi ảnh" : "Chọn ảnh");
-  const rmBtn = h("button", { type: "button", class: "btn2", hidden: !photo.oldId, onclick: () => {
+  // NS-01 (duyệt #50): chữ trên nút giữ nguyên; tên cho trình đọc màn hình phân biệt ảnh chân dung với ảnh mâm lễ.
+  const pickLbl = h("button", { type: "button", class: "btn2", id: "pf-pick", "aria-label": photo.oldId ? "Đổi ảnh chân dung" : "Chọn ảnh chân dung", onclick: () => file.click() }, photo.oldId ? "Đổi ảnh" : "Chọn ảnh");
+  const rmBtn = h("button", { type: "button", class: "btn2", id: "pf-rm", "aria-label": "Bỏ ảnh chân dung", hidden: !photo.oldId, onclick: () => {
     photo.pending = null; photo.removed = true; dirty = true;
     canvas.getContext("2d")!.clearRect(0, 0, canvas.width, canvas.height); delete canvas.dataset.drawn;
-    rmBtn.hidden = true; pickLbl.textContent = "Chọn ảnh";
+    rmBtn.hidden = true; pickLbl.textContent = "Chọn ảnh"; pickLbl.setAttribute("aria-label", "Chọn ảnh chân dung");
   } }, "Bỏ ảnh");
   file.addEventListener("change", async () => {
     const f = file.files?.[0];
@@ -171,10 +172,51 @@ export async function renderPersonForm(root: HTMLElement, kindIn: "deceased" | "
       photo.pending = await processPhoto(f);
       photo.removed = false; dirty = true;
       await drawPhoto(canvas, photo.pending.bytes);
-      rmBtn.hidden = false; pickLbl.textContent = "Đổi ảnh";
+      rmBtn.hidden = false; pickLbl.textContent = "Đổi ảnh"; pickLbl.setAttribute("aria-label", "Đổi ảnh chân dung");
     } catch (e) { photoErr.textContent = (e as Error).message; photoErr.hidden = false; }
   });
   if (photo.oldId) s.photoBytes(photo.oldId).then((b) => drawPhoto(canvas, b)).catch(() => {});
+
+  // ---- ảnh mâm lễ ngày giỗ (YC-2026-10, 08 §16.2) — chỉ người đã mất ----
+  // Xử lý như ảnh chân dung (vẽ lại bằng canvas → bỏ EXIF/GPS), cạnh dài ≤ 1600 px, ≤ 1 MB, không phóng to. Ảnh mới chỉ
+  // nằm trong bộ nhớ tới khi bấm "Lưu" (lõi ghi cùng giao dịch với hồ sơ): hủy biểu mẫu thì không còn gì trong kho.
+  // Đổi / bỏ ảnh có hiệu lực khi Lưu; ảnh cũ không còn dùng thì lõi tự xóa trong cùng giao dịch.
+  const tray = { pending: null as Processed | null, removed: false, oldId: (mem.tray_photo_id as string | null | undefined) ?? null, busy: false };
+  const trayCanvas = h("canvas", { class: "pf-tray-img", id: "pf-tray-img", width: "120", height: "90", role: "img", "aria-label": "Ảnh mâm lễ", hidden: !tray.oldId }) as HTMLCanvasElement;
+  const trayEmpty = h("p", { class: "fine", id: "pf-tray-empty", hidden: !!tray.oldId }, "Chưa có ảnh. Ngày giỗ chỉ hiện bát hương và nến.");
+  const trayBusy = h("p", { class: "fine", id: "pf-tray-busy", role: "status", hidden: true }, "Đang xử lý ảnh…");
+  const trayErr = h("p", { class: "ferr", id: "pf-tray-err", role: "alert", hidden: true });
+  const trayFile = h("input", { type: "file", id: "pf-tray-file", accept: "image/*", class: "sr-only", tabindex: "-1", "aria-hidden": "true" }) as HTMLInputElement;
+  const trayPick = h("button", { type: "button", class: "btn2", id: "pf-tray-pick", "aria-label": tray.oldId ? "Đổi ảnh mâm lễ" : "Chọn ảnh mâm lễ", onclick: () => trayFile.click() }, tray.oldId ? "Đổi ảnh" : "Chọn ảnh mâm lễ…");
+  const trayRm = h("button", { type: "button", class: "btn2", id: "pf-tray-rm", "aria-label": "Bỏ ảnh mâm lễ", hidden: !tray.oldId }, "Bỏ ảnh");
+  const showTray = (has: boolean) => { trayCanvas.hidden = !has; trayEmpty.hidden = has; trayRm.hidden = !has; trayPick.textContent = has ? "Đổi ảnh" : "Chọn ảnh mâm lễ…"; trayPick.setAttribute("aria-label", has ? "Đổi ảnh mâm lễ" : "Chọn ảnh mâm lễ"); };
+  trayRm.addEventListener("click", () => {
+    tray.pending = null; tray.removed = true; dirty = true; trayErr.hidden = true;
+    trayCanvas.getContext("2d")!.clearRect(0, 0, trayCanvas.width, trayCanvas.height); delete trayCanvas.dataset.drawn;
+    showTray(false);
+  });
+  trayFile.addEventListener("change", async () => {
+    const f = trayFile.files?.[0];
+    trayFile.value = "";
+    if (!f) return;
+    trayErr.hidden = true; trayBusy.hidden = false; tray.busy = true; saveBtn.disabled = true; trayPick.disabled = true;
+    try {
+      if (f.size > MAX_INPUT) throw new Error("Ảnh quá lớn (tối đa 25 MB).");
+      try { tray.pending = await processPhoto(f, { maxEdge: 1600, maxStored: 1024 * 1024 }); }
+      catch { throw new Error("Không đọc được ảnh này. Hãy chọn một ảnh khác."); }
+      tray.removed = false; dirty = true;
+      showTray(true);
+      await drawPhoto(trayCanvas, tray.pending.bytes);
+    } catch (e) { trayErr.textContent = (e as Error).message; trayErr.hidden = false; }
+    finally { trayBusy.hidden = true; tray.busy = false; saveBtn.disabled = false; trayPick.disabled = false; }
+  });
+  if (tray.oldId) s.photoBytes(tray.oldId).then((b) => drawPhoto(trayCanvas, b)).catch(() => {});
+  const traySec = h("div", { class: "field pf-tray", id: "pf-tray", role: "group", "aria-labelledby": "pf-tray-label" },
+    h("p", { class: "flabel", id: "pf-tray-label" }, "Ảnh mâm lễ ngày giỗ"),
+    trayEmpty, trayCanvas, trayBusy,
+    h("div", { class: "photo-acts" }, trayFile, trayPick, trayRm), trayErr,
+    h("p", { class: "fine" }, "Ảnh chỉ lưu trên máy này và trong tệp sao lưu mã hóa. Ứng dụng tự bỏ thông tin vị trí và máy chụp trong ảnh."));
+  const saveBtn = h("button", { type: "submit", class: "primary" }, "Lưu") as HTMLButtonElement;
 
   // ---- nhắc ----
   const reminders = (old?.reminders as JsonObj | undefined) ?? {};
@@ -299,15 +341,20 @@ export async function renderPersonForm(root: HTMLElement, kindIn: "deceased" | "
 
     const now = nowTs();
     const pid = old ? (old.id as string) : uuid();
+    if (tray.busy) return; // 08 §16.2: đang xử lý ảnh mâm lễ → chưa lưu
     let photoId: string | null = photo.removed ? null : photo.oldId;
-    let newPhoto;
-    if (photo.pending) { photoId = uuid(); newPhoto = { id: photoId, ...photo.pending }; }
+    const newPhotos: NewPhoto[] = [];
+    if (photo.pending) { photoId = uuid(); newPhotos.push({ id: photoId, ...photo.pending }); }
+    let trayId: string | null = !dead || tray.removed ? null : tray.oldId;
+    if (dead && tray.pending) { trayId = uuid(); newPhotos.push({ id: trayId, ...tray.pending }); }
     const base: JsonObj = {
       id: pid, kind, danh_xung, gioi_tinh: gt, ho_ten, ten_hieu, quan_he,
       birth: br.value ? { input: br.value as unknown as JsonObj, noi_sinh } : null,
       death: dead ? { input: dv as unknown as JsonObj, ...(nc?.notice ? { notice: nc.notice } : {}), ...(manual !== null ? { tuoi: { value: manual, label: manual < (nguong() ?? 60) ? "huong_duong" : "huong_tho", manual: true, approx: false } } : {}) } : null,
       noi_an_tang, photo_id: photoId,
-      memorial: dead ? { tray_style: mem.tray_style ?? "truyen_thong", incense: mem.tray_style === "cong_giao" ? false : (mem.incense ?? true), bia_tieu_de: bia, loi_tuong_niem: loi, gio_het_nam: Number(gioHet), huong_duong_duoi: nguong() ?? 60 } : null,
+      memorial: dead ? { tray_style: mem.tray_style ?? "truyen_thong", incense: mem.tray_style === "cong_giao" ? false : (mem.incense ?? true), bia_tieu_de: bia, loi_tuong_niem: loi, gio_het_nam: Number(gioHet), huong_duong_duoi: nguong() ?? 60,
+        // 01 §3.7: `null` thì không ghi khóa.
+        ...(trayId ? { tray_photo_id: trayId } : {}) } : null,
       reminders: dead ? { gio: rules[0].rule, sinh_nhat: null, sinh_nhat_am: null } : { gio: null, sinh_nhat: rules[0].rule, sinh_nhat_am: !snAm.checked ? ((reminders.sinh_nhat_am as JsonObj | null) ?? null)
         : snAmSame.checked ? { ...(rules[0].rule as JsonObj), id: snAmId, tien_thuong: false } : rules[1].rule },
       sinh_nhat_am: !dead && snAm.checked,
@@ -323,7 +370,7 @@ export async function renderPersonForm(root: HTMLElement, kindIn: "deceased" | "
     catch (e) { sum.show([{ msg: `Chưa lưu được: ${(e as Error).message}`, focus: () => fTen.input.focus() }]); return; }
     try {
       // Ảnh / tệp đính kèm bản cũ dùng mà bản mới bỏ: lớp lưu trữ tự xóa trong cùng giao dịch.
-      await s.putPerson(p, newPhoto, nc?.newAttachments ?? []);
+      await s.putPerson(p, newPhotos.length ? newPhotos : undefined, nc?.newAttachments ?? []);
     } catch (e) { sum.show([{ msg: `Chưa lưu được: ${(e as Error).message}. Dữ liệu đang nhập vẫn còn trên màn hình.`, focus: () => fTen.input.focus() }]); return; }
     dirty = false;
     toast("Đã lưu hồ sơ.");
@@ -344,11 +391,12 @@ export async function renderPersonForm(root: HTMLElement, kindIn: "deceased" | "
         h("p", { class: "fine" }, "Ảnh chỉ lưu trong ứng dụng trên máy này, đã bỏ thông tin vị trí và máy chụp.")))) : null,
     notice?.el ?? null,
     rGio?.el ?? null, rSn?.el ?? null, rSnAm?.el ?? null,
-    dead ? h("details", { class: "pfs more", id: "pf-mem", open: !!old && (mem.loi_tuong_niem as string) !== "" },
-      h("summary", null, "Tưởng niệm (giỗ hết, lời tưởng niệm)"),
+    dead ? h("details", { class: "pfs more", id: "pf-mem", open: focus === "mam-le" || (!!old && ((mem.loi_tuong_niem as string) !== "" || !!tray.oldId)) },
+      h("summary", null, "Tưởng niệm (giỗ hết, lời tưởng niệm, ảnh mâm lễ)"),
       h("div", { class: "field" }, h("p", { class: "flabel" }, "Giỗ hết (giỗ lần cuối của thời gian để tang) vào"),
         pressGroup("Giỗ hết vào", [["2", "Năm thứ 2 sau năm mất"], ["3", "Năm thứ 3 sau năm mất"]], gioHet, (v) => { gioHet = v; dirty = true; }, "pseg two")),
       fLoi.el,
+      traySec,
       h("label", { class: "field inline", for: "pf-nguong" }, h("span", null, "Mất trước tuổi này thì bia ghi “hưởng dương” (mất sớm) thay cho “hưởng thọ”"), nguongIn), nguongErr) : null,
     h("div", { class: "form-acts" },
       h("button", { type: "button", class: "btn2", onclick: async () => {
@@ -356,11 +404,12 @@ export async function renderPersonForm(root: HTMLElement, kindIn: "deceased" | "
           dirty = false; nav.go(old ? `#/nguoi-than/nguoi/${old.id as string}` : "#/nguoi-than/ho-so", true);
         }
       } }, "Hủy"),
-      h("button", { type: "submit", class: "primary" }, "Lưu")),
+      saveBtn),
   ]);
   root.append(old ? backLink("‹ Về hồ sơ", `#/nguoi-than/nguoi/${old.id as string}`) : backLink(), h("div", { class: "pagehead" }, h1, old ? h("p", null, displayName(old)) : null), form);
   refresh();
-  h1.focus();
+  // 08 §16.1: "Thêm ảnh mâm lễ của gia đình" trên màn hình tưởng niệm → cuộn tới mục ảnh mâm lễ.
+  if (focus === "mam-le" && dead) { traySec.scrollIntoView({ block: "center" }); trayPick.focus({ preventScroll: true }); } else h1.focus();
 }
 
 // ======================================================================================================
