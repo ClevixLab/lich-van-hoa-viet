@@ -1,0 +1,1370 @@
+// Mô-đun "Người thân" (v0.2 đợt 3) — giao diện Windows theo đặc tả docs/v0.2/08-DAC-TA-GIAO-DIEN-NGUOI-THAN.md.
+// Tệp này chỉ hiển thị: mọi tính toán (ngày giỗ, nhắc, danh sách theo kỳ, .ics, sao lưu, kiểm dữ liệu) ở Rust
+// (src/people.rs → lvhv-ffi → lvhv-memorial / lvhv-store / lvhv-backup).
+import { LineEdit, ComboBox, CheckBox, ScrollView, TextEdit } from "std-widgets.slint";
+import { Theme, T, S, Icon, Card, Btn, LinkBtn, RoundBtn } from "common.slint";
+
+// Một mục sự kiện (§2 "Mục sự kiện"). kind: 0 giỗ, 1 tiên thường, 2 sinh nhật, 3 sự kiện.
+export struct PItem {
+    day: string, wd: string, mon: string,
+    line1: string, line2: string, line3: string,
+    kind: int, kind-text: string, right: string,
+    today: bool, past: bool, sunday: bool,
+    pid: string, header: string, memorial: bool,
+}
+export struct PRow { id: string, initial: string, name: string, rel: string, summary: string }
+export struct KV { k: string, v: string }
+export struct EvRow { id: string, text: string }
+export struct RemCard { title: string, sub: string, pid: string, memorial: bool }
+
+export global People {
+    // Trang đang mở: sap-toi | theo-ky | ho-so | sao-luu | nguoi | form | bao-tu | su-kien | tuong-niem
+    in-out property <string> page: "sap-toi";
+    in-out property <string> back-label: "‹ Về danh sách hồ sơ";
+    in-out property <string> store-error;
+    in-out property <string> toast;
+    in-out property <bool> has-any;
+    in-out property <float> scroll-frac: 0;
+
+    // Sắp tới
+    in-out property <[PItem]> upcoming;
+    in-out property <[RemCard]> cards;
+    in-out property <int> cards-more;
+    in-out property <bool> backup-nag;
+    in-out property <string> backup-nag-text;
+    in-out property <string> notif-status;
+    in-out property <bool> notif-ok;
+    in-out property <bool> settings-open: true;
+    in-out property <bool> rem-enabled: true;
+    in-out property <bool> show-names: false;
+    in-out property <[bool]> def-offs;
+    in-out property <string> def-custom;
+    in-out property <string> def-hh: "07";
+    in-out property <string> def-mm: "00";
+    in-out property <string> def-error;
+
+    // Theo kỳ
+    in-out property <int> pkind: 1;   // 0 tuần, 1 tháng, 2 quý, 3 năm
+    in-out property <int> pfilter: 0; // 0 tất cả, 1 đã mất, 2 đang sống
+    in-out property <string> ptitle;
+    in-out property <string> pcount;
+    in-out property <bool> pcurrent;
+    in-out property <string> pnote;
+    in-out property <string> pempty;
+    in-out property <[PItem]> pitems;
+
+    // Hồ sơ (danh sách)
+    in-out property <[PRow]> dead;
+    in-out property <[PRow]> living;
+
+    // Sao lưu
+    in-out property <string> last-backup;
+    in-out property <bool> ics-enabled;
+    in-out property <string> ics-note;
+    in-out property <int> nag-index; // 0: 30, 1: 60, 2: 90, 3: không nhắc
+    in-out property <string> restore-file: "Chưa chọn tệp.";
+    in-out property <string> restore-pw;
+    in-out property <string> restore-error;
+
+    // Hồ sơ một người
+    in-out property <string> v-id;
+    in-out property <bool> v-dead;
+    in-out property <string> v-name;
+    in-out property <string> v-initial;
+    in-out property <string> v-rel;
+    in-out property <string> v-sub;
+    in-out property <bool> v-has-photo;
+    in-out property <image> v-photo;
+    in-out property <[PItem]> v-next;
+    in-out property <[KV]> v-info;
+    in-out property <[KV]> v-notice;
+    in-out property <[image]> v-notice-photos;
+    in-out property <bool> v-notice-open: false;
+    in-out property <[EvRow]> v-events;
+    in-out property <string> v-remind;
+    in-out property <bool> v-missing;
+
+    // Biểu mẫu người (đã mất / đang sống)
+    in-out property <bool> f-dead: true;
+    in-out property <string> f-title;
+    in-out property <string> f-subtitle;
+    in-out property <string> f-summary;  // "Còn n chỗ cần sửa"
+    in-out property <string> f-danh-xung;
+    in-out property <string> f-ho-ten;
+    in-out property <string> f-ten-hieu;
+    in-out property <string> f-quan-he;
+    in-out property <string> f-ghi-chu;
+    in-out property <string> e-danh-xung;
+    in-out property <string> e-ho-ten;
+    in-out property <string> e-ten-hieu;
+    in-out property <string> e-quan-he;
+    in-out property <string> e-ghi-chu;
+    // Ngày mất (dd-)
+    in-out property <int> dd-cal;
+    in-out property <string> dd-d;
+    in-out property <string> dd-m;
+    in-out property <string> dd-y;
+    in-out property <bool> dd-leap;
+    in-out property <bool> dd-unknown;
+    in-out property <bool> dd-leap-visible: true;
+    in-out property <string> dd-leap-label: "Tháng nhuận";
+    in-out property <string> dd-note;
+    in-out property <string> dd-result;
+    in-out property <string> dd-error;
+    // Ngày sinh (bd-)
+    in-out property <int> bd-cal;
+    in-out property <int> bd-prec; // 0 đủ ngày, 1 chỉ năm
+    in-out property <string> bd-d;
+    in-out property <string> bd-m;
+    in-out property <string> bd-y;
+    in-out property <bool> bd-leap;
+    in-out property <bool> bd-leap-visible: true;
+    in-out property <string> bd-leap-label: "Tháng nhuận";
+    in-out property <string> bd-note;
+    in-out property <string> bd-result;
+    in-out property <string> bd-error;
+    in-out property <string> f-noi-sinh;
+    in-out property <string> e-noi-sinh;
+    in-out property <string> f-tuoi-line;
+    in-out property <bool> f-tuoi-manual;
+    in-out property <string> f-tuoi;
+    in-out property <string> e-tuoi;
+    in-out property <string> f-noi-an-tang;
+    in-out property <string> e-noi-an-tang;
+    in-out property <bool> f-has-photo;
+    in-out property <image> f-photo;
+    in-out property <string> e-photo;
+    // Thông tin báo tử (n-), dùng chung cho biểu mẫu người đã mất và "Cập nhật: đã mất"
+    in-out property <bool> n-open;
+    in-out property <string> n-by;
+    in-out property <string> n-place;
+    in-out property <string> n-d;
+    in-out property <string> n-m;
+    in-out property <string> n-y;
+    in-out property <string> n-reason;
+    in-out property <string> n-note;
+    in-out property <[image]> n-photos;
+    in-out property <string> e-notice;
+    // Nhắc (r-) và sinh nhật âm (r2-)
+    in-out property <bool> r-enabled: true;
+    in-out property <[bool]> r-offs;
+    in-out property <string> r-custom;
+    in-out property <string> r-hh: "07";
+    in-out property <string> r-mm: "00";
+    in-out property <bool> r-tt;
+    in-out property <string> r-error;
+    in-out property <string> r-warn;
+    in-out property <bool> f-am;
+    in-out property <bool> f-am-same: true;
+    in-out property <bool> f-am-allowed;
+    in-out property <bool> r2-enabled: true;
+    in-out property <[bool]> r2-offs;
+    in-out property <string> r2-custom;
+    in-out property <string> r2-hh: "07";
+    in-out property <string> r2-mm: "00";
+    in-out property <string> r2-error;
+    in-out property <bool> f-feb29;
+    in-out property <int> f-feb29-rule; // 0 feb28, 1 mar1
+    // Tưởng niệm
+    in-out property <bool> f-mem-open: false;
+    in-out property <int> f-gio-het: 2;
+    in-out property <string> f-loi;
+    in-out property <string> f-nguong: "60";
+    in-out property <string> e-nguong;
+
+    // "Cập nhật: đã mất" (md-)
+    in-out property <string> md-name;
+    in-out property <int> md-cal;
+    in-out property <string> md-d;
+    in-out property <string> md-m;
+    in-out property <string> md-y;
+    in-out property <bool> md-leap;
+    in-out property <bool> md-unknown;
+    in-out property <bool> md-leap-visible: true;
+    in-out property <string> md-leap-label: "Tháng nhuận";
+    in-out property <string> md-note;
+    in-out property <string> md-result;
+    in-out property <string> md-error;
+
+    // Biểu mẫu sự kiện (ev-, ed-, er-)
+    in-out property <string> ev-person;
+    in-out property <bool> ev-dead;
+    in-out property <string> ev-heading;
+    in-out property <[string]> ev-types;
+    in-out property <int> ev-type: 0;
+    in-out property <bool> ev-other;
+    in-out property <string> ev-new-type;
+    in-out property <string> e-new-type;
+    in-out property <string> ev-title;
+    in-out property <string> e-title;
+    in-out property <int> ed-cal;
+    in-out property <string> ed-d;
+    in-out property <string> ed-m;
+    in-out property <string> ed-y;
+    in-out property <bool> ed-leap;
+    in-out property <bool> ed-unknown;
+    in-out property <bool> ed-leap-visible: true;
+    in-out property <string> ed-leap-label: "Tháng nhuận";
+    in-out property <string> ed-note;
+    in-out property <string> ed-result;
+    in-out property <string> ed-error;
+    in-out property <bool> ev-recurring;
+    in-out property <bool> er-enabled: true;
+    in-out property <[bool]> er-offs;
+    in-out property <string> er-custom;
+    in-out property <string> er-hh: "07";
+    in-out property <string> er-mm: "00";
+    in-out property <string> er-error;
+    in-out property <string> ev-ghi-chu;
+    in-out property <string> e-ev-ghi-chu;
+
+    // Tưởng niệm (m-)
+    in-out property <string> m-dateline;
+    in-out property <string> m-rel;
+    in-out property <string> m-name;
+    in-out property <bool> m-long;
+    in-out property <string> m-hieu;
+    in-out property <string> m-years;
+    in-out property <string> m-tuoi;
+    in-out property <string> m-loi;
+    in-out property <string> m-initial;
+    in-out property <bool> m-has-photo;
+    in-out property <image> m-photo;
+    in-out property <bool> m-incense: true;
+    in-out property <bool> m-smoke: true;
+
+    // Hộp thoại: "" | xac-nhan | ics | tao-sao-luu | khoi-phuc | thay-toan-bo | bo-thay-doi
+    in-out property <string> dlg;
+    in-out property <string> dlg-title;
+    in-out property <[string]> dlg-lines;
+    in-out property <string> dlg-ok: "Đồng ý";
+    in-out property <string> dlg-cancel: "Hủy";
+    in-out property <bool> dlg-danger;
+    in-out property <bool> dlg-busy;
+    in-out property <string> pw1;
+    in-out property <string> pw2;
+    in-out property <string> e-pw1;
+    in-out property <string> e-pw2;
+    in-out property <int> restore-mode: 0; // 0 gộp, 1 thay toàn bộ
+
+    callback go(string);            // chuyển trang con (sap-toi, theo-ky, ho-so, sao-luu)
+    callback back();
+    callback open-person(string);
+    callback open-memorial(string);
+    callback add-dead();
+    callback add-living();
+    callback edit-person();
+    callback delete-person();
+    callback mark-deceased();
+    callback add-event();
+    callback edit-event(string);
+    callback delete-event(string);
+    callback form-changed();
+    callback toggle-off(string, int);
+    callback pick-photo();
+    callback drop-photo();
+    callback add-notice-photo();
+    callback drop-notice-photo(int);
+    callback save-form();
+    callback cancel-form();
+    callback period-kind(int);
+    callback period-filter(int);
+    callback period-step(int);
+    callback period-today();
+    callback settings-changed();
+    callback export-ics();
+    callback create-backup();
+    callback choose-backup();
+    callback open-backup();
+    callback nag-changed(int);
+    callback dlg-confirm();
+    callback dlg-dismiss();
+    callback smoke-toggle();
+    callback dismiss-card(int);
+}
+
+// ---------------- Thành phần ----------------
+
+component Field inherits VerticalLayout {
+    in property <string> label;
+    in property <string> hint;
+    in property <string> error;
+    in-out property <string> text;
+    in property <string> placeholder;
+    in property <bool> multiline: false;
+    in property <bool> password: false;
+    in property <length> box-width: 0px;
+    callback edited();
+    spacing: 4px;
+    T { text: root.label; size: 14; font-weight: 600; color: Theme.ink2; }
+    if !root.multiline: HorizontalLayout {
+        LineEdit {
+            horizontal-stretch: 1;
+            max-width: root.box-width > 0px ? root.box-width : 100000px;
+            text <=> root.text;
+            placeholder-text: root.placeholder;
+            input-type: root.password ? InputType.password : InputType.text;
+            accessible-label: root.label;
+            edited => { root.edited(); }
+        }
+        if root.box-width > 0px: Rectangle { horizontal-stretch: 1; }
+    }
+    if root.multiline: TextEdit {
+        height: 84px;
+        text <=> root.text;
+        wrap: word-wrap;
+        accessible-label: root.label;
+        edited => { root.edited(); }
+    }
+    if root.hint != "": T { text: root.hint; size: 13; color: Theme.ink3; }
+    if root.error != "": T { text: root.error; size: 14; color: Theme.red-ink; font-weight: 600; accessible-role: AccessibleRole.text; accessible-label: root.error; }
+}
+
+// Ô số nhỏ (ngày, tháng, năm, giờ, phút).
+component NumBox inherits VerticalLayout {
+    in property <string> label;
+    in-out property <string> text;
+    in property <length> w: 72px;
+    callback edited();
+    spacing: 3px;
+    T { text: root.label; size: 13; font-weight: 600; color: Theme.ink3; }
+    LineEdit {
+        width: root.w;
+        text <=> root.text;
+        input-type: number;
+        horizontal-alignment: center;
+        accessible-label: root.label;
+        edited => { root.edited(); }
+    }
+}
+
+// Nhóm nút chọn một (kiểu "đang chọn" duy nhất: nền đỏ đậm, chữ trắng).
+component Choice inherits HorizontalLayout {
+    in property <[string]> items;
+    in property <int> current;
+    in property <string> group;
+    callback picked(int);
+    spacing: 6px;
+    alignment: start;
+    for it[i] in root.items: Btn {
+        text: it; kind: "choice"; active: root.current == i; size: 14;
+        accessible-label: root.group + ": " + it;
+        clicked => { root.picked(i); }
+    }
+}
+
+component Check inherits HorizontalLayout {
+    in property <string> text;
+    in-out property <bool> checked;
+    in property <bool> enabled: true;
+    callback toggled();
+    min-height: 40px;
+    CheckBox {
+        text: root.text;
+        checked <=> root.checked;
+        enabled: root.enabled;
+        toggled => { root.toggled(); }
+    }
+}
+
+component Group inherits Rectangle {
+    in property <string> legend;
+    background: Theme.paper;
+    border-radius: 14px;
+    border-width: 1px;
+    border-color: Theme.rule;
+    VerticalLayout {
+        padding: 16px; spacing: 10px;
+        if root.legend != "": S { text: root.legend; size: 18; accessible-role: AccessibleRole.text; accessible-label: root.legend; }
+        @children
+    }
+}
+
+// Ô nhập ngày (§2): Dương/Âm, ba ô số, tháng nhuận, "Không rõ năm" / "Chỉ biết năm", dòng kết quả đổi lịch.
+component DateIn inherits VerticalLayout {
+    in property <string> what: "Ngày";
+    in-out property <int> cal;
+    in-out property <int> prec;
+    in-out property <string> d;
+    in-out property <string> m;
+    in-out property <string> yr;
+    in-out property <bool> leap;
+    in-out property <bool> unknown;
+    in property <bool> allow-lunar: true;
+    in property <bool> allow-year-only: false;
+    in property <bool> allow-unknown: false;
+    in property <string> unknown-text: "Không rõ năm";
+    in property <bool> leap-visible: true;
+    in property <string> leap-label: "Tháng nhuận";
+    in property <string> note;
+    in property <string> result;
+    in property <string> error;
+    in property <[string]> cal-items: ["Nhập theo dương lịch", "Nhập theo âm lịch"];
+    callback changed();
+    spacing: 8px;
+    if root.allow-lunar: Choice {
+        items: root.cal-items; current: root.cal; group: root.what;
+        picked(i) => { root.cal = i; root.changed(); }
+    }
+    if root.allow-year-only: Choice {
+        items: ["Biết đủ ngày", "Chỉ biết năm"]; current: root.prec; group: root.what + " (độ chính xác)";
+        picked(i) => { root.prec = i; root.changed(); }
+    }
+    HorizontalLayout {
+        spacing: 10px; alignment: start;
+        if root.prec == 0: NumBox { label: "Ngày"; text <=> root.d; w: 72px; edited => { root.changed(); } }
+        if root.prec == 0: NumBox { label: "Tháng"; text <=> root.m; w: 72px; edited => { root.changed(); } }
+        if !(root.allow-unknown && root.unknown && root.cal == 1): NumBox { label: "Năm"; text <=> root.yr; w: 96px; edited => { root.changed(); } }
+    }
+    if root.cal == 1 && root.prec == 0 && root.leap-visible: Check {
+        text: root.leap-label; checked <=> root.leap; toggled => { root.changed(); }
+    }
+    if root.cal == 1 && root.allow-unknown: Check {
+        text: root.unknown-text; checked <=> root.unknown; toggled => { root.changed(); }
+    }
+    if root.note != "": T { text: root.note; size: 13; color: Theme.ink3; }
+    if root.result != "": Rectangle {
+        background: Theme.paper2; border-radius: 10px;
+        accessible-role: AccessibleRole.text; accessible-label: root.result;
+        HorizontalLayout { padding: 10px; T { text: root.result; size: 15; font-weight: 600; } }
+    }
+    if root.error != "": T { text: root.error; size: 14; color: Theme.red-ink; font-weight: 600; accessible-role: AccessibleRole.text; accessible-label: root.error; }
+}
+
+// Khối nhắc (§3.4 "Nhắc ngày giỗ"): công tắc, mốc nhắc, ô tự đặt, giờ 24 giờ, tiên thường.
+component RemBlock inherits VerticalLayout {
+    in property <string> key;
+    in property <string> switch-text: "Bật nhắc";
+    in-out property <bool> enabled;
+    in property <[bool]> offs;
+    in-out property <string> custom;
+    in-out property <string> hh;
+    in-out property <string> mm;
+    in-out property <bool> tt;
+    in property <bool> show-tt: false;
+    in property <string> error;
+    in property <string> warn;
+    callback changed();
+    callback toggle(int);
+    spacing: 8px;
+    Check { text: root.switch-text; checked <=> root.enabled; toggled => { root.changed(); } }
+    VerticalLayout {
+        spacing: 8px;
+        opacity: root.enabled ? 1 : 0.55;
+        T { text: "Nhắc trước"; size: 14; font-weight: 600; color: Theme.ink2; }
+        HorizontalLayout {
+            spacing: 6px; alignment: start;
+            for t[i] in ["Đúng ngày", "1 ngày", "3 ngày", "5 ngày", "10 ngày", "15 ngày"]: Btn {
+                text: t; kind: "choice"; size: 14;
+                active: i < root.offs.length && root.offs[i];
+                accessible-label: "Nhắc trước: " + t;
+                clicked => { root.toggle(i); }
+            }
+        }
+        HorizontalLayout {
+            spacing: 12px; alignment: start;
+            NumBox { label: "Tự đặt (1–60 ngày)"; text <=> root.custom; w: 110px; edited => { root.changed(); } }
+            NumBox { label: "Giờ"; text <=> root.hh; w: 64px; edited => { root.changed(); } }
+            VerticalLayout { alignment: end; padding-bottom: 8px; T { text: ":"; size: 18; font-weight: 700; } }
+            NumBox { label: "Phút"; text <=> root.mm; w: 64px; edited => { root.changed(); } }
+        }
+        T { text: "Giờ nhắc theo đồng hồ 24 giờ của máy."; size: 13; color: Theme.ink3; }
+        if root.show-tt: Check { text: "Nhắc thêm ngày tiên thường (lễ cúng hôm trước ngày giỗ)"; checked <=> root.tt; toggled => { root.changed(); } }
+    }
+    if root.warn != "": T { text: root.warn; size: 14; color: Theme.gold; font-weight: 600; }
+    if root.error != "": T { text: root.error; size: 14; color: Theme.red-ink; font-weight: 600; accessible-role: AccessibleRole.text; accessible-label: root.error; }
+}
+
+// Biểu tượng loại lần xuất hiện (vẽ bằng hình, kèm chữ ở nhãn trợ năng).
+component KindIcon inherits Rectangle {
+    in property <int> kind;
+    width: 26px; height: 26px;
+    // Giỗ: ba nén hương
+    if root.kind == 0: Rectangle {
+        for i in 3: Rectangle { x: 6px + i * 6px; y: 4px; width: 2px; height: 16px; background: Theme.gold; }
+        for i in 3: Rectangle { x: 5px + i * 6px; y: 2px; width: 4px; height: 4px; border-radius: 2px; background: Theme.red; }
+        Rectangle { x: 3px; y: 19px; width: 20px; height: 5px; border-radius: 2px; background: Theme.gold; }
+    }
+    // Tiên thường: mâm nhỏ
+    if root.kind == 1: Rectangle {
+        Rectangle { x: 3px; y: 14px; width: 20px; height: 4px; border-radius: 2px; background: Theme.gold; }
+        Rectangle { x: 7px; y: 6px; width: 12px; height: 8px; border-top-left-radius: 6px; border-top-right-radius: 6px; background: Theme.red; }
+        Rectangle { x: 11px; y: 18px; width: 4px; height: 5px; background: Theme.gold; }
+    }
+    // Sinh nhật: bánh có nến
+    if root.kind == 2: Rectangle {
+        Rectangle { x: 4px; y: 13px; width: 18px; height: 10px; border-radius: 3px; background: Theme.red; }
+        Rectangle { x: 12px; y: 5px; width: 2px; height: 8px; background: Theme.gold; }
+        Rectangle { x: 11px; y: 2px; width: 4px; height: 4px; border-radius: 2px; background: Theme.gold; }
+    }
+    // Sự kiện: ngôi sao
+    if root.kind == 3: Icon { source: @image-url("icons/star.svg"); tint: Theme.gold; width: 22px; height: 22px; x: 2px; y: 2px; }
+}
+
+// Mục sự kiện (§2): phần nhìn thấy.
+component PItemBody inherits HorizontalLayout {
+    in property <PItem> it;
+    padding: 10px; spacing: 12px;
+    VerticalLayout {
+        width: 56px; alignment: center; spacing: 0px;
+        T { text: it.wd; size: 13; font-weight: 700; color: it.sunday ? Theme.red-ink : Theme.ink3; horizontal-alignment: center; }
+        S { text: it.day; size: 26; font-weight: 700; color: it.sunday ? Theme.red-ink : Theme.ink; horizontal-alignment: center; }
+        T { text: it.mon; size: 13; color: Theme.ink3; horizontal-alignment: center; wrap: no-wrap; }
+    }
+    Rectangle { width: 1px; background: Theme.rule; }
+    VerticalLayout {
+        spacing: 2px; alignment: center; horizontal-stretch: 1;
+        T { text: it.line1; size: 16; font-weight: 700; color: it.past ? Theme.ink2 : Theme.ink; }
+        T { text: it.line2; size: 14; color: Theme.ink2; }
+        if it.line3 != "": T { text: it.line3; size: 14; color: Theme.ink3; }
+    }
+    VerticalLayout {
+        width: 104px; alignment: center; spacing: 4px;
+        HorizontalLayout { alignment: center; KindIcon { kind: it.kind; } }
+        T { text: it.kind-text; size: 12; color: Theme.ink3; horizontal-alignment: center; }
+        T { text: it.right; size: 14; font-weight: 700; horizontal-alignment: center; color: it.today ? Theme.red-ink : (it.past ? Theme.ink3 : Theme.ink2); }
+    }
+}
+
+// Mục bấm được → mở hồ sơ người đó.
+component PItemRow inherits Rectangle {
+    in property <PItem> it;
+    callback open();
+    background: ta.has-hover ? Theme.paper2 : Theme.paper;
+    border-radius: 12px;
+    border-width: it.today ? 2px : 1px;
+    border-color: it.today ? Theme.red : Theme.rule;
+    accessible-role: button;
+    accessible-label: it.line1 + ", " + it.line2 + ", " + it.right + ". Mở hồ sơ";
+    accessible-action-default => { root.open(); }
+    PItemBody { it: root.it; }
+    ta := TouchArea { clicked => { root.open(); } mouse-cursor: pointer; }
+}
+
+// Mục chỉ để xem (khung "Lần tới" của trang hồ sơ, TK-08).
+component PItemStatic inherits Rectangle {
+    in property <PItem> it;
+    background: Theme.paper;
+    border-radius: 12px;
+    border-width: it.today ? 2px : 1px;
+    border-color: it.today ? Theme.red : Theme.rule;
+    accessible-role: text;
+    accessible-label: it.line1 + ", " + it.line2 + ", " + it.right;
+    PItemBody { it: root.it; }
+}
+
+component Notice inherits Rectangle {
+    in property <string> text;
+    in property <bool> warn: false;
+    background: warn ? Theme.red-tint : Theme.gold-tint;
+    border-radius: 12px;
+    accessible-role: AccessibleRole.text;
+    accessible-label: text;
+    VerticalLayout {
+        padding: 12px; spacing: 8px;
+        T { text: root.text; size: 15; color: root.warn ? Theme.red-ink : Theme.ink; }
+        @children
+    }
+}
+
+component Segments inherits Rectangle {
+    background: Theme.paper2;
+    border-radius: 12px;
+    HorizontalLayout {
+        padding: 4px; spacing: 4px;
+        for s[i] in [
+            { label: "Sắp tới", id: "sap-toi" },
+            { label: "Theo kỳ", id: "theo-ky" },
+            { label: "Hồ sơ", id: "ho-so" },
+            { label: "Sao lưu", id: "sao-luu" },
+        ]: Rectangle {
+            horizontal-stretch: 1;
+            min-height: 48px;
+            border-radius: 9px;
+            background: People.page == s.id ? Theme.red-deep : (seg-ta.has-hover ? Theme.rule : transparent);
+            accessible-role: tab; accessible-label: s.label; accessible-checked: People.page == s.id;
+            accessible-action-default => { People.go(s.id); }
+            T { text: s.label; size: 15; font-weight: 700; color: People.page == s.id ? #ffffff : Theme.ink2; wrap: no-wrap; horizontal-alignment: center; vertical-alignment: center; }
+            seg-ta := TouchArea { clicked => { People.go(s.id); } mouse-cursor: pointer; }
+        }
+    }
+}
+
+component PPage inherits ScrollView {
+    in property <length> maxw: 760px;
+    property <float> sf: People.scroll-frac;
+    changed sf => { self.viewport-y = min(0px, -(self.viewport-height - self.visible-height) * sf); }
+    VerticalLayout {
+        alignment: start;
+        padding: 16px; padding-top: 8px; padding-bottom: 28px;
+        HorizontalLayout {
+            alignment: center;
+            VerticalLayout {
+                max-width: root.maxw; preferred-width: root.maxw;
+                spacing: 14px;
+                @children
+            }
+        }
+    }
+}
+
+component Head inherits VerticalLayout {
+    spacing: 10px;
+    VerticalLayout {
+        spacing: 4px;
+        S { text: "Người thân"; size: 30; accessible-role: AccessibleRole.text; accessible-label: "Người thân"; }
+        T { text: "Ngày giỗ, sinh nhật và sự kiện của gia đình. Dữ liệu chỉ nằm trên máy này."; color: Theme.ink2; size: 16; }
+    }
+    Segments { }
+    if People.toast != "": Rectangle {
+        background: Theme.green-tint; border-radius: 12px;
+        accessible-role: AccessibleRole.text; accessible-label: People.toast;
+        HorizontalLayout { padding: 10px; T { text: People.toast; color: Theme.green; size: 15; font-weight: 600; } }
+    }
+    if People.store-error != "": Notice { warn: true; text: People.store-error; }
+}
+
+component SubHead inherits VerticalLayout {
+    in property <string> title;
+    in property <string> sub;
+    spacing: 4px;
+    HorizontalLayout { alignment: start; LinkBtn { text: People.back-label; clicked => { People.back(); } } }
+    S { text: root.title; size: 28; accessible-role: AccessibleRole.text; accessible-label: root.title; }
+    if root.sub != "": T { text: root.sub; color: Theme.ink2; size: 16; }
+    if People.toast != "": Rectangle {
+        background: Theme.green-tint; border-radius: 12px;
+        accessible-role: AccessibleRole.text; accessible-label: People.toast;
+        HorizontalLayout { padding: 10px; T { text: People.toast; color: Theme.green; size: 15; font-weight: 600; } }
+    }
+}
+
+component Welcome inherits Group {
+    VerticalLayout {
+        spacing: 12px;
+        T { text: "Chưa có ai trong sổ. Thêm ông bà, cha mẹ đã khuất để được nhắc ngày giỗ theo âm lịch; thêm người đang sống để nhớ sinh nhật và ngày kỷ niệm."; size: 16; color: Theme.ink2; }
+        HorizontalLayout {
+            spacing: 10px; alignment: start;
+            Btn { text: "+ Thêm người đã mất"; kind: "primary"; clicked => { People.add-dead(); } }
+            Btn { text: "+ Thêm người đang sống"; kind: "outline"; clicked => { People.add-living(); } }
+        }
+    }
+}
+
+// ---------------- Trang ----------------
+
+component UpcomingPage inherits PPage {
+    Head { }
+    for c[i] in People.cards: Rectangle {
+        background: Theme.gold-tint; border-radius: 14px;
+        border-width: 1px; border-color: Theme.gold;
+        accessible-role: AccessibleRole.text; accessible-label: c.title + ". " + c.sub;
+        VerticalLayout {
+            padding: 12px; spacing: 6px;
+            S { text: c.title; size: 18; }
+            T { text: c.sub; size: 14; color: Theme.ink2; }
+            HorizontalLayout {
+                spacing: 8px; alignment: start;
+                if c.memorial: Btn { text: "Mở trang tưởng niệm"; kind: "primary"; clicked => { People.open-memorial(c.pid); } }
+                Btn { text: "Xem"; kind: "outline"; accessible-label: "Xem: " + c.title; clicked => { People.open-person(c.pid); } }
+                Btn { text: "Đã biết"; accessible-label: "Đã biết: " + c.title; clicked => { People.dismiss-card(i); } }
+            }
+        }
+    }
+    if People.cards-more > 0: T { text: "… và " + People.cards-more + " lời nhắc khác hôm nay (xem danh sách bên dưới)."; size: 14; color: Theme.ink2; }
+    if People.backup-nag: Notice {
+        text: People.backup-nag-text;
+        HorizontalLayout { alignment: start; Btn { text: "Sao lưu ngay"; kind: "primary"; clicked => { People.go("sao-luu"); } } }
+    }
+    if !People.has-any && People.store-error == "": Welcome { }
+    if People.has-any: Group {
+        legend: "30 ngày tới";
+        if People.upcoming.length == 0: VerticalLayout {
+            spacing: 6px;
+            T { text: "Trong 30 ngày tới không có ngày giỗ, sinh nhật hay sự kiện nào."; size: 15; color: Theme.ink2; }
+            HorizontalLayout { alignment: start; LinkBtn { text: "Xem theo tháng, quý, năm"; clicked => { People.go("theo-ky"); } } }
+        }
+        for it in People.upcoming: VerticalLayout {
+            spacing: 6px;
+            PItemRow { it: it; open => { People.open-person(it.pid); } }
+            if it.memorial: HorizontalLayout { alignment: start; Btn { text: "Mở trang tưởng niệm"; kind: "outline"; accessible-label: "Mở trang tưởng niệm: " + it.line1; clicked => { People.open-memorial(it.pid); } } }
+        }
+    }
+    if People.has-any: HorizontalLayout {
+        spacing: 10px; alignment: start;
+        Btn { text: "+ Thêm người đã mất"; kind: "primary"; clicked => { People.add-dead(); } }
+        Btn { text: "+ Thêm người đang sống"; kind: "outline"; clicked => { People.add-living(); } }
+    }
+    // Cài đặt nhắc trên máy này (Windows): thay khung "Lời nhắc trên ứng dụng web" của bản PWA (§5.4).
+    Group {
+        legend: "Lời nhắc trên Windows";
+        Rectangle {
+            background: People.notif-ok ? Theme.green-tint : Theme.gold-tint; border-radius: 10px;
+            accessible-role: AccessibleRole.text; accessible-label: People.notif-status;
+            HorizontalLayout { padding: 10px; T { text: People.notif-status; size: 14; color: People.notif-ok ? Theme.green : Theme.ink; } }
+        }
+        Check { text: "Bật lời nhắc (thông báo của Windows)"; checked <=> People.rem-enabled; toggled => { People.settings-changed(); } }
+        Check { text: "Hiện tên người trong thông báo"; checked <=> People.show-names; toggled => { People.settings-changed(); } }
+        T { text: "Mặc định thông báo không ghi tên (ví dụ \"Sắp đến ngày giỗ\"), để người khác nhìn màn hình không biết là ai. Cài đặt này chỉ lưu trên máy này, không vào tệp sao lưu."; size: 13; color: Theme.ink3; }
+        T { text: "Mặc định cho hồ sơ mới"; size: 15; font-weight: 700; }
+        RemBlock {
+            key: "def"; switch-text: "Nhắc cho hồ sơ mới";
+            enabled: true; offs: People.def-offs;
+            custom <=> People.def-custom; hh <=> People.def-hh; mm <=> People.def-mm;
+            error: People.def-error;
+            changed => { People.settings-changed(); }
+            toggle(i) => { People.toggle-off("def", i); }
+        }
+    }
+}
+
+component PeriodPage inherits PPage {
+    Head { }
+    if !People.has-any && People.store-error == "": Welcome { }
+    if People.has-any: VerticalLayout {
+        spacing: 12px;
+        Choice {
+            items: ["Tuần", "Tháng", "Quý", "Năm"]; current: People.pkind; group: "Loại kỳ";
+            picked(i) => { People.period-kind(i); }
+        }
+        Choice {
+            items: ["Tất cả", "Người đã mất", "Người đang sống"]; current: People.pfilter; group: "Bộ lọc";
+            picked(i) => { People.period-filter(i); }
+        }
+        if People.pnote != "": T { text: People.pnote; size: 13; color: Theme.ink3; }
+        HorizontalLayout {
+            spacing: 10px;
+            RoundBtn { icon: @image-url("icons/prev.svg"); label: "Kỳ trước"; clicked => { People.period-step(-1); } }
+            S { text: People.ptitle; size: 20; horizontal-alignment: center; vertical-alignment: center; horizontal-stretch: 1; wrap: word-wrap; accessible-role: AccessibleRole.text; accessible-label: People.ptitle; }
+            RoundBtn { icon: @image-url("icons/next.svg"); label: "Kỳ sau"; clicked => { People.period-step(1); } }
+        }
+        HorizontalLayout {
+            alignment: center;
+            if !People.pcurrent: Btn { text: "Hôm nay"; kind: "outline"; clicked => { People.period-today(); } }
+            if People.pcurrent: T { text: "Đang xem kỳ có hôm nay"; size: 14; color: Theme.ink3; vertical-alignment: center; min-height: 44px; }
+        }
+        T { text: People.pcount; size: 15; font-weight: 700; color: Theme.ink2; accessible-role: AccessibleRole.text; accessible-label: People.pcount; }
+        if People.pitems.length == 0: T { text: People.pempty; size: 15; color: Theme.ink2; }
+        for it in People.pitems: VerticalLayout {
+            spacing: 6px;
+            if it.header != "": S { text: it.header; size: 18; accessible-role: AccessibleRole.text; accessible-label: it.header; }
+            PItemRow { it: it; open => { People.open-person(it.pid); } }
+        }
+    }
+}
+
+component PersonRowBtn inherits Rectangle {
+    in property <PRow> r;
+    background: ta.has-hover ? Theme.paper2 : Theme.paper;
+    border-radius: 12px; border-width: 1px; border-color: Theme.rule;
+    accessible-role: button;
+    accessible-label: r.name + (r.rel != "" ? ", " + r.rel : "") + ". " + r.summary;
+    accessible-action-default => { People.open-person(r.id); }
+    HorizontalLayout {
+        padding: 10px; spacing: 12px;
+        Rectangle {
+            width: 44px; height: 44px; border-radius: 22px; background: Theme.gold-tint;
+            S { text: r.initial; size: 20; color: Theme.gold; horizontal-alignment: center; vertical-alignment: center; }
+        }
+        VerticalLayout {
+            alignment: center; spacing: 2px; horizontal-stretch: 1;
+            T { text: r.name; size: 16; font-weight: 700; }
+            if r.rel != "": T { text: r.rel; size: 14; color: Theme.ink2; }
+            T { text: r.summary; size: 14; color: Theme.ink2; }
+        }
+    }
+    ta := TouchArea { clicked => { People.open-person(r.id); } mouse-cursor: pointer; }
+}
+
+component ListPage inherits PPage {
+    Head { }
+    Group {
+        HorizontalLayout {
+            S { text: "Người đã mất (" + People.dead.length + ")"; size: 19; vertical-alignment: center; horizontal-stretch: 1; }
+            Btn { text: "+ Thêm"; kind: "outline"; accessible-label: "Thêm người đã mất"; clicked => { People.add-dead(); } }
+        }
+        if People.dead.length == 0: T { text: "Chưa có ai."; size: 15; color: Theme.ink3; }
+        for r in People.dead: PersonRowBtn { r: r; }
+    }
+    Group {
+        HorizontalLayout {
+            S { text: "Người đang sống (" + People.living.length + ")"; size: 19; vertical-alignment: center; horizontal-stretch: 1; }
+            Btn { text: "+ Thêm"; kind: "outline"; accessible-label: "Thêm người đang sống"; clicked => { People.add-living(); } }
+        }
+        if People.living.length == 0: T { text: "Chưa có ai."; size: 15; color: Theme.ink3; }
+        for r in People.living: PersonRowBtn { r: r; }
+    }
+}
+
+component BackupPage inherits PPage {
+    Head { }
+    Group {
+        legend: "Để lịch của máy tự nhắc: xuất lịch (.ics)";
+        T { text: "Tệp lịch (.ics) mở được bằng Outlook, Lịch của Windows, lịch điện thoại. Ứng dụng này đã có thông báo của Windows; tệp lịch hữu ích khi bạn muốn nhắc trên điện thoại hoặc máy khác."; size: 15; color: Theme.ink2; }
+        HorizontalLayout { alignment: start; Btn { text: "Xuất tệp lịch (.ics)…"; kind: "primary"; enabled: People.ics-enabled; clicked => { People.export-ics(); } } }
+        if People.ics-note != "": T { text: People.ics-note; size: 13; color: Theme.ink3; }
+    }
+    Group {
+        legend: "Sao lưu dữ liệu";
+        T { text: People.last-backup; size: 15; color: Theme.ink2; accessible-role: AccessibleRole.text; accessible-label: People.last-backup; }
+        HorizontalLayout { alignment: start; Btn { text: "Tạo tệp sao lưu…"; kind: "primary"; clicked => { People.create-backup(); } } }
+        T { text: "Nhắc sao lưu khi có thay đổi chưa sao lưu sau:"; size: 14; font-weight: 600; color: Theme.ink2; }
+        Choice {
+            items: ["30 ngày", "60 ngày", "90 ngày", "Không nhắc"]; current: People.nag-index; group: "Nhắc sao lưu";
+            picked(i) => { People.nag-changed(i); }
+        }
+    }
+    Group {
+        legend: "Khôi phục từ tệp sao lưu";
+        HorizontalLayout { alignment: start; Btn { text: "Chọn tệp sao lưu…"; kind: "outline"; clicked => { People.choose-backup(); } } }
+        T { text: People.restore-file; size: 14; color: Theme.ink2; accessible-role: AccessibleRole.text; accessible-label: People.restore-file; }
+        Field { label: "Mật khẩu của tệp"; text <=> People.restore-pw; password: true; box-width: 320px; }
+        if People.restore-error != "": T { text: People.restore-error; size: 14; color: Theme.red-ink; font-weight: 600; accessible-role: AccessibleRole.text; accessible-label: People.restore-error; }
+        HorizontalLayout { alignment: start; Btn { text: "Mở tệp"; kind: "outline"; clicked => { People.open-backup(); } } }
+    }
+}
+
+component PhotoOval inherits Rectangle {
+    in property <bool> has;
+    in property <image> img;
+    in property <string> initial;
+    in property <length> w: 120px;
+    width: w; height: w * 1.25;
+    border-radius: w / 2;
+    clip: true;
+    background: Theme.paper2;
+    border-width: 2px; border-color: #b8893a;
+    accessible-role: AccessibleRole.text;
+    accessible-label: has ? "Ảnh chân dung" : "Chưa có ảnh";
+    if root.has: Image { width: parent.width; height: parent.height; source: root.img; image-fit: cover; }
+    if !root.has: S { text: root.initial; size: 40; color: Theme.ink3; horizontal-alignment: center; vertical-alignment: center; }
+}
+
+component PersonPage inherits PPage {
+    SubHead { title: People.v-missing ? "Không tìm thấy hồ sơ" : ""; }
+    if People.v-missing: T { text: "Không tìm thấy hồ sơ này (có thể đã bị xóa)."; size: 16; }
+    if !People.v-missing: VerticalLayout {
+        spacing: 14px;
+        HorizontalLayout {
+            spacing: 16px;
+            if People.v-dead: PhotoOval { has: People.v-has-photo; img: People.v-photo; initial: People.v-initial; w: 104px; }
+            VerticalLayout {
+                spacing: 4px; alignment: center; horizontal-stretch: 1;
+                S { text: People.v-name; size: 28; accessible-role: AccessibleRole.text; accessible-label: People.v-name; }
+                if People.v-rel != "": T { text: People.v-rel; size: 16; color: Theme.ink2; }
+                if People.v-sub != "": T { text: People.v-sub; size: 15; color: Theme.ink2; }
+                HorizontalLayout {
+                    spacing: 8px; alignment: start; padding-top: 6px;
+                    if People.v-dead: Btn { text: "Tưởng niệm"; kind: "primary"; clicked => { People.open-memorial(People.v-id); } }
+                    Btn { text: "Sửa"; kind: "outline"; accessible-label: "Sửa hồ sơ"; clicked => { People.edit-person(); } }
+                    if !People.v-dead: Btn { text: "Cập nhật: đã mất"; kind: "outline"; clicked => { People.mark-deceased(); } }
+                }
+            }
+        }
+        Group {
+            legend: "Lần tới";
+            if People.v-next.length == 0: T { text: "Không có lần nào trong 12 tháng tới."; size: 15; color: Theme.ink2; }
+            for it in People.v-next: PItemStatic { it: it; }
+        }
+        Group {
+            legend: "Thông tin";
+            for kv in People.v-info: HorizontalLayout {
+                spacing: 12px;
+                accessible-role: AccessibleRole.text; accessible-label: kv.k + ": " + kv.v;
+                T { text: kv.k; width: 170px; size: 14; color: Theme.ink3; font-weight: 600; }
+                T { text: kv.v; size: 15; horizontal-stretch: 1; }
+            }
+        }
+        if People.v-dead && (People.v-notice.length > 0 || People.v-notice-photos.length > 0): Group {
+            Rectangle {
+                min-height: 44px;
+                accessible-role: button;
+                accessible-label: People.v-notice-open ? "Thu gọn thông tin báo tử" : "Mở thông tin báo tử";
+                accessible-action-default => { People.v-notice-open = !People.v-notice-open; }
+                HorizontalLayout {
+                    S { text: "Thông tin báo tử"; size: 18; vertical-alignment: center; horizontal-stretch: 1; }
+                    VerticalLayout { alignment: center; Icon { source: People.v-notice-open ? @image-url("icons/up.svg") : @image-url("icons/down.svg"); tint: Theme.ink2; } }
+                }
+                TouchArea { clicked => { People.v-notice-open = !People.v-notice-open; } mouse-cursor: pointer; }
+            }
+            if People.v-notice-open: VerticalLayout {
+                spacing: 8px;
+                for kv in People.v-notice: HorizontalLayout {
+                    spacing: 12px;
+                    accessible-role: AccessibleRole.text; accessible-label: kv.k + ": " + kv.v;
+                    T { text: kv.k; width: 170px; size: 14; color: Theme.ink3; font-weight: 600; }
+                    T { text: kv.v; size: 15; horizontal-stretch: 1; }
+                }
+                HorizontalLayout {
+                    spacing: 10px; alignment: start;
+                    for p in People.v-notice-photos: Rectangle {
+                        width: 150px; height: 190px; border-width: 1px; border-color: Theme.rule; border-radius: 6px; clip: true;
+                        accessible-role: AccessibleRole.text; accessible-label: "Ảnh giấy báo tử";
+                        Image { width: parent.width; height: parent.height; source: p; image-fit: contain; }
+                    }
+                }
+            }
+        }
+        Group {
+            HorizontalLayout {
+                S { text: "Sự kiện"; size: 18; vertical-alignment: center; horizontal-stretch: 1; }
+                Btn { text: "+ Thêm sự kiện"; kind: "outline"; clicked => { People.add-event(); } }
+            }
+            if People.v-events.length == 0: T { text: "Chưa có sự kiện nào."; size: 15; color: Theme.ink3; }
+            for e in People.v-events: HorizontalLayout {
+                spacing: 8px;
+                T { text: e.text; size: 15; vertical-alignment: center; horizontal-stretch: 1; accessible-role: AccessibleRole.text; accessible-label: e.text; }
+                Btn { text: "Sửa"; accessible-label: "Sửa sự kiện: " + e.text; clicked => { People.edit-event(e.id); } }
+                Btn { text: "Xóa"; accessible-label: "Xóa sự kiện: " + e.text; clicked => { People.delete-event(e.id); } }
+            }
+            if People.v-dead: T { text: "Không nhắc sinh nhật và sự kiện của người đã mất — chỉ nhắc ngày giỗ. Thông tin vẫn được lưu và sao lưu."; size: 13; color: Theme.ink3; }
+        }
+        Group {
+            legend: "Nhắc";
+            T { text: People.v-remind; size: 15; color: Theme.ink2; accessible-role: AccessibleRole.text; accessible-label: People.v-remind; }
+        }
+        HorizontalLayout {
+            alignment: start;
+            Btn { text: "Xóa hồ sơ"; kind: "danger"; clicked => { People.delete-person(); } }
+        }
+    }
+}
+
+component FormButtons inherits HorizontalLayout {
+    alignment: end; spacing: 10px; padding-top: 4px;
+    Btn { text: "Hủy"; kind: "outline"; clicked => { People.cancel-form(); } }
+    Btn { text: "Lưu"; kind: "primary"; clicked => { People.save-form(); } }
+}
+
+component NoticeBlock inherits Group {
+    in property <bool> collapsible: true;
+    Rectangle {
+        min-height: 44px;
+        accessible-role: button;
+        accessible-label: People.n-open ? "Thu gọn thông tin báo tử" : "Mở thông tin báo tử (không bắt buộc)";
+        accessible-action-default => { People.n-open = !People.n-open; }
+        HorizontalLayout {
+            S { text: "Thông tin báo tử (không bắt buộc)"; size: 18; vertical-alignment: center; horizontal-stretch: 1; }
+            VerticalLayout { alignment: center; Icon { source: People.n-open ? @image-url("icons/up.svg") : @image-url("icons/down.svg"); tint: Theme.ink2; } }
+        }
+        TouchArea { clicked => { People.n-open = !People.n-open; } mouse-cursor: pointer; }
+    }
+    if People.n-open: VerticalLayout {
+        spacing: 10px;
+        T { text: "Chỉ hiện trên trang hồ sơ này. Không đưa vào lời nhắc, thông báo, tệp lịch (.ics) hay trang tưởng niệm; có trong tệp sao lưu (đã mã hóa)."; size: 13; color: Theme.ink3; }
+        Field { label: "Người báo tin"; text <=> People.n-by; edited => { People.form-changed(); } }
+        Field { label: "Mất tại"; text <=> People.n-place; edited => { People.form-changed(); } }
+        HorizontalLayout {
+            spacing: 10px; alignment: start;
+            NumBox { label: "Ngày nhận tin"; text <=> People.n-d; edited => { People.form-changed(); } }
+            NumBox { label: "Tháng"; text <=> People.n-m; edited => { People.form-changed(); } }
+            NumBox { label: "Năm (dương lịch)"; text <=> People.n-y; w: 120px; edited => { People.form-changed(); } }
+        }
+        Field { label: "Lý do"; text <=> People.n-reason; multiline: true; edited => { People.form-changed(); } }
+        T { text: "Ảnh giấy báo tử (tối đa 4)"; size: 14; font-weight: 600; color: Theme.ink2; }
+        HorizontalLayout {
+            spacing: 10px; alignment: start;
+            for p[i] in People.n-photos: VerticalLayout {
+                spacing: 4px;
+                Rectangle {
+                    width: 96px; height: 120px; border-width: 1px; border-color: Theme.rule; border-radius: 6px; clip: true;
+                    Image { width: parent.width; height: parent.height; source: p; image-fit: contain; }
+                }
+                Btn { text: "Bỏ ảnh"; size: 13; accessible-label: "Bỏ ảnh giấy báo tử " + (i + 1); clicked => { People.drop-notice-photo(i); } }
+            }
+        }
+        if People.n-photos.length < 4: HorizontalLayout { alignment: start; Btn { text: "Thêm ảnh giấy báo tử"; kind: "outline"; clicked => { People.add-notice-photo(); } } }
+        Field { label: "Ghi chú"; text <=> People.n-note; multiline: true; edited => { People.form-changed(); } }
+        if People.e-notice != "": T { text: People.e-notice; size: 14; color: Theme.red-ink; font-weight: 600; accessible-role: AccessibleRole.text; accessible-label: People.e-notice; }
+    }
+}
+
+component PersonFormPage inherits PPage {
+    maxw: 700px;
+    SubHead { title: People.f-title; sub: People.f-subtitle; }
+    if People.f-summary != "": Notice { warn: true; text: People.f-summary; }
+    Group {
+        legend: People.f-dead ? "Người đã mất" : "Người đang sống";
+        Field { label: "Cách gọi (đứng trước tên)"; hint: "Ví dụ: cụ, kỵ, ông, bà, bác, chú, cô, dì, bố, mẹ…"; text <=> People.f-danh-xung; error: People.e-danh-xung; box-width: 240px; edited => { People.form-changed(); } }
+        Field { label: "Họ và tên *"; text <=> People.f-ho-ten; error: People.e-ho-ten; edited => { People.form-changed(); } }
+        Field { label: "Tên hiệu / pháp danh"; text <=> People.f-ten-hieu; error: People.e-ten-hieu; edited => { People.form-changed(); } }
+        Field {
+            label: "Quan hệ với bạn";
+            hint: People.f-dead ? "Ví dụ: Bố, Mẹ, Ông nội, Bà ngoại, Cụ ông, Kỵ bà, Ông cố, Bà sơ… Trang tưởng niệm ghi quan hệ này phía trên tên, ví dụ “Ông nội”, “Mẹ”. Để trống thì chỉ ghi tên." : "Ví dụ: Bố, Mẹ, Anh, Chị, Em, Chồng, Vợ, Con trai, Con gái, Cháu…";
+            text <=> People.f-quan-he; error: People.e-quan-he; edited => { People.form-changed(); }
+        }
+        Field { label: "Ghi chú"; text <=> People.f-ghi-chu; error: People.e-ghi-chu; multiline: true; edited => { People.form-changed(); } }
+    }
+    if People.f-dead: Group {
+        legend: "Ngày mất *";
+        DateIn {
+            what: "Ngày mất";
+            cal <=> People.dd-cal; d <=> People.dd-d; m <=> People.dd-m; yr <=> People.dd-y;
+            leap <=> People.dd-leap; unknown <=> People.dd-unknown;
+            allow-unknown: true; unknown-text: "Không rõ năm mất";
+            leap-visible: People.dd-leap-visible; leap-label: People.dd-leap-label; note: People.dd-note;
+            result: People.dd-result; error: People.dd-error;
+            changed => { People.form-changed(); }
+        }
+    }
+    Group {
+        legend: People.f-dead ? "Ngày sinh và nơi sinh" : "Ngày sinh";
+        DateIn {
+            what: "Ngày sinh";
+            cal <=> People.bd-cal; prec <=> People.bd-prec; d <=> People.bd-d; m <=> People.bd-m; yr <=> People.bd-y;
+            leap <=> People.bd-leap; allow-year-only: true;
+            cal-items: ["Dương lịch", "Âm lịch"];
+            leap-visible: People.bd-leap-visible; leap-label: People.bd-leap-label; note: People.bd-note;
+            result: People.bd-result; error: People.bd-error;
+            changed => { People.form-changed(); }
+        }
+        Field { label: "Nơi sinh"; text <=> People.f-noi-sinh; error: People.e-noi-sinh; edited => { People.form-changed(); } }
+        if People.f-dead: VerticalLayout {
+            spacing: 6px;
+            T { text: People.f-tuoi-line; size: 16; font-weight: 700; accessible-role: AccessibleRole.text; accessible-label: People.f-tuoi-line; }
+            Check { text: "Tự nhập tuổi (khi gia đình ghi khác)"; checked <=> People.f-tuoi-manual; toggled => { People.form-changed(); } }
+            if People.f-tuoi-manual: NumBox { label: "Tuổi (1–150)"; text <=> People.f-tuoi; w: 96px; edited => { People.form-changed(); } }
+            if People.e-tuoi != "": T { text: People.e-tuoi; size: 14; color: Theme.red-ink; font-weight: 600; }
+        }
+        if !People.f-dead && People.f-feb29: VerticalLayout {
+            spacing: 6px;
+            T { text: "Sinh ngày 29/02 — năm không nhuận mừng sinh nhật vào:"; size: 14; font-weight: 600; color: Theme.ink2; }
+            Choice { items: ["28/02", "01/03"]; current: People.f-feb29-rule; group: "Năm không nhuận"; picked(i) => { People.f-feb29-rule = i; People.form-changed(); } }
+        }
+    }
+    if !People.f-dead: Group {
+        legend: "Nhắc sinh nhật";
+        RemBlock {
+            key: "r"; switch-text: "Nhắc sinh nhật";
+            enabled <=> People.r-enabled; offs: People.r-offs; custom <=> People.r-custom; hh <=> People.r-hh; mm <=> People.r-mm;
+            error: People.r-error; warn: People.r-warn;
+            changed => { People.form-changed(); }
+            toggle(i) => { People.toggle-off("r", i); }
+        }
+        Check { text: "Nhắc cả sinh nhật âm lịch hằng năm"; checked <=> People.f-am; enabled: People.f-am-allowed; toggled => { People.form-changed(); } }
+        if !People.f-am-allowed: T { text: "Cần biết đủ ngày sinh"; size: 13; color: Theme.ink3; }
+        if People.f-am && People.f-am-allowed: Check { text: "Nhắc sinh nhật âm lịch giống nhắc sinh nhật dương lịch"; checked <=> People.f-am-same; toggled => { People.form-changed(); } }
+        if People.f-am && People.f-am-allowed && !People.f-am-same: VerticalLayout {
+            spacing: 8px;
+            S { text: "Nhắc sinh nhật âm lịch"; size: 16; }
+            RemBlock {
+                key: "r2"; switch-text: "Nhắc sinh nhật âm lịch";
+                enabled <=> People.r2-enabled; offs: People.r2-offs; custom <=> People.r2-custom; hh <=> People.r2-hh; mm <=> People.r2-mm;
+                error: People.r2-error;
+                changed => { People.form-changed(); }
+                toggle(i) => { People.toggle-off("r2", i); }
+            }
+        }
+    }
+    if People.f-dead: Group {
+        legend: "Nơi an táng và ảnh";
+        Field { label: "Nơi an táng"; text <=> People.f-noi-an-tang; error: People.e-noi-an-tang; edited => { People.form-changed(); } }
+        HorizontalLayout {
+            spacing: 14px; alignment: start;
+            PhotoOval { has: People.f-has-photo; img: People.f-photo; initial: "?"; w: 96px; }
+            VerticalLayout {
+                spacing: 8px; alignment: center;
+                Btn { text: People.f-has-photo ? "Đổi ảnh" : "Chọn ảnh"; kind: "outline"; clicked => { People.pick-photo(); } }
+                if People.f-has-photo: Btn { text: "Bỏ ảnh"; clicked => { People.drop-photo(); } }
+            }
+        }
+        T { text: "Ảnh chỉ lưu trong ứng dụng trên máy này, đã bỏ thông tin vị trí và máy chụp."; size: 13; color: Theme.ink3; }
+        if People.e-photo != "": T { text: People.e-photo; size: 14; color: Theme.red-ink; font-weight: 600; accessible-role: AccessibleRole.text; accessible-label: People.e-photo; }
+    }
+    if People.f-dead: NoticeBlock { }
+    if People.f-dead: Group {
+        legend: "Nhắc ngày giỗ";
+        RemBlock {
+            key: "r"; switch-text: "Nhắc ngày giỗ"; show-tt: true;
+            enabled <=> People.r-enabled; offs: People.r-offs; custom <=> People.r-custom; hh <=> People.r-hh; mm <=> People.r-mm; tt <=> People.r-tt;
+            error: People.r-error; warn: People.r-warn;
+            changed => { People.form-changed(); }
+            toggle(i) => { People.toggle-off("r", i); }
+        }
+    }
+    if People.f-dead: Group {
+        Rectangle {
+            min-height: 44px;
+            accessible-role: button;
+            accessible-label: People.f-mem-open ? "Thu gọn Tưởng niệm" : "Mở Tưởng niệm";
+            accessible-action-default => { People.f-mem-open = !People.f-mem-open; }
+            HorizontalLayout {
+                S { text: "Tưởng niệm"; size: 18; vertical-alignment: center; horizontal-stretch: 1; }
+                VerticalLayout { alignment: center; Icon { source: People.f-mem-open ? @image-url("icons/up.svg") : @image-url("icons/down.svg"); tint: Theme.ink2; } }
+            }
+            TouchArea { clicked => { People.f-mem-open = !People.f-mem-open; } mouse-cursor: pointer; }
+        }
+        if People.f-mem-open: VerticalLayout {
+            spacing: 10px;
+            T { text: "Giỗ hết (giỗ lần cuối của thời gian để tang) vào"; size: 14; font-weight: 600; color: Theme.ink2; }
+            Choice { items: ["Năm thứ 2 sau năm mất", "Năm thứ 3 sau năm mất"]; current: People.f-gio-het - 2; group: "Giỗ hết"; picked(i) => { People.f-gio-het = i + 2; People.form-changed(); } }
+            Field { label: "Lời tưởng niệm"; text <=> People.f-loi; multiline: true; edited => { People.form-changed(); } }
+            NumBox { label: "Mất trước tuổi này thì ghi “hưởng dương” (mất sớm) thay cho “hưởng thọ”"; text <=> People.f-nguong; w: 96px; edited => { People.form-changed(); } }
+            if People.e-nguong != "": T { text: People.e-nguong; size: 14; color: Theme.red-ink; font-weight: 600; }
+        }
+    }
+    FormButtons { }
+}
+
+component MarkDeceasedPage inherits PPage {
+    maxw: 700px;
+    SubHead { title: "Cập nhật: đã mất"; sub: People.md-name; }
+    T { text: "Ghi lại ngày mất của " + People.md-name + ". Hồ sơ, ảnh và ngày sinh được giữ nguyên; ứng dụng sẽ nhắc ngày giỗ hằng năm."; size: 15; color: Theme.ink2; }
+    if People.f-summary != "": Notice { warn: true; text: People.f-summary; }
+    Group {
+        legend: "Ngày mất *";
+        DateIn {
+            what: "Ngày mất";
+            cal <=> People.md-cal; d <=> People.md-d; m <=> People.md-m; yr <=> People.md-y;
+            leap <=> People.md-leap; unknown <=> People.md-unknown;
+            allow-unknown: true; unknown-text: "Không rõ năm mất";
+            leap-visible: People.md-leap-visible; leap-label: People.md-leap-label; note: People.md-note;
+            result: People.md-result; error: People.md-error;
+            changed => { People.form-changed(); }
+        }
+    }
+    NoticeBlock { }
+    FormButtons { }
+}
+
+component EventFormPage inherits PPage {
+    maxw: 700px;
+    SubHead { title: People.ev-heading; }
+    if People.f-summary != "": Notice { warn: true; text: People.f-summary; }
+    Group {
+        legend: "Sự kiện";
+        T { text: "Loại"; size: 14; font-weight: 600; color: Theme.ink2; }
+        HorizontalLayout {
+            alignment: start;
+            ComboBox {
+                width: 280px;
+                model: People.ev-types;
+                current-index: People.ev-type;
+                selected => { People.ev-type = self.current-index; People.form-changed(); }
+            }
+        }
+        if People.ev-other: Field { label: "Tên loại mới"; text <=> People.ev-new-type; error: People.e-new-type; edited => { People.form-changed(); } }
+        Field { label: "Tiêu đề"; hint: "Để trống sẽ dùng tên loại"; text <=> People.ev-title; error: People.e-title; edited => { People.form-changed(); } }
+        Field { label: "Ghi chú"; text <=> People.ev-ghi-chu; error: People.e-ev-ghi-chu; multiline: true; edited => { People.form-changed(); } }
+    }
+    Group {
+        legend: "Ngày *";
+        DateIn {
+            what: "Ngày sự kiện";
+            cal <=> People.ed-cal; d <=> People.ed-d; m <=> People.ed-m; yr <=> People.ed-y;
+            leap <=> People.ed-leap; unknown <=> People.ed-unknown;
+            allow-unknown: People.ev-recurring; unknown-text: "Không rõ năm";
+            cal-items: ["Dương lịch", "Âm lịch"];
+            leap-visible: People.ed-leap-visible; leap-label: People.ed-leap-label; note: People.ed-note;
+            result: People.ed-result; error: People.ed-error;
+            changed => { People.form-changed(); }
+        }
+        Check { text: "Lặp lại hằng năm"; checked <=> People.ev-recurring; toggled => { People.form-changed(); } }
+    }
+    Group {
+        legend: "Nhắc";
+        if People.ev-dead: T { text: "Không nhắc sự kiện của người đã mất — với người đã mất, ứng dụng chỉ nhắc ngày giỗ. Sự kiện vẫn được lưu và hiện trên hồ sơ."; size: 15; color: Theme.ink2; }
+        if !People.ev-dead: RemBlock {
+            key: "er"; switch-text: "Nhắc sự kiện này";
+            enabled <=> People.er-enabled; offs: People.er-offs; custom <=> People.er-custom; hh <=> People.er-hh; mm <=> People.er-mm;
+            error: People.er-error;
+            changed => { People.form-changed(); }
+            toggle(i) => { People.toggle-off("er", i); }
+        }
+    }
+    FormButtons { }
+}
+
+// Màn hình tưởng niệm (§3.9): nền tối ấm, bia vòm, ảnh bầu dục, ba nén hương, bàn thờ.
+component MemorialPage inherits Rectangle {
+    background: #1d1513;
+    property <bool> smoke: People.m-smoke && People.m-incense;
+    ScrollView {
+        property <float> sf: People.scroll-frac;
+        changed sf => { self.viewport-y = min(0px, -(self.viewport-height - self.visible-height) * sf); }
+        VerticalLayout {
+            alignment: start;
+            padding: 16px; padding-top: 8px; padding-bottom: 28px;
+            HorizontalLayout {
+                alignment: center;
+                VerticalLayout {
+                    width: 520px;
+                    spacing: 10px;
+                    HorizontalLayout {
+                        alignment: start;
+                        Rectangle {
+                            min-height: 40px; min-width: bl.preferred-width + 8px;
+                            accessible-role: button; accessible-label: "‹ Về hồ sơ";
+                            accessible-action-default => { People.back(); }
+                            bl := Text { text: "‹ Về hồ sơ"; color: #e8c67a; font-family: Theme.serif; font-size: 16px * Theme.scale; font-weight: 600; vertical-alignment: center; }
+                            TouchArea { clicked => { People.back(); } mouse-cursor: pointer; }
+                        }
+                    }
+                    Text { text: People.m-dateline; color: #e8c67a; font-family: Theme.sans; font-size: 16px * Theme.scale; horizontal-alignment: center; wrap: word-wrap; accessible-role: AccessibleRole.text; accessible-label: People.m-dateline; }
+                    if People.m-incense: HorizontalLayout {
+                        alignment: center;
+                        Rectangle {
+                            min-height: 40px; min-width: sl.preferred-width + 30px; border-radius: 20px;
+                            border-width: 1px; border-color: #8a6a3a;
+                            background: sta.has-hover ? #2e231f : transparent;
+                            accessible-role: button; accessible-label: People.m-smoke ? "Dừng khói" : "Thắp lại";
+                            accessible-action-default => { People.smoke-toggle(); }
+                            sl := Text { text: People.m-smoke ? "Dừng khói" : "Thắp lại"; color: #e8c67a; font-family: Theme.sans; font-size: 14px * Theme.scale; font-weight: 600; horizontal-alignment: center; vertical-alignment: center; }
+                            sta := TouchArea { clicked => { People.smoke-toggle(); } mouse-cursor: pointer; }
+                        }
+                    }
+                    // Ảnh bầu dục viền vàng đồng
+                    HorizontalLayout {
+                        alignment: center; padding-top: 6px;
+                        Rectangle {
+                            width: 136px; height: 172px; border-radius: 68px; clip: true;
+                            background: #2b2422; border-width: 3px; border-color: #b8893a;
+                            accessible-role: AccessibleRole.text; accessible-label: People.m-has-photo ? "Ảnh chân dung" : "Chưa có ảnh";
+                            if People.m-has-photo: Image { width: parent.width; height: parent.height; source: People.m-photo; image-fit: cover; }
+                            if !People.m-has-photo: Text { text: People.m-initial; color: #e8c67a; font-family: Theme.serif; font-size: 48px; horizontal-alignment: center; vertical-alignment: center; }
+                        }
+                    }
+                    // Bia: đỉnh vòm, nền đá sẫm, chữ vàng đồng
+                    HorizontalLayout {
+                        alignment: center;
+                        Rectangle {
+                            width: 360px;
+                            background: @linear-gradient(180deg, #3a302d 0%, #2b2422 60%, #241d1b 100%);
+                            border-top-left-radius: 120px; border-top-right-radius: 120px;
+                            border-bottom-left-radius: 6px; border-bottom-right-radius: 6px;
+                            border-width: 2px; border-color: #6e5532;
+                            accessible-role: AccessibleRole.text;
+                            accessible-label: (People.m-rel != "" ? People.m-rel + ", " : "") + People.m-name;
+                            VerticalLayout {
+                                padding: 22px; padding-top: 40px; spacing: 6px;
+                                if People.m-rel != "": Text { text: People.m-rel; color: #e8c67a; font-family: Theme.serif; font-size: 20px * Theme.scale; horizontal-alignment: center; wrap: word-wrap; }
+                                Text { text: People.m-name; color: #e8c67a; font-family: Theme.serif; font-weight: 700; font-size: (People.m-long ? 20px : 27px) * Theme.scale; horizontal-alignment: center; wrap: word-wrap; }
+                                if People.m-hieu != "": Text { text: People.m-hieu; color: #d9b873; font-family: Theme.serif; font-italic: true; font-size: 15px * Theme.scale; horizontal-alignment: center; wrap: word-wrap; }
+                                Rectangle { height: 1px; background: #6e5532; }
+                                if People.m-years != "": Text { text: People.m-years; color: #e8c67a; font-family: Theme.serif; font-size: 16px * Theme.scale; horizontal-alignment: center; wrap: word-wrap; }
+                                if People.m-tuoi != "": Text { text: People.m-tuoi; color: #e8c67a; font-family: Theme.serif; font-size: 16px * Theme.scale; horizontal-alignment: center; }
+                            }
+                        }
+                    }
+                    // Hương và bàn thờ
+                    HorizontalLayout {
+                        alignment: center;
+                        Rectangle {
+                            width: 420px; height: 210px;
+                            // Khói: ba vệt mờ dịch lên (hoạt ảnh của Slint, dừng khi tắt; không chạy nền).
+                            // Phần tử khói chỉ tồn tại khi đang thắp: tắt khói là hủy phần tử, hoạt ảnh dừng hẳn (R8).
+                            if smoke: Rectangle {
+                                x: 74px; y: 0px; width: 60px; height: 90px;
+                                for i in 3: Rectangle {
+                                    property <float> ph: 0;
+                                    init => { self.ph = 1; }
+                                    animate ph { duration: 4200ms; iteration-count: -1; easing: linear; }
+                                    x: 10px + i * 16px + sin(ph * 360deg + i * 120deg) * 5px;
+                                    y: 60px - ph * 60px;
+                                    width: 10px; height: 26px; border-radius: 5px;
+                                    background: #d9cfc8;
+                                    opacity: (1 - ph) * 0.45;
+                                }
+                            }
+                            if !smoke && People.m-incense: Rectangle {
+                                x: 74px; y: 0px; width: 60px; height: 90px;
+                                for i in 3: Rectangle {
+                                    x: 10px + i * 16px; y: 44px; width: 10px; height: 26px; border-radius: 5px;
+                                    background: #d9cfc8; opacity: 0.18;
+                                }
+                            }
+                            // Ba nén hương cắm trong bát hương
+                            if People.m-incense: Rectangle {
+                                x: 84px; y: 80px; width: 40px; height: 64px;
+                                for i in 3: Rectangle {
+                                    x: 4px + i * 14px; y: 0px; width: 3px; height: 58px; background: #b04a2a;
+                                    Rectangle { y: -3px; x: -1px; width: 5px; height: 6px; border-radius: 3px; background: #ff9a3c; }
+                                }
+                            }
+                            if People.m-incense: Rectangle {
+                                x: 64px; y: 132px; width: 80px; height: 44px;
+                                border-bottom-left-radius: 30px; border-bottom-right-radius: 30px; border-top-left-radius: 6px; border-top-right-radius: 6px;
+                                background: @linear-gradient(180deg, #c99a45 0%, #8a5e1c 100%);
+                                accessible-role: AccessibleRole.text; accessible-label: "Bát hương với ba nén hương";
+                            }
+                            // Hai cây nến
+                            for c in [{ x: 18px }, { x: 386px }]: Rectangle {
+                                x: c.x; y: 112px; width: 16px; height: 64px;
+                                Rectangle { y: 12px; width: 16px; height: 52px; border-radius: 3px; background: #efe3cf; }
+                                Rectangle { x: 4px; y: 0px; width: 8px; height: 13px; border-radius: 4px; background: #ffb347; }
+                            }
+                            // Mâm ngũ quả
+                            Rectangle {
+                                x: 230px; y: 108px; width: 130px; height: 68px;
+                                accessible-role: AccessibleRole.text; accessible-label: "Mâm ngũ quả";
+                                Rectangle { x: 18px; y: 30px; width: 30px; height: 30px; border-radius: 15px; background: #d9822b; }
+                                Rectangle { x: 50px; y: 22px; width: 32px; height: 34px; border-radius: 16px; background: #c43d2c; }
+                                Rectangle { x: 82px; y: 30px; width: 30px; height: 30px; border-radius: 15px; background: #7aa43a; }
+                                Rectangle { x: 36px; y: 8px; width: 26px; height: 26px; border-radius: 13px; background: #e6b93a; }
+                                Rectangle { x: 64px; y: 6px; width: 26px; height: 26px; border-radius: 13px; background: #8e4b9b; }
+                                Rectangle { x: 6px; y: 56px; width: 118px; height: 10px; border-radius: 5px; background: #b8893a; }
+                            }
+                            // Mặt bàn thờ
+                            Rectangle { x: 0px; y: 176px; width: 420px; height: 14px; border-radius: 3px; background: @linear-gradient(180deg, #7a4a26 0%, #5a3418 100%); }
+                            Rectangle { x: 20px; y: 190px; width: 380px; height: 20px; background: #4a2a14; }
+                        }
+                    }
+                    if People.m-loi != "": Text { text: "“" + People.m-loi + "”"; color: #e8dccb; font-family: Theme.serif; font-italic: true; font-size: 17px * Theme.scale; horizontal-alignment: center; wrap: word-wrap; }
+                }
+            }
+        }
+    }
+}
+
+// Hộp thoại dùng chung (xác nhận, xuất .ics, tạo sao lưu, khôi phục).
+component Dialog inherits Rectangle {
+    background: #00000066;
+    TouchArea { }
+    Card {
+        width: min(parent.width - 32px, 520px);
+        height: min(parent.height - 32px, self.preferred-height);
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+        border-radius: 18px;
+        TouchArea { }
+        VerticalLayout {
+            padding: 20px; spacing: 10px;
+            S { text: People.dlg-title; size: 22; accessible-role: AccessibleRole.text; accessible-label: People.dlg-title; }
+            for l in People.dlg-lines: T { text: l; size: 15; color: Theme.ink2; accessible-role: AccessibleRole.text; accessible-label: l; }
+            if People.dlg == "tao-sao-luu": VerticalLayout {
+                spacing: 8px;
+                Field { label: "Mật khẩu (ít nhất 8 ký tự)"; text <=> People.pw1; password: true; error: People.e-pw1; }
+                Field { label: "Nhập lại mật khẩu"; text <=> People.pw2; password: true; error: People.e-pw2; }
+                Notice { text: "Lưu ý: quên mật khẩu là mất dữ liệu trong tệp — không ai lấy lại được, kể cả Clevix Lab."; }
+                T { text: "Gợi ý: dùng một câu dễ nhớ, ví dụ \"nhà ở Hà Đông có cây bàng\"."; size: 13; color: Theme.ink3; }
+            }
+            if People.dlg == "khoi-phuc": VerticalLayout {
+                spacing: 6px;
+                T { text: "Cách nhập:"; size: 14; font-weight: 600; }
+                Choice {
+                    items: ["Gộp vào dữ liệu đang có (khuyên dùng)", "Thay toàn bộ"]; current: People.restore-mode; group: "Cách nhập";
+                    picked(i) => { People.restore-mode = i; }
+                }
+                T { text: People.restore-mode == 0 ? "Giữ bản mới hơn của từng hồ sơ." : "Xóa dữ liệu đang có trên máy rồi dùng dữ liệu trong tệp."; size: 13; color: Theme.ink3; }
+            }
+            if People.dlg-busy: T { text: "Đang xử lý… (có thể mất vài giây)"; size: 14; color: Theme.ink3; }
+            HorizontalLayout {
+                alignment: end; spacing: 10px; padding-top: 6px;
+                Btn { text: People.dlg-cancel; kind: "outline"; enabled: !People.dlg-busy; clicked => { People.dlg-dismiss(); } }
+                if People.dlg-ok != "": Btn { text: People.dlg-ok; kind: People.dlg-danger ? "danger" : "primary"; enabled: !People.dlg-busy; clicked => { People.dlg-confirm(); } }
+            }
+        }
+    }
+}
+
+export component PeopleView inherits Rectangle {
+    if People.page == "sap-toi": UpcomingPage { }
+    if People.page == "theo-ky": PeriodPage { }
+    if People.page == "ho-so": ListPage { }
+    if People.page == "sao-luu": BackupPage { }
+    if People.page == "nguoi": PersonPage { }
+    if People.page == "form": PersonFormPage { }
+    if People.page == "bao-tu": MarkDeceasedPage { }
+    if People.page == "su-kien": EventFormPage { }
+    if People.page == "tuong-niem": MemorialPage { }
+    if People.dlg != "": Dialog { }
+}
