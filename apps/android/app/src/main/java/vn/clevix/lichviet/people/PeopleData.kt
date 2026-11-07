@@ -225,10 +225,13 @@ data class ReminderMsg(
 class Person(val raw: JMap) {
     val id: String get() = raw.s("id")
     val deceased: Boolean get() = raw.s("kind") == "deceased"
-    val danhXung: String get() = raw.s("danh_xung")
+    /** Hiển thị luôn viết hoa chữ đầu (YC-2026-07), kể cả dữ liệu cũ. */
+    val danhXung: String get() = capFirst(raw.s("danh_xung"))
     val hoTen: String get() = raw.s("ho_ten")
     val tenHieu: String get() = raw.s("ten_hieu")
-    val quanHe: String get() = raw.s("quan_he")
+    val quanHe: String get() = capFirst(raw.s("quan_he"))
+    /** "Nam" / "Nữ" / null (không ghi). */
+    val gioiTinhText: String? get() = when (raw.sn("gioi_tinh")) { "nam" -> "Nam"; "nu" -> "Nữ"; else -> null }
     val ghiChu: String get() = raw.s("ghi_chu")
     val noiAnTang: String get() = raw.s("noi_an_tang")
     val photoId: String? get() = raw.sn("photo_id")
@@ -338,4 +341,13 @@ object PFmt {
         val t = quanHe.replace(Regex("\\s*\\([^)]*\\)"), "").trim()
         return t.replaceFirstChar { it.uppercase() }
     }
+}
+
+/** Viết hoa chữ cái đầu (NFC, cắt khoảng trắng đầu), phần còn lại giữ nguyên như người dùng gõ (YC-2026-07, 01 §3.1). */
+fun capFirst(s: String): String {
+    val t = java.text.Normalizer.normalize(s.trimStart(), java.text.Normalizer.Form.NFC)
+    if (t.isEmpty()) return t
+    val cp = t.codePointAt(0)
+    val n = Character.charCount(cp)
+    return String(Character.toChars(Character.toUpperCase(cp))) + t.substring(n)
 }

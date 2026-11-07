@@ -51,7 +51,14 @@ import vn.clevix.lichviet.people.strs
 import vn.clevix.lichviet.ui.LocalLich
 
 /** Gợi ý cách gọi (trường `danh_xung`) — từ thường ngày. */
-val DANH_XUNG = listOf("Cụ", "Kỵ", "Ông", "Bà", "Bác", "Chú", "Thím", "Cô", "Dì", "Cậu", "Mợ", "Anh", "Chị", "Em", "Bố", "Mẹ", "Cha", "Má", "Ba")
+/** Gợi ý cách gọi cho người đã mất (YC-2026-07, 01 §3.1) — viết hoa chữ đầu để tỏ lòng tôn trọng. */
+val DANH_XUNG_DA_MAT = listOf(
+    "Ông", "Bà", "Cụ", "Kỵ", "Bác", "Cô", "Chú", "Dì", "Cậu", "Mợ", "Thím", "Anh", "Chị", "Em", "Cháu", "Con", "Bạn",
+    "Bố", "Mẹ", "Ông Tổ họ", "Bà Cô Tổ họ", "Bé đỏ",
+)
+
+/** Người đang sống: như trên nhưng không có Cụ, Kỵ, Ông Tổ họ, Bà Cô Tổ họ, Bé đỏ. */
+val DANH_XUNG_DANG_SONG = DANH_XUNG_DA_MAT - setOf("Cụ", "Kỵ", "Ông Tổ họ", "Bà Cô Tổ họ", "Bé đỏ")
 
 /** Gợi ý quan hệ — từ thường ngày, không dùng từ Hán-Việt cổ (§12e, PHONG-TUC.md §1). */
 val QUAN_HE_DA_MAT = listOf(
@@ -233,8 +240,14 @@ fun PersonForm(x: PeopleCtx, id: String?, deceasedNew: Boolean?) {
 
     // Nhóm đầu.
     PCard(title = if (deceased) "Người đã mất" else "Người đang sống") {
-        SuggestIn("Cách gọi (đứng trước tên)", f.danhXung, { f.danhXung = it }, DANH_XUNG, if (showErrors) lenErr(f.danhXung, 40, "Cách gọi") else null)
+        SuggestIn("Cách gọi (đứng trước tên)", f.danhXung, { f.danhXung = it }, if (deceased) DANH_XUNG_DA_MAT else DANH_XUNG_DANG_SONG, if (showErrors) lenErr(f.danhXung, 40, "Cách gọi") else null)
         TextIn("Họ và tên *", f.hoTen, { f.hoTen = it }, error = if (showErrors) f.nameError() else null)
+        if (PeopleRepo.supportsGender) {
+            Fine("Giới tính")
+            Choice(listOf("Nam", "Nữ", "Không ghi"), when (f.gioiTinh) { "nam" -> 0; "nu" -> 1; else -> 2 }, {
+                f.gioiTinh = when (it) { 0 -> "nam"; 1 -> "nu"; else -> null }
+            })
+        }
         if (deceased) TextIn("Tên hiệu / pháp danh", f.tenHieu, { f.tenHieu = it }, error = if (showErrors) lenErr(f.tenHieu, 120, "Tên hiệu") else null)
         SuggestIn(
             "Quan hệ với bạn", f.quanHe, { f.quanHe = it }, if (deceased) QUAN_HE_DA_MAT else QUAN_HE_DANG_SONG,
@@ -377,6 +390,8 @@ class PersonFormState(val existing: Person?, val deceased: Boolean, settings: JM
     var hoTen by mutableStateOf(existing?.hoTen ?: "")
     var tenHieu by mutableStateOf(existing?.tenHieu ?: "")
     var quanHe by mutableStateOf(existing?.quanHe ?: "")
+    /** Giới tính (YC-2026-07): "nam" | "nu" | null = Không ghi. */
+    var gioiTinh by mutableStateOf(raw?.sn("gioi_tinh"))
     var ghiChu by mutableStateOf(existing?.ghiChu ?: "")
     var noiSinh by mutableStateOf(existing?.birth?.s("noi_sinh") ?: "")
     var noiAnTang by mutableStateOf(existing?.noiAnTang ?: "")
@@ -514,10 +529,11 @@ class PersonFormState(val existing: Person?, val deceased: Boolean, settings: JM
         val m: JMap = raw?.copyJ() ?: linkedMapOf<String, Any?>()
         if (preview && m["id"] == null) m["id"] = previewId
         m["kind"] = if (deceased) "deceased" else "living"
-        m["danh_xung"] = danhXung
+        m["danh_xung"] = capFirst(danhXung)
         m["ho_ten"] = if (preview && hoTen.isBlank()) "?" else hoTen
         m["ten_hieu"] = if (deceased) tenHieu else (raw?.s("ten_hieu") ?: "")
-        m["quan_he"] = quanHe
+        m["quan_he"] = capFirst(quanHe)
+        if (PeopleRepo.supportsGender) m["gioi_tinh"] = gioiTinh else m.remove("gioi_tinh")
         m["ghi_chu"] = ghiChu
         m["birth"] = birth.value()?.let { linkedMapOf<String, Any?>("input" to it.toMap(), "noi_sinh" to noiSinh) }
         m["feb29_rule"] = feb29

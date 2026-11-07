@@ -134,6 +134,21 @@ class PeopleRepo(val store: LvhvStore) {
     companion object {
         fun uuid(): String = newUuid()
 
+        /**
+         * Lõi đã nhận trường `gioi_tinh` (YC-2026-07, 01 §3.1) chưa. Lược đồ của lõi đóng (trường lạ → lỗi V1), nên giao
+         * diện chỉ hiện ô Giới tính khi lõi kiểm hợp lệ một hồ sơ mẫu có trường này.
+         */
+        val supportsGender: Boolean by lazy { runCatching { derivePerson(genderProbe(true)) }.isSuccess }
+
+        /** Hồ sơ mẫu để dò khả năng của lõi (kiểm thử khẳng định bản không có giới tính luôn hợp lệ). */
+        internal fun genderProbe(withGender: Boolean): JMap = linkedMapOf<String, Any?>(
+            "id" to newUuid(), "kind" to "living", "danh_xung" to "", "ho_ten" to "Mẫu", "ten_hieu" to "",
+            "quan_he" to "", "birth" to null, "death" to null, "noi_an_tang" to "",
+            "photo_id" to null, "memorial" to null,
+            "reminders" to linkedMapOf<String, Any?>("gio" to null, "sinh_nhat" to null, "sinh_nhat_am" to null),
+            "sinh_nhat_am" to false, "feb29_rule" to "feb28", "ghi_chu" to "",
+        ).also { if (withGender) it["gioi_tinh"] = "nam" }
+
         /** `save_death` (02 §1): ngày mất → {lunar, solar, lunar_source, method}. */
         fun deriveDeath(v: DateValue): JMap = parseObj(saveDeathJson(v.json()))
 

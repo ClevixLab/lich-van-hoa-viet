@@ -182,6 +182,7 @@ private fun InfoTable(p: Person, sum: vn.clevix.lichviet.people.Summary) {
         }
         sum.tuoiMatText?.let { InfoLine("Tuổi", it) }
     }
+    p.gioiTinhText?.let { InfoLine("Giới tính", it) }
     val b = p.birth
     val bi = DateValue.of(b?.o("input"))
     if (bi != null) InfoLine("Ngày sinh", PFmt.dateValue(bi))
