@@ -1,5 +1,6 @@
 package vn.clevix.lichviet.ui.people
 
+import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -26,10 +27,14 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import java.io.File
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import vn.clevix.lichviet.people.PeopleRepo
@@ -72,53 +77,79 @@ object TrayCapture {
     }
 }
 
+/**
+ * Xử lý ảnh vừa chọn/chụp cho mục ảnh mâm lễ (P46-01): luôn dọn dẹp ở `finally` — kể cả khi việc xử lý bị hủy (rời
+ * biểu mẫu) — `trayBusy` về false, tệp chụp tạm `cache/capture/mam.jpg` (còn EXIF/GPS) bị xóa, quyền URI cấp cho ứng dụng
+ * máy ảnh bị thu hồi. Ảnh vượt 25 MB bị từ chối **trước khi** đọc (P46-06).
+ */
+suspend fun processTrayPick(ctx: Context, f: PersonFormState, uri: Uri, captured: File): Result<vn.clevix.lichviet.people.EncodedImage> {
+    f.trayBusy = true
+    f.trayError = null
+    try {
+        val res = withContext(Dispatchers.Default) {
+            runCatching {
+                if (uri.scheme == "file") {
+                    if (captured.length() > Photos.MAX_INPUT) throw Photos.PhotoError("Ảnh lớn hơn 25 MB")
+                    Photos.encode(captured.readBytes(), TRAY_EDGE, TRAY_STORED)
+                } else {
+                    Photos.process(ctx, uri, TRAY_EDGE, TRAY_STORED)
+                }
+            }
+        }
+        res.onSuccess { f.tray = it; f.trayRemoved = false }.onFailure { f.trayError = trayError(it) }
+        return res
+    } finally {
+        withContext(NonCancellable) { TrayCapture.cleanup(ctx) }
+        f.trayBusy = false
+    }
+}
+
+/**
+ * Bộ chọn ảnh mâm lễ — đặt ở [PersonForm] (luôn trong cây), không ở [TraySection] (chỉ có khi khối "Tưởng niệm" mở):
+ * thu gọn khối trong lúc chờ/xử lý không làm mất kết quả hay bỏ dở dọn dẹp (P46-01). Trả hàm mở hộp chọn.
+ */
+@Composable
+fun rememberTrayPicker(f: PersonFormState): () -> Unit {
+    val ctx = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { r ->
+        val captured = TrayCapture.file(ctx)
+        // P46-02: người dùng hủy (ở hộp chọn hay ở màn xem lại của máy ảnh) → bỏ, kể cả khi máy ảnh đã ghi tệp.
+        if (r.resultCode != Activity.RESULT_OK) { TrayCapture.cleanup(ctx); return@rememberLauncherForActivityResult }
+        val uri: Uri? = r.data?.data ?: if (captured.exists() && captured.length() > 0) Uri.fromFile(captured) else null
+        if (uri == null) { TrayCapture.cleanup(ctx); return@rememberLauncherForActivityResult }
+        scope.launch { processTrayPick(ctx, f, uri, captured) }
+    }
+    return { launcher.launch(TrayCapture.chooser(ctx)) }
+}
+
 /** Mục "Ảnh mâm lễ ngày giỗ" (08 §16.2) — đặt ngay sau ô "Lời tưởng niệm". [focus]: cuộn tới mục này khi mở. */
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
-fun TraySection(f: PersonFormState, repo: PeopleRepo, focus: Boolean) {
-    val ctx = LocalContext.current
-    val scope = rememberCoroutineScope()
-    var err by remember { mutableStateOf<String?>(null) }
+fun TraySection(f: PersonFormState, repo: PeopleRepo, focus: Boolean, pick: () -> Unit) {
     val bring = remember { BringIntoViewRequester() }
     LaunchedEffect(focus) { if (focus) bring.bringIntoView() }
-    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { r ->
-        val captured = TrayCapture.file(ctx)
-        val uri: Uri? = r.data?.data ?: if (captured.exists() && captured.length() > 0) Uri.fromFile(captured) else null
-        if (uri == null) { TrayCapture.cleanup(ctx); return@rememberLauncherForActivityResult }
-        f.trayBusy = true
-        err = null
-        scope.launch {
-            val res = withContext(Dispatchers.Default) {
-                runCatching {
-                    if (uri.scheme == "file") Photos.encode(captured.readBytes().also { if (it.size > Photos.MAX_INPUT) throw Photos.PhotoError("Ảnh lớn hơn 25 MB") }, TRAY_EDGE, TRAY_STORED)
-                    else Photos.process(ctx, uri, TRAY_EDGE, TRAY_STORED)
-                }
-            }
-            TrayCapture.cleanup(ctx)
-            f.trayBusy = false
-            res.onSuccess { f.tray = it; f.trayRemoved = false }.onFailure { err = trayError(it) }
-        }
-    }
     val stored = remember(f.trayStoredId) { f.trayStoredId?.let { repo.photo(it) } }
     val bytes = f.tray?.bytes ?: if (f.trayRemoved) null else stored
     val img = remember(bytes) { bytes?.let { Photos.bitmap(it, 480)?.asImageBitmap() } }
     Column(Modifier.bringIntoViewRequester(bring).testTag("tray-form"), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         H3("Ảnh mâm lễ ngày giỗ")
         when {
-            f.trayBusy -> Body("Đang xử lý ảnh…")
+            // P46-13: vùng thông báo trợ năng — TalkBack đọc trạng thái thay cho nút vừa bấm.
+            f.trayBusy -> Body("Đang xử lý ảnh…", Modifier.semantics { liveRegion = LiveRegionMode.Polite })
             img == null -> {
                 Body("Chưa có ảnh. Ngày giỗ chỉ hiện bát hương và nến.")
-                SecondaryButton("Chọn ảnh mâm lễ…", { launcher.launch(TrayCapture.chooser(ctx)) })
+                SecondaryButton("Chọn ảnh mâm lễ…", pick)
             }
             else -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Image(img, contentDescription = "Ảnh mâm lễ của gia đình", contentScale = ContentScale.Crop, modifier = Modifier.size(120.dp, 90.dp))
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    SecondaryButton("Đổi ảnh", { launcher.launch(TrayCapture.chooser(ctx)) })
+                    SecondaryButton("Đổi ảnh", pick)
                     SecondaryButton("Bỏ ảnh", { f.tray = null; f.trayRemoved = true })
                 }
             }
         }
-        err?.let { ErrorText(it) }
+        f.trayError?.let { ErrorText(it) }
         Fine("Ảnh chỉ lưu trên máy này và trong tệp sao lưu mã hóa. Ứng dụng tự bỏ thông tin vị trí và máy chụp trong ảnh.")
     }
 }
