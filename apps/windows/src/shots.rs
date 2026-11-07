@@ -258,6 +258,9 @@ fn steps(ui: &AppWindow, st: Rc<RefCell<State>>) -> Vec<Step> {
         g.invoke_convert_lunar();
     });
     step!("06-gioi-thieu", |ui: &AppWindow| ui.set_tab(3));
+    step!("06a-gioi-thieu-ve-ung-dung", |ui: &AppWindow| ui.global::<Data>().set_scroll_frac(0.22));
+    step!("06c-gioi-thieu-meo-thong-bao", |ui: &AppWindow| ui.global::<Data>().set_scroll_frac(0.45));
+    step!("06d-gioi-thieu-quyen-rieng-tu", |ui: &AppWindow| ui.global::<Data>().set_scroll_frac(0.7));
     step!("06b-gioi-thieu-chan-trang", |ui: &AppWindow| ui.global::<Data>().set_scroll_frac(1.0));
     step!("07-toi", |ui: &AppWindow| {
         let g = ui.global::<Data>();

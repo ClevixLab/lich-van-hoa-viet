@@ -581,6 +581,39 @@ component Para inherits T {
     size: 16;
 }
 
+// Tiêu đề nhỏ trong một khung của Giới thiệu (như h3 của bản web).
+component SubHead inherits S {
+    size: 17;
+    accessible-role: AccessibleRole.text;
+    accessible-label: self.text;
+}
+
+// Một mục có chấm đầu dòng: tiêu đề in đậm (có thể rỗng) rồi phần giải thích. Slint chưa có chữ đậm giữa dòng, nên
+// tiêu đề đứng thành dòng riêng (bản web: <strong> đầu câu).
+component Bullet inherits HorizontalLayout {
+    in property <string> title;
+    in property <string> text;
+    spacing: 10px;
+    T { text: "•"; accessible-role: none; size: 16; color: Theme.red-ink; font-weight: 700; vertical-alignment: top; width: 12px; wrap: no-wrap; }
+    VerticalLayout {
+        spacing: 2px;
+        if root.title != "": T { text: root.title; size: 16; font-weight: 700; color: Theme.ink; }
+        Para { text: root.text; }
+    }
+}
+
+// Một bước có số thứ tự (như <ol class="steps"> của bản web).
+component Step inherits HorizontalLayout {
+    in property <int> n;
+    in property <string> text;
+    spacing: 10px;
+    Rectangle {
+        width: 26px; height: 26px; border-radius: 13px; background: Theme.red-tint;
+        T { text: root.n; size: 14; font-weight: 700; color: Theme.red-ink; horizontal-alignment: center; vertical-alignment: center; wrap: no-wrap; }
+    }
+    Para { text: root.text; }
+}
+
 component AboutPage inherits Page {
     if !Data.about-rules: VerticalLayout {
         spacing: 14px;
@@ -604,9 +637,37 @@ component AboutPage inherits Page {
                 Btn { text: "Kiểm tra cập nhật / Cập nhật"; kind: "primary"; clicked => { Data.check-update(); } }
             }
         } }
-        Panel { VerticalLayout { padding: 18px; spacing: 8px;
+        // Nội dung như trang Giới thiệu của bản web 0.2.1 (pwa/src/ui/about.ts, PR #73), chỉnh cho đúng bản Windows:
+        // thông báo của Windows đặt trước (không chạy nền), dữ liệu trong %LOCALAPPDATA%, không có mẹo Màn hình chính.
+        Panel { VerticalLayout { padding: 18px; spacing: 10px;
             S { text: "Về ứng dụng"; size: 19; }
-            Para { text: "Lịch âm dương Việt Nam từ năm 1900 đến năm 3000: ngày âm, Can Chi, tiết khí, giờ hoàng đạo, chọn ngày tốt, và một câu ca dao, tục ngữ cho mỗi ngày. Từ năm 1968, âm lịch tính theo múi giờ UTC+7 (giờ Hà Nội)."; }
+            Para { text: "Lịch và Văn hóa Việt là cuốn lịch vạn niên miễn phí và cũng là sổ tay gia đình: xem ngày âm dương, chọn ngày tốt, và không bao giờ quên ngày giỗ ông bà, cha mẹ hay sinh nhật người thân. Không quảng cáo, không cần tài khoản, dữ liệu chỉ nằm trên máy của bạn."; size: 17; color: Theme.ink; }
+            SubHead { text: "Ứng dụng giúp bạn"; }
+            Bullet { title: "Tờ lịch mỗi ngày"; text: "Từ năm 1900 đến năm 3000: ngày âm, Can Chi, tiết khí, giờ hoàng đạo và một câu ca dao, tục ngữ."; }
+            Bullet { title: "Chọn ngày tốt"; text: "Cho việc lớn: sao tốt, sao xấu, việc nên làm và nên tránh, theo tuổi của bạn."; }
+            Bullet { title: "Đổi ngày"; text: "Âm sang dương và ngược lại, kể cả tháng nhuận."; }
+            Bullet { title: "Người thân"; text: "Ghi lại người đã khuất và người đang sống trong gia đình. Ngày giỗ được tự tính theo âm lịch mỗi năm (giỗ đầu, giỗ hết, giỗ thường), cùng sinh nhật dương lịch, sinh nhật âm lịch và những dịp riêng như tốt nghiệp, ngày cưới."; }
+            Bullet { title: "Nhắc trước"; text: "Đúng ngày, 1, 3, 5, 10, 15 ngày hoặc số ngày bạn tự chọn (1–60), để kịp sắm lễ, báo anh em họ hàng. Windows hiện thông báo đúng giờ, kể cả khi ứng dụng đã đóng."; }
+            Bullet { title: "Xem cả nhà có việc gì"; text: "Trong tuần, tháng, quý hay cả năm; lọc riêng người đã mất hoặc người đang sống."; }
+            Bullet { title: "Trang tưởng niệm ngày giỗ"; text: "Bia ghi tên, năm sinh năm mất theo Can Chi, ảnh chân dung, bát hương ba nén và đôi nến. Gia đình có thể thêm ảnh mâm lễ của chính nhà mình."; }
+            Bullet { title: "Thông tin báo tử"; text: "Khi một người thân qua đời: ai báo tin, mất ở đâu, ghi chú, kèm ảnh tin báo tử hoặc bản chụp giấy chứng tử."; }
+            SubHead { text: "Bắt đầu trong một phút"; }
+            Step { n: 1; text: "Mở mục Người thân, chọn Hồ sơ, rồi bấm “+ Thêm người đã mất” hoặc “+ Thêm người đang sống”."; }
+            Step { n: 2; text: "Nhập họ tên, cách gọi (Ông, Bà, Bố, Mẹ…) và quan hệ (ví dụ “Ông nội”). Với người đã mất, nhập ngày mất theo dương lịch hoặc âm lịch — ứng dụng tự đổi và tính ngày giỗ hằng năm."; }
+            Step { n: 3; text: "Chọn nhắc trước mấy ngày, bấm “Lưu”."; }
+            Step { n: 4; text: "Mở Sắp tới để xem các ngày giỗ, sinh nhật gần nhất; mở Theo kỳ để xem theo tuần, tháng, quý, năm."; }
+            Step { n: 5; text: "Đúng ngày giỗ, bấm “Mở trang tưởng niệm” để thắp nén hương tưởng nhớ."; }
+            Step { n: 6; text: "Vào Sao lưu để cất một bản sao có mật khẩu, hoặc xuất tệp lịch (.ics) sang Outlook, Lịch của Windows hay lịch điện thoại."; }
+            SubHead { text: "Mẹo để không lỡ ngày nào"; }
+            Bullet { text: "Mỗi lần bạn mở ứng dụng, các lời nhắc sắp tới (tối đa 64) được đặt sẵn với Windows; Windows tự hiện thông báo đúng giờ kể cả khi ứng dụng đã đóng, và bấm vào thông báo sẽ mở đúng hồ sơ. Ứng dụng không chạy ngầm và không tự mở khi bạn đăng nhập Windows, nên thỉnh thoảng hãy mở ứng dụng để lời nhắc được đặt tiếp."; }
+            Bullet { text: "Thông báo cần bản cài đặt (.msi) và thông báo của ứng dụng phải đang bật trong Cài đặt Windows › Hệ thống › Thông báo. Tình trạng hiện ở Người thân › Sắp tới, khung “Lời nhắc trên Windows”. Khi bật Không làm phiền, Windows chỉ cất thông báo vào trung tâm thông báo."; }
+            Bullet { text: "Mặc định thông báo không ghi tên người (ví dụ “Sắp đến ngày giỗ”), để người khác nhìn màn hình không biết là ai; bật “Hiện tên người trong thông báo” ở cùng khung nếu muốn."; }
+            Bullet { text: "Muốn điện thoại cũng nhắc, hãy xuất tệp lịch (.ics) ở mục Sao lưu và mở bằng ứng dụng Lịch của điện thoại."; }
+            Bullet { text: "Thỉnh thoảng tạo tệp sao lưu và cất ở nơi an toàn (USB, ổ khác). Tệp này mở được trên máy khác và trên bản web của ứng dụng."; }
+        } }
+        Panel { VerticalLayout { padding: 18px; spacing: 8px;
+            S { text: "Cách tính lịch"; size: 19; }
+            Para { text: "Từ năm 1968, âm lịch tính theo múi giờ UTC+7 (giờ Hà Nội)."; }
             Para { text: "Trước năm 1929, âm lịch tính theo giờ địa phương Bắc Kinh; 1929–1967 theo múi giờ UTC+8; từ 1968 theo UTC+7 (chuẩn miền Bắc). Miền Nam dùng UTC+8 đến năm 1975, nên một số tháng 1968–1975 có thể khác lịch miền Nam thời ấy."; }
             Para { text: Data.method-text; }
             Para { text: "Phần xem ngày (sao tốt, sao xấu, việc nên làm và nên tránh, trực, hoàng đạo, hắc đạo) được biên soạn theo quan niệm truyền thống trong sách Ngọc Hạp Thông Thư. Đây là nét văn hóa dân gian, chỉ có giá trị tham khảo; những quyết định quan trọng xin cân nhắc thêm hoàn cảnh thực tế. Điểm số là quy ước của ứng dụng, không có trong sách."; }
@@ -614,10 +675,10 @@ component AboutPage inherits Page {
         } }
         Panel { VerticalLayout { padding: 18px; spacing: 8px;
             S { text: "Quyền riêng tư"; size: 19; }
-            Para { text: "Ứng dụng không thu thập dữ liệu, không có tài khoản, không quảng cáo và không gửi thông tin đi đâu. Mọi tính toán diễn ra ngay trên máy của bạn."; }
-            Para { text: "Ứng dụng không dùng mạng và hoạt động hoàn toàn khi không có mạng. Cỡ chữ và giao diện sáng tối trở về mặc định mỗi lần mở. Ứng dụng ghi một tệp nhỏ chứa ngày bạn bấm \"Để sau\" ở thẻ nhắc cập nhật (trong thư mục %LOCALAPPDATA%\\Clevix)."; }
-            Para { text: "Sổ Người thân (hồ sơ, ngày giỗ, sinh nhật, ảnh, thông tin báo tử) chỉ lưu trên máy này, trong thư mục %LOCALAPPDATA%\\ClevixLab\\LichVanHoaViet. Không có tài khoản, không gửi đi đâu. Muốn chuyển sang máy khác, hãy tạo tệp sao lưu có mật khẩu ở mục Người thân › Sao lưu. Cài lại, nâng cấp hay gỡ ứng dụng đều không xóa sổ này; muốn xóa hẳn, hãy xóa thư mục trên sau khi gỡ (thông báo đã đặt sẽ hết khi tới giờ hoặc khi tắt thông báo của ứng dụng trong Cài đặt Windows)."; }
-            Para { text: "Năm sinh nhập ở mục Chọn ngày tốt chỉ dùng trong lúc tính, không được lưu lại."; }
+            Para { text: "Ứng dụng không thu thập dữ liệu, không có tài khoản, không quảng cáo và không gửi thông tin đi đâu. Mọi tính toán diễn ra ngay trên máy của bạn. Ứng dụng không tự kết nối mạng và hoạt động hoàn toàn khi không có mạng."; }
+            Para { text: "Hồ sơ người thân, ngày giỗ, sinh nhật, ảnh, thông tin báo tử và tệp đính kèm chỉ được lưu trên máy này, trong thư mục %LOCALAPPDATA%\\ClevixLab\\LichVanHoaViet. Ảnh được tự bỏ thông tin vị trí và máy chụp. Tệp sao lưu được mã hóa bằng mật khẩu do bạn đặt; ứng dụng không giữ mật khẩu đó."; }
+            Para { text: "Dữ liệu vẫn còn khi bạn đóng ứng dụng hay tắt máy. Cài lại, nâng cấp hay gỡ ứng dụng đều không xóa sổ này. Muốn xóa hẳn: tạo tệp sao lưu nếu cần, gỡ ứng dụng, rồi xóa thư mục trên (thông báo đã đặt sẽ hết khi tới giờ hoặc khi tắt thông báo của ứng dụng trong Cài đặt Windows). Dữ liệu chỉ có trên ổ đĩa của máy này — ổ hỏng hay mất máy là mất dữ liệu, vì vậy hãy sao lưu định kỳ (Người thân › Sao lưu, có cả nút “Mở thư mục dữ liệu”)."; }
+            Para { text: "Cỡ chữ và giao diện sáng tối trở về mặc định mỗi lần mở. Ứng dụng ghi một tệp nhỏ chứa ngày bạn bấm \"Để sau\" ở thẻ nhắc cập nhật (trong thư mục %LOCALAPPDATA%\\Clevix). Năm sinh nhập ở mục Chọn ngày tốt chỉ dùng trong lúc tính, không được lưu lại."; }
         } }
         Panel { VerticalLayout { padding: 18px; spacing: 8px;
             S { text: "Nguồn ca dao, tục ngữ"; size: 19; }
