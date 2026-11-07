@@ -919,3 +919,163 @@ fn notice_validation() {
     // Người đang sống không có `death`, nên không có báo tử.
     let _ = std::fs::remove_dir_all(dir);
 }
+
+// ---------------------------------------------------------------- core2 (duyệt mã native)
+
+/// MA3N-23-01: tạo byte sao lưu không ghi nhận "đã sao lưu"; chỉ `mark_backup_saved` mới ghi.
+#[test]
+fn export_does_not_mark_backup_saved() {
+    let (s, dir) = tmp_store();
+    s.save_person_json(person_a().to_string()).unwrap();
+    assert!(matches!(
+        s.mark_backup_saved(unix_vn(2026, 7, 1, 9, 0)),
+        Err(LvhvDataError::Invalid(_))
+    ));
+    let _file = s
+        .export_backup("mật khẩu đúng".into(), "0.2.0".into(), "ios".into())
+        .unwrap();
+    assert_eq!(
+        v(&s.settings_json().unwrap())["last_backup_at"],
+        Value::Null
+    );
+    s.mark_backup_saved(unix_vn(2026, 7, 1, 9, 0)).unwrap();
+    assert_eq!(
+        v(&s.settings_json().unwrap())["last_backup_at"],
+        "2026-07-01T02:00:00Z"
+    );
+    assert!(!s.backup_reminder_due().unwrap());
+    assert!(s.mark_backup_saved(unix_vn(2026, 7, 1, 9, 0)).is_err());
+    assert!(s.mark_backup_saved(i64::MAX).is_err());
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+/// MA3N-24-08: xóa người cùng sự kiện chỉ của người đó, một giao dịch.
+#[test]
+fn delete_person_and_orphan_events_works() {
+    let (s, dir) = tmp_store();
+    let mut c = v(EXAMPLE)["persons"][2].clone();
+    c["id"] = json!("");
+    let c = v(&s.save_person_json(c.to_string()).unwrap());
+    let cid = c["id"].as_str().unwrap().to_owned();
+    let mut d = v(EXAMPLE)["persons"][2].clone();
+    d["id"] = json!("");
+    d["ho_ten"] = json!("Lê Văn D");
+    let d = v(&s.save_person_json(d.to_string()).unwrap());
+    let did = d["id"].as_str().unwrap().to_owned();
+    let mk = |pids: Value| {
+        let mut e = v(EXAMPLE)["events"][0].clone();
+        e["id"] = json!("");
+        e["reminder"]["id"] = json!(new_uuid().unwrap());
+        e["person_ids"] = pids;
+        v(&s.save_event_json(e.to_string()).unwrap())["id"]
+            .as_str()
+            .unwrap()
+            .to_owned()
+    };
+    let only_c = mk(json!([cid]));
+    let shared = mk(json!([cid, did]));
+    let nobody = mk(json!([]));
+    let removed = s.delete_person_and_orphan_events(cid).unwrap();
+    assert_eq!(removed, vec![only_c]);
+    let ids: Vec<String> = v(&s.events_json().unwrap())
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|e| e["id"].as_str().unwrap().to_owned())
+        .collect();
+    assert!(ids.contains(&shared) && ids.contains(&nobody) && ids.len() == 2);
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+/// 02 §7.5: thẻ nhắc hôm nay — cùng kết quả với lõi (`due_today`), tiêu đề có tên, sắp theo giờ.
+#[test]
+fn due_today_matches_core() {
+    let r = v(&due_today_json(EXAMPLE.into(), sd(2026, 7, 25), vn()).unwrap());
+    let a = r.as_array().unwrap();
+    assert_eq!(a.len(), 1);
+    assert_eq!(a[0]["fire_local"], "2026-07-25T07:00");
+    assert_eq!(a[0]["title"], "Còn 3 ngày: Giỗ đầu Ông Nguyễn Văn A");
+    assert_eq!(a[0]["occ"]["name"], "Ông Nguyễn Văn A");
+    let ds = lvhv_memorial::model::parse_dataset(R3).unwrap();
+    let c = lvhv_memorial::Cal::get(lvhv_core::DEFAULT_METHOD);
+    for day in [sd(2026, 7, 25), sd(2026, 7, 28), sd(2027, 1, 1)] {
+        let got = v(&due_today_json(R3.into(), day, vn()).unwrap());
+        let want = lvhv_memorial::remind::due_today(
+            c,
+            &ds,
+            lvhv_memorial::model::Ymd::new(day.y, day.m as u32, day.d as u32),
+            &lvhv_memorial::remind::Zone::vietnam(),
+        );
+        let ids: Vec<&str> = got
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|x| x["id"].as_str().unwrap())
+            .collect();
+        assert_eq!(ids, want.iter().map(|r| r.id.as_str()).collect::<Vec<_>>());
+        check_out("due_today_json", &got.to_string());
+    }
+}
+
+#[test]
+fn ics_summary_and_export_preview() {
+    let s = ics_summary(EXAMPLE.into(), sd(2026, 7, 1), None).unwrap();
+    let f = ics_export(
+        EXAMPLE.into(),
+        sd(2026, 7, 1),
+        unix_vn(2026, 7, 1, 0, 0),
+        None,
+    )
+    .unwrap();
+    assert_eq!(f.summary, s);
+    assert_eq!((s.events, s.persons), (f.events, f.persons));
+    assert_eq!((s.from, s.to), (sd(2026, 7, 1), sd(2036, 6, 30)));
+    assert_eq!(s.preview.len(), 5);
+    assert!(
+        s.preview[0].starts_with("28/07/2026 — Giỗ đầu Ông Nguyễn Văn A"),
+        "{:?}",
+        s.preview
+    );
+    assert!(s.privacy_text.starts_with("Tệp này chứa tên, ngày giỗ"));
+    assert!(s.privacy_text.contains(&format!("của {} người", s.persons)));
+    let none = ics_summary(EXAMPLE.into(), sd(2026, 7, 1), Some(vec![])).unwrap();
+    assert_eq!((none.events, none.privacy_text.as_str()), (0, ""));
+}
+
+#[test]
+fn password_rules_leap_month_header_check() {
+    // Cùng ca với tsport/test/memorial_unit.mjs (backupPasswordError).
+    let nfd = "Ma\u{0323}\u{0302}t kha\u{0302}\u{0309}u"; // "Mật khẩu" dạng NFD, 8 điểm mã sau NFC
+    let cases: [(&str, Option<&str>, Option<&str>); 6] = [
+        ("1234567", None, Some("Mật khẩu cần ít nhất 8 ký tự")),
+        ("12345678", None, None),
+        ("😀😀😀😀", None, Some("Mật khẩu cần ít nhất 8 ký tự")),
+        (nfd, Some("Mật khẩu"), None),
+        (
+            "mật khẩu đúng",
+            Some("mật khẩu sai"),
+            Some("Hai lần nhập mật khẩu chưa giống nhau"),
+        ),
+        ("mật khẩu đúng", Some("mật khẩu đúng"), None),
+    ];
+    for (pw, c, want) in cases {
+        assert_eq!(
+            backup_password_error(pw.into(), c.map(str::to_owned)).as_deref(),
+            want,
+            "{pw}"
+        );
+    }
+    assert_eq!(lunar_leap_month(2025).unwrap(), Some(6));
+    assert_eq!(lunar_leap_month(2026).unwrap(), None);
+    assert_eq!(lunar_leap_month(2028).unwrap(), Some(5));
+    assert!(lunar_leap_month(3001).is_err());
+    let (s, dir) = tmp_store();
+    let f = s
+        .export_backup("mật khẩu đúng".into(), "0.2.0".into(), "ios".into())
+        .unwrap();
+    assert!(backup_header_check(f[..72].to_vec(), f.len() as u64).is_ok());
+    assert!(backup_header_check(f[..72].to_vec(), f.len() as u64 + 1).is_err());
+    assert!(backup_header_check(f[..40].to_vec(), f.len() as u64).is_err());
+    assert!(backup_header_check(vec![0u8; 72], 4 << 30).is_err());
+    let _ = std::fs::remove_dir_all(dir);
+}

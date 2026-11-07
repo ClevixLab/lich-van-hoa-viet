@@ -8,6 +8,11 @@
     "upcoming_json": { "type": "array", "items": { "$ref": "#/$defs/UpcomingItem" } },
     "events_in_period_json": { "$ref": "#/$defs/Period" },
     "reminders_json": { "type": "array", "items": { "$ref": "#/$defs/Reminder" } },
+    "due_today_json": {
+      "description": "Thẻ nhắc hôm nay (02 §7.5): phần tử như Reminder, title/body có tên, occ luôn là Occ đầy đủ.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/Reminder" }
+    },
     "reschedule_json": { "$ref": "#/$defs/ReschedulePlan" },
     "android_alarm_step_json": { "$ref": "#/$defs/AndroidStep" },
     "person_summary_json": { "$ref": "#/$defs/PersonSummary" },

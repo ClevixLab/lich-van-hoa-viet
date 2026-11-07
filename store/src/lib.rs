@@ -587,7 +587,19 @@ impl Store {
     /// Xóa một người: gỡ id khỏi mọi sự kiện (01 §3.4), xóa ảnh chân dung và ảnh giấy báo tử (01 §3.2a) của
     /// người đó nếu không hồ sơ nào khác còn dùng.
     pub fn delete_person(&mut self, id: &str) -> Result<()> {
+        self.delete_person_with(id, false).map(|_| ())
+    }
+
+    /// Như [`Store::delete_person`]; khi `delete_orphan_events`, trong **cùng** giao dịch xóa luôn sự kiện mà
+    /// người này là người duy nhất được gắn (sau khi gỡ thì `person_ids` rỗng). Sự kiện vốn không gắn ai không bị
+    /// đụng tới. Trả id các sự kiện đã xóa (duyệt mã MA3N-24-08: ba ứng dụng không tự viết lại việc này).
+    pub fn delete_person_with(
+        &mut self,
+        id: &str,
+        delete_orphan_events: bool,
+    ) -> Result<Vec<String>> {
         let now = now_rfc3339();
+        let mut removed_events = Vec::new();
         let tx = self.conn.transaction()?;
         let pj: Option<String> = tx
             .query_row("SELECT json FROM person WHERE id = ?1", params![id], |r| {
@@ -614,6 +626,11 @@ impl Store {
             if let Some(a) = e["person_ids"].as_array_mut() {
                 a.retain(|x| x.as_str() != Some(id));
             }
+            if delete_orphan_events && e["person_ids"].as_array().is_some_and(Vec::is_empty) {
+                tx.execute("DELETE FROM event WHERE id = ?1", params![eid])?;
+                removed_events.push(eid);
+                continue;
+            }
             e["updated_at"] = json!(now);
             e["rev"] = json!(e["rev"].as_i64().unwrap_or(1) + 1);
             upsert_event(&tx, &e)?;
@@ -637,7 +654,7 @@ impl Store {
         for pid in gone {
             let _ = std::fs::remove_file(self.photo_path(&pid));
         }
-        Ok(())
+        Ok(removed_events)
     }
 
     /// Xóa một sự kiện.
@@ -721,15 +738,51 @@ impl Store {
         Ok(to_hex(&h.finalize()))
     }
 
-    /// Xuất tệp sao lưu mã hóa (03 §2.4). Đặt `settings.last_backup_at` và xóa trạng thái "chờ sao lưu".
-    /// `last_backup_at` trong tệp là giá trị **trước** lần xuất này (TK-16 chưa áp dụng: đổi thì R6 (a)/(d)
-    /// không còn so được với `manifest.dataset_r6.store_state_sha256` — xem PR #14).
+    /// Tạo byte tệp sao lưu mã hóa (03 §2.4). **Không** đổi `settings.last_backup_at` hay trạng thái "chờ sao
+    /// lưu": ứng dụng gọi [`Store::mark_backup_saved`] chỉ khi hệ điều hành báo đã ghi tệp xong (duyệt mã
+    /// MA3N-23-01 — hủy hộp "Lưu" hay ghi lỗi không được tính là đã sao lưu). Ghi nhớ thời điểm tạo
+    /// (`meta.last_export_at`) để `mark_backup_saved` biết thay đổi nào đã nằm trong tệp. `last_backup_at` trong tệp là
+    /// giá trị trước lần xuất này.
     pub fn export_backup(&mut self, password: &str, app: &AppInfo) -> Result<Vec<u8>> {
         let now = now_rfc3339();
         let (doc, blobs) = self.snapshot_with_photos(app, &now)?;
         let file = lvhv_backup::export(password, &canonical_json(&doc), &blobs)?;
-        self.after_export(&now)?;
+        self.conn.execute(
+            "INSERT INTO meta(key, value) VALUES ('last_export_at', ?1)
+             ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            params![now],
+        )?;
         Ok(file)
+    }
+
+    /// Ghi nhận tệp sao lưu vừa tạo bằng [`Store::export_backup`] **đã được lưu** (03 §2.4, MA3N-23-01): đặt
+    /// `settings.last_backup_at = saved_at` và xóa trạng thái "chờ sao lưu" nếu mọi thay đổi chờ đã có trong tệp
+    /// (thay đổi đầu tiên chưa sao lưu không muộn hơn thời điểm tạo tệp). Chưa tạo tệp nào → lỗi `Input`.
+    pub fn mark_backup_saved(&mut self, saved_at: &str) -> Result<()> {
+        if !validate::is_timestamp(saved_at) {
+            return Err(StoreError::Input(
+                "Thời điểm không hợp lệ (RFC 3339 UTC).".into(),
+            ));
+        }
+        let Some(exported) = self.meta_get("last_export_at")? else {
+            return Err(StoreError::Input(
+                "Chưa tạo tệp sao lưu nào để ghi nhận.".into(),
+            ));
+        };
+        let pending = self.backup_pending_since()?;
+        let mut s = self.settings()?;
+        s["last_backup_at"] = json!(saved_at);
+        let tx = self.conn.transaction()?;
+        tx.execute(
+            "UPDATE settings SET json = ?1 WHERE id = 1",
+            params![jtext(&s)],
+        )?;
+        if pending.is_some_and(|p| p.as_str() <= exported.as_str()) {
+            tx.execute("DELETE FROM meta WHERE key = 'backup_pending_since'", [])?;
+        }
+        tx.execute("DELETE FROM meta WHERE key = 'last_export_at'", [])?;
+        tx.commit()?;
+        Ok(())
     }
 
     /// Như [`Store::export_backup`] nhưng với salt/nonce/thời điểm cố định (vector kiểm thử).
@@ -749,19 +802,6 @@ impl Store {
             salt,
             nonce,
         )?)
-    }
-
-    fn after_export(&mut self, now: &str) -> Result<()> {
-        let mut s = self.settings()?;
-        s["last_backup_at"] = json!(now);
-        let tx = self.conn.transaction()?;
-        tx.execute(
-            "UPDATE settings SET json = ?1 WHERE id = 1",
-            params![jtext(&s)],
-        )?;
-        tx.execute("DELETE FROM meta WHERE key = 'backup_pending_since'", [])?;
-        tx.commit()?;
-        Ok(())
     }
 
     /// Ghi một tài liệu đã kiểm tra (Thay toàn bộ hoặc Gộp) trong **một** giao dịch. Lỗi → không ghi gì.

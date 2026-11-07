@@ -75,11 +75,8 @@ export interface Due { occ: M.Occurrence; t: M.RemType; time: number }
 export function dueToday(sn: Snap, t: Ymd = today()): Due[] {
   const zone = M.Zone.fixed(-new Date().getTimezoneOffset());
   const day = M.ymdJdn(t);
-  return M.allReminders(cal(), sn.ds, t, addDays(t, 61), -Infinity, zone)
-    .filter((r) => Math.floor(r.at_local / 1440) === day)
-    .map((r) => ({ occ: r.occ, t: r.rtype, time: r.at_local - day * 1440 }))
-    // 08 §5.5: theo giờ nhắc rồi theo thứ tự 02 §7.2 (allReminders xếp theo mã lời nhắc ngẫu nhiên khi cùng giờ).
-    .sort((a, b) => a.time - b.time || M.cmpOcc(a.occ, b.occ));
+  // 08 §5.5 / 02 §7.5: hàm dueToday của lõi (cùng bản với Rust due_today; giờ nhắc → thứ tự 02 §7.2 → id).
+  return M.dueToday(cal(), sn.ds, t, zone).map((r) => ({ occ: r.occ, t: r.rtype, time: r.at_local - day * 1440 }));
 }
 
 const dismissed = new Set<string>();
@@ -319,8 +316,7 @@ export async function renderPerson(root: HTMLElement, id: string, nav: Nav): Pro
       title: "Xóa hồ sơ?", danger: true, focusCancel: true, ok: "Xóa hồ sơ", cancel: "Giữ lại",
       body: [`Xóa hồ sơ của ${name}? ${dead ? "Ngày giỗ, lời nhắc và ảnh" : "Sinh nhật, lời nhắc"} của người này sẽ bị xóa khỏi máy. Sự kiện gắn với người này vẫn còn nếu có người khác cùng tham gia. Không hoàn tác được.`],
       onOk: async () => {
-        await s.deletePerson(id);
-        for (const e of await s.events()) if ((e.person_ids as string[]).length === 0 && evIds.has(e.id as string)) await s.deleteEvent(e.id as string);
+        await s.deletePerson(id, { deleteOrphanEvents: true }); // lõi xóa sự kiện chỉ của người này, cùng giao dịch
       },
     });
     if (ok) { toast("Đã xóa hồ sơ."); nav.go("#/nguoi-than/ho-so", true); }

@@ -267,9 +267,17 @@ fn roundtrip_replace_identical() {
     let file = s.export_backup("mật khẩu thử nghiệm", &app()).unwrap();
     // Đóng và mở lại kho (R2: đọc lại sau khi đóng/mở).
     drop(s);
-    let s = Store::open(&a).unwrap();
-    assert!(s.settings().unwrap()["last_backup_at"].is_string());
+    let mut s = Store::open(&a).unwrap();
+    // MA3N-23-01: tạo byte chưa phải là đã sao lưu; chỉ mark_backup_saved (sau khi lưu tệp xong) mới ghi nhận.
+    assert!(s.settings().unwrap()["last_backup_at"].is_null());
+    s.mark_backup_saved("2026-11-07T01:00:00Z").unwrap();
+    assert_eq!(
+        s.settings().unwrap()["last_backup_at"],
+        "2026-11-07T01:00:00Z"
+    );
     assert_eq!(s.backup_pending_since().unwrap(), None);
+    // Ghi nhận hai lần cho một lần tạo tệp → lỗi.
+    assert!(s.mark_backup_saved("2026-11-07T01:00:00Z").is_err());
     let b = tmpdir("a-dst");
     let mut t = Store::open(&b).unwrap();
     let v = open_backup(&file, "mật khẩu thử nghiệm").unwrap();
@@ -511,6 +519,18 @@ fn backup_reminder_hook() {
         lvhv_store::rfc3339_from_unix(lvhv_store::unix_from_rfc3339(&since).unwrap() + 30 * 86_400);
     assert!(s.backup_reminder_due(&later).unwrap());
     let _ = s.export_backup("mật khẩu thử nghiệm", &app()).unwrap();
+    // Chưa lưu tệp (hủy hộp "Lưu") → vẫn nhắc sao lưu (MA3N-23-01).
+    assert!(s.backup_reminder_due(&later).unwrap());
+    assert!(s.settings().unwrap()["last_backup_at"].is_null());
+    s.mark_backup_saved(&lvhv_store::now_rfc3339()).unwrap();
     assert!(!s.backup_reminder_due(&later).unwrap());
+    // Thay đổi sau khi tạo tệp nhưng trước khi ghi nhận vẫn là "chờ sao lưu".
+    let _ = s.export_backup("mật khẩu thử nghiệm", &app()).unwrap();
+    std::thread::sleep(std::time::Duration::from_millis(1100));
+    s.put_event_type(&json!({"id": "a1b2c3d4-0000-4000-8000-000000000002", "builtin": null, "ten": "Lễ thử hai", "default_recurring": false,
+        "created_at": "2026-11-06T03:15:00Z", "updated_at": "2026-11-06T03:15:00Z", "rev": 1})).unwrap();
+    s.mark_backup_saved(&lvhv_store::now_rfc3339()).unwrap();
+    assert!(s.backup_pending_since().unwrap().is_some());
+    assert!(s.mark_backup_saved("không phải thời điểm").is_err());
     let _ = ex;
 }

@@ -292,6 +292,57 @@ pub fn upcoming_lines(cal: &Cal, ds: &Dataset, today: Ymd, out: &mut String) {
     }
 }
 
+// ---------------------------------------------------------------- thẻ nhắc hôm nay, tóm tắt .ics
+
+pub const DUE_TODAY_HEADER: &str = "today,rank,at_local,id,type,occ_date,class,entity_id,title\n";
+/// Một khối dòng `due-today` (02 §7.5): thẻ nhắc của ngày `today`, tiêu đề có tên (trong ứng dụng).
+pub fn due_today_lines(cal: &Cal, ds: &Dataset, today: Ymd, tz: &Zone, out: &mut String) {
+    for (i, r) in crate::remind::due_today(cal, ds, today, tz)
+        .iter()
+        .enumerate()
+    {
+        let t = crate::occ::reminder_text_named(cal, &r.occ, r.rtype);
+        let _ = writeln!(
+            out,
+            "{},{i},{},{},{},{},{},{},\"{}\"",
+            today.iso(),
+            fmt_local(r.at_local),
+            r.id,
+            rtype_code(r.rtype),
+            r.occ.date.iso(),
+            r.occ.class.code(),
+            r.occ.entity_id,
+            t.title.replace('"', "\"\"")
+        );
+    }
+}
+
+pub const ICS_SUMMARY_HEADER: &str = "today,events,persons,from,to,kinds,privacy_text,preview\n";
+/// Một dòng `ics-summary`: tóm tắt hộp xác nhận xuất .ics (mặc định: mục có nhắc bật) tại `today`.
+pub fn ics_summary_line(cal: &Cal, ds: &Dataset, today: Ymd, out: &mut String) {
+    let s = crate::ics::summary(
+        cal,
+        ds,
+        &crate::ics::IcsOptions {
+            today,
+            dtstamp: String::new(),
+            only_ids: None,
+        },
+    );
+    let _ = writeln!(
+        out,
+        "{},{},{},{},{},{},\"{}\",\"{}\"",
+        today.iso(),
+        s.events,
+        s.persons,
+        s.from.iso(),
+        s.to.iso(),
+        s.kinds.join(" "),
+        s.privacy_text,
+        s.preview.join(" | ").replace('"', "\"\"")
+    );
+}
+
 // ---------------------------------------------------------------- R10
 
 pub const R10A_HEADER: &str = "birth,lunar_year,can_chi\n";

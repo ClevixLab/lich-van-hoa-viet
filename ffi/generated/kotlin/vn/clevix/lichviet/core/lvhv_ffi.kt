@@ -844,6 +844,22 @@ internal interface UniffiForeignFutureCompleteVoid : com.sun.jna.Callback {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 // For large crates we prevent `MethodTooLargeException` (see #2340)
 // N.B. the name of the extension is very misleading, since it is 
 // rather `InterfaceTooLargeException`, caused by too many methods 
@@ -864,6 +880,10 @@ internal interface IntegrityCheckingUniffiLib : Library {
 fun uniffi_lvhv_ffi_checksum_func_add_days(
 ): Short
 fun uniffi_lvhv_ffi_checksum_func_android_alarm_step_json(
+): Short
+fun uniffi_lvhv_ffi_checksum_func_backup_header_check(
+): Short
+fun uniffi_lvhv_ffi_checksum_func_backup_password_error(
 ): Short
 fun uniffi_lvhv_ffi_checksum_func_build_info_json(
 ): Short
@@ -887,11 +907,17 @@ fun uniffi_lvhv_ffi_checksum_func_derive_birth_json(
 ): Short
 fun uniffi_lvhv_ffi_checksum_func_derive_person_json(
 ): Short
+fun uniffi_lvhv_ffi_checksum_func_due_today_json(
+): Short
 fun uniffi_lvhv_ffi_checksum_func_events_in_period_json(
 ): Short
 fun uniffi_lvhv_ffi_checksum_func_find_good_days_json(
 ): Short
 fun uniffi_lvhv_ffi_checksum_func_ics_export(
+): Short
+fun uniffi_lvhv_ffi_checksum_func_ics_summary(
+): Short
+fun uniffi_lvhv_ffi_checksum_func_lunar_leap_month(
 ): Short
 fun uniffi_lvhv_ffi_checksum_func_lunar_method(
 ): Short
@@ -945,6 +971,10 @@ fun uniffi_lvhv_ffi_checksum_method_lvhvstore_delete_event(
 ): Short
 fun uniffi_lvhv_ffi_checksum_method_lvhvstore_delete_person(
 ): Short
+fun uniffi_lvhv_ffi_checksum_method_lvhvstore_delete_person_and_orphan_events(
+): Short
+fun uniffi_lvhv_ffi_checksum_method_lvhvstore_due_today_json(
+): Short
 fun uniffi_lvhv_ffi_checksum_method_lvhvstore_event_types_json(
 ): Short
 fun uniffi_lvhv_ffi_checksum_method_lvhvstore_events_in_period_json(
@@ -954,6 +984,8 @@ fun uniffi_lvhv_ffi_checksum_method_lvhvstore_events_json(
 fun uniffi_lvhv_ffi_checksum_method_lvhvstore_export_backup(
 ): Short
 fun uniffi_lvhv_ffi_checksum_method_lvhvstore_lock_screen_names(
+): Short
+fun uniffi_lvhv_ffi_checksum_method_lvhvstore_mark_backup_saved(
 ): Short
 fun uniffi_lvhv_ffi_checksum_method_lvhvstore_mark_deceased_json(
 ): Short
@@ -1054,6 +1086,10 @@ fun uniffi_lvhv_ffi_fn_method_lvhvstore_delete_event(`ptr`: Pointer,`id`: RustBu
 ): Unit
 fun uniffi_lvhv_ffi_fn_method_lvhvstore_delete_person(`ptr`: Pointer,`id`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
+fun uniffi_lvhv_ffi_fn_method_lvhvstore_delete_person_and_orphan_events(`ptr`: Pointer,`id`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_lvhv_ffi_fn_method_lvhvstore_due_today_json(`ptr`: Pointer,`today`: RustBuffer.ByValue,`zone`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
 fun uniffi_lvhv_ffi_fn_method_lvhvstore_event_types_json(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_lvhv_ffi_fn_method_lvhvstore_events_in_period_json(`ptr`: Pointer,`kind`: RustBuffer.ByValue,`anchor`: RustBuffer.ByValue,`filter`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -1064,6 +1100,8 @@ fun uniffi_lvhv_ffi_fn_method_lvhvstore_export_backup(`ptr`: Pointer,`password`:
 ): RustBuffer.ByValue
 fun uniffi_lvhv_ffi_fn_method_lvhvstore_lock_screen_names(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
 ): Byte
+fun uniffi_lvhv_ffi_fn_method_lvhvstore_mark_backup_saved(`ptr`: Pointer,`savedAtUnixS`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
 fun uniffi_lvhv_ffi_fn_method_lvhvstore_mark_deceased_json(`ptr`: Pointer,`personId`: RustBuffer.ByValue,`deathDateValueJson`: RustBuffer.ByValue,`noticeJson`: RustBuffer.ByValue,`today`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_lvhv_ffi_fn_method_lvhvstore_person_json(`ptr`: Pointer,`id`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -1102,6 +1140,10 @@ fun uniffi_lvhv_ffi_fn_func_add_days(`day`: RustBuffer.ByValue,`n`: Int,uniffi_o
 ): RustBuffer.ByValue
 fun uniffi_lvhv_ffi_fn_func_android_alarm_step_json(`datasetJson`: RustBuffer.ByValue,`nowUnixS`: Long,`lastRunUnixS`: RustBuffer.ByValue,`zone`: RustBuffer.ByValue,`showNames`: Byte,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
+fun uniffi_lvhv_ffi_fn_func_backup_header_check(`head`: RustBuffer.ByValue,`fileLen`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+fun uniffi_lvhv_ffi_fn_func_backup_password_error(`password`: RustBuffer.ByValue,`confirm`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
 fun uniffi_lvhv_ffi_fn_func_build_info_json(uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_lvhv_ffi_fn_func_cadao_attribution(uniffi_out_err: UniffiRustCallStatus, 
@@ -1124,11 +1166,17 @@ fun uniffi_lvhv_ffi_fn_func_derive_birth_json(`dateValueJson`: RustBuffer.ByValu
 ): RustBuffer.ByValue
 fun uniffi_lvhv_ffi_fn_func_derive_person_json(`json`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
+fun uniffi_lvhv_ffi_fn_func_due_today_json(`datasetJson`: RustBuffer.ByValue,`today`: RustBuffer.ByValue,`zone`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
 fun uniffi_lvhv_ffi_fn_func_events_in_period_json(`datasetJson`: RustBuffer.ByValue,`kind`: RustBuffer.ByValue,`anchor`: RustBuffer.ByValue,`filter`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_lvhv_ffi_fn_func_find_good_days_json(`activity`: RustBuffer.ByValue,`from`: RustBuffer.ByValue,`to`: RustBuffer.ByValue,`birthLunarYear`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_lvhv_ffi_fn_func_ics_export(`datasetJson`: RustBuffer.ByValue,`today`: RustBuffer.ByValue,`nowUnixS`: Long,`onlyIds`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_lvhv_ffi_fn_func_ics_summary(`datasetJson`: RustBuffer.ByValue,`today`: RustBuffer.ByValue,`onlyIds`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_lvhv_ffi_fn_func_lunar_leap_month(`year`: Int,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_lvhv_ffi_fn_func_lunar_method(uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
@@ -1303,6 +1351,12 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_lvhv_ffi_checksum_func_android_alarm_step_json() != 45762.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_lvhv_ffi_checksum_func_backup_header_check() != 48082.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_lvhv_ffi_checksum_func_backup_password_error() != 63274.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_lvhv_ffi_checksum_func_build_info_json() != 56614.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1336,6 +1390,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_lvhv_ffi_checksum_func_derive_person_json() != 47386.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_lvhv_ffi_checksum_func_due_today_json() != 11414.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_lvhv_ffi_checksum_func_events_in_period_json() != 32164.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1343,6 +1400,12 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_lvhv_ffi_checksum_func_ics_export() != 54353.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_lvhv_ffi_checksum_func_ics_summary() != 48522.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_lvhv_ffi_checksum_func_lunar_leap_month() != 64031.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_lvhv_ffi_checksum_func_lunar_method() != 34114.toShort()) {
@@ -1423,6 +1486,12 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_lvhv_ffi_checksum_method_lvhvstore_delete_person() != 23321.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_lvhv_ffi_checksum_method_lvhvstore_delete_person_and_orphan_events() != 33298.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_lvhv_ffi_checksum_method_lvhvstore_due_today_json() != 53614.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_lvhv_ffi_checksum_method_lvhvstore_event_types_json() != 18706.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1432,10 +1501,13 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_lvhv_ffi_checksum_method_lvhvstore_events_json() != 58435.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_lvhv_ffi_checksum_method_lvhvstore_export_backup() != 56748.toShort()) {
+    if (lib.uniffi_lvhv_ffi_checksum_method_lvhvstore_export_backup() != 16398.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_lvhv_ffi_checksum_method_lvhvstore_lock_screen_names() != 2023.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_lvhv_ffi_checksum_method_lvhvstore_mark_backup_saved() != 13906.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_lvhv_ffi_checksum_method_lvhvstore_mark_deceased_json() != 28404.toShort()) {
@@ -1692,6 +1764,29 @@ public object FfiConverterInt: FfiConverter<Int, Int> {
 
     override fun write(value: Int, buf: ByteBuffer) {
         buf.putInt(value)
+    }
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterULong: FfiConverter<ULong, Long> {
+    override fun lift(value: Long): ULong {
+        return value.toULong()
+    }
+
+    override fun read(buf: ByteBuffer): ULong {
+        return lift(buf.getLong())
+    }
+
+    override fun lower(value: ULong): Long {
+        return value.toLong()
+    }
+
+    override fun allocationSize(value: ULong) = 8UL
+
+    override fun write(value: ULong, buf: ByteBuffer) {
+        buf.putLong(value.toLong())
     }
 }
 
@@ -1959,6 +2054,17 @@ public interface LvhvStoreInterface {
     fun `deletePerson`(`id`: kotlin.String)
     
     /**
+     * Xóa một người và, trong **cùng** giao dịch, các sự kiện mà người này là người duy nhất được gắn (sự kiện
+     * vốn không gắn ai không bị xóa). Trả id các sự kiện đã xóa, sắp tăng dần (duyệt mã MA3N-24-08).
+     */
+    fun `deletePersonAndOrphanEvents`(`id`: kotlin.String): List<kotlin.String>
+    
+    /**
+     * `due_today_json` trên dữ liệu của kho.
+     */
+    fun `dueTodayJson`(`today`: SolarDay, `zone`: DeviceZone): kotlin.String
+    
+    /**
      * Mọi `EventType` (mảng JSON).
      */
     fun `eventTypesJson`(): kotlin.String
@@ -1974,8 +2080,9 @@ public interface LvhvStoreInterface {
     fun `eventsJson`(): kotlin.String
     
     /**
-     * Xuất tệp sao lưu mã hóa (03 §2). `platform`: "android" | "ios" | "macos" | "windows";
-     * `app_version` dạng X.Y.Z. Ứng dụng ghi byte qua hộp thoại lưu tệp của hệ điều hành.
+     * Tạo byte tệp sao lưu mã hóa (03 §2). `platform`: "android" | "ios" | "macos" | "windows";
+     * `app_version` dạng X.Y.Z. Ứng dụng ghi byte qua hộp thoại lưu tệp của hệ điều hành, rồi **chỉ khi** hệ điều
+     * hành báo ghi xong mới gọi `mark_backup_saved` (MA3N-23-01). Hàm này không đổi `last_backup_at`.
      */
     fun `exportBackup`(`password`: kotlin.String, `appVersion`: kotlin.String, `platform`: kotlin.String): kotlin.ByteArray
     
@@ -1984,6 +2091,13 @@ public interface LvhvStoreInterface {
      * đi vào tệp sao lưu.
      */
     fun `lockScreenNames`(): kotlin.Boolean
+    
+    /**
+     * Ghi nhận tệp vừa tạo bằng `export_backup` **đã được lưu** (03 §2.4, MA3N-23-01): `last_backup_at` = lúc
+     * lưu, hết "chờ sao lưu" nếu mọi thay đổi chờ đã có trong tệp. Gọi một lần sau mỗi lần lưu thành công; hủy hộp
+     * "Lưu" hay ghi lỗi thì **không** gọi. Chưa tạo tệp nào → `Invalid`.
+     */
+    fun `markBackupSaved`(`savedAtUnixS`: kotlin.Long)
     
     /**
      * Cập nhật một người **đang sống** (hoặc sửa người đã mất) thành người đã mất trên **cùng** hồ sơ
@@ -2259,6 +2373,39 @@ open class LvhvStore: Disposable, AutoCloseable, LvhvStoreInterface
 
     
     /**
+     * Xóa một người và, trong **cùng** giao dịch, các sự kiện mà người này là người duy nhất được gắn (sự kiện
+     * vốn không gắn ai không bị xóa). Trả id các sự kiện đã xóa, sắp tăng dần (duyệt mã MA3N-24-08).
+     */
+    @Throws(LvhvDataException::class)override fun `deletePersonAndOrphanEvents`(`id`: kotlin.String): List<kotlin.String> {
+            return FfiConverterSequenceString.lift(
+    callWithPointer {
+    uniffiRustCallWithError(LvhvDataException) { _status ->
+    UniffiLib.INSTANCE.uniffi_lvhv_ffi_fn_method_lvhvstore_delete_person_and_orphan_events(
+        it, FfiConverterString.lower(`id`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * `due_today_json` trên dữ liệu của kho.
+     */
+    @Throws(LvhvDataException::class)override fun `dueTodayJson`(`today`: SolarDay, `zone`: DeviceZone): kotlin.String {
+            return FfiConverterString.lift(
+    callWithPointer {
+    uniffiRustCallWithError(LvhvDataException) { _status ->
+    UniffiLib.INSTANCE.uniffi_lvhv_ffi_fn_method_lvhvstore_due_today_json(
+        it, FfiConverterTypeSolarDay.lower(`today`),FfiConverterTypeDeviceZone.lower(`zone`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
      * Mọi `EventType` (mảng JSON).
      */
     @Throws(LvhvDataException::class)override fun `eventTypesJson`(): kotlin.String {
@@ -2307,8 +2454,9 @@ open class LvhvStore: Disposable, AutoCloseable, LvhvStoreInterface
 
     
     /**
-     * Xuất tệp sao lưu mã hóa (03 §2). `platform`: "android" | "ios" | "macos" | "windows";
-     * `app_version` dạng X.Y.Z. Ứng dụng ghi byte qua hộp thoại lưu tệp của hệ điều hành.
+     * Tạo byte tệp sao lưu mã hóa (03 §2). `platform`: "android" | "ios" | "macos" | "windows";
+     * `app_version` dạng X.Y.Z. Ứng dụng ghi byte qua hộp thoại lưu tệp của hệ điều hành, rồi **chỉ khi** hệ điều
+     * hành báo ghi xong mới gọi `mark_backup_saved` (MA3N-23-01). Hàm này không đổi `last_backup_at`.
      */
     @Throws(LvhvDataException::class)override fun `exportBackup`(`password`: kotlin.String, `appVersion`: kotlin.String, `platform`: kotlin.String): kotlin.ByteArray {
             return FfiConverterByteArray.lift(
@@ -2337,6 +2485,23 @@ open class LvhvStore: Disposable, AutoCloseable, LvhvStoreInterface
     }
     )
     }
+    
+
+    
+    /**
+     * Ghi nhận tệp vừa tạo bằng `export_backup` **đã được lưu** (03 §2.4, MA3N-23-01): `last_backup_at` = lúc
+     * lưu, hết "chờ sao lưu" nếu mọi thay đổi chờ đã có trong tệp. Gọi một lần sau mỗi lần lưu thành công; hủy hộp
+     * "Lưu" hay ghi lỗi thì **không** gọi. Chưa tạo tệp nào → `Invalid`.
+     */
+    @Throws(LvhvDataException::class)override fun `markBackupSaved`(`savedAtUnixS`: kotlin.Long)
+        = 
+    callWithPointer {
+    uniffiRustCallWithError(LvhvDataException) { _status ->
+    UniffiLib.INSTANCE.uniffi_lvhv_ffi_fn_method_lvhvstore_mark_backup_saved(
+        it, FfiConverterLong.lower(`savedAtUnixS`),_status)
+}
+    }
+    
     
 
     
@@ -2992,7 +3157,11 @@ data class IcsExport (
     /**
      * Số người khác nhau có tên trong tệp (cho hộp xác nhận S10: "Tệp này chứa tên và ngày giỗ của … người").
      */
-    var `persons`: kotlin.UInt
+    var `persons`: kotlin.UInt, 
+    /**
+     * Tóm tắt cho hộp xác nhận (cùng `ics_summary`).
+     */
+    var `summary`: IcsSummary
 ) {
     
     companion object
@@ -3008,6 +3177,7 @@ public object FfiConverterTypeIcsExport: FfiConverterRustBuffer<IcsExport> {
             FfiConverterString.read(buf),
             FfiConverterUInt.read(buf),
             FfiConverterUInt.read(buf),
+            FfiConverterTypeIcsSummary.read(buf),
         )
     }
 
@@ -3015,7 +3185,8 @@ public object FfiConverterTypeIcsExport: FfiConverterRustBuffer<IcsExport> {
             FfiConverterString.allocationSize(value.`fileName`) +
             FfiConverterString.allocationSize(value.`content`) +
             FfiConverterUInt.allocationSize(value.`events`) +
-            FfiConverterUInt.allocationSize(value.`persons`)
+            FfiConverterUInt.allocationSize(value.`persons`) +
+            FfiConverterTypeIcsSummary.allocationSize(value.`summary`)
     )
 
     override fun write(value: IcsExport, buf: ByteBuffer) {
@@ -3023,6 +3194,81 @@ public object FfiConverterTypeIcsExport: FfiConverterRustBuffer<IcsExport> {
             FfiConverterString.write(value.`content`, buf)
             FfiConverterUInt.write(value.`events`, buf)
             FfiConverterUInt.write(value.`persons`, buf)
+            FfiConverterTypeIcsSummary.write(value.`summary`, buf)
+    }
+}
+
+
+
+/**
+ * Tóm tắt cho hộp xác nhận xuất .ics (S10, MA3N-24-08) — cùng bản với `icsSummary` của tsport.
+ */
+data class IcsSummary (
+    /**
+     * Số mục (VEVENT, mỗi mục một ngày).
+     */
+    var `events`: kotlin.UInt, 
+    /**
+     * Số người có tên trong tệp.
+     */
+    var `persons`: kotlin.UInt, 
+    /**
+     * Ngày đầu và ngày cuối (gồm) của cửa sổ 10 năm.
+     */
+    var `from`: SolarDay, 
+    var `to`: SolarDay, 
+    /**
+     * Loại dữ liệu có trong tệp: `gio`, `sinh_nhat`, `su_kien` (theo thứ tự này).
+     */
+    var `kinds`: List<kotlin.String>, 
+    /**
+     * Câu riêng tư: "Tệp này chứa tên, ngày giỗ và sinh nhật của 3 người. Bất kỳ ai có tệp đều đọc được."
+     * Rỗng khi không có mục nào.
+     */
+    var `privacyText`: kotlin.String, 
+    /**
+     * Tối đa 5 dòng xem trước đầu tiên, `DD/MM/YYYY — <tiêu đề>`.
+     */
+    var `preview`: List<kotlin.String>
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeIcsSummary: FfiConverterRustBuffer<IcsSummary> {
+    override fun read(buf: ByteBuffer): IcsSummary {
+        return IcsSummary(
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterTypeSolarDay.read(buf),
+            FfiConverterTypeSolarDay.read(buf),
+            FfiConverterSequenceString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterSequenceString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: IcsSummary) = (
+            FfiConverterUInt.allocationSize(value.`events`) +
+            FfiConverterUInt.allocationSize(value.`persons`) +
+            FfiConverterTypeSolarDay.allocationSize(value.`from`) +
+            FfiConverterTypeSolarDay.allocationSize(value.`to`) +
+            FfiConverterSequenceString.allocationSize(value.`kinds`) +
+            FfiConverterString.allocationSize(value.`privacyText`) +
+            FfiConverterSequenceString.allocationSize(value.`preview`)
+    )
+
+    override fun write(value: IcsSummary, buf: ByteBuffer) {
+            FfiConverterUInt.write(value.`events`, buf)
+            FfiConverterUInt.write(value.`persons`, buf)
+            FfiConverterTypeSolarDay.write(value.`from`, buf)
+            FfiConverterTypeSolarDay.write(value.`to`, buf)
+            FfiConverterSequenceString.write(value.`kinds`, buf)
+            FfiConverterString.write(value.`privacyText`, buf)
+            FfiConverterSequenceString.write(value.`preview`, buf)
     }
 }
 
@@ -3443,6 +3689,38 @@ public object FfiConverterTypeLvhvError : FfiConverterRustBuffer<LvhvException> 
 /**
  * @suppress
  */
+public object FfiConverterOptionalUInt: FfiConverterRustBuffer<kotlin.UInt?> {
+    override fun read(buf: ByteBuffer): kotlin.UInt? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterUInt.read(buf)
+    }
+
+    override fun allocationSize(value: kotlin.UInt?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterUInt.allocationSize(value)
+        }
+    }
+
+    override fun write(value: kotlin.UInt?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterUInt.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterOptionalInt: FfiConverterRustBuffer<kotlin.Int?> {
     override fun read(buf: ByteBuffer): kotlin.Int? {
         if (buf.get().toInt() == 0) {
@@ -3727,6 +4005,33 @@ public object FfiConverterSequenceTypeZoneTransition: FfiConverterRustBuffer<Lis
     
 
         /**
+         * Kiểm phần đầu tệp sao lưu (03 §2.2) **trước khi** đọc phần thân (S12, MA3N-24-03): `head` = ít nhất 72 byte
+         * đầu tệp, `file_len` = kích thước tệp. Tệp không phải sao lưu / phiên bản mới hơn / tham số sai / độ dài không
+         * khớp → `Backup(<thông báo>)`; hợp lệ thì ứng dụng mới đọc cả tệp và gọi `open_backup`.
+         */
+    @Throws(LvhvDataException::class) fun `backupHeaderCheck`(`head`: kotlin.ByteArray, `fileLen`: kotlin.ULong)
+        = 
+    uniffiRustCallWithError(LvhvDataException) { _status ->
+    UniffiLib.INSTANCE.uniffi_lvhv_ffi_fn_func_backup_header_check(
+        FfiConverterByteArray.lower(`head`),FfiConverterULong.lower(`fileLen`),_status)
+}
+    
+    
+
+        /**
+         * Lỗi của mật khẩu khi tạo sao lưu (03 §2.4): ít nhất 8 điểm mã sau NFC; `confirm` (ô nhập lại, nếu có) phải
+         * bằng sau NFC. `null` = hợp lệ. Cùng quy tắc với lõi sao lưu và `backupPasswordError` của tsport.
+         */ fun `backupPasswordError`(`password`: kotlin.String, `confirm`: kotlin.String?): kotlin.String? {
+            return FfiConverterOptionalString.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_lvhv_ffi_fn_func_backup_password_error(
+        FfiConverterString.lower(`password`),FfiConverterOptionalString.lower(`confirm`),_status)
+}
+    )
+    }
+    
+
+        /**
          * Thông tin phiên bản, JSON
          * `{"ffi":"0.1.0","method":"jpl","cadao_count":427,"activities":16,"min_year":2000,"max_year":3000}`.
          */ fun `buildInfoJson`(): kotlin.String {
@@ -3871,6 +4176,21 @@ public object FfiConverterSequenceTypeZoneTransition: FfiConverterRustBuffer<Lis
     
 
         /**
+         * Thẻ nhắc trong ứng dụng hôm nay (02 §7.5; MA3-15-05, MA3N-24-08): mọi lời nhắc có giờ thiết bị rơi vào
+         * `today` (kể cả giờ đã qua), sắp theo giờ → thứ tự 02 §7.2 → id. Phần tử như `reminders_json` với tiêu đề có tên
+         * (hiển thị **trong** ứng dụng, không phải màn hình khóa). Theo công tắc chung và `rule.enabled`.
+         */
+    @Throws(LvhvDataException::class) fun `dueTodayJson`(`datasetJson`: kotlin.String, `today`: SolarDay, `zone`: DeviceZone): kotlin.String {
+            return FfiConverterString.lift(
+    uniffiRustCallWithError(LvhvDataException) { _status ->
+    UniffiLib.INSTANCE.uniffi_lvhv_ffi_fn_func_due_today_json(
+        FfiConverterString.lower(`datasetJson`),FfiConverterTypeSolarDay.lower(`today`),FfiConverterTypeDeviceZone.lower(`zone`),_status)
+}
+    )
+    }
+    
+
+        /**
          * `events_in_period` (02 §7.6, R13). `filter` ∈ "tat_ca", "da_mat", "dang_song". JSON
          * `{"kind","anchor","filter","from","to","items":[…]}`; mỗi mục có các trường của 02 Phụ lục A.6
          * (`date, lunar, class, entity_id, person_ids, name, key, n, label`) cộng `class_text`, `headline`,
@@ -3912,6 +4232,34 @@ public object FfiConverterSequenceTypeZoneTransition: FfiConverterRustBuffer<Lis
     uniffiRustCallWithError(LvhvDataException) { _status ->
     UniffiLib.INSTANCE.uniffi_lvhv_ffi_fn_func_ics_export(
         FfiConverterString.lower(`datasetJson`),FfiConverterTypeSolarDay.lower(`today`),FfiConverterLong.lower(`nowUnixS`),FfiConverterOptionalSequenceString.lower(`onlyIds`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Tóm tắt hộp xác nhận xuất .ics (S10) mà không sinh tệp — ví dụ để biết có gì để xuất không. `only_ids` như
+         * `ics_export`.
+         */
+    @Throws(LvhvDataException::class) fun `icsSummary`(`datasetJson`: kotlin.String, `today`: SolarDay, `onlyIds`: List<kotlin.String>?): IcsSummary {
+            return FfiConverterTypeIcsSummary.lift(
+    uniffiRustCallWithError(LvhvDataException) { _status ->
+    UniffiLib.INSTANCE.uniffi_lvhv_ffi_fn_func_ics_summary(
+        FfiConverterString.lower(`datasetJson`),FfiConverterTypeSolarDay.lower(`today`),FfiConverterOptionalSequenceString.lower(`onlyIds`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Tháng nhuận của năm âm `year` (1899–3000) theo phương pháp mặc định, `null` nếu năm không nhuận — để ô chọn
+         * "nhuận" chỉ hiện khi có (01 §6.1). Cùng `Cal.leapMonth` của tsport.
+         */
+    @Throws(LvhvDataException::class) fun `lunarLeapMonth`(`year`: kotlin.Int): kotlin.UInt? {
+            return FfiConverterOptionalUInt.lift(
+    uniffiRustCallWithError(LvhvDataException) { _status ->
+    UniffiLib.INSTANCE.uniffi_lvhv_ffi_fn_func_lunar_leap_month(
+        FfiConverterInt.lower(`year`),_status)
 }
     )
     }

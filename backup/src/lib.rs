@@ -193,7 +193,15 @@ fn u64_at(b: &[u8], i: usize) -> u64 {
 /// Thứ tự kiểm tra cố định (bản JavaScript theo đúng thứ tự này để trả cùng mã lỗi):
 /// độ dài tối thiểu và `magic` → `file_version` → `kdf_id`/`aead_id` → tham số KDF → `plaintext_len`.
 pub fn parse_header(file: &[u8]) -> Result<Header, BackupError> {
-    if file.len() < HEADER_LEN + TAG_LEN || file[0..8] != MAGIC {
+    check_header(file, file.len() as u64)
+}
+
+/// Như [`parse_header`] nhưng chỉ cần phần đầu tệp (`head`, ít nhất 72 byte) và độ dài tệp `file_len` — để ứng
+/// dụng kiểm §2.2 **trước khi** đọc phần thân (S12: không cấp bộ nhớ theo kích thước tệp lạ). Cùng thứ tự kiểm
+/// và cùng mã lỗi với [`parse_header`].
+pub fn check_header(head: &[u8], file_len: u64) -> Result<Header, BackupError> {
+    let file = head;
+    if file_len < (HEADER_LEN + TAG_LEN) as u64 || file.len() < HEADER_LEN || file[0..8] != MAGIC {
         return Err(BackupError::NotABackup);
     }
     let file_version = u16_at(file, 8);
@@ -208,7 +216,7 @@ pub fn parse_header(file: &[u8]) -> Result<Header, BackupError> {
         return Err(BackupError::BadKdfParams);
     }
     let plaintext_len = u64_at(file, 64);
-    let expected = (file.len() - HEADER_LEN - TAG_LEN) as u64;
+    let expected = file_len - (HEADER_LEN + TAG_LEN) as u64;
     if plaintext_len != expected || plaintext_len > MAX_PLAINTEXT {
         return Err(BackupError::BadLength);
     }
@@ -225,6 +233,21 @@ pub fn parse_header(file: &[u8]) -> Result<Header, BackupError> {
         nonce,
         plaintext_len,
     })
+}
+
+/// Lỗi của mật khẩu khi **tạo** sao lưu (03 §2.4), để mọi giao diện dùng một quy tắc: ít nhất
+/// [`MIN_PASSWORD_CODEPOINTS`] điểm mã sau NFC; khi có ô nhập lại, hai ô phải bằng nhau sau NFC. `None` = hợp lệ.
+pub fn password_error(password: &str, confirm: Option<&str>) -> Option<&'static str> {
+    let n: String = password.nfc().collect();
+    if n.chars().count() < MIN_PASSWORD_CODEPOINTS {
+        return Some("Mật khẩu cần ít nhất 8 ký tự");
+    }
+    if let Some(c) = confirm {
+        if c.nfc().collect::<String>() != n {
+            return Some("Hai lần nhập mật khẩu chưa giống nhau");
+        }
+    }
+    None
 }
 
 /// Mật khẩu → byte UTF-8 của dạng NFC (03 §2.4). Kết quả tự xóa khi giải phóng.

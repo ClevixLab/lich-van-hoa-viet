@@ -44,6 +44,7 @@ const ok = (c, msg) => { console.log(`${c ? "  ok " : "FAIL "} ${msg}`); if (!c)
 const hex = (b) => Buffer.from(b).toString("hex");
 const unhex = (s) => Uint8Array.from(Buffer.from(s.replace(/\s+/g, ""), "hex"));
 const sha = (b) => createHash("sha256").update(b).digest("hex");
+const nowRfc3339T = () => new Date().toISOString().slice(0, 19) + "Z";
 const rd = (p) => new Uint8Array(readFileSync(join(TV, p)));
 const json = (p) => JSON.parse(readFileSync(join(TV, p), "utf8"));
 const manifest = json("manifest.json");
@@ -218,7 +219,12 @@ let r6File;
   const t0 = performance.now();
   r6File = await s.exportBackup(PW, { version: "0.2.0", platform: "pwa" });
   const exportMs = performance.now() - t0;
-  ok((await s.backupPendingSince()) === null && typeof (await s.settings()).last_backup_at === "string", "sau khi xuất: last_backup_at được đặt, hết trạng thái chờ sao lưu");
+  ok((await s.settings()).last_backup_at === null, "MA3N-23-01: tạo byte sao lưu chưa ghi nhận là đã sao lưu");
+  await s.markBackupSaved(nowRfc3339T());
+  ok((await s.backupPendingSince()) === null && typeof (await s.settings()).last_backup_at === "string", "sau markBackupSaved: last_backup_at được đặt, hết trạng thái chờ sao lưu");
+  let twice = false;
+  try { await s.markBackupSaved(nowRfc3339T()); } catch { twice = true; }
+  ok(twice, "markBackupSaved hai lần cho một lần tạo tệp → lỗi");
   writeFileSync(join(OUT, "r6-from-pwa.lvhv"), r6File);
   const t = await freshStore();
   const t1 = performance.now();

@@ -217,7 +217,10 @@ export class Store {
    * Xóa một người: gỡ id khỏi mọi sự kiện (01 §3.4), xóa ảnh chân dung và ảnh giấy báo tử (01 §3.2a) nếu không hồ
    * sơ nào khác còn dùng — một giao dịch.
    */
-  async deletePerson(id: string): Promise<void> {
+  async deletePerson(id: string, opts: { deleteOrphanEvents?: boolean } = {}): Promise<string[]> {
+    // opts.deleteOrphanEvents: như Rust `delete_person_with` — trong cùng giao dịch xóa sự kiện mà người này là người
+    // duy nhất được gắn; trả id các sự kiện đã xóa.
+    const removed: string[] = [];
     const now = nowRfc3339();
     const p = await this.person(id);
     const used = new Set((await this.persons()).filter((x) => x.id !== id).flatMap((x) => V.personPhotoRefs(x)));
@@ -226,12 +229,15 @@ export class Store {
     const tx = this.tx(["persons", "events", "photos", "meta"], "readwrite");
     const fin = done(tx);
     for (const e of evs) {
-      tx.objectStore("events").put({ ...e, person_ids: (e.person_ids as string[]).filter((x) => x !== id), rev: (e.rev as number) + 1, updated_at: now });
+      const left = (e.person_ids as string[]).filter((x) => x !== id);
+      if (opts.deleteOrphanEvents && left.length === 0) { tx.objectStore("events").delete(e.id as string); removed.push(e.id as string); continue; }
+      tx.objectStore("events").put({ ...e, person_ids: left, rev: (e.rev as number) + 1, updated_at: now });
     }
     tx.objectStore("persons").delete(id);
     for (const pid of gone) tx.objectStore("photos").delete(pid);
     Store.markChanged(tx, now);
     await fin;
+    return removed.sort();
   }
 
   async deleteEvent(id: string): Promise<void> {
@@ -286,12 +292,28 @@ export class Store {
     const photos = await this.photoBlobs(doc, bc.uuidToBytes);
     const file = await bc.exportBackup(password, canonicalJson(doc), photos, onProgress);
     for (const p of photos) p.bytes.fill(0);
-    const s = { ...(await this.settings()), last_backup_at: now };
-    const tx = this.tx(["settings", "meta"], "readwrite");
-    tx.objectStore("settings").put(s, "app");
-    tx.objectStore("meta").delete("backup_pending_since");
+    // MA3N-23-01: chỉ ghi nhớ thời điểm tạo; "đã sao lưu" do markBackupSaved ghi sau khi tệp được lưu.
+    const tx = this.tx("meta", "readwrite");
+    tx.objectStore("meta").put(now, "last_export_at");
     await done(tx);
     return file;
+  }
+
+  /**
+   * Ghi nhận tệp vừa tạo bằng exportBackup đã được lưu (03 §2.4, MA3N-23-01) — giống `Store::mark_backup_saved` của
+   * Rust: `last_backup_at = savedAt`; xóa "chờ sao lưu" nếu thay đổi chờ không muộn hơn lúc tạo tệp. Chưa tạo tệp → lỗi.
+   */
+  async markBackupSaved(savedAt: string): Promise<void> {
+    if (!V.isTimestamp(savedAt)) throw new StoreError("input", "Thời điểm không hợp lệ (RFC 3339 UTC).");
+    const exported = (await this.meta("last_export_at")) as string | undefined;
+    if (exported === undefined) throw new StoreError("input", "Chưa tạo tệp sao lưu nào để ghi nhận.");
+    const pending = await this.backupPendingSince();
+    const s = { ...(await this.settings()), last_backup_at: savedAt };
+    const tx = this.tx(["settings", "meta"], "readwrite");
+    tx.objectStore("settings").put(s, "app");
+    if (pending !== null && pending <= exported) tx.objectStore("meta").delete("backup_pending_since");
+    tx.objectStore("meta").delete("last_export_at");
+    await done(tx);
   }
 
   /** Như exportBackup với salt/nonce/thời điểm cố định — chỉ cho vector kiểm thử. */
