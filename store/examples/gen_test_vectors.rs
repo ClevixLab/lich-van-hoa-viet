@@ -98,6 +98,120 @@ fn living(i: usize, birth: Value, photo: Option<String>) -> Option<Value> {
 
 /// Bộ dữ liệu R6(a): mọi kiểu nhập ngày (dương, âm, âm không năm, tháng nhuận, 30 âm, 29/02), Unicode,
 /// nhiều dòng, 20 ảnh, loại sự kiện tự tạo.
+/// Thư mục bộ R6v2 (04 Bổ sung B7).
+pub fn r6v2_dir() -> PathBuf {
+    dir().join("r6v2")
+}
+
+/// Tên tệp ảnh i của R6v2: JPEG khi i chẵn, WebP khi i lẻ (cùng kiểu với R6 cũ).
+pub fn r6v2_photo_name(i: usize) -> String {
+    format!("photo-{i:02}.{}", if i % 2 == 0 { "jpg" } else { "webp" })
+}
+
+/// Bộ **R6v2** (04 Bổ sung B7): đúng cấu trúc, số hồ sơ, số sự kiện, số ảnh, id, kiểu và kích thước khai báo như
+/// [`dataset_r6`], nhưng 20 ảnh là JPEG/WebP **thật** (`r6v2/photo-NN.*`, tạo bằng `make_r6v2_photos.py`, đã khóa),
+/// không siêu dữ liệu, kích thước khớp bản ghi — nên qua được kiểm tra chặt 04 B6 khi nhập. Chỉ `bytes`/`sha256` của
+/// bản ghi `Photo` khác R6.
+pub fn dataset_r6v2() -> (Value, Vec<(String, Vec<u8>)>) {
+    let (mut doc, old) = dataset_r6();
+    let mut photos = Vec::new();
+    for (i, (id, _)) in old.into_iter().enumerate() {
+        let b = std::fs::read(r6v2_dir().join(r6v2_photo_name(i))).unwrap();
+        let rec = doc["photos"]
+            .as_array_mut()
+            .unwrap()
+            .iter_mut()
+            .find(|p| p["id"] == id.as_str())
+            .unwrap();
+        rec["bytes"] = json!(b.len());
+        rec["sha256"] = json!(sha256_hex(&b));
+        lvhv_store::media::check_photo(
+            rec["mime"].as_str().unwrap(),
+            &b,
+            rec["width"].as_u64().unwrap() as u32,
+            rec["height"].as_u64().unwrap() as u32,
+        )
+        .unwrap_or_else(|e| panic!("ảnh R6v2 {i}: {}", e.code()));
+        photos.push((id, b));
+    }
+    (doc, photos)
+}
+
+/// (Băm trạng thái kho sau khi nạp, tệp sao lưu salt/nonce cố định) của một bộ dữ liệu.
+fn state_and_fixed_file(ds: &Value, photos: &[(String, Vec<u8>)]) -> (String, Vec<u8>) {
+    let mut sorted = photos.to_vec();
+    sorted.sort_by(|a, b| a.0.cmp(&b.0));
+    let blobs: Vec<lvhv_backup::PhotoBlob> = sorted
+        .iter()
+        .map(|(id, b)| lvhv_backup::PhotoBlob {
+            id: lvhv_backup::uuid_from_str(id).unwrap(),
+            bytes: b.clone(),
+        })
+        .collect();
+    let tmp = std::env::temp_dir().join(format!("lvhv-gen2-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&tmp);
+    let mut st = lvhv_store::Store::open(&tmp).unwrap();
+    let v = lvhv_store::verify_contents(&lvhv_backup::Contents {
+        json: canonical_json(ds),
+        photos: blobs.clone(),
+    })
+    .unwrap();
+    st.apply_import(&v, lvhv_store::ImportMode::Replace)
+        .unwrap();
+    let state = st.state_hash().unwrap();
+    drop(st);
+    let _ = std::fs::remove_dir_all(&tmp);
+    let file =
+        lvhv_backup::export_with_fixed_rng(PASSWORD, &canonical_json(ds), &blobs, SALT, NONCE)
+            .unwrap();
+    (state, file)
+}
+
+/// Ghi bộ R6v2 vào `r6v2/` (tài liệu, tệp sao lưu cố định, manifest có sha256 mọi tệp).
+fn write_r6v2() {
+    let d = r6v2_dir();
+    let (ds, photos) = dataset_r6v2();
+    let text = canonical_json(&ds);
+    std::fs::write(d.join("dataset-r6v2.json"), &text).unwrap();
+    let (state, file) = state_and_fixed_file(&ds, &photos);
+    std::fs::write(d.join("dataset-r6v2-fixed.lvhv"), &file).unwrap();
+    let mut files = serde_json::Map::new();
+    for i in 0..20 {
+        let n = r6v2_photo_name(i);
+        files.insert(
+            n.clone(),
+            json!(sha256_hex(&std::fs::read(d.join(&n)).unwrap())),
+        );
+    }
+    files.insert(
+        "dataset-r6v2.json".into(),
+        json!(sha256_hex(text.as_bytes())),
+    );
+    files.insert("dataset-r6v2-fixed.lvhv".into(), json!(sha256_hex(&file)));
+    files.insert(
+        "make_r6v2_photos.py".into(),
+        json!(sha256_hex(
+            &std::fs::read(d.join("make_r6v2_photos.py")).unwrap()
+        )),
+    );
+    let m = json!({
+        "description": "Bộ R6v2 (04 Bổ sung B7, khóa 2026-11-07): như dataset_r6 nhưng 20 ảnh JPEG/WebP thật, không siêu dữ liệu, kích thước khớp bản ghi. R6 (a)–(d) và lật bit chạy trên bộ này; bộ R6 cũ giữ để đối chiếu và nay bị từ chối khi nhập (ảnh giả).",
+        "generator": "python3 r6v2/make_r6v2_photos.py (ảnh, chạy một lần) + cargo run --release -p lvhv-store --example gen_test_vectors",
+        "password": PASSWORD, "salt_hex": hexs(&SALT), "nonce_hex": hexs(&NONCE),
+        "dataset": "dataset-r6v2.json",
+        "fixed_rng_file": "dataset-r6v2-fixed.lvhv",
+        "fixed_rng_file_sha256": sha256_hex(&file), "fixed_rng_file_len": file.len(),
+        "store_state_sha256": state,
+        "photos": (0..20).map(|i| json!({"id": photos[i].0, "file": r6v2_photo_name(i)})).collect::<Vec<_>>(),
+        "files": files,
+    });
+    std::fs::write(
+        d.join("manifest.json"),
+        serde_json::to_string_pretty(&m).unwrap() + "\n",
+    )
+    .unwrap();
+}
+
 pub fn dataset_r6() -> (Value, Vec<(String, Vec<u8>)>) {
     let mut photos = Vec::new();
     let mut photo_meta = Vec::new();
@@ -777,22 +891,24 @@ fn main() {
             bytes: b.clone(),
         })
         .collect();
-    let tmp = std::env::temp_dir().join(format!("lvhv-gen-{}", std::process::id()));
-    let _ = std::fs::remove_dir_all(&tmp);
-    let mut st = lvhv_store::Store::open(&tmp).unwrap();
-    let v = lvhv_store::verify_contents(&lvhv_backup::Contents {
-        json: canonical_json(&ds),
-        photos: blobs.clone(),
-    })
-    .unwrap();
-    st.apply_import(&v, lvhv_store::ImportMode::Replace)
-        .unwrap();
-    let ds_state = st.state_hash().unwrap();
+    // Bộ R6 cũ (đã khóa) chứa ảnh giả nên từ 04 Bổ sung B7 bị kiểm tra chặt B6 từ chối khi nhập; băm trạng thái của nó
+    // được tính thẳng theo định nghĩa `Store::state_hash` (JSON chuẩn không `app`/`exported_at` + sha256 từng ảnh theo
+    // thứ tự `photos`) — cho đúng giá trị đã khóa trong manifest.json (check-store.sh so từng byte).
+    let ds_state = {
+        let mut doc = ds.clone();
+        doc.as_object_mut().unwrap().remove("app");
+        doc.as_object_mut().unwrap().remove("exported_at");
+        let by_id: std::collections::HashMap<&str, &Vec<u8>> =
+            ds_photos.iter().map(|(id, b)| (id.as_str(), b)).collect();
+        let mut text = canonical_json(&doc);
+        for p in doc["photos"].as_array().unwrap() {
+            text.push_str(&sha256_hex(by_id[p["id"].as_str().unwrap()]));
+        }
+        sha256_hex(text.as_bytes())
+    };
     let ds_file =
         lvhv_backup::export_with_fixed_rng(PASSWORD, &canonical_json(&ds), &blobs, SALT, NONCE)
             .unwrap();
-    drop(st);
-    let _ = std::fs::remove_dir_all(&tmp);
     let vc = validation_cases(&ex);
     std::fs::write(
         d.join("validation-cases.json"),
@@ -830,8 +946,9 @@ fn main() {
         serde_json::to_string_pretty(&manifest).unwrap() + "\n",
     )
     .unwrap();
+    write_r6v2();
     println!(
-        "ok: {} corrupt, {} validation cases, {} merge cases",
+        "ok: {} corrupt, {} validation cases, {} merge cases, R6v2",
         corrupt.len(),
         vc.len(),
         mc.len()

@@ -1438,3 +1438,23 @@ fn certificate_photo_ids_migrated_on_save() {
     assert!(s.save_person_json(b.to_string()).is_err());
     let _ = std::fs::remove_dir_all(dir);
 }
+
+/// Báo cáo kiểm định vòng 3 (01 §1): khi lưu, chuỗi được cắt khoảng trắng rồi mới viết hoa; chỉ còn khoảng trắng →
+/// chuỗi rỗng (các trường này không nhận null). display_capitalize cũng cắt.
+#[test]
+fn save_trims_then_capitalises() {
+    let (s, dir) = tmp_store();
+    let mut a = person_a();
+    a["danh_xung"] = json!("  chú  ");
+    a["quan_he"] = json!("   ");
+    a["ho_ten"] = json!("  Nguyễn Văn A ");
+    a["ghi_chu"] = json!(" ghi chú \n");
+    let p = v(&s.save_person_json(a.to_string()).unwrap());
+    assert_eq!(p["danh_xung"], "Chú");
+    assert_eq!(p["quan_he"], "");
+    assert_eq!(p["ho_ten"], "Nguyễn Văn A");
+    assert_eq!(p["ghi_chu"], "ghi chú");
+    assert_eq!(display_capitalize("  chú  ".into()), "Chú");
+    assert_eq!(display_capitalize("   ".into()), "");
+    let _ = std::fs::remove_dir_all(dir);
+}

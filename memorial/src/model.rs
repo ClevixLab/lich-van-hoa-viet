@@ -264,9 +264,24 @@ impl Person {
     }
 }
 
-/// Chữ đầu tiên viết hoa, phần còn lại giữ nguyên (cùng `upperFirst` của tsport).
+/// Khoảng trắng theo `String.prototype.trim` của JavaScript.
+fn js_space(c: char) -> bool {
+    matches!(
+        c,
+        '\t' | '\n' | '\u{b}' | '\u{c}' | '\r' | ' ' | '\u{a0}' | '\u{1680}' | '\u{2000}'
+            ..='\u{200a}'
+                | '\u{2028}'
+                | '\u{2029}'
+                | '\u{202f}'
+                | '\u{205f}'
+                | '\u{3000}'
+                | '\u{feff}'
+    )
+}
+
+/// Cắt khoảng trắng hai đầu rồi viết hoa chữ đầu, phần còn lại giữ nguyên (cùng `upperFirst` của tsport).
 pub fn upper_first(s: &str) -> String {
-    let mut it = s.chars();
+    let mut it = s.trim_matches(js_space).chars();
     match it.next() {
         None => String::new(),
         Some(c) => c.to_uppercase().chain(it).collect(),

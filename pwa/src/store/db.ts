@@ -96,9 +96,23 @@ function done(tx: IDBTransaction): Promise<void> {
   return new Promise((ok, ko) => { tx.oncomplete = () => ok(); tx.onerror = () => ko(tx.error); tx.onabort = () => ko(tx.error ?? new DOMException("abort", "AbortError")); });
 }
 
-interface UpgradeCtx { badBlobs: Map<string, string>; forceFail: boolean }
+interface UpgradeCtx { badBlobs: Map<string, string>; forceFail: boolean; now: string }
 
-function upgrade(db: IDBDatabase, tx: IDBTransaction, from: number, ctx: UpgradeCtx = { badBlobs: new Map(), forceFail: false }): void {
+/** Số ngày giữ khóa `legacy` sau chuyển đổi thành công (01 §7, BM2-07) — như Rust MIGRATION_KEEP_DAYS. */
+export const MIGRATION_KEEP_DAYS = 7;
+
+/** Bỏ `legacy` khỏi hồ sơ của tài liệu xuất (01 §7, BM2-07): chỉ để khôi phục trên chính máy đã chuyển đổi. */
+function stripLegacy(doc: JsonObj): JsonObj {
+  doc.persons = (doc.persons as JsonObj[]).map((p) => {
+    if (!Object.prototype.hasOwnProperty.call(p, "legacy")) return p;
+    const { legacy: _l, ...rest } = p;
+    void _l;
+    return rest;
+  });
+  return doc;
+}
+
+function upgrade(db: IDBDatabase, tx: IDBTransaction, from: number, ctx: UpgradeCtx = { badBlobs: new Map(), forceFail: false, now: nowRfc3339() }): void {
   if (from < 1) {
     db.createObjectStore("persons", { keyPath: "id" });
     const ev = db.createObjectStore("events", { keyPath: "id" });
@@ -115,7 +129,11 @@ function upgrade(db: IDBDatabase, tx: IDBTransaction, from: number, ctx: Upgrade
   }
   if (from < 2 && !db.objectStoreNames.contains("attachments")) db.createObjectStore("attachments", { keyPath: "id" });
   // Phiên bản sau: thêm nhánh `if (from < N)` với migrate_{N-1}_to_N (01 §7).
-  if (from >= 1 && from < 3) migrateData1to2(tx, ctx);
+  if (from >= 1 && from < 3) {
+    migrateData1to2(tx, ctx);
+    // Bắt đầu đếm 7 ngày (01 §7, BM2-07). Cùng giao dịch: nâng cấp lỗi thì không ghi.
+    tx.objectStore("meta").put(ctx.now, "migrated_at");
+  }
 }
 
 /**
@@ -210,16 +228,25 @@ function precheckBlobs(factory: IDBFactory): Promise<Map<string, string>> {
 export interface OpenOptions {
   /** Kiểm định (`store-tool --force-migration-failure`): làm bước chuyển đổi thất bại để quan sát quay lui + chỉ đọc. */
   forceMigrationFailure?: boolean;
+  /** Đồng hồ cho kiểm thử (RFC 3339 UTC): "bây giờ" khi mở kho — để kiểm việc dọn sau 7 ngày. */
+  now?: string;
 }
 
 export async function openStore(factory: IDBFactory = indexedDB, opts: OpenOptions = {}): Promise<Store> {
+  const now = opts.now ?? nowRfc3339();
+  const st = await openStoreRaw(factory, opts, now);
+  if (st.migrationStatus().state !== "read_only") await st.pruneAfterMigration(now);
+  return st;
+}
+
+async function openStoreRaw(factory: IDBFactory, opts: OpenOptions, now: string): Promise<Store> {
   const badBlobs = await precheckBlobs(factory);
   return new Promise((ok, ko) => {
     let r: IDBOpenDBRequest;
     let from = IDB_VERSION;
     let upgradeTx: IDBTransaction | null = null;
     try { r = factory.open(DB_NAME, IDB_VERSION); } catch (e) { ko(e); return; }
-    r.onupgradeneeded = (e) => { from = e.oldVersion; upgradeTx = r.transaction!; upgrade(r.result, r.transaction!, e.oldVersion, { badBlobs, forceFail: !!opts.forceMigrationFailure }); };
+    r.onupgradeneeded = (e) => { from = e.oldVersion; upgradeTx = r.transaction!; upgrade(r.result, r.transaction!, e.oldVersion, { badBlobs, forceFail: !!opts.forceMigrationFailure, now }); };
     r.onsuccess = () => ok(new Store(r.result, { state: from > 0 && from < IDB_VERSION ? "migrated" : "ok", from_version: from, to_version: IDB_VERSION, error: null }));
     r.onerror = (ev) => {
       if (r.error?.name === "VersionError") { ko(new StoreError("newer_schema", "Dữ liệu được tạo bởi phiên bản mới hơn — hãy cập nhật ứng dụng")); return; }
@@ -244,6 +271,29 @@ export class Store {
 
   /** Trạng thái chuyển đổi khi mở kho (04 B5) — như Rust `migration_status`. */
   migrationStatus(): MigrationStatus { return { ...this.status }; }
+
+  /**
+   * 01 §7, BM2-07 (như Rust `post_migration_cleanup`): 7 ngày sau lần chuyển đổi thành công (`meta.migrated_at`), bỏ
+   * khóa `legacy` khỏi mọi hồ sơ (không đổi `rev`/`updated_at`). Bản web không có tệp bản sao riêng (BM2-06 chỉ ở
+   * native): IndexedDB tự quay lui nâng cấp lỗi.
+   */
+  async pruneAfterMigration(now: string): Promise<void> {
+    const at = (await this.meta("migrated_at")) as string | undefined;
+    if (at === undefined || !V.isTimestamp(at) || !V.isTimestamp(now)) return;
+    if (Date.parse(now) - Date.parse(at) < MIGRATION_KEEP_DAYS * 86_400_000) return;
+    const persons = await this.persons();
+    const tx = this.tx(["persons", "meta"], "readwrite");
+    const fin = done(tx);
+    for (const p of persons) {
+      if (!Object.prototype.hasOwnProperty.call(p, "legacy")) continue;
+      const { legacy: _l, ...rest } = p;
+      void _l;
+      tx.objectStore("persons").put(rest);
+    }
+    tx.objectStore("meta").delete("migrated_at");
+    tx.objectStore("meta").put(now, "legacy_pruned_at");
+    await fin;
+  }
 
   /** Chế độ chỉ đọc sau chuyển đổi lỗi: mọi thao tác ghi báo StoreError("read_only"). */
   private writable(): void {
@@ -521,7 +571,7 @@ export class Store {
   async exportBackup(password: string, app: AppInfo, onProgress?: (x: number) => void): Promise<Uint8Array> {
     const bc = await import("./backup-crypto");
     const now = nowRfc3339();
-    const doc = await this.snapshot(app, now);
+    const doc = stripLegacy(await this.snapshot(app, now));
     const photos = await this.photoBlobs(doc, bc.uuidToBytes);
     const file = await bc.exportBackup(password, canonicalJson(doc), photos, onProgress);
     for (const p of photos) p.bytes.fill(0);
@@ -556,7 +606,7 @@ export class Store {
   /** Như exportBackup với salt/nonce/thời điểm cố định — chỉ cho vector kiểm thử. */
   async exportBackupFixed(password: string, app: AppInfo, exportedAt: string, salt: Uint8Array, nonce: Uint8Array): Promise<Uint8Array> {
     const bc = await import("./backup-crypto");
-    const doc = await this.snapshot(app, exportedAt);
+    const doc = stripLegacy(await this.snapshot(app, exportedAt));
     return bc.exportWithFixedRng(password, canonicalJson(doc), await this.photoBlobs(doc, bc.uuidToBytes), salt, nonce);
   }
 
@@ -606,6 +656,8 @@ export class Store {
     for (const r of attRecs) tx.objectStore("attachments").put(r);
     for (const t of target.event_types as JsonObj[]) tx.objectStore("event_types").put({ id: t.id, name_key: V.nameKey(t.ten as string), doc: t });
     for (const p of target.persons as JsonObj[]) tx.objectStore("persons").put(normNotice(p));
+    // Hồ sơ nhập vào có `legacy` (tài liệu cũ vừa được chuyển khi nhập) → bắt đầu (lại) đếm 7 ngày (như Rust note_legacy).
+    if ((target.persons as JsonObj[]).some((p) => Object.prototype.hasOwnProperty.call(p, "legacy"))) tx.objectStore("meta").put(nowRfc3339(), "migrated_at");
     for (const e of target.events as JsonObj[]) tx.objectStore("events").put(e);
     if (mode === "replace") tx.objectStore("settings").put(target.settings, "app");
     Store.markChanged(tx, nowRfc3339());
@@ -659,6 +711,8 @@ export async function verifyContents(json: string, blobsIn: { id: string; bytes:
     if (m) {
       if (m.sha256 !== (await sha256Hex(b.bytes)) || m.bytes !== b.bytes.length) throw perr("sha256/bytes không khớp");
       if (atts.size) throw perr("ảnh phải đứng trước tệp đính kèm");
+      // 04 B6 + B7 (BM2-01): ảnh chân dung — như Rust.
+      try { checkPhoto(m.mime as string, b.bytes, m.width as number, m.height as number); } catch (e) { if (e instanceof MediaError) throw perr(e.code); throw e; }
       if (out.has(b.id)) throw perr("ảnh trùng");
       out.set(b.id, b.bytes);
       continue;
