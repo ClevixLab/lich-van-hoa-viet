@@ -993,3 +993,6 @@ tối `-dark`, chữ rất lớn Accessibility L `-large`; bố cục iPad `ipad
 (câu riêng tư, cửa sổ, ≤ 5 dòng xem trước); mật khẩu `backup_password_error`; kiểm phần đầu tệp sao lưu
 `backup_header_check`; tháng nhuận `lunar_leap_month`; xóa người `delete_person_and_orphan_events`; ghi nhận đã lưu tệp
 `mark_backup_saved`; trạng thái chuyển đổi `migration_status`.
+Từ core3 (#38) ứng dụng Apple không phải đổi mã gọi: lõi tự cắt khoảng trắng khi lưu, kiểm ảnh khi nhập sao lưu,
+giữ bản chép CSDL nguyên byte trước chuyển đổi (`pre-v2.bak`) và tự dọn khóa `legacy` cùng bản chép sau 7 ngày, không để
+tệp đính kèm mồ côi khi chuyển đổi hỏng. Băng chỉ đọc nói bằng lời của ứng dụng; câu của lõi hiện bên dưới ở dòng "Chi tiết".
