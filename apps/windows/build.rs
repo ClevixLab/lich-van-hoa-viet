@@ -94,47 +94,61 @@ fn main() {
     embed_tray_pack();
 }
 
-/// Gói ảnh mâm lễ Clevix (YC-2026-10, 08 §16.3): chỉ nhúng mục `trang_thai = "duyet"`; mục đã duyệt mà thiếu tệp, sai
-/// `sha256` hay sai mime thì dừng dựng (cùng quy tắc với scripts/check-tray-pack.py). Không bao giờ nhúng `test/`.
+/// Gói ảnh mâm lễ Clevix (YC-2026-10, 08 §16.3): chỉ nhúng mục `trang_thai = "duyet"`. Dừng dựng khi: thiếu
+/// `manifest.json` (P62-05: không lặng lẽ coi là gói rỗng); mục đã duyệt có `file` ra ngoài thư mục gói, có `..`, là đường
+/// tuyệt đối hay nằm trong `test/`; thiếu tệp; sai `sha256`; sai chữ ký JPEG/WebP; tệp > 400 KB; thiếu `duyet_boi`. Thư
+/// mục con được phép như lược đồ và scripts/check-tray-pack.py (P62-03). Siêu dữ liệu và tổng 2 MB do kịch bản đó kiểm
+/// trong CI trước khi dựng. Dòng ghi công: nguyên văn `ghi_cong` (null → không có dòng), như bản web (P62-04).
 fn embed_tray_pack() {
     use sha2::{Digest, Sha256};
-    let dir = std::path::Path::new("../../content/memorial/trays");
+    let manifest_dir = std::path::PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap());
+    let dir = manifest_dir.join("../../content/memorial/trays");
     let man = dir.join("manifest.json");
     println!("cargo:rerun-if-changed={}", man.display());
+    let text = fs::read_to_string(&man)
+        .unwrap_or_else(|e| panic!("không đọc được {} (gói ảnh mâm lễ): {e}", man.display()));
+    let v: serde_json::Value = serde_json::from_str(&text).expect("manifest.json của gói ảnh mâm lễ không hợp lệ");
+    let root = fs::canonicalize(&dir).expect("thư mục gói ảnh mâm lễ");
+    let test_dir = root.join("test");
     let mut code = String::from("pub static PACK: &[PackItem] = &[\n");
-    if let Ok(text) = fs::read_to_string(&man) {
-        let v: serde_json::Value = serde_json::from_str(&text).expect("manifest.json của gói ảnh mâm lễ không hợp lệ");
-        for it in v["items"].as_array().into_iter().flatten() {
-            if it["trang_thai"] != "duyet" {
-                continue;
-            }
-            let s = |k: &str| it[k].as_str().unwrap_or_default().to_string();
-            let file = dir.join(s("file"));
-            assert!(!s("file").contains('/') && !s("file").contains('\\'), "tệp ảnh mâm lễ phải nằm ngay trong thư mục gói");
-            let bytes = fs::read(&file).unwrap_or_else(|_| panic!("thiếu tệp ảnh mâm lễ đã duyệt {}", file.display()));
-            let hex: String = Sha256::digest(&bytes).iter().map(|b| format!("{b:02x}")).collect();
-            assert_eq!(hex, s("sha256"), "sai sha256 của {}", file.display());
-            let mime_ok = match s("mime").as_str() {
-                "image/jpeg" => bytes.starts_with(&[0xFF, 0xD8, 0xFF]),
-                "image/webp" => bytes.len() > 12 && &bytes[0..4] == b"RIFF" && &bytes[8..12] == b"WEBP",
-                _ => false,
-            };
-            assert!(mime_ok, "tệp {} không đúng mime {}", file.display(), s("mime"));
-            let credit = if it["ghi_cong"].is_null() {
-                String::new()
-            } else {
-                format!("Ảnh: {} · {}", s("tac_gia"), s("giay_phep"))
-            };
-            println!("cargo:rerun-if-changed={}", file.display());
-            let abs = fs::canonicalize(&file).unwrap();
-            code += &format!(
-                "    PackItem {{ id: {:?}, tray_style: {:?}, bytes: include_bytes!({:?}), credit: {:?} }},\n",
-                s("id"),
-                s("tray_style"),
-                abs.to_string_lossy(),
-                credit
-            );
+    for it in v["items"].as_array().expect("manifest.json: thiếu mảng items") {
+        if it["trang_thai"] != "duyet" {
+            continue;
         }
+        let s = |k: &str| it[k].as_str().unwrap_or_default().to_string();
+        let rel = s("file");
+        let bad = rel.is_empty()
+            || rel.starts_with('/')
+            || rel.starts_with('\\')
+            || rel.contains(':')
+            || rel.split(['/', '\\']).any(|c| c == ".." || c == ".")
+            || rel.split(['/', '\\']).next() == Some("test");
+        assert!(!bad, "đường tệp ảnh mâm lễ không hợp lệ: {rel:?}");
+        assert!(!s("duyet_boi").trim().is_empty(), "mục ảnh mâm lễ {:?} đã duyệt nhưng thiếu duyet_boi", s("id"));
+        let file = dir.join(&rel);
+        let canon = fs::canonicalize(&file).unwrap_or_else(|_| panic!("thiếu tệp ảnh mâm lễ đã duyệt {}", file.display()));
+        assert!(canon.starts_with(&root) && !canon.starts_with(&test_dir), "tệp {rel:?} nằm ngoài gói hoặc trong test/");
+        let bytes = fs::read(&canon).unwrap();
+        assert!(bytes.len() <= 400 * 1024, "tệp ảnh mâm lễ {rel:?} lớn hơn 400 KB");
+        let hex: String = Sha256::digest(&bytes).iter().map(|b| format!("{b:02x}")).collect();
+        assert_eq!(hex, s("sha256"), "sai sha256 của {rel:?}");
+        let mime_ok = match s("mime").as_str() {
+            "image/jpeg" => bytes.starts_with(&[0xFF, 0xD8, 0xFF]),
+            "image/webp" => bytes.len() > 12 && &bytes[0..4] == b"RIFF" && &bytes[8..12] == b"WEBP",
+            _ => false,
+        };
+        assert!(mime_ok, "tệp {rel:?} không đúng mime {}", s("mime"));
+        let credit = it["ghi_cong"].as_str().map(str::trim).unwrap_or_default().to_string();
+        println!("cargo:rerun-if-changed={}", file.display());
+        // Đường dẫn tuyệt đối dựng từ CARGO_MANIFEST_DIR (không dùng canonicalize: trên Windows nó trả dạng \\?\C:\…).
+        let abs = manifest_dir.join("../../content/memorial/trays").join(&rel);
+        code += &format!(
+            "    PackItem {{ id: {:?}, tray_style: {:?}, bytes: include_bytes!({:?}), credit: {:?} }},\n",
+            s("id"),
+            s("tray_style"),
+            abs.to_string_lossy(),
+            credit
+        );
     }
     code += "];\n";
     let out = std::path::PathBuf::from(std::env::var("OUT_DIR").unwrap()).join("trays.rs");

@@ -8,7 +8,7 @@ pub struct PackItem {
     pub id: &'static str,
     pub tray_style: &'static str,
     pub bytes: &'static [u8],
-    /// "Ảnh: <tác giả> · <giấy phép>" khi giấy phép cần ghi công; rỗng nếu không.
+    /// Dòng ghi công: nguyên văn `ghi_cong` của manifest (như bản web); rỗng khi `ghi_cong` là null.
     pub credit: &'static str,
 }
 

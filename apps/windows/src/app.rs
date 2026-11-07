@@ -691,13 +691,12 @@ fn blocks(json: &str) -> ModelRc<Block> {
     ))
 }
 
-/// Chế độ chạy giao diện. Bản phát hành chỉ dùng `Normal`; hai chế độ còn lại chỉ gọi được từ `ci.rs`.
+/// Chế độ chạy giao diện. Bản phát hành chỉ dùng `Normal`. `Ci` mang một hàm do `ci.rs` truyền vào (chụp màn hình, đo
+/// bộ nhớ): `LichViet.exe` không có đường gọi nào tới mã chụp màn hình (`shots.rs`, gồm hình mâm vẽ bằng mã), nên trình
+/// liên kết bỏ hẳn mã đó khỏi bản phát hành — CI kiểm bằng cách tìm tên bước chụp trong tệp (P62-10).
 pub(crate) enum UiMode {
     Normal,
-    /// Chụp lần lượt mọi màn hình vào thư mục rồi tự thoát.
-    Shots(std::path::PathBuf),
-    /// Mở Người thân với dữ liệu mẫu rồi đứng yên (CI đọc Working Set).
-    Memory,
+    Ci(Box<dyn FnOnce(&AppWindow, Rc<RefCell<State>>)>),
 }
 
 /// Điểm vào của `LichViet.exe`. Tham số duy nhất được hiểu: URI `lichviet:nguoi/<id>?…` khi người dùng bấm vào thông
@@ -714,16 +713,15 @@ pub(crate) fn run_ui(mode: UiMode, args: Vec<String>) -> Result<(), slint::Platf
     let ui = AppWindow::new()?;
     let st = setup(&ui);
     match mode {
-        UiMode::Shots(dir) => shots::start(&ui, st, dir),
-        UiMode::Memory => shots::memory_mode(&ui, st),
+        UiMode::Ci(f) => f(&ui, st),
         UiMode::Normal => {
             if let Some(id) = open_person {
                 // Mở đúng hồ sơ của lời nhắc (chỉ khi hồ sơ còn trong kho).
                 ui.set_tab(4);
                 ui.global::<Data>().invoke_open_people();
+                // Mở thẳng trang hồ sơ là cố ý (bấm thông báo mở đúng người). Khối thông tin báo tử đã thu gọn sẵn trong
+                // `open_person` như mọi lần mở hồ sơ — không phải biện pháp riêng cho URI (08 §14 #12, DV25-06, P57-03).
                 ui.global::<People>().invoke_open_person(id.into());
-                // BM2-15: mở từ URI (trang web bất kỳ gọi được) → khối thông tin báo tử luôn thu gọn.
-                ui.global::<People>().set_v_notice_open(false);
             }
         }
     }

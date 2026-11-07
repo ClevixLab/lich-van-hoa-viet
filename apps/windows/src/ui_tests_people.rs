@@ -268,6 +268,12 @@ fn anh_mam_le() {
     // MA10-11: ảnh chỉ ghi vào kho khi bấm Lưu — trước đó kho không có ảnh chờ gắn nào (nhập sao lưu Gộp lúc này không
     // xóa mất ảnh của biểu mẫu).
     assert_eq!(std::fs::read_dir(tmp.join("photos")).map_or(0, |d| d.count()), 0, "chưa ghi ảnh trước khi Lưu");
+    // P62-07: đang xử lý ảnh → "Đang xử lý ảnh…", nút Lưu khóa.
+    p.set_f_tray_state(1);
+    assert_eq!(count_label(&ui, "Đang xử lý ảnh…"), 1);
+    press(&ui, "Lưu");
+    assert_eq!(page(&ui), "form", "Lưu bị khóa khi ảnh đang xử lý");
+    p.set_f_tray_state(2);
     press(&ui, "Lưu");
     assert_eq!(page(&ui), "nguoi");
     let store = ps.borrow().store.clone().unwrap();
