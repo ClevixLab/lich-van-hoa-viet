@@ -6,17 +6,17 @@
 //
 //   node test/tools/lvhv-store-tool.mjs open <thư-mục-bộ-mẫu> [--force-migration-failure]
 //   node test/tools/lvhv-store-tool.mjs import <tệp-sao-lưu> <mật-khẩu> [--merge|--replace] [--into <thư-mục-bộ-mẫu>]
-//   node test/tools/lvhv-store-tool.mjs save-person <thư-mục-bộ-mẫu|-> <person.json>
+//   node test/tools/lvhv-store-tool.mjs save-person <thư-mục-bộ-mẫu|-> <person.json|->
 //   node test/tools/lvhv-store-tool.mjs suggestions <deceased|living> [nam|nu]
 //   node test/tools/lvhv-store-tool.mjs display-capitalize <chuỗi>
+//   node test/tools/lvhv-store-tool.mjs check-media <photo|attachment> <mime> <tệp> [width height]
 //
 // Khác bản Rust (do trình duyệt không có "thư mục kho"):
 // - Kho IndexedDB chỉ sống trong tiến trình. <thư-mục-bộ-mẫu> là một thư mục theo bố cục bộ mẫu đóng băng
 //   (test-vectors/released/<bản>/: `store-snapshot.json` + `store/photos/<id>.img`). Công cụ dựng kho IndexedDB phiên
 //   bản 1 (như bản dựng 0.2 trước YC-2026-07) từ đó, rồi mở bằng `openStore` của bản này (chuyển đổi trong
 //   onupgradeneeded). Thư mục không có `store-snapshot.json` (hoặc `-`) → kho trống mới. Không ghi gì vào thư mục.
-// - --force-migration-failure: không cần móc trong mã PWA — công cụ làm lệnh ghi `meta.store_version` của giao dịch
-//   nâng cấp ném lỗi ở tầng IndexedDB (giả lập lỗi đĩa ở bước cuối), nên đúng đường quay lui → chỉ đọc của openStore.
+// - --force-migration-failure: `openStore(factory, { forceMigrationFailure: true })` (như Rust `OpenOptions`).
 //
 // stdout: một dòng JSON chuẩn (canonicalJson). Mã thoát: 0 thành công; 1 bị từ chối/lỗi; 2 sai cú pháp.
 import "fake-indexeddb/auto";
@@ -32,9 +32,10 @@ const REPO = resolve(ROOT, "..");
 const USAGE = `dùng:
   node test/tools/lvhv-store-tool.mjs open <thư-mục-bộ-mẫu> [--force-migration-failure]
   node test/tools/lvhv-store-tool.mjs import <tệp-sao-lưu> <mật-khẩu> [--merge|--replace] [--into <thư-mục-bộ-mẫu>]
-  node test/tools/lvhv-store-tool.mjs save-person <thư-mục-bộ-mẫu|-> <person.json>
+  node test/tools/lvhv-store-tool.mjs save-person <thư-mục-bộ-mẫu|-> <person.json|->
   node test/tools/lvhv-store-tool.mjs suggestions <deceased|living> [nam|nu]
-  node test/tools/lvhv-store-tool.mjs display-capitalize <chuỗi>`;
+  node test/tools/lvhv-store-tool.mjs display-capitalize <chuỗi>
+  node test/tools/lvhv-store-tool.mjs check-media <photo|attachment> <mime> <tệp> [width height]`;
 
 class Usage extends Error {}
 const sha = (b) => createHash("sha256").update(b).digest("hex");
@@ -53,7 +54,7 @@ try {
 } finally {
   rmSync(tmp, { recursive: true, force: true });
 }
-const { IDBFactory, IDBObjectStore } = await import("fake-indexeddb");
+const { IDBFactory } = await import("fake-indexeddb");
 
 const errJson = (e) => {
   const o = { kind: e?.constructor?.name ?? "Error", code: e?.code ?? null, display: String(e?.message ?? e) };
@@ -98,19 +99,8 @@ async function v1Factory(dir) {
 async function openFrom(dir, force = false) {
   const fixture = dir && dir !== "-" && existsSync(join(dir, "store-snapshot.json"));
   const f = fixture ? await v1Factory(dir) : new IDBFactory();
-  const put = IDBObjectStore.prototype.put;
-  if (force) {
-    IDBObjectStore.prototype.put = function (value, key) {
-      if (this.name === "meta" && key === "store_version") throw new Error("lỗi chuyển đổi ép buộc (--force-migration-failure)");
-      return put.call(this, value, key);
-    };
-  }
-  try {
-    const st = await S.openStore(f);
-    return { st, source: fixture ? "fixture_v1" : "fresh" };
-  } finally {
-    IDBObjectStore.prototype.put = put;
-  }
+  const st = await S.openStore(f, { forceMigrationFailure: force });
+  return { st, source: fixture ? "fixture_v1" : "fresh" };
 }
 
 async function storeJson(st) {
@@ -189,10 +179,10 @@ async function cmdImport(a) {
 }
 
 async function cmdSavePerson(a) {
-  if (a.length !== 2) throw new Usage("cần <thư-mục-bộ-mẫu|-> <person.json>");
+  if (a.length !== 2) throw new Usage("cần <thư-mục-bộ-mẫu|-> <person.json|->");
   const [dir, file] = a;
   let input;
-  try { input = JSON.parse(readFileSync(file, "utf8")); } catch (e) { return [{ command: "save-person", ok: false, stage: "read_file", error: errJson(e) }, false]; }
+  try { input = JSON.parse(readFileSync(file === "-" ? 0 : file, "utf8")); } catch (e) { return [{ command: "save-person", ok: false, stage: "read_file", error: errJson(e) }, false]; }
   let o;
   try { o = await openFrom(dir); } catch (e) { return [{ command: "save-person", ok: false, stage: "open", error: errJson(e) }, false]; }
   const { st, source } = o;
@@ -230,8 +220,19 @@ function cmdDisplay(a) {
   return [{ command: "display-capitalize", ok: true, input: a[0], output: S.displayCapitalize(a[0]) }, true];
 }
 
+function cmdCheckMedia(a) {
+  if (a.length !== 3 && a.length !== 5) throw new Usage("cần <photo|attachment> <mime> <tệp> [width height]");
+  const [kind, mime, file] = a;
+  if (kind !== "photo" && kind !== "attachment") throw new Usage(`phải là photo hoặc attachment: ${kind}`);
+  const dims = a.length === 5 ? a.slice(3).map(Number) : [null, null];
+  if (dims.some((x) => x !== null && !(Number.isInteger(x) && x >= 0))) throw new Usage("width/height phải là số nguyên không âm");
+  let bytes;
+  try { bytes = new Uint8Array(readFileSync(file)); } catch (e) { return [{ command: "check-media", ok: false, stage: "read_file", error: errJson(e) }, false]; }
+  return [{ command: "check-media", ok: true, kind, mime, bytes: bytes.length, sha256: sha(bytes), verdict: S.mediaVerdict(kind, mime, bytes, dims[0], dims[1]) }, true];
+}
+
 const [cmd, ...rest] = process.argv.slice(2);
-const table = { open: cmdOpen, import: cmdImport, "save-person": cmdSavePerson, suggestions: cmdSuggestions, "display-capitalize": cmdDisplay };
+const table = { open: cmdOpen, import: cmdImport, "save-person": cmdSavePerson, suggestions: cmdSuggestions, "display-capitalize": cmdDisplay, "check-media": cmdCheckMedia };
 try {
   if (!table[cmd]) throw new Usage("");
   const [out, ok] = await table[cmd](rest);

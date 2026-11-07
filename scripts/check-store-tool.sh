@@ -6,6 +6,7 @@
 #     sai mật khẩu, 21 tệp corrupt/
 #   - save-person: viết hoa khi lưu (danh_xung, quan_he), gioi_tinh null → bỏ khóa
 #   - suggestions, display-capitalize
+#   - check-media: mọi ca của media/manifest.json (B6)
 # Cần: cargo, node ≥ 20, python3, pwa/node_modules (npm ci). Không sửa tệp nào trong kho mã (làm trên bản sao tạm).
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -15,8 +16,8 @@ FIX="$TV/released/0.2-dev-before-attachments"
 WORK="$(mktemp -d "${TMPDIR:-/tmp}/lvhv-store-tool-ci.XXXXXX")"
 trap 'rm -rf "$WORK"' EXIT
 
-echo "[store-tool] dựng bản Rust (tính năng test-hooks)"
-cargo build --locked -q -p lvhv-ffi --features test-hooks --bin lvhv-store-tool
+echo "[store-tool] dựng bản Rust"
+cargo build --locked -q -p lvhv-ffi --bin lvhv-store-tool
 BIN="${CARGO_TARGET_DIR:-$ROOT/target}/debug/lvhv-store-tool"
 TS=(node "$ROOT/pwa/test/tools/lvhv-store-tool.mjs")
 PW="mật khẩu thử nghiệm"
@@ -29,6 +30,22 @@ run() {
   if [ "$rc" != "$want" ]; then
     echo "[store-tool] LỖI: $name thoát $rc, cần $want" >&2; cat "$WORK/$name.json" "$WORK/$name.err" >&2; exit 1
   fi
+}
+
+# Ca của media/manifest.json: "<số thứ tự> <kind> <mime> <tệp> [width height]" mỗi dòng.
+python3 - "$TV/media/manifest.json" > "$WORK/media-cases.txt" <<'EOF'
+import json, sys
+for i, c in enumerate(json.load(open(sys.argv[1], encoding="utf-8"))["cases"]):
+    dims = f" {c['width']} {c['height']}" if c.get("width") is not None else ""
+    print(f"{i} {c['kind']} {c['mime']} {c['file']}{dims}")
+EOF
+media() { # media <tiền tố> <lệnh…>
+  local pre="$1"; shift
+  local i kind mime file dims
+  while read -r i kind mime file dims; do
+    # shellcheck disable=SC2086
+    run "$pre-media-$i" 0 "$@" check-media "$kind" "$mime" "$TV/media/$file" $dims
+  done < "$WORK/media-cases.txt"
 }
 
 echo "[store-tool] Rust"
@@ -58,6 +75,7 @@ for k in deceased living; do
 done
 run rs-disp 0 "$BIN" display-capitalize "bà cô tổ họ"
 run rs-usage 2 "$BIN" suggestions dead
+media rs "$BIN"
 
 echo "[store-tool] TypeScript/PWA"
 run ts-open 0 "${TS[@]}" open "$FIX"
@@ -77,6 +95,7 @@ for k in deceased living; do
 done
 run ts-disp 0 "${TS[@]}" display-capitalize "bà cô tổ họ"
 run ts-usage 2 "${TS[@]}" suggestions dead
+media ts "${TS[@]}"
 
 echo "[store-tool] kiểm kết quả"
 python3 - "$WORK" "$TV" <<'EOF'
@@ -128,6 +147,11 @@ for c in ex_m["corrupt"]:
     n += r["stage"] == "open_backup" and r["error"]["kind"] == "Backup"
 ok(n == len(ex_m["corrupt"]) == 21, f"rs import: {n}/21 tệp corrupt/ bị từ chối (Backup)")
 ok(all(J(f"ts-corrupt-{c}")["stage"] == "open_backup" for c in ("magic", "file_version-2", "ciphertext", "truncated-1")), "ts import: 4 tệp corrupt/ bị từ chối")
+
+mc = json.load(open(f"{TV}/media/manifest.json", encoding="utf-8"))["cases"]
+for side in ("rs", "ts"):
+    bad = [f"{c['file']}/{c['kind']}: {J(f'{side}-media-{i}')['verdict']} != {c['expect']}" for i, c in enumerate(mc) if J(f"{side}-media-{i}")["verdict"] != c["expect"]]
+    ok(not bad, f"{side} check-media: {len(mc) - len(bad)}/{len(mc)} ca media/manifest.json" + (f" — {bad}" if bad else ""))
 
 # Rust ≡ TypeScript
 for n in ("sugg-deceased", "sugg-living", "sugg-deceased-nam", "sugg-deceased-nu", "sugg-living-nam", "sugg-living-nu", "disp"):

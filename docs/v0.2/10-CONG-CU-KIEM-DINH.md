@@ -21,19 +21,14 @@ mới gọi kho. `lvhv-store` không phụ thuộc được vào `lvhv-ffi`.
 ## 1. Dựng
 
 ```
-# Rust — bản thường
+# Rust
 cargo build --locked -p lvhv-ffi --bin lvhv-store-tool
-# Rust — có móc kiểm thử, cần cho open --force-migration-failure
-cargo build --locked -p lvhv-ffi --features test-hooks --bin lvhv-store-tool
 # → target/debug/lvhv-store-tool  (thêm --release nếu muốn; bản dev đã tối ưu argon2)
 
 # TypeScript
 (cd pwa && npm ci)
 node pwa/test/tools/lvhv-store-tool.mjs …
 ```
-
-Tính năng `test-hooks` không bao giờ được bật khi dựng ứng dụng. Không có nó, `--force-migration-failure` báo sai cú
-pháp (mã thoát 2) và không làm gì.
 
 ## 2. Kết quả và mã thoát
 
@@ -77,14 +72,14 @@ target/debug/lvhv-store-tool open /tmp/kho
 
 In ra:
 - `migration_status`: `state` (`ok` / `migrated` / `read_only`), `from_version`, `to_version`, `backup_path`
-  (bản sao `lvhv.sqlite.pre-v2.bak`), `error`;
+  (bản sao `lvhv.sqlite.pre-v2.bak`), `backup_exists`, `error`;
 - `store`;
 - `files_before`, `files_after`: mọi tệp trong thư mục, kèm cỡ và sha256, trước và sau khi mở.
 
 Kho của bản mới hơn: `ok: false`, `error.kind = "NewerSchema"`.
 
-`--force-migration-failure` (cần `test-hooks`) ép bước chuyển đổi lỗi **sau** khi mọi bước đã chạy trong giao
-dịch, ngay trước `COMMIT`. Như vậy quan sát được đúng đường lỗi của 04 B5 mục 3:
+`--force-migration-failure` mở bằng `Store::open_with(dir, OpenOptions { force_migration_failure: true })`: bước
+chuyển đổi lỗi **sau** khi đã chạy trong giao dịch, trước `COMMIT`. Như vậy quan sát được đúng đường lỗi của 04 B5 mục 3:
 - giao dịch quay lui: `user_version` vẫn là 1, dữ liệu cũ còn nguyên;
 - bản sao `.pre-v2.bak` còn trên đĩa;
 - `state = "read_only"`.
@@ -93,14 +88,11 @@ dịch, ngay trước `COMMIT`. Như vậy quan sát được đúng đường l
 - `put_settings`, `put_person`, `delete_person` phải lỗi `ReadOnly`;
 - `export_backup` phải thành công.
 
-Kho mới tạo (phiên bản 0) không bị móc này ảnh hưởng.
-
 TS: `<thư-mục>` là **thư mục bộ mẫu** theo bố cục `test-vectors/released/<bản>/`, gồm `store-snapshot.json` và
 `store/photos/<id>.img`. Công cụ dựng kho IndexedDB phiên bản 1 từ thư mục đó, như bản dựng trước YC-2026-07, rồi mở
 bằng `openStore` của bản này. Thư mục không có `store-snapshot.json`, hoặc `-`, cho kho trống. Không ghi gì vào thư
-mục. Ở TS, `--force-migration-failure` không cần móc trong mã PWA: công cụ làm lệnh ghi `meta.store_version` cuối
-giao dịch nâng cấp ném lỗi ở tầng IndexedDB. Giao dịch nâng cấp vì vậy quay lui, và kho được mở lại ở chế độ chỉ
-đọc. `to_version` của TS là phiên bản IndexedDB (3), không phải 2.
+mục. Ở TS, `--force-migration-failure` gọi `openStore(factory, { forceMigrationFailure: true })`: giao dịch nâng cấp
+quay lui, và kho được mở lại ở chế độ chỉ đọc. `to_version` của TS là phiên bản IndexedDB (3), không phải 2.
 
 ### 3.2 `import <tệp-sao-lưu> <mật-khẩu> [--merge|--replace] [--into <thư-mục>]`
 
@@ -121,11 +113,11 @@ In ra:
 
 Tệp bị từ chối: `ok: false`, `stage` (`open_backup`, `open_store` hoặc `apply_import`) và `error`.
 
-### 3.3 `save-person <thư-mục> <person.json>`
+### 3.3 `save-person <thư-mục> <person.json | ->`
 
 Lưu một `Person` như màn hình hồ sơ. `id` rỗng thì sinh id mới. Công cụ gắn `created_at`/`updated_at`/`rev`, viết
 hoa chữ đầu `danh_xung` và `quan_he` (YC-2026-07), bỏ khóa `gioi_tinh: null`, tính trường dẫn xuất, kiểm V1–V8, rồi
-in **bản đã lưu** (`saved`) đọc lại từ kho.
+in **bản đã lưu** (`saved`) đọc lại từ kho. `-` thay cho tên tệp: đọc JSON từ stdin.
 - Rust gọi `LvhvStore::save_person_json` trên kho ở `<thư-mục>`, kho được tạo nếu chưa có.
 - TS làm như `src/people/forms.ts`: `buildPerson(normalizePersonNames(…))`, rồi `validate.person`, rồi `putPerson`.
   Ở TS, `<thư-mục>` là thư mục bộ mẫu, hoặc `-` cho kho trống.
@@ -143,6 +135,13 @@ giới tính) và `quan_he` (`quan_he_suggestions`).
 
 In `display_capitalize(<chuỗi>)`: quy tắc viết hoa khi hiển thị cách gọi/quan hệ đã lưu.
 
+### 3.6 `check-media <photo|attachment> <mime> <tệp> [width height]`
+
+Kiểm byte một ảnh hoặc tệp đính kèm như khi nhập (01 §3.8a, Bổ sung B6): Rust `lvhv_store::media::check_photo` /
+`check_attachment`, TS `mediaVerdict`. In `verdict`: `ok` hoặc mã lỗi (`bad_mime`, `mime_mismatch`, `bad_header`,
+`metadata`, `dimensions_mismatch`, `too_large`, `pdf_no_eof`). Với ảnh, `width height` là kích thước khai trong bản
+ghi; thiếu thì là 0 0.
+
 ## 4. Kiểm trên CI
 
 `scripts/check-store-tool.sh` (job `store` của `.github/workflows/ci.yml`) chạy mọi lệnh của cả hai bản trên vector
@@ -151,7 +150,8 @@ trong `docs/v0.2/schema/test-vectors/`:
 - mở lại, rồi `--force-migration-failure`;
 - nhập `backup.lvhv` cũ, `example-v1.lvhv`, `supplement-yc05/notice-v1.lvhv`, một tệp sai mật khẩu và 21 tệp
   `corrupt/` (TS: 4 tệp);
-- `save-person`, `suggestions`, `display-capitalize`.
+- `save-person`, `suggestions`, `display-capitalize`;
+- `check-media` cho mọi ca của `media/manifest.json`.
 
 Script kiểm kết quả với các tệp kỳ vọng đã commit, rồi so bản Rust với bản TS: tài liệu kho, byte ảnh và tệp đính
 kèm, gợi ý, hồ sơ đã lưu (trừ id và thời điểm). Chạy tại chỗ: `scripts/check-store-tool.sh`, cần `cargo`, `node` ≥

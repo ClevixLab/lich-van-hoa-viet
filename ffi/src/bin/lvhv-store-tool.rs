@@ -9,17 +9,18 @@
 //! ```text
 //! lvhv-store-tool open <thư-mục> [--force-migration-failure]
 //! lvhv-store-tool import <tệp-sao-lưu> <mật-khẩu> [--merge|--replace] [--into <thư-mục>]
-//! lvhv-store-tool save-person <thư-mục> <person.json>
+//! lvhv-store-tool save-person <thư-mục> <person.json | ->
 //! lvhv-store-tool suggestions <deceased|living> [nam|nu]
 //! lvhv-store-tool display-capitalize <chuỗi>
+//! lvhv-store-tool check-media <photo|attachment> <mime> <tệp> [width height]
 //! ```
 //!
-//! `--force-migration-failure` cần bản dựng có tính năng `test-hooks`:
-//! `cargo build -p lvhv-ffi --features test-hooks --bin lvhv-store-tool`.
+//! `--force-migration-failure` dùng `lvhv_store::OpenOptions { force_migration_failure: true }`.
 #![forbid(unsafe_code)]
 
 use lvhv_store::{
-    canonical_json, migrate::MigrationStatus, sha256_hex, AppInfo, ImportMode, Store, StoreError,
+    canonical_json, migrate::MigrationStatus, sha256_hex, AppInfo, ImportMode, OpenOptions, Store,
+    StoreError,
 };
 use serde_json::{json, Map, Value};
 use std::path::{Path, PathBuf};
@@ -28,9 +29,10 @@ use std::process::ExitCode;
 const USAGE: &str = "dùng:
   lvhv-store-tool open <thư-mục> [--force-migration-failure]
   lvhv-store-tool import <tệp-sao-lưu> <mật-khẩu> [--merge|--replace] [--into <thư-mục>]
-  lvhv-store-tool save-person <thư-mục> <person.json>
+  lvhv-store-tool save-person <thư-mục> <person.json | ->
   lvhv-store-tool suggestions <deceased|living> [nam|nu]
-  lvhv-store-tool display-capitalize <chuỗi>";
+  lvhv-store-tool display-capitalize <chuỗi>
+  lvhv-store-tool check-media <photo|attachment> <mime> <tệp> [width height]";
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -40,6 +42,7 @@ fn main() -> ExitCode {
         Some("save-person") => cmd_save_person(&args[1..]),
         Some("suggestions") => cmd_suggestions(&args[1..]),
         Some("display-capitalize") => cmd_display(&args[1..]),
+        Some("check-media") => cmd_check_media(&args[1..]),
         _ => Err(Usage(String::new())),
     };
     match r {
@@ -115,6 +118,7 @@ fn status_json(m: &MigrationStatus) -> Value {
         "from_version": m.from_version,
         "to_version": m.to_version,
         "backup_path": m.backup_path,
+        "backup_exists": m.backup_path.as_ref().map(|p| Path::new(p).exists()),
         "error": m.error,
     })
 }
@@ -211,17 +215,13 @@ fn cmd_open(a: &[String]) -> Out {
     let Some(dir) = dir else {
         return usage("thiếu <thư-mục>");
     };
-    if force {
-        #[cfg(feature = "test-hooks")]
-        lvhv_store::test_hooks::set_force_migration_failure(true);
-        #[cfg(not(feature = "test-hooks"))]
-        return usage(
-            "--force-migration-failure cần bản dựng có tính năng test-hooks: \
-             cargo build -p lvhv-ffi --features test-hooks --bin lvhv-store-tool",
-        );
-    }
     let files_before = files_json(&dir);
-    let mut s = match Store::open(&dir) {
+    let mut s = match Store::open_with(
+        &dir,
+        OpenOptions {
+            force_migration_failure: force,
+        },
+    ) {
         Ok(s) => s,
         Err(e) => {
             return Ok((
@@ -397,9 +397,15 @@ fn import_into(
 
 fn cmd_save_person(a: &[String]) -> Out {
     let [dir, file] = a else {
-        return usage("cần <thư-mục> <person.json>");
+        return usage("cần <thư-mục> <person.json | ->");
     };
-    let input = match std::fs::read_to_string(file) {
+    let input = if file == "-" {
+        let mut t = String::new();
+        std::io::Read::read_to_string(&mut std::io::stdin(), &mut t).map(|_| t)
+    } else {
+        std::fs::read_to_string(file)
+    };
+    let input = match input {
         Ok(t) => t,
         Err(e) => return fail("save-person", "read_file", &StoreError::Io(e)),
     };
@@ -476,6 +482,42 @@ fn cmd_display(a: &[String]) -> Out {
             "ok": true,
             "input": s,
             "output": lvhv_store::names::display_capitalize(s),
+        }),
+        true,
+    ))
+}
+
+/// Kiểm tra byte ảnh / tệp đính kèm (01 §3.8a, B6) — `lvhv_store::media`; cùng mã với `mediaVerdict` của PWA.
+fn cmd_check_media(a: &[String]) -> Out {
+    let (kind, mime, file, dims) = match a {
+        [k, m, f] => (k, m, f, None),
+        [k, m, f, w, h] => match (w.parse::<u32>(), h.parse::<u32>()) {
+            (Ok(w), Ok(h)) => (k, m, f, Some((w, h))),
+            _ => return usage("width/height phải là số nguyên không âm"),
+        },
+        _ => return usage("cần <photo|attachment> <mime> <tệp> [width height]"),
+    };
+    let bytes = match std::fs::read(file) {
+        Ok(b) => b,
+        Err(e) => return fail("check-media", "read_file", &StoreError::Io(e)),
+    };
+    let r = match kind.as_str() {
+        "photo" => {
+            let (w, h) = dims.unwrap_or((0, 0));
+            lvhv_store::media::check_photo(mime, &bytes, w, h)
+        }
+        "attachment" => lvhv_store::media::check_attachment(mime, &bytes),
+        s => return usage(&format!("phải là photo hoặc attachment: {s}")),
+    };
+    Ok((
+        json!({
+            "command": "check-media",
+            "ok": true,
+            "kind": kind,
+            "mime": mime,
+            "bytes": bytes.len(),
+            "sha256": sha256_hex(&bytes),
+            "verdict": r.map_or_else(|e| e.code(), |()| "ok"),
         }),
         true,
     ))

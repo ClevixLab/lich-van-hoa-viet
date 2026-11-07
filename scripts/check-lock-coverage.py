@@ -18,7 +18,7 @@ ROOT = Path(__file__).resolve().parent.parent
 # Cùng tùy chọn đồ thị với cargo-deny (deny.toml [graph]).
 g = tomllib.loads((ROOT / "deny.toml").read_text(encoding="utf-8")).get("graph", {})
 # `cargo metadata` tỉa theo tính năng ít hơn cargo-deny, nên phép so dưới đây là điều kiện cần. Điều kiện đủ: cargo-deny
-# quét với mọi tính năng (gồm bindgen-cli, test-hooks).
+# quét với mọi tính năng (gồm bindgen-cli).
 if g.get("all-features") is not True or g.get("no-default-features"):
     print("::error::deny.toml [graph] phải có all-features = true (và không no-default-features) để cargo-deny xét "
           "cả phụ thuộc lúc dựng chỉ đến qua tính năng không mặc định")

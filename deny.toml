@@ -2,9 +2,10 @@
 # phụ thuộc mật mã ghim chính xác, 0 cảnh báo bảo mật chưa xử lý.
 [graph]
 # Quét với MỌI tính năng: các phụ thuộc chỉ đến qua tính năng không mặc định (lvhv-ffi/bindgen-cli → uniffi_bindgen →
-# askama → basic-toml; lvhv-ffi/test-hooks) vẫn nằm trong Cargo.lock và được dựng trên CI/máy phát triển, nên phải
-# được xét. Với `all-features = false`, cargo-deny tỉa chúng khỏi đồ thị và RUSTSEC-2026-0374 đã không bị báo.
-# scripts/check-lock-coverage.py (job "deps") kiểm điều này và kiểm mọi gói của Cargo.lock nằm trong đồ thị.
+# askama → basic-toml) vẫn nằm trong Cargo.lock và được dựng trên CI/máy phát triển, nên phải được xét. Với
+# `all-features = false`, cargo-deny tỉa chúng khỏi đồ thị và RUSTSEC-2026-0374 đã không bị báo (BM2-09).
+# Job "deps" kiểm thêm: scripts/check-lock-coverage.py (cấu hình này + mọi gói của Cargo.lock nằm trong đồ thị) và
+# `cargo audit` trên toàn Cargo.lock (.cargo/audit.toml, cùng ngoại lệ).
 all-features = true
 
 [advisories]
