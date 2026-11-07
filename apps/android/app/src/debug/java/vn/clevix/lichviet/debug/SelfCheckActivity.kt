@@ -17,7 +17,10 @@ import vn.clevix.lichviet.people.JMap
 import vn.clevix.lichviet.people.JsonW
 import vn.clevix.lichviet.people.PeopleRepo
 import vn.clevix.lichviet.people.Photos
+import vn.clevix.lichviet.people.o
+import vn.clevix.lichviet.people.objs
 import vn.clevix.lichviet.people.parseObj
+import vn.clevix.lichviet.people.s
 
 /**
  * Tự kiểm nâng cấp R14 (docs/v0.2/04 Bổ sung B5) — CHỈ có trong bản debug. CI gọi:
@@ -30,6 +33,11 @@ import vn.clevix.lichviet.people.parseObj
  * - verify: so dữ liệu hiện có với kỳ vọng (0 bản ghi mất, 0 trường khác), đọc lại từng ảnh, kiểm báo thức đã được đặt lại.
  * - verify-prefs: tùy chọn giao diện của bản 0.1.x (cỡ chữ, sáng/tối, "Để sau") còn nguyên — giá trị CI đã ghi trước khi
  *   cài đè (R14 (a)).
+ * - verify-migrated: CI đã chép kho thật của bản 0.2-dev (bộ mẫu đóng băng `0.2-dev-before-attachments`, phiên bản 1) và
+ *   tệp kỳ vọng `files/r14-expected.json` vào máy; mở bằng bản này → `migrated`, dữ liệu đúng từng trường như tệp kỳ
+ *   vọng (cùng tệp bản Rust và bản web phải ra), từng tệp đính kèm đúng sha256, có bản sao dữ liệu cũ (R14 (c)).
+ * - verify-readonly: kho phiên bản 1 có một hồ sơ không qua được kiểm tra sau chuyển đổi → `read_only`: dữ liệu cũ
+ *   còn nguyên và xem được, mọi thao tác ghi bị từ chối, vẫn tạo được tệp sao lưu (B5 mục 3).
  */
 class SelfCheckActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -40,6 +48,8 @@ class SelfCheckActivity : Activity() {
                 "seed" -> seed(this)
                 "verify" -> verify(this)
                 "verify-prefs" -> verifyPrefs(this)
+                "verify-migrated" -> verifyMigrated(this)
+                "verify-readonly" -> verifyReadOnly(this)
                 else -> "FAIL thao tác lạ: $op"
             }
         } catch (e: Throwable) {
@@ -72,12 +82,17 @@ class SelfCheckActivity : Activity() {
             val ds = parseObj(repo.datasetJson())
             ds.remove("exported_at")
             val photos = linkedMapOf<String, Any?>()
+            val files = linkedMapOf<String, Any?>()
             for (p in repo.persons()) {
-                val ids = listOfNotNull(p.photoId) +
-                    ((p.notice?.get("certificate_photo_ids") as? List<*>)?.map { it as String } ?: emptyList())
-                for (id in ids) photos[id] = repo.photo(id)?.let { sha(it) } ?: "MẤT"
+                p.photoId?.let { id -> photos[id] = repo.photo(id)?.let { sha(it) } ?: "MẤT" }
+                for (a in (p.notice?.get("attachments") as? List<*>) ?: emptyList<Any?>()) {
+                    val fid = (a as Map<*, *>)["file_id"] as String
+                    files[fid] = repo.attachmentBytes(fid)?.let { sha(it) } ?: "MẤT"
+                }
             }
-            return linkedMapOf("dataset" to ds, "photos" to photos, "lock_screen_names" to repo.lockScreenNames())
+            return linkedMapOf(
+                "dataset" to ds, "photos" to photos, "attachments" to files, "lock_screen_names" to repo.lockScreenNames(),
+            )
         }
 
         fun seed(ctx: Context): String {
@@ -86,10 +101,17 @@ class SelfCheckActivity : Activity() {
             if (repo.persons().isNotEmpty()) return "FAIL kho đã có dữ liệu"
             val today = LocalDate.now()
             val portrait = repo.addPhoto(Photos.encode(jpeg(300, 400, Color.rgb(150, 110, 80))))
-            val cert = repo.addPhoto(Photos.encode(jpeg(800, 600, Color.rgb(230, 230, 220))))
+            val cert = repo.addAttachment(
+                "image/jpeg", "giay-chung-tu.jpg", Photos.encode(jpeg(1600, 1200, Color.rgb(230, 230, 220)), Photos.ATT_EDGE, Photos.ATT_STORED).bytes,
+            )
+            val pdf = repo.addAttachment(
+                "application/pdf", "Tin bao tu.pdf",
+                "%PDF-1.4\n1 0 obj<</Type/Catalog>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n".toByteArray(Charsets.ISO_8859_1),
+            )
             val a = repo.savePerson(
                 linkedMapOf<String, Any?>(
                     "id" to "", "kind" to "deceased", "danh_xung" to "Ông", "ho_ten" to "Nguyễn Văn Ánh", "ten_hieu" to "Phúc Thiện",
+                    "gioi_tinh" to "nam",
                     "quan_he" to "Ông nội",
                     "birth" to linkedMapOf<String, Any?>("input" to DateValue("solar", "day", 1940, 5, 1).toMap(), "noi_sinh" to "Hà Nội"),
                     "death" to linkedMapOf<String, Any?>(
@@ -97,7 +119,11 @@ class SelfCheckActivity : Activity() {
                         "notice" to linkedMapOf<String, Any?>(
                             "reported_by" to "Chú Hải", "place" to "Bệnh viện Bạch Mai", "reason" to "Tuổi cao",
                             "notice_date" to DateValue("solar", "day", 2025, 8, 9).toMap(),
-                            "certificate_photo_ids" to arrayListOf(cert), "note" to "Ghi chú báo tử",
+                            "attachments" to arrayListOf(
+                                linkedMapOf<String, Any?>("id" to PeopleRepo.uuid(), "kind" to "giay_chung_tu", "file_id" to cert),
+                                linkedMapOf<String, Any?>("id" to PeopleRepo.uuid(), "kind" to "tin_bao_tu", "file_id" to pdf),
+                            ),
+                            "note" to "Ghi chú báo tử",
                         ),
                     ),
                     "noi_an_tang" to "Nghĩa trang quê", "photo_id" to portrait,
@@ -161,6 +187,70 @@ class SelfCheckActivity : Activity() {
             if (actual.contains("\"MẤT\"")) return "FAIL mất ảnh"
             if (!Reminders.alarmArmed(ctx)) return "FAIL chuỗi báo thức chưa được đặt lại sau cài đè"
             return "OK verify ${repo.persons().size} người, ${repo.events().size} sự kiện, báo thức đã đặt lại"
+        }
+
+        /** Bỏ trường không so được (thời điểm xuất, thông tin ứng dụng) khỏi tài liệu dữ liệu. */
+        private fun stateOf(doc: JMap): JMap = doc.also { it.remove("app"); it.remove("exported_at") }
+
+        /** Chỗ khác đầu tiên giữa hai giá trị JSON (đường dẫn), null khi giống hệt. */
+        private fun diff(a: Any?, b: Any?, path: String = ""): String? {
+            if (a is Map<*, *> && b is Map<*, *>) {
+                for (k in (a.keys + b.keys).map { it.toString() }.toSortedSet()) diff(a[k], b[k], "$path/$k")?.let { return it }
+                return null
+            }
+            if (a is List<*> && b is List<*>) {
+                if (a.size != b.size) return "$path: ${a.size} phần tử ≠ ${b.size}"
+                a.indices.forEach { i -> diff(a[i], b[i], "$path/$i")?.let { return it } }
+                return null
+            }
+            if (a is Number && b is Number) return if (a.toDouble() == b.toDouble()) null else "$path: $a ≠ $b"
+            return if (a == b) null else "$path: $a ≠ $b"
+        }
+
+        fun verifyMigrated(ctx: Context): String {
+            val exp = File(ctx.filesDir, "r14-expected.json")
+            if (!exp.exists()) return "FAIL thiếu tệp kỳ vọng"
+            PeopleStore.reset()
+            val repo = PeopleStore.get(ctx) ?: return "FAIL không mở được kho: ${PeopleStore.openError()}"
+            val st = repo.migration()
+            if (st.state != "migrated") return "FAIL trạng thái ${st.state} (${st.message}), cần migrated"
+            if (st.fromVersion != 1L) return "FAIL from_version ${st.fromVersion}"
+            val bak = st.backupPath?.let { File(it) }
+            if (bak == null || !bak.exists()) return "FAIL không có bản sao dữ liệu cũ"
+            val expected = parseObj(exp.readText()).o("state") ?: return "FAIL tệp kỳ vọng hỏng"
+            val actual = stateOf(parseObj(repo.datasetJson()))
+            diff(expected, actual)?.let { return "FAIL dữ liệu sau chuyển đổi khác kỳ vọng tại $it" }
+            var n = 0
+            for (a in actual.objs("attachments")) {
+                val b = repo.attachmentBytes(a.s("id")) ?: return "FAIL mất tệp đính kèm ${a.s("id")}"
+                if (sha(b) != a.s("sha256")) return "FAIL sha256 tệp đính kèm ${a.s("id")}"
+                n++
+            }
+            for (p in actual.objs("photos")) {
+                if (repo.photo(p.s("id")) == null) return "FAIL mất ảnh ${p.s("id")}"
+            }
+            return "OK migrated 1 → ${st.toVersion}: ${repo.persons().size} người, ${repo.events().size} sự kiện, $n tệp đính kèm, bản sao ${bak.name}"
+        }
+
+        fun verifyReadOnly(ctx: Context): String {
+            PeopleStore.reset()
+            val repo = PeopleStore.get(ctx) ?: return "FAIL không mở được kho: ${PeopleStore.openError()}"
+            val st = repo.migration()
+            if (st.state != "read_only") return "FAIL trạng thái ${st.state}, cần read_only"
+            if (st.message.isNullOrBlank()) return "FAIL không có câu báo cho người dùng"
+            val bak = st.backupPath?.let { File(it) }
+            if (bak == null || !bak.exists()) return "FAIL không có bản sao dữ liệu cũ"
+            val n = repo.persons().size
+            if (n == 0) return "FAIL không xem được dữ liệu cũ"
+            val write = runCatching { repo.putSettings(repo.settings()) }
+            if (write.isSuccess) return "FAIL ghi được khi chỉ đọc"
+            val bytes = runCatching { repo.exportBackup("mật khẩu thử nghiệm", "r14") }
+            if (bytes.isFailure) return "FAIL không xuất được sao lưu: ${bytes.exceptionOrNull()?.message}"
+            val opened = PeopleRepo.openBackupFile(bytes.getOrThrow(), "mật khẩu thử nghiệm")
+            val persons = opened.second.persons.toInt()
+            opened.first.destroy()
+            if (persons != n) return "FAIL tệp sao lưu có $persons người, kho có $n"
+            return "OK read_only: $n người xem được, ghi bị từ chối, sao lưu $persons người; ${st.message}"
         }
 
         /** Giá trị CI ghi vào shared_prefs/hien_thi.xml trước khi cài đè (cỡ chữ A++, giao diện tối, "Để sau"). */

@@ -82,7 +82,26 @@ class PeopleScreensTest {
     fun setUp() {
         shadowOf(ApplicationProvider.getApplicationContext<Application>()).grantPermissions(Manifest.permission.POST_NOTIFICATIONS)
         repo = Seed.newRepo()
-        ids = Seed.family(repo)
+        ids = Seed.family(
+            repo,
+            listOf(
+                Triple("giay_chung_tu", "image/jpeg", "giay-chung-tu.jpg" to certJpeg()),
+                Triple("tin_bao_tu", "application/pdf", "Tin bao tu ba Dung.pdf" to Seed.PDF),
+            ),
+        )
+    }
+
+    /** Ảnh "giấy chứng tử" giả (JPEG không siêu dữ liệu, như sau Photos.encode). */
+    private fun certJpeg(): ByteArray {
+        val bmp = android.graphics.Bitmap.createBitmap(800, 560, android.graphics.Bitmap.Config.ARGB_8888)
+        val cv = android.graphics.Canvas(bmp)
+        cv.drawColor(android.graphics.Color.rgb(246, 243, 235))
+        val pen = android.graphics.Paint().apply { color = android.graphics.Color.rgb(150, 140, 130); strokeWidth = 6f }
+        cv.drawRect(30f, 30f, 770f, 530f, android.graphics.Paint().apply { style = android.graphics.Paint.Style.STROKE; color = android.graphics.Color.rgb(170, 60, 50); strokeWidth = 8f })
+        for (i in 0 until 9) cv.drawLine(80f, 110f + i * 45f, if (i % 3 == 2) 480f else 720f, 110f + i * 45f, pen)
+        val out = java.io.ByteArrayOutputStream()
+        bmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, 85, out)
+        return vn.clevix.lichviet.people.Photos.encode(out.toByteArray(), vn.clevix.lichviet.people.Photos.ATT_EDGE, vn.clevix.lichviet.people.Photos.ATT_STORED).bytes
     }
 
     private fun show(r: PeopleRepo? = repo, start: PRoute = PRoute.Upcoming, reduced: Boolean = true) {
@@ -114,6 +133,29 @@ class PeopleScreensTest {
     private fun go(r: PRoute) {
         rule.runOnIdle { nav.tab(PRoute.Profiles); if (r != PRoute.Profiles) nav.go(r) }
         rule.waitForIdle()
+    }
+
+    /** B5 mục 3: chuyển đổi lỗi → thẻ đỏ chỉ đọc trên mọi trang, không có nút thêm/sửa/xóa, vẫn tạo được tệp sao lưu. */
+    @Test
+    fun readOnlyAfterFailedMigration() {
+        val dir = vn.clevix.lichviet.people.MigrationTest.copyFixture()
+        vn.clevix.lichviet.people.MigrationTest.breakOnePerson(dir)
+        val ro = PeopleRepo(vn.clevix.lichviet.core.LvhvStore.open(dir.absolutePath))
+        assertTrue(ro.readOnly)
+        show(r = ro, start = PRoute.Profiles)
+        rule.onNodeWithText("chế độ chỉ đọc", substring = true).assertExists()
+        assertTrue(rule.onAllNodesWithText("+ Thêm").fetchSemanticsNodes().isEmpty())
+        shoot("41-chi-doc", variants = withXl)
+        rule.onNodeWithText("Tạo tệp sao lưu…").performScrollTo().performClick()
+        rule.waitForIdle()
+        assertTrue(rule.onAllNodesWithText("Khôi phục từ tệp sao lưu").fetchSemanticsNodes().isEmpty())
+        shoot("42-chi-doc-sao-luu")
+        val p = ro.persons().first { it.deceased }
+        go(PRoute.PersonPage(p.id))
+        assertTrue(rule.onAllNodesWithText("Xóa hồ sơ").fetchSemanticsNodes().isEmpty())
+        rule.runOnIdle { nav.go(PRoute.EditPerson(p.id)) }
+        rule.waitForIdle()
+        assertTrue("không mở biểu mẫu khi chỉ đọc", rule.onAllNodesWithText("Lưu").fetchSemanticsNodes().isEmpty())
     }
 
     /** BM2-04: cửa sổ đặt FLAG_SECURE (ảnh đa nhiệm trống) đúng ở các màn hình nhạy cảm, gỡ khi rời đi. */
@@ -178,6 +220,18 @@ class PeopleScreensTest {
             if (rule.onAllNodesWithText("Xem ▾").fetchSemanticsNodes().isNotEmpty()) rule.onNodeWithText("Xem ▾").performScrollTo().performClick()
             rule.onNode(hasScrollAction()).performScrollToNode(hasText("Người báo tin"))
         }
+        shoot("10b-ho-so-tep-dinh-kem") {
+            if (rule.onAllNodesWithText("Xem ▾").fetchSemanticsNodes().isNotEmpty()) rule.onNodeWithText("Xem ▾").performScrollTo().performClick()
+            rule.onNode(hasScrollAction()).performScrollToNode(hasText("Mở bằng ứng dụng khác…"))
+        }
+        // Mở PDF: hộp xác nhận trước khi đưa tệp ra ứng dụng khác (§5.3, S10).
+        shoot("10c-hop-mo-pdf", screen = true) {
+            if (rule.onAllNodesWithText("Mở tệp").fetchSemanticsNodes().isEmpty()) {
+                if (rule.onAllNodesWithText("Xem ▾").fetchSemanticsNodes().isNotEmpty()) rule.onNodeWithText("Xem ▾").performScrollTo().performClick()
+                rule.onNodeWithText("Mở bằng ứng dụng khác…").performScrollTo().performClick()
+            }
+        }
+        rule.onNodeWithText("Hủy").performClick()
         go(PRoute.Memorial(ids.a))
         shoot("11-tuong-niem")
         go(PRoute.Memorial(ids.b))
@@ -200,6 +254,10 @@ class PeopleScreensTest {
         shoot("18-su-kien-nguoi-da-mat") { rule.onNode(hasScrollAction()).performScrollToNode(hasText("Không nhắc sự kiện của người đã mất", substring = true)) }
         go(PRoute.MarkDeceased(ids.m))
         shoot("19-cap-nhat-da-mat")
+        go(PRoute.EditPerson(ids.d))
+        shoot("19b-sua-tep-dinh-kem") {
+            rule.onNode(hasScrollAction()).performScrollToNode(hasText("Thêm tệp PDF"))
+        }
     }
 
     @Test

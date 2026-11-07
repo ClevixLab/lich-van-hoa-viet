@@ -30,6 +30,7 @@ import vn.clevix.lichviet.people.errText
 import vn.clevix.lichviet.people.i
 import vn.clevix.lichviet.people.list
 import vn.clevix.lichviet.people.o
+import vn.clevix.lichviet.people.objs
 import vn.clevix.lichviet.people.s
 import vn.clevix.lichviet.people.sn
 import vn.clevix.lichviet.people.strs
@@ -77,8 +78,8 @@ fun PersonScreen(x: PeopleCtx, id: String) {
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
         if (p.deceased) {
             PrimaryButton("Tưởng niệm", { x.nav.go(PRoute.Memorial(p.id)) }, Modifier.weight(1f))
-            SecondaryButton("Sửa", { x.nav.go(PRoute.EditPerson(p.id)) }, Modifier.weight(1f))
-        } else {
+            if (!x.readOnly) SecondaryButton("Sửa", { x.nav.go(PRoute.EditPerson(p.id)) }, Modifier.weight(1f))
+        } else if (!x.readOnly) {
             // "Sửa" trước, "Cập nhật: đã mất" sau — thống nhất mọi nền tảng (TKN-X-01).
             SecondaryButton("Sửa", { x.nav.go(PRoute.EditPerson(p.id)) }, Modifier.weight(1f))
             SecondaryButton("Cập nhật: đã mất", { x.nav.go(PRoute.MarkDeceased(p.id)) }, Modifier.weight(1f))
@@ -99,9 +100,9 @@ fun PersonScreen(x: PeopleCtx, id: String) {
     if (p.deceased && n != null && noticeHasContent(n)) NoticeView(x, n)
 
     PCard(title = "Sự kiện") {
-        SecondaryButton("+ Thêm sự kiện", { x.nav.go(PRoute.EventEdit(p.id, null)) })
+        if (!x.readOnly) SecondaryButton("+ Thêm sự kiện", { x.nav.go(PRoute.EventEdit(p.id, null)) })
         if (d.events.isEmpty()) Body("Chưa có sự kiện nào.")
-        d.events.forEach { e -> EventLine(e, d.types[e.typeId] ?: "Sự kiện", { x.nav.go(PRoute.EventEdit(p.id, e.id)) }, { delEvent = e.id }) }
+        d.events.forEach { e -> EventLine(e, d.types[e.typeId] ?: "Sự kiện", { x.nav.go(PRoute.EventEdit(p.id, e.id)) }, { delEvent = e.id }, !x.readOnly) }
         if (p.deceased) Fine("Không nhắc sinh nhật và sự kiện của người đã mất — chỉ nhắc ngày giỗ. Thông tin vẫn được lưu và sao lưu.")
     }
 
@@ -115,7 +116,7 @@ fun PersonScreen(x: PeopleCtx, id: String) {
         }
     }
 
-    SecondaryButton("Xóa hồ sơ", { confirmDelete = true }, Modifier.fillMaxWidth(), danger = true)
+    if (!x.readOnly) SecondaryButton("Xóa hồ sơ", { confirmDelete = true }, Modifier.fillMaxWidth(), danger = true)
 
     if (confirmDelete) {
         ConfirmDialog(
@@ -199,7 +200,7 @@ private fun InfoTable(p: Person, sum: vn.clevix.lichviet.people.Summary) {
 
 fun noticeHasContent(n: Map<String, Any?>): Boolean =
     listOf("reported_by", "place", "reason", "note").any { !n.sn(it).isNullOrBlank() } ||
-        n.o("notice_date") != null || n.strs("certificate_photo_ids").isNotEmpty()
+        n.o("notice_date") != null || n.objs("attachments").isNotEmpty()
 
 /** Khối thu gọn "Thông tin báo tử" (§12g): chỉ những dòng có dữ liệu; ảnh không cắt. */
 @Composable
@@ -216,26 +217,18 @@ private fun NoticeView(x: PeopleCtx, n: Map<String, Any?>) {
             DateValue.of(n.o("notice_date"))?.let { InfoLine("Ngày nhận tin", PFmt.dateValue(it)) }
             n.sn("reason")?.let { InfoLine("Lý do", it) }
             n.sn("note")?.let { InfoLine("Ghi chú", it) }
-            n.strs("certificate_photo_ids").forEachIndexed { i, pid ->
-                val img = rememberPhoto(remember(pid) { x.repo.photo(pid) })
-                if (img != null) {
-                    Image(
-                        img, contentDescription = "Ảnh giấy báo tử ${i + 1}", contentScale = ContentScale.Fit,
-                        modifier = Modifier.fillMaxWidth().heightIn(max = 480.dp),
-                    )
-                }
-            }
+            AttachmentView(x.repo, n.objs("attachments"))
         }
     }
 }
 
 @Composable
-private fun EventLine(e: EventRec, typeName: String, onEdit: () -> Unit, onDelete: () -> Unit) {
+private fun EventLine(e: EventRec, typeName: String, onEdit: () -> Unit, onDelete: () -> Unit, editable: Boolean = true) {
     val title = e.tieuDe.ifBlank { typeName }
     val date = e.date?.let { PFmt.dateValue(it) } ?: ""
     Column(Modifier.fillMaxWidth()) {
         Body("$title · $date · ${if (e.recurring) "hằng năm" else "một lần"}")
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (editable) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             SecondaryButton("Sửa", onEdit)
             SecondaryButton("Xóa", onDelete, danger = true)
         }

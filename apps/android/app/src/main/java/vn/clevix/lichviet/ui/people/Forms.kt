@@ -41,35 +41,15 @@ import vn.clevix.lichviet.people.PeopleRepo
 import vn.clevix.lichviet.people.Person
 import vn.clevix.lichviet.people.Photos
 import vn.clevix.lichviet.people.b
-import vn.clevix.lichviet.people.capFirst
 import vn.clevix.lichviet.people.copyJ
 import vn.clevix.lichviet.people.errText
 import vn.clevix.lichviet.people.i
 import vn.clevix.lichviet.people.o
+import vn.clevix.lichviet.people.objs
 import vn.clevix.lichviet.people.s
 import vn.clevix.lichviet.people.sn
 import vn.clevix.lichviet.people.strs
 import vn.clevix.lichviet.ui.LocalLich
-
-/** Gợi ý cách gọi (trường `danh_xung`) — từ thường ngày. */
-/** Gợi ý cách gọi cho người đã mất (YC-2026-07, 01 §3.1) — viết hoa chữ đầu để tỏ lòng tôn trọng. */
-val DANH_XUNG_DA_MAT = listOf(
-    "Ông", "Bà", "Cụ", "Kỵ", "Bác", "Cô", "Chú", "Dì", "Cậu", "Mợ", "Thím", "Anh", "Chị", "Em", "Cháu", "Con", "Bạn",
-    "Bố", "Mẹ", "Ông Tổ họ", "Bà Cô Tổ họ", "Bé đỏ",
-)
-
-/** Người đang sống: như trên nhưng không có Cụ, Kỵ, Ông Tổ họ, Bà Cô Tổ họ, Bé đỏ. */
-val DANH_XUNG_DANG_SONG = DANH_XUNG_DA_MAT - setOf("Cụ", "Kỵ", "Ông Tổ họ", "Bà Cô Tổ họ", "Bé đỏ")
-
-/** Gợi ý quan hệ — từ thường ngày, không dùng từ Hán-Việt cổ (§12e, PHONG-TUC.md §1). */
-val QUAN_HE_DA_MAT = listOf(
-    "Bố", "Mẹ", "Ông nội", "Bà nội", "Ông ngoại", "Bà ngoại", "Cụ ông", "Cụ bà", "Kỵ ông", "Kỵ bà",
-    "Ông cố", "Bà cố", "Ông sơ", "Bà sơ", "Bác", "Chú", "Thím", "Cô", "Dì", "Cậu", "Mợ", "Anh", "Chị", "Em", "Chồng", "Vợ", "Con",
-)
-val QUAN_HE_DANG_SONG = listOf(
-    "Bố", "Mẹ", "Ông nội", "Bà nội", "Ông ngoại", "Bà ngoại", "Bác", "Chú", "Thím", "Cô", "Dì", "Cậu", "Mợ",
-    "Anh", "Chị", "Em", "Chồng", "Vợ", "Con trai", "Con gái", "Cháu",
-)
 
 /** Độ dài theo điểm mã (01 §1). */
 fun cp(s: String): Int = s.trim().codePointCount(0, s.trim().length)
@@ -95,13 +75,17 @@ class NoticeState(init: Map<String, Any?>?) {
     var reason by mutableStateOf(init?.sn("reason") ?: "")
     var note by mutableStateOf(init?.sn("note") ?: "")
     val date = DateInputState(DateValue.of(init?.o("notice_date")), allowLunar = false)
-    val existing = mutableStateListOf<String>().apply { addAll(init?.strs("certificate_photo_ids") ?: emptyList()) }
-    val added = mutableStateListOf<EncodedImage>()
+    /** Tệp đính kèm (01 §3.2a, YC-2026-07): phần tử đã lưu (có file_id) và tệp vừa chọn (chưa ghi vào kho). */
+    val items = mutableStateListOf<AttItem>().apply {
+        addAll((init?.objs("attachments") ?: emptyList()).map { AttItem(it.s("id"), it.s("kind"), it.s("file_id"), null) })
+    }
+    /** Loại của tệp sắp thêm. */
+    var newKind by mutableStateOf("tin_bao_tu")
     val hadNotice = init != null
 
     fun hasContent(): Boolean =
         reportedBy.isNotBlank() || place.isNotBlank() || reason.isNotBlank() || note.isNotBlank() || !date.empty ||
-            existing.isNotEmpty() || added.isNotEmpty()
+            items.isNotEmpty()
 
     fun errors(today: LocalDate): List<String> {
         val e = ArrayList<String>()
@@ -117,13 +101,31 @@ class NoticeState(init: Map<String, Any?>?) {
         return e
     }
 
-    /** JSON `DeathNotice` (lõi cắt khoảng trắng, chuẩn hóa NFC, rỗng → null). [newIds]: id của ảnh vừa thêm. */
-    fun toMap(newIds: List<String>): JMap = linkedMapOf<String, Any?>(
+    /**
+     * Ghi các tệp vừa chọn vào kho (`add_attachment`); trả map id phần tử → file_id. Lỗi giữa chừng → xóa các tệp đã ghi
+     * ở lần này rồi ném lại (không để tệp mồ côi).
+     */
+    fun storePending(repo: PeopleRepo): Map<String, String> {
+        val out = LinkedHashMap<String, String>()
+        try {
+            for (it in items) it.pending?.let { p -> out[it.id] = repo.addAttachment(p.mime, p.fileName, p.bytes) }
+        } catch (e: Exception) {
+            out.values.forEach { repo.deleteAttachment(it) }
+            throw e
+        }
+        return out
+    }
+
+    /** JSON `DeathNotice` (lõi cắt khoảng trắng, chuẩn hóa NFC, rỗng → null). [stored]: kết quả [storePending]. */
+    fun toMap(stored: Map<String, String>): JMap = linkedMapOf<String, Any?>(
         "reported_by" to reportedBy,
         "place" to place,
         "reason" to reason,
         "notice_date" to date.value()?.toMap(),
-        "certificate_photo_ids" to ArrayList(existing + newIds),
+        "attachments" to ArrayList(items.mapNotNull { a ->
+            val fid = a.fileId ?: stored[a.id] ?: return@mapNotNull null
+            linkedMapOf<String, Any?>("id" to a.id, "kind" to a.kind, "file_id" to fid)
+        }),
         "note" to note,
     )
 }
@@ -132,15 +134,6 @@ class NoticeState(init: Map<String, Any?>?) {
 @Composable
 fun NoticeEditor(st: NoticeState, startOpen: Boolean, showErrors: Boolean, today: LocalDate, repo: PeopleRepo) {
     var open by remember { mutableStateOf(startOpen) }
-    val ctx = LocalContext.current
-    val scope = rememberCoroutineScope()
-    var photoErr by remember { mutableStateOf<String?>(null) }
-    val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-        if (uri != null) scope.launch {
-            val r = withContext(Dispatchers.Default) { runCatching { Photos.process(ctx, uri) } }
-            r.onSuccess { st.added.add(it); photoErr = null }.onFailure { photoErr = it.message }
-        }
-    }
     PCard {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             H2("Thông tin báo tử (không bắt buộc)", Modifier.weight(1f))
@@ -157,34 +150,10 @@ fun NoticeEditor(st: NoticeState, startOpen: Boolean, showErrors: Boolean, today
             val dErr = if (st.date.empty) null else st.date.formatError("")
             DateInput(st.date, null, dErr)
             TextIn("Lý do", st.reason, { st.reason = it }, multiline = true, error = if (showErrors) lenErr(st.reason, 500, "Lý do") else null)
-            Fine("Ảnh giấy báo tử (tối đa 4)")
-            st.existing.toList().forEachIndexed { i, id ->
-                val img = rememberPhoto(remember(id) { repo.photo(id) })
-                PhotoThumb(img, "Ảnh giấy báo tử ${i + 1}") { st.existing.remove(id) }
-            }
-            st.added.toList().forEachIndexed { i, e ->
-                val img = remember(e) { Photos.bitmap(e.bytes)?.asImageBitmap() }
-                PhotoThumb(img, "Ảnh giấy báo tử mới ${i + 1}") { st.added.remove(e) }
-            }
-            if (st.existing.size + st.added.size < 4) {
-                SecondaryButton("Thêm ảnh giấy báo tử", {
-                    picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                })
-            }
-            photoErr?.let { ErrorText(it) }
-            Fine("Ảnh chỉ lưu trong ứng dụng trên máy này, đã bỏ thông tin vị trí và máy chụp.")
+            AttachmentEditor(st, repo)
             TextIn("Ghi chú", st.note, { st.note = it }, multiline = true, error = if (showErrors) lenErr(st.note, 2000, "Ghi chú") else null)
             if (showErrors) st.errors(today).filter { it.startsWith("Ngày nhận") }.forEach { ErrorText(it) }
         }
-    }
-}
-
-@Composable
-private fun PhotoThumb(img: androidx.compose.ui.graphics.ImageBitmap?, label: String, onRemove: () -> Unit) {
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        if (img != null) Image(img, contentDescription = label, contentScale = ContentScale.Fit, modifier = Modifier.size(96.dp))
-        else Fine(label)
-        SecondaryButton("Bỏ ảnh", onRemove)
     }
 }
 
@@ -241,17 +210,15 @@ fun PersonForm(x: PeopleCtx, id: String?, deceasedNew: Boolean?) {
 
     // Nhóm đầu.
     PCard(title = if (deceased) "Người đã mất" else "Người đang sống") {
-        SuggestIn("Cách gọi (đứng trước tên)", f.danhXung, { f.danhXung = it }, if (deceased) DANH_XUNG_DA_MAT else DANH_XUNG_DANG_SONG, if (showErrors) lenErr(f.danhXung, 40, "Cách gọi") else null)
+        SuggestIn("Cách gọi (đứng trước tên)", f.danhXung, { f.danhXung = it }, remember(deceased, f.gioiTinh) { PeopleRepo.danhXungList(deceased, f.gioiTinh) }, if (showErrors) lenErr(f.danhXung, 40, "Cách gọi") else null)
         TextIn("Họ và tên *", f.hoTen, { f.hoTen = it }, error = if (showErrors) f.nameError() else null)
-        if (PeopleRepo.supportsGender) {
-            Fine("Giới tính")
-            Choice(listOf("Nam", "Nữ", "Không ghi"), when (f.gioiTinh) { "nam" -> 0; "nu" -> 1; else -> 2 }, {
-                f.gioiTinh = when (it) { 0 -> "nam"; 1 -> "nu"; else -> null }
-            })
-        }
+        Fine("Giới tính")
+        Choice(listOf("Nam", "Nữ", "Không ghi"), when (f.gioiTinh) { "nam" -> 0; "nu" -> 1; else -> 2 }, {
+            f.gioiTinh = when (it) { 0 -> "nam"; 1 -> "nu"; else -> null }
+        })
         if (deceased) TextIn("Tên hiệu / pháp danh", f.tenHieu, { f.tenHieu = it }, error = if (showErrors) lenErr(f.tenHieu, 120, "Tên hiệu") else null)
         SuggestIn(
-            "Quan hệ với bạn", f.quanHe, { f.quanHe = it }, if (deceased) QUAN_HE_DA_MAT else QUAN_HE_DANG_SONG,
+            "Quan hệ với bạn", f.quanHe, { f.quanHe = it }, remember(deceased) { PeopleRepo.quanHeList(deceased) },
             if (showErrors) lenErr(f.quanHe, 120, "Quan hệ") else null,
             help = if (deceased) "Trang tưởng niệm ghi quan hệ này phía trên tên, ví dụ “Ông nội”, “Mẹ”. Để trống thì chỉ ghi tên." else null,
         )
@@ -422,7 +389,7 @@ class PersonFormState(val existing: Person?, val deceased: Boolean, settings: JM
     private fun fingerprint(): String = listOf(
         danhXung, hoTen, tenHieu, quanHe, ghiChu, noiSinh, noiAnTang, death.d, death.m, death.y, death.lunar, death.leap,
         birth.d, birth.m, birth.y, birth.lunar, manualAge, loi, huongDuong, gioHet, photo != null, photoRemoved,
-        notice.reportedBy, notice.place, notice.reason, notice.note, notice.added.size, notice.existing.size,
+        notice.reportedBy, notice.place, notice.reason, notice.note, notice.items.map { it.id + it.kind }, gioiTinh,
         gio.allOffsets(), gio.enabled, gio.timeText(), sn.allOffsets(), sn.enabled, sinhNhatAm,
     ).joinToString("|")
 
@@ -497,7 +464,7 @@ class PersonFormState(val existing: Person?, val deceased: Boolean, settings: JM
     /** "Hưởng thọ 86 tuổi" (lõi tính theo 02 §4.2 với ngưỡng của hồ sơ). */
     fun agePreview(today: LocalDate): String? {
         if (death.value() == null) return null
-        return runCatching { PeopleRepo.summaryOf(PeopleRepo.derivePerson(build(emptyList(), null, preview = true)), today).tuoiMatText }.getOrNull()
+        return runCatching { PeopleRepo.summaryOf(PeopleRepo.derivePerson(build(emptyMap(), null, preview = true)), today).tuoiMatText }.getOrNull()
     }
 
     fun errors(today: LocalDate): List<String> {
@@ -527,15 +494,15 @@ class PersonFormState(val existing: Person?, val deceased: Boolean, settings: JM
     fun anyReminderOn(): Boolean = if (deceased) gio.enabled && gio.allOffsets().isNotEmpty() else sn.enabled
 
     /** Dựng JSON `Person` (trường dẫn xuất để lõi tính). */
-    fun build(newNoticeIds: List<String>, newPhotoId: String?, preview: Boolean = false): JMap {
+    fun build(newNoticeIds: Map<String, String>, newPhotoId: String?, preview: Boolean = false): JMap {
         val m: JMap = raw?.copyJ() ?: linkedMapOf<String, Any?>()
         if (preview && m["id"] == null) m["id"] = previewId
         m["kind"] = if (deceased) "deceased" else "living"
-        m["danh_xung"] = capFirst(danhXung)
+        m["danh_xung"] = danhXung.trim() // lõi viết hoa chữ đầu khi lưu (save_person_json)
         m["ho_ten"] = if (preview && hoTen.isBlank()) "?" else hoTen
         m["ten_hieu"] = if (deceased) tenHieu else (raw?.s("ten_hieu") ?: "")
-        m["quan_he"] = capFirst(quanHe)
-        if (PeopleRepo.supportsGender) m["gioi_tinh"] = gioiTinh else m.remove("gioi_tinh")
+        m["quan_he"] = quanHe.trim()
+        m["gioi_tinh"] = gioiTinh
         m["ghi_chu"] = ghiChu
         m["birth"] = birth.value()?.let { linkedMapOf<String, Any?>("input" to it.toMap(), "noi_sinh" to noiSinh) }
         m["feb29_rule"] = feb29
@@ -587,10 +554,18 @@ class PersonFormState(val existing: Person?, val deceased: Boolean, settings: JM
     }
 
     /** Ghi ảnh (nếu có) rồi hồ sơ. */
+    /** Ghi ảnh + tệp đính kèm mới rồi lưu hồ sơ; lưu lỗi → xóa ảnh/tệp vừa ghi (`delete_photo`, `delete_attachment`). */
     fun save(repo: PeopleRepo): Person {
         val photoId = photo?.let { repo.addPhoto(it) }
-        val ids = if (deceased) notice.added.map { repo.addPhoto(it) } else emptyList()
-        return repo.savePerson(build(ids, photoId))
+        var att: Map<String, String> = emptyMap()
+        try {
+            att = if (deceased) notice.storePending(repo) else emptyMap()
+            return repo.savePerson(build(att, photoId))
+        } catch (e: Exception) {
+            photoId?.let { repo.deletePhoto(it) }
+            att.values.forEach { repo.deleteAttachment(it) }
+            throw e
+        }
     }
 }
 

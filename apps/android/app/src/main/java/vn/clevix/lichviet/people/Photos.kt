@@ -25,10 +25,13 @@ object Photos {
     const val MAX_INPUT = 25L * 1024 * 1024
     const val MAX_STORED = 1024 * 1024
     const val MAX_EDGE = 1024
+    /** Ảnh đính kèm báo tử (01 §3.8a): cạnh dài ≤ 2048 px, ≤ 2 MB. */
+    const val ATT_EDGE = 2048
+    const val ATT_STORED = 2 * 1024 * 1024
 
     class PhotoError(msg: String) : Exception(msg)
 
-    fun process(ctx: Context, uri: Uri): EncodedImage {
+    fun process(ctx: Context, uri: Uri, maxEdge: Int = MAX_EDGE, maxStored: Int = MAX_STORED): EncodedImage {
         val cr = ctx.contentResolver
         val size = cr.query(uri, arrayOf(OpenableColumns.SIZE), null, null, null)?.use { c ->
             if (c.moveToFirst() && !c.isNull(0)) c.getLong(0) else -1L
@@ -47,19 +50,19 @@ object Photos {
             }
             buf.toByteArray()
         } ?: throw PhotoError("Không đọc được ảnh này (định dạng không hỗ trợ)")
-        return encode(raw)
+        return encode(raw, maxEdge, maxStored)
     }
 
     /** Giải mã + xoay + thu nhỏ + mã hóa lại. */
-    fun encode(raw: ByteArray): EncodedImage {
+    fun encode(raw: ByteArray, maxEdge: Int = MAX_EDGE, maxStored: Int = MAX_STORED): EncodedImage {
         // Trần điểm ảnh trước khi giải mã (T-D3): đọc kích thước từ phần đầu tệp.
         val b = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         runCatching { BitmapFactory.decodeByteArray(raw, 0, raw.size, b) }
         if (b.outWidth > MAX_DECLARED_EDGE || b.outHeight > MAX_DECLARED_EDGE ||
             b.outWidth.toLong() * b.outHeight > MAX_DECLARED_PIXELS
         ) throw PhotoError("Ảnh quá lớn (${b.outWidth} × ${b.outHeight} điểm ảnh) — hãy chọn ảnh nhỏ hơn")
-        val bmp = decode(raw) ?: throw PhotoError("Không đọc được ảnh này (định dạng không hỗ trợ)")
-        val scale = MAX_EDGE.toFloat() / max(bmp.width, bmp.height)
+        val bmp = decode(raw, maxEdge) ?: throw PhotoError("Không đọc được ảnh này (định dạng không hỗ trợ)")
+        val scale = maxEdge.toFloat() / max(bmp.width, bmp.height)
         var w = bmp.width
         var h = bmp.height
         var src = bmp
@@ -77,18 +80,18 @@ object Photos {
         for (q in intArrayOf(88, 80, 70, 60, 50)) {
             val bos = ByteArrayOutputStream()
             out.compress(Bitmap.CompressFormat.JPEG, q, bos)
-            if (bos.size() <= MAX_STORED) return EncodedImage(bos.toByteArray(), w, h)
+            if (bos.size() <= maxStored) return EncodedImage(bos.toByteArray(), w, h)
         }
-        throw PhotoError("Ảnh quá chi tiết, chưa nén được dưới 1 MB")
+        throw PhotoError("Ảnh quá chi tiết, chưa nén được dưới ${maxStored / (1024 * 1024)} MB")
     }
 
-    private fun decode(raw: ByteArray): Bitmap? = try {
+    private fun decode(raw: ByteArray, maxEdge: Int): Bitmap? = try {
         if (Build.VERSION.SDK_INT >= 28) {
             // ImageDecoder tự xoay theo EXIF; giới hạn kích thước khi giải mã để không tốn bộ nhớ.
             val src = ImageDecoder.createSource(java.nio.ByteBuffer.wrap(raw))
             ImageDecoder.decodeBitmap(src) { dec, info, _ ->
                 val s = info.size
-                val f = MAX_EDGE.toFloat() / max(s.width, s.height)
+                val f = maxEdge.toFloat() / max(s.width, s.height)
                 if (f < 1f) dec.setTargetSize((s.width * f).roundToInt().coerceAtLeast(1), (s.height * f).roundToInt().coerceAtLeast(1))
                 dec.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
             }
@@ -96,7 +99,7 @@ object Photos {
             val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
             BitmapFactory.decodeByteArray(raw, 0, raw.size, bounds)
             var sample = 1
-            while (max(bounds.outWidth, bounds.outHeight) / (sample * 2) >= MAX_EDGE) sample *= 2
+            while (max(bounds.outWidth, bounds.outHeight) / (sample * 2) >= maxEdge) sample *= 2
             val bmp = BitmapFactory.decodeByteArray(raw, 0, raw.size, BitmapFactory.Options().apply { inSampleSize = sample })
             bmp?.let { rotate(it, orientation(raw)) }
         }

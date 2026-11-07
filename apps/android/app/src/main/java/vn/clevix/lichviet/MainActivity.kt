@@ -78,6 +78,7 @@ import vn.clevix.lichviet.notify.Reminders
 import vn.clevix.lichviet.ui.people.PRoute
 import vn.clevix.lichviet.ui.people.PeopleModule
 import vn.clevix.lichviet.ui.people.PeopleNav
+import vn.clevix.lichviet.ui.people.AttachmentOpener
 import vn.clevix.lichviet.ui.people.cleanShareCache
 
 /** Tùy chọn hiển thị: chỉ cỡ chữ và chế độ sáng/tối (giống PWA). Không lưu dữ liệu khác. */
@@ -113,6 +114,7 @@ class MainActivity : ComponentActivity() {
         if (savedInstanceState == null) openRequest.value = Reminders.acceptOpen(ctx, intent)
         // BM2-16: tệp .ics tạm của lần chia sẻ trước (có tên, ngày giỗ) không nằm lại trong cache.
         cleanShareCache(ctx, 0L)
+        AttachmentOpener.cleanup(ctx)
         setContent {
             var size by rememberSaveable { mutableIntStateOf(Prefs.size(ctx).coerceIn(1, 3)) }
             var theme by rememberSaveable { mutableStateOf(Prefs.theme(ctx)) }
@@ -147,6 +149,8 @@ class MainActivity : ComponentActivity() {
         Reminders.rearmAsync(this)
         // Quay lại sau khi chia sẻ .ics: ứng dụng nhận đã đọc xong → xóa tệp tạm (chừa 30 s cho ứng dụng đọc chậm).
         cleanShareCache(applicationContext, 30_000L)
+        // Quay lại sau khi mở PDF đính kèm bằng ứng dụng khác: thu hồi quyền đọc, xóa bản tạm (RA-SOAT-BAO-MAT-V02 §5.3).
+        AttachmentOpener.cleanup(applicationContext)
     }
 }
 

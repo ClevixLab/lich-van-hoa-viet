@@ -56,7 +56,18 @@ object Seed {
     class Ids(val a: String, val b: String, val c: String, val m: String, val d: String, val evC: String)
 
     /** Gia đình mẫu: ông A (mất 08/08/2025), bà B (giỗ đúng hôm nay), cụ bà D (có thông báo tử), C và M đang sống. */
-    fun family(repo: PeopleRepo): Ids {
+    /** Một tệp PDF tối thiểu hợp lệ cho lõi (`%PDF-` … `%%EOF`). */
+    val PDF: ByteArray = "%PDF-1.4\n1 0 obj<</Type/Catalog>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n".toByteArray(Charsets.ISO_8859_1)
+
+    /**
+     * [attachments]: (loại, mime, tên tệp, byte) gắn vào thông tin báo tử của cụ bà D — ảnh phải là JPEG không siêu dữ liệu
+     * (kiểm thử giao diện tạo bằng `Bitmap.compress`).
+     */
+    fun family(repo: PeopleRepo, attachments: List<Triple<String, String, Pair<String?, ByteArray>>> = emptyList()): Ids {
+        val att = ArrayList<Any?>(attachments.map { (kind, mime, f) ->
+            val fid = repo.addAttachment(mime, f.first, f.second)
+            linkedMapOf<String, Any?>("id" to PeopleRepo.uuid(), "kind" to kind, "file_id" to fid)
+        })
         val a = repo.savePerson(
             deceased(
                 "Ông", "Nguyễn Văn A", "ông nội (bên nội)", dv("solar", 2025, 8, 8), dv("solar", 1940, 5, 1),
@@ -71,7 +82,7 @@ object Seed {
                 "Cụ bà", "Phạm Thị Dung", "Cụ bà", dv("solar", 2024, 7, 17), dv("solar", 1931, 3, 2),
                 notice = linkedMapOf<String, Any?>(
                     "reported_by" to "Chú Phạm Văn Hải", "place" to "Bệnh viện Bạch Mai", "reason" to "Tuổi cao, bệnh nặng",
-                    "notice_date" to dv("solar", 2024, 7, 18), "certificate_photo_ids" to ArrayList<String>(), "note" to "Gia đình đã báo họ hàng.",
+                    "notice_date" to dv("solar", 2024, 7, 18), "attachments" to att, "note" to "Gia đình đã báo họ hàng.",
                 ),
             ),
         ).id

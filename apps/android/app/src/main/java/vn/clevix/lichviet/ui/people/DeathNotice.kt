@@ -99,14 +99,16 @@ fun MarkDeceasedForm(x: PeopleCtx, id: String) {
             onDismiss = { confirm = false },
             onConfirm = {
                 confirm = false
+                var att: Map<String, String> = emptyMap()
                 try {
-                    val ids = notice.added.map { x.repo.addPhoto(it) }
-                    val n = if (notice.hasContent()) notice.toMap(ids) else null
+                    att = notice.storePending(x.repo)
+                    val n = if (notice.hasContent()) notice.toMap(att) else null
                     x.repo.markDeceased(p.id, death.value()!!, n, x.today)
                     x.changed()
                     x.nav.back()
                     x.toast("Đã lưu hồ sơ.")
                 } catch (e: Exception) {
+                    att.values.forEach { x.repo.deleteAttachment(it) } // không để tệp mồ côi
                     saveError = "Chưa lưu được: ${errText(e)}. Dữ liệu đang nhập vẫn còn trên màn hình."
                 }
             },

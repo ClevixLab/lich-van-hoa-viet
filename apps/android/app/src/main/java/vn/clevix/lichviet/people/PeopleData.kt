@@ -226,10 +226,10 @@ class Person(val raw: JMap) {
     val id: String get() = raw.s("id")
     val deceased: Boolean get() = raw.s("kind") == "deceased"
     /** Hiển thị luôn viết hoa chữ đầu (YC-2026-07), kể cả dữ liệu cũ. */
-    val danhXung: String get() = capFirst(raw.s("danh_xung"))
+    val danhXung: String get() = PeopleRepo.cap(raw.s("danh_xung"))
     val hoTen: String get() = raw.s("ho_ten")
     val tenHieu: String get() = raw.s("ten_hieu")
-    val quanHe: String get() = capFirst(raw.s("quan_he"))
+    val quanHe: String get() = PeopleRepo.cap(raw.s("quan_he"))
     /** "Nam" / "Nữ" / null (không ghi). */
     val gioiTinhText: String? get() = when (raw.sn("gioi_tinh")) { "nam" -> "Nam"; "nu" -> "Nữ"; else -> null }
     val ghiChu: String get() = raw.s("ghi_chu")

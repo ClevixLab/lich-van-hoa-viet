@@ -27,11 +27,13 @@ import kotlinx.coroutines.withContext
 import vn.clevix.lichviet.BuildConfig
 import vn.clevix.lichviet.core.BackupPreview
 import vn.clevix.lichviet.core.IcsExport
+import vn.clevix.lichviet.core.IcsSummary
 import vn.clevix.lichviet.core.VerifiedBackup
 import vn.clevix.lichviet.people.PFmt
 import vn.clevix.lichviet.people.PeopleRepo
 import vn.clevix.lichviet.people.errText
 import vn.clevix.lichviet.people.i
+import vn.clevix.lichviet.people.local
 import vn.clevix.lichviet.people.sn
 
 /** Giới hạn kích thước tệp sao lưu trước khi đọc (S12, 03 §2): 72 + 128 MiB + 16 byte. */
@@ -69,7 +71,7 @@ fun BackupScreen(x: PeopleCtx) {
     val ds = remember(x.rev) { runCatching { Triple(x.repo.persons().size, x.repo.events().size, x.repo.persons().count { it.photoId != null }) }.getOrDefault(Triple(0, 0, 0)) }
 
     // ---- A. .ics ----
-    var ics by remember { mutableStateOf<IcsExport?>(null) }
+    var ics by remember { mutableStateOf<IcsSummary?>(null) }
     var icsErr by remember { mutableStateOf<String?>(null) }
     val today = x.today
     PCard(title = "Để lịch điện thoại cùng nhắc: xuất lịch (.ics)") {
@@ -79,29 +81,28 @@ fun BackupScreen(x: PeopleCtx) {
         )
         PrimaryButton("Xuất tệp lịch (.ics)…", {
             icsErr = null
-            runCatching { x.repo.ics(today) }.onSuccess { if (it.events == 0u) icsErr = "Chưa có hồ sơ nào bật nhắc." else ics = it }
+            runCatching { x.repo.icsSummary(today) }.onSuccess { if (it.events == 0u) icsErr = "Chưa có hồ sơ nào bật nhắc." else ics = it }
                 .onFailure { icsErr = errText(it) }
         }, Modifier.fillMaxWidth())
         icsErr?.let { Fine(it) }
     }
     ics?.let { e ->
-        val prev = remember(e) { icsPreview(e.content) }
-        val end = today.plusYears(10).minusDays(1)
+        // Hộp xác nhận S10 theo `ics_summary` của lõi; tệp chỉ được sinh khi người dùng bấm chia sẻ.
         ConfirmDialog(
             title = "Xuất tệp lịch", confirm = "Chia sẻ tệp .ics",
             onDismiss = { ics = null },
             onConfirm = {
                 ics = null
-                runCatching { shareIcs(ctx, e) }.onSuccess { x.toast("Đã tạo tệp lịch. Chọn ứng dụng Lịch để nhập.") }
+                runCatching { shareIcs(ctx, x.repo.ics(today)) }.onSuccess { x.toast("Đã tạo tệp lịch. Chọn ứng dụng Lịch để nhập.") }
                     .onFailure { x.toast(errText(it)) }
             },
         ) {
-            Body("Tệp này chứa tên, ngày giỗ, sinh nhật và sự kiện của ${e.persons} người. Bất kỳ ai có tệp đều đọc được.")
-            Body("Gồm ${e.events} ngày trong 10 năm tới (từ ${PFmt.dmy(today)} đến ${PFmt.dmy(end)}), mỗi ngày có lời nhắc như đã đặt.")
-            if (prev.isNotEmpty()) {
+            Body(e.privacyText)
+            Body("Gồm ${e.events} ngày trong 10 năm tới (từ ${PFmt.dmy(e.from.local())} đến ${PFmt.dmy(e.to.local())}), mỗi ngày có lời nhắc như đã đặt.")
+            if (e.preview.isNotEmpty()) {
                 Fine("Xem trước:")
-                prev.forEach { Body("• $it") }
-                if (e.events.toInt() > prev.size) Fine("… và ${e.events.toInt() - prev.size} ngày khác")
+                e.preview.forEach { Body("• $it") }
+                if (e.events.toInt() > e.preview.size) Fine("… và ${e.events.toInt() - e.preview.size} ngày khác")
             }
             Fine("Không gồm thông tin báo tử. Mở tệp bằng ứng dụng Lịch của điện thoại hoặc máy tính để nhập.")
         }
@@ -129,6 +130,8 @@ fun BackupScreen(x: PeopleCtx) {
             pw1 = ""; pw2 = ""; pwTouched = false
             r.onSuccess {
                 exportOpen = false
+                // 03 §2.4: chỉ khi hệ điều hành báo ghi xong mới ghi nhận "đã sao lưu" (hủy, lỗi ghi → không gọi).
+                runCatching { x.repo.markBackupSaved() }
                 x.changed()
                 x.toast("Đã tạo tệp sao lưu. Hãy cất tệp ở nơi an toàn (ổ đám mây, USB) — tệp không tự gửi đi đâu.")
             }.onFailure { exportErr = "Chưa tạo được tệp sao lưu: ${errText(it)}" }
@@ -143,8 +146,9 @@ fun BackupScreen(x: PeopleCtx) {
             PrimaryButton("Tạo tệp sao lưu…", { exportOpen = true; exportErr = null }, Modifier.fillMaxWidth())
         } else {
             // Bản Android: các ô mật khẩu mở ngay trong khung (không đặt ô nhập trong hộp thoại) — 08 §13.
-            val e1 = if (pwTouched && pwLen(pw1) < 8) "Mật khẩu cần ít nhất 8 ký tự" else null
-            val e2 = if (pwTouched && e1 == null && !pwSame(pw1, pw2)) "Hai lần nhập mật khẩu chưa giống nhau" else null
+            // Quy tắc mật khẩu của lõi (`backup_password_error`, 03 §2.4; BM2-23): NFC, ≥ 8 điểm mã, hai lần giống nhau.
+            val e1 = if (pwTouched) PeopleRepo.passwordError(pw1, null) else null
+            val e2 = if (pwTouched && e1 == null) PeopleRepo.passwordError(pw1, pw2) else null
             H3("Tạo tệp sao lưu")
             Body("Tệp sẽ chứa ${ds.first} người, ${ds.second} sự kiện, ${ds.third} ảnh — đã mã hóa bằng mật khẩu.")
             Fine("Tệp gồm cả thông tin báo tử (người báo tin, nơi mất, lý do, ảnh giấy báo tử) — chỉ ai biết mật khẩu mới đọc được.")
@@ -156,7 +160,7 @@ fun BackupScreen(x: PeopleCtx) {
             exportErr?.let { ErrorText(it) }
             PrimaryButton(if (busy) "Đang mã hóa…" else "Tạo và lưu tệp", {
                 pwTouched = true
-                if (pwLen(pw1) >= 8 && pwSame(pw1, pw2)) {
+                if (PeopleRepo.passwordError(pw1, pw2) == null) {
                     busy = true
                     exportErr = null
                     createDoc.launch("LichVanHoaViet-saoluu-$today.lvhv")
@@ -166,6 +170,8 @@ fun BackupScreen(x: PeopleCtx) {
         }
     }
 
+    // Chế độ chỉ đọc (B5): chỉ xuất .ics và tạo tệp sao lưu; không khôi phục, không đổi cài đặt.
+    if (x.readOnly) return
     // ---- C. Khôi phục ----
     var picked by remember { mutableStateOf<Uri?>(null) }
     var pickedName by remember { mutableStateOf<String?>(null) }
@@ -323,11 +329,24 @@ private fun displayName(ctx: Context, uri: Uri): String? = runCatching {
     }
 }.getOrNull()
 
-/** Đọc tệp sao lưu, từ chối trước khi đọc nếu quá giới hạn (S12) → null. */
+/**
+ * Đọc tệp sao lưu: biết kích thước → kiểm 72 byte đầu và kích thước bằng `backup_header_check` của lõi **trước khi** đọc
+ * cả tệp (03 §2.2; lỗi → ném câu của lõi); quá giới hạn (S12) → null.
+ */
 private fun readLimited(ctx: Context, uri: Uri): ByteArray? {
     val size = ctx.contentResolver.query(uri, arrayOf(OpenableColumns.SIZE), null, null, null)?.use { c ->
         if (c.moveToFirst() && !c.isNull(0)) c.getLong(0) else -1L
     } ?: -1L
+    if (size > BACKUP_MAX_BYTES) return null
+    if (size >= 0) {
+        val head = ctx.contentResolver.openInputStream(uri)?.use { s ->
+            val h = ByteArray(minOf(72L, size).toInt())
+            var off = 0
+            while (off < h.size) { val n = s.read(h, off, h.size - off); if (n < 0) break; off += n }
+            h.copyOf(off)
+        } ?: return null
+        PeopleRepo.checkBackupHeader(head, size)
+    }
     return ctx.contentResolver.openInputStream(uri)?.use { readBackupBytes(it, size) }
 }
 

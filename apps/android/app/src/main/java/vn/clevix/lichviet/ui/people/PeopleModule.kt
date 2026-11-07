@@ -85,7 +85,11 @@ class PeopleCtx(
     val reducedMotion: Boolean,
     /** Hỏi quyền thông báo (Android 13+) — gọi khi người dùng bật nhắc lần đầu. */
     val askNotify: () -> Unit = {},
-)
+    /** B5/R14: nâng cấp dữ liệu lỗi → chế độ chỉ đọc (chỉ xem và xuất sao lưu); câu của lõi trong [readOnlyText]. */
+    val readOnlyText: String? = null,
+) {
+    val readOnly: Boolean get() = readOnlyText != null
+}
 
 private val SEGMENTS = listOf(PRoute.Upcoming, PRoute.Period, PRoute.Profiles, PRoute.Backup)
 private val SEGMENT_LABELS = listOf("Sắp tới", "Theo kỳ", "Hồ sơ", "Sao lưu")
@@ -129,8 +133,10 @@ fun PeopleModule(
                 )
             }
         } else {
+            val mig = remember(repo) { runCatching { repo.migration() }.getOrNull() }
+            val ro = if (mig?.state == "read_only") (mig.message ?: "Chưa nâng cấp được dữ liệu. Ứng dụng đang ở chế độ chỉ đọc — hãy xuất sao lưu.") else null
             val ctx = PeopleCtx(
-                repo = repo, today = today, nav = nav, rev = rev,
+                repo = repo, today = today, nav = nav, rev = rev, readOnlyText = ro,
                 toast = { msg -> scope.launch { snackbar.currentSnackbarData?.dismiss(); snackbar.showSnackbar(msg) } },
                 changed = { rev++; onChanged() },
                 reducedMotion = reducedMotion,
@@ -139,16 +145,16 @@ fun PeopleModule(
             // Mỗi trang (theo vị trí trong ngăn xếp) có trạng thái riêng: chuyển hồ sơ A → B không giữ dữ liệu của A.
             val r = nav.top
             androidx.compose.runtime.key(nav.stack.size, r) { when (r) {
-                PRoute.Upcoming -> Page { Header(nav); UpcomingScreen(ctx) }
-                PRoute.Period -> Page { Header(nav); PeriodScreen(ctx) }
-                PRoute.Profiles -> Page { Header(nav); ProfilesScreen(ctx) }
-                PRoute.Backup -> Page { Header(nav); BackupScreen(ctx) }
-                PRoute.Settings -> Page { SettingsScreen(ctx) }
-                is PRoute.PersonPage -> Page { PersonScreen(ctx, r.id) }
-                is PRoute.AddPerson -> Page { PersonForm(ctx, null, r.deceased) }
-                is PRoute.EditPerson -> Page { PersonForm(ctx, r.id, null) }
-                is PRoute.EventEdit -> Page { EventForm(ctx, r.personId, r.eventId) }
-                is PRoute.MarkDeceased -> Page { MarkDeceasedForm(ctx, r.id) }
+                PRoute.Upcoming -> Page { Header(nav); ReadOnlyBanner(ctx); UpcomingScreen(ctx) }
+                PRoute.Period -> Page { Header(nav); ReadOnlyBanner(ctx); PeriodScreen(ctx) }
+                PRoute.Profiles -> Page { Header(nav); ReadOnlyBanner(ctx); ProfilesScreen(ctx) }
+                PRoute.Backup -> Page { Header(nav); ReadOnlyBanner(ctx); BackupScreen(ctx) }
+                PRoute.Settings -> Page { ReadOnlyBanner(ctx); SettingsScreen(ctx) }
+                is PRoute.PersonPage -> Page { ReadOnlyBanner(ctx); PersonScreen(ctx, r.id) }
+                is PRoute.AddPerson -> Page { if (ctx.readOnly) ReadOnlyForm(ctx) else PersonForm(ctx, null, r.deceased) }
+                is PRoute.EditPerson -> Page { if (ctx.readOnly) ReadOnlyForm(ctx) else PersonForm(ctx, r.id, null) }
+                is PRoute.EventEdit -> Page { if (ctx.readOnly) ReadOnlyForm(ctx) else EventForm(ctx, r.personId, r.eventId) }
+                is PRoute.MarkDeceased -> Page { if (ctx.readOnly) ReadOnlyForm(ctx) else MarkDeceasedForm(ctx, r.id) }
                 is PRoute.Memorial -> MemorialScreen(ctx, r.id)
             } }
         }
@@ -157,13 +163,33 @@ fun PeopleModule(
 }
 
 /**
- * B5 (R14) — khi kho không mở được (ví dụ chuyển đổi dữ liệu sau cập nhật lỗi): dữ liệu không bị xóa. Ứng dụng không ghi
- * gì vào thư mục dữ liệu khi lỗi; cập nhật Android (`install -r`) không xóa dữ liệu; allowBackup=false.
- * TODO(#28): khi lõi có trạng thái chuyển đổi + chế độ chỉ đọc, hiện nút "Tạo tệp sao lưu" từ bản sao dữ liệu cũ.
+ * B5 (R14) — khi kho không mở được (ví dụ dữ liệu của bản mới hơn): dữ liệu không bị xóa. Ứng dụng không ghi gì vào thư
+ * mục dữ liệu khi lỗi; cập nhật Android (`install -r`) không xóa dữ liệu; allowBackup=false. Chuyển đổi lỗi thì lõi mở
+ * kho ở chế độ chỉ đọc ([ReadOnlyBanner]) — vẫn xem và xuất sao lưu được.
  */
 const val STORE_SAFE_TEXT =
     "Dữ liệu người thân của bạn vẫn còn nguyên trên máy — ứng dụng không xóa gì. Đừng gỡ cài đặt ứng dụng (gỡ cài đặt sẽ " +
         "xóa dữ liệu). Hãy cập nhật ứng dụng lên bản mới nhất; nếu vẫn lỗi, hãy liên hệ Clevix Lab."
+
+/** Thẻ đỏ chế độ chỉ đọc (B5 mục 3, `migration_status`): câu của lõi + lối tới "Tạo tệp sao lưu". */
+@Composable
+fun ReadOnlyBanner(x: PeopleCtx) {
+    val t = x.readOnlyText ?: return
+    val toBackup: @Composable () -> Unit = { PrimaryButton("Tạo tệp sao lưu…", { x.nav.tab(PRoute.Backup) }) }
+    NoticeBox(
+        "$t\n\nDữ liệu người thân vẫn còn nguyên trên máy. Trong lúc này chỉ xem được và tạo được tệp sao lưu; chưa thêm, " +
+            "sửa hay xóa được. Đừng gỡ cài đặt ứng dụng.",
+        warn = true,
+        action = if (x.nav.top != PRoute.Backup) toBackup else null,
+    )
+}
+
+/** Biểu mẫu khi đang chỉ đọc: không mở biểu mẫu, chỉ thẻ đỏ và lối quay lại. */
+@Composable
+private fun ReadOnlyForm(x: PeopleCtx) {
+    BackLink("Quay lại") { x.nav.back() }
+    ReadOnlyBanner(x)
+}
 
 /** Khung trang: một cột cuộn, lề 16 dp, rộng tối đa 720 dp, căn giữa. */
 @Composable

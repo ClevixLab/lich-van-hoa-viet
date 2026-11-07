@@ -8,6 +8,15 @@ import vn.clevix.lichviet.core.BackupImportMode
 import vn.clevix.lichviet.core.BackupPreview
 import vn.clevix.lichviet.core.DeviceZone
 import vn.clevix.lichviet.core.IcsExport
+import vn.clevix.lichviet.core.IcsSummary
+import vn.clevix.lichviet.core.MigrationStatus
+import vn.clevix.lichviet.core.backupHeaderCheck
+import vn.clevix.lichviet.core.backupPasswordError
+import vn.clevix.lichviet.core.danhXungSuggestions
+import vn.clevix.lichviet.core.displayCapitalize
+import vn.clevix.lichviet.core.icsSummary
+import vn.clevix.lichviet.core.lunarLeapMonth
+import vn.clevix.lichviet.core.quanHeSuggestions
 import vn.clevix.lichviet.core.LvhvDataException
 import vn.clevix.lichviet.core.LvhvStore
 import vn.clevix.lichviet.core.VerifiedBackup
@@ -21,7 +30,6 @@ import vn.clevix.lichviet.core.periodBounds
 import vn.clevix.lichviet.core.periodNext
 import vn.clevix.lichviet.core.periodPrev
 import vn.clevix.lichviet.core.personSummaryJson
-import vn.clevix.lichviet.core.remindersJson
 import vn.clevix.lichviet.core.saveDeathJson
 import vn.clevix.lichviet.core.yearCanChi
 
@@ -86,14 +94,15 @@ class PeopleRepo(val store: LvhvStore) {
     fun backupDue(): Boolean = store.backupReminderDue()
     fun datasetJson(): String = store.datasetJson()
 
-    /** Lời nhắc có ngày giờ máy = [today] (thẻ nhắc trong ứng dụng; trong ứng dụng **có** tên, 08 §5.5). */
+    /** Thẻ nhắc hôm nay trong ứng dụng (02 §7.5, `due_today_json` của lõi): tiêu đề có tên, sắp theo giờ. */
     fun todayReminders(today: LocalDate, zone: ZoneId = ZoneId.systemDefault()): List<ReminderMsg> {
-        val start = today.atStartOfDay(zone).toInstant().epochSecond - 1
-        val z = Zones.device(zone, Instant.ofEpochSecond(start))
-        val json = remindersJson(store.datasetJson(), start, z, 2u, true)
-        val day = today.toString()
-        return parseArr(json).map { ReminderMsg.of(it as JMap) }.filter { it.fireLocal.startsWith(day) }
+        val z = Zones.device(zone, today.atStartOfDay(zone).toInstant())
+        return parseArr(store.dueTodayJson(today.solar(), z)).map { ReminderMsg.of(it as JMap) }
     }
+
+    /** Trạng thái nâng cấp dữ liệu khi mở kho (B5/R14): `ok` / `migrated` / `read_only`. */
+    fun migration(): MigrationStatus = store.migrationStatus()
+    val readOnly: Boolean get() = runCatching { store.migrationStatus().state == "read_only" }.getOrDefault(false)
 
     // ---------- Ghi ----------
 
@@ -102,12 +111,8 @@ class PeopleRepo(val store: LvhvStore) {
     fun markDeceased(id: String, death: DateValue, notice: Map<String, Any?>?, today: LocalDate): Person =
         Person(parseObj(store.markDeceasedJson(id, death.json(), notice?.let { JsonW.write(it) }, today.solar())))
 
-    /** Xóa hồ sơ; xóa luôn sự kiện không còn ai sau khi gỡ (08 §3.10). */
-    fun deletePerson(id: String) {
-        val mine = events().filter { id in it.personIds }
-        store.deletePerson(id)
-        for (e in mine) if (e.personIds.all { it == id }) runCatching { store.deleteEvent(e.id) }
-    }
+    /** Xóa hồ sơ và, cùng giao dịch, các sự kiện chỉ gắn người này (08 §3.10); trả id sự kiện đã xóa. */
+    fun deletePerson(id: String): List<String> = store.deletePersonAndOrphanEvents(id)
 
     fun saveEvent(e: Map<String, Any?>): EventRec = EventRec(parseObj(store.saveEventJson(JsonW.write(e))))
     fun deleteEvent(id: String) = store.deleteEvent(id)
@@ -120,10 +125,32 @@ class PeopleRepo(val store: LvhvStore) {
         return id
     }
 
+    /** Xóa ảnh đã ghi nhưng chưa gắn hồ sơ nào (người dùng hủy biểu mẫu). Lỗi (ảnh đang dùng) → bỏ qua. */
+    fun deletePhoto(id: String) { runCatching { store.deletePhoto(id) } }
+
+    /** Tệp đính kèm báo tử (01 §3.8a): ảnh đã mã hóa lại (JPEG) hoặc PDF nguyên bản; trả id tệp. */
+    fun addAttachment(mime: String, fileName: String?, bytes: ByteArray): String {
+        val id = newUuid()
+        store.addAttachment(id, mime, fileName, bytes)
+        return id
+    }
+    fun attachmentBytes(id: String): ByteArray? = runCatching { store.attachmentBytes(id) }.getOrNull()
+    /** Xóa tệp chưa gắn hồ sơ (hủy biểu mẫu). Tệp đã gắn thì lõi tự xóa khi gỡ khỏi danh sách rồi lưu. */
+    fun deleteAttachment(id: String) { runCatching { store.deleteAttachment(id) } }
+    /** Siêu dữ liệu tệp đính kèm (mime, file_name, bytes…) theo id, từ tài liệu dữ liệu của kho. */
+    fun attachmentMeta(): Map<String, JMap> =
+        parseObj(store.datasetJson()).objs("attachments").associateBy { it.s("id") }
+
     // ---------- Sao lưu, .ics ----------
 
     fun ics(today: LocalDate, now: Instant = Instant.now()): IcsExport =
         icsExport(store.datasetJson(), today.solar(), now.epochSecond, null)
+
+    /** Hộp xác nhận S10 trước khi sinh tệp .ics: câu riêng tư, số mục, tối đa 5 dòng xem trước (lõi). */
+    fun icsSummary(today: LocalDate): IcsSummary = icsSummary(store.datasetJson(), today.solar(), null)
+
+    /** Gọi một lần, chỉ khi hệ điều hành báo đã ghi tệp sao lưu xong (03 §2.4). */
+    fun markBackupSaved(at: Instant = Instant.now()) = store.markBackupSaved(at.epochSecond)
 
     fun exportBackup(password: String, appVersion: String): ByteArray =
         store.exportBackup(password, appVersion, "android")
@@ -138,16 +165,19 @@ class PeopleRepo(val store: LvhvStore) {
          * Lõi đã nhận trường `gioi_tinh` (YC-2026-07, 01 §3.1) chưa. Lược đồ của lõi đóng (trường lạ → lỗi V1), nên giao
          * diện chỉ hiện ô Giới tính khi lõi kiểm hợp lệ một hồ sơ mẫu có trường này.
          */
-        val supportsGender: Boolean by lazy { runCatching { derivePerson(genderProbe(true)) }.isSuccess }
+        /** Gợi ý cách gọi của lõi (YC-2026-07): theo người đã mất/đang sống, từ hợp giới tính lên trước. */
+        fun danhXungList(deceased: Boolean, gioiTinh: String?): List<String> =
+            runCatching { danhXungSuggestions(deceased, gioiTinh) }.getOrDefault(emptyList())
+        fun quanHeList(deceased: Boolean): List<String> = runCatching { quanHeSuggestions(deceased) }.getOrDefault(emptyList())
 
-        /** Hồ sơ mẫu để dò khả năng của lõi (kiểm thử khẳng định bản không có giới tính luôn hợp lệ). */
-        internal fun genderProbe(withGender: Boolean): JMap = linkedMapOf<String, Any?>(
-            "id" to newUuid(), "kind" to "living", "danh_xung" to "", "ho_ten" to "Mẫu", "ten_hieu" to "",
-            "quan_he" to "", "birth" to null, "death" to null, "noi_an_tang" to "",
-            "photo_id" to null, "memorial" to null,
-            "reminders" to linkedMapOf<String, Any?>("gio" to null, "sinh_nhat" to null, "sinh_nhat_am" to null),
-            "sinh_nhat_am" to false, "feb29_rule" to "feb28", "ghi_chu" to "",
-        ).also { if (withGender) it["gioi_tinh"] = "nam" }
+        /** Viết hoa chữ đầu để hiển thị (lõi; dữ liệu nhập từ sao lưu giữ nguyên chữ gốc). */
+        fun cap(s: String): String = if (s.isBlank()) s.trim() else runCatching { displayCapitalize(s) }.getOrDefault(s)
+
+        /** Quy tắc mật khẩu sao lưu của lõi (03 §2.4): null = hợp lệ; ô khôi phục truyền confirm = null. */
+        fun passwordError(pw: String, confirm: String?): String? = backupPasswordError(pw, confirm)
+
+        /** Kiểm 72 byte đầu và kích thước tệp sao lưu trước khi đọc cả tệp (03 §2.2); lỗi → ném (câu tiếng Việt). */
+        fun checkBackupHeader(head: ByteArray, fileLen: Long) = backupHeaderCheck(head, fileLen.toULong())
 
         /** `save_death` (02 §1): ngày mất → {lunar, solar, lunar_source, method}. */
         fun deriveDeath(v: DateValue): JMap = parseObj(saveDeathJson(v.json()))
@@ -168,15 +198,8 @@ class PeopleRepo(val store: LvhvStore) {
         fun prev(kind: String, anchor: LocalDate): LocalDate = periodPrev(kind, anchor.solar()).from.local()
         fun next(kind: String, anchor: LocalDate): LocalDate = periodNext(kind, anchor.solar()).from.local()
 
-        /** Tháng nhuận của năm âm [year] (0 = không có), dò bằng `save_death` của lõi. */
-        private val leapCache = HashMap<Int, Int>()
-        fun leapMonth(year: Int): Int = synchronized(leapCache) {
-            leapCache.getOrPut(year) {
-                (1..12).firstOrNull { m ->
-                    runCatching { deriveDeath(DateValue("lunar", "day", year, m, 1, true)) }.isSuccess
-                } ?: 0
-            }
-        }
+        /** Tháng nhuận của năm âm [year] (0 = không có, hoặc năm ngoài 1899–3000) — `lunar_leap_month` của lõi. */
+        fun leapMonth(year: Int): Int = runCatching { lunarLeapMonth(year)?.toInt() }.getOrNull() ?: 0
 
         fun openBackupFile(bytes: ByteArray, password: String): Pair<VerifiedBackup, BackupPreview> {
             val b = openBackup(bytes, password)

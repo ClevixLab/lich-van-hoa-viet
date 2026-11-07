@@ -71,6 +71,7 @@ fun Welcome(x: PeopleCtx) {
 
 @Composable
 fun AddButtons(x: PeopleCtx) {
+    if (x.readOnly) return
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         PrimaryButton("+ Thêm người đã mất", { x.nav.go(PRoute.AddPerson(true)) }, Modifier.fillMaxWidth())
         SecondaryButton("+ Thêm người đang sống", { x.nav.go(PRoute.AddPerson(false)) }, Modifier.fillMaxWidth())
@@ -236,12 +237,12 @@ fun ProfilesScreen(x: PeopleCtx) {
     val dead = ps.filter { it.deceased }
     val live = ps.filter { !it.deceased }
     PCard(title = "Người đã mất (${dead.size})") {
-        SecondaryButton("+ Thêm", { x.nav.go(PRoute.AddPerson(true)) })
+        if (!x.readOnly) SecondaryButton("+ Thêm", { x.nav.go(PRoute.AddPerson(true)) })
         if (dead.isEmpty()) Body("Chưa có ai.")
         dead.forEach { p -> PersonRow(x, p, deceasedLine(p, next.firstOrNull { p.id in it.personIds || it.entityId == p.id }, x.today)) }
     }
     PCard(title = "Người đang sống (${live.size})") {
-        SecondaryButton("+ Thêm", { x.nav.go(PRoute.AddPerson(false)) })
+        if (!x.readOnly) SecondaryButton("+ Thêm", { x.nav.go(PRoute.AddPerson(false)) })
         if (live.isEmpty()) Body("Chưa có ai.")
         live.forEach { p -> PersonRow(x, p, livingLine(x, p)) }
     }

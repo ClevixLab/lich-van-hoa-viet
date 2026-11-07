@@ -6,8 +6,10 @@
 #
 # Ca 1…n (mỗi APK cũ, ví dụ v0.1.4 và 0.2-dev từ main): bản cũ chưa có mô-đun Người thân → dữ liệu là tùy chọn giao
 #   diện (cỡ chữ A++, giao diện tối, "Để sau" của thẻ nhắc cập nhật) — R14 (a).
-# Ca cuối (dữ liệu người thân): bản có mô-đun tạo đủ loại dữ liệu bằng màn tự kiểm (chỉ có ở bản debug), hủy báo
-#   thức, cài đè, rồi kiểm từng bản ghi, từng ảnh và báo thức đã được ứng dụng tự đặt lại (MY_PACKAGE_REPLACED).
+# Ca dữ liệu người thân: bản có mô-đun tạo đủ loại dữ liệu bằng màn tự kiểm (chỉ có ở bản debug), hủy báo
+#   thức, cài đè, rồi kiểm từng bản ghi, từng ảnh/tệp đính kèm và báo thức đã được ứng dụng tự đặt lại.
+# Ca chuyển đổi: kho SQLite thật của bản 0.2-dev (bộ mẫu đóng băng, phiên bản 1) → bản này: đúng tệp kỳ vọng chung.
+# Ca chuyển đổi lỗi: kho phiên bản 1 có hồ sơ không hợp lệ → quay lui, chỉ đọc, xem được, xuất sao lưu được.
 set -uo pipefail
 PKG=vn.clevix.lichviet.debug
 MAIN="$PKG/vn.clevix.lichviet.MainActivity"
@@ -74,6 +76,46 @@ adb shell dumpsys alarm | grep -A2 "$PKG" | head -20 || true
 adb logcat -d -s LvhvNhac:I | tail -5
 R="$(self_check verify)"; echo "$R"
 case "$R" in OK*) ;; *) fail "sau cài đè: $R" ;; esac
+end
+
+# R14 (c) — kho THẬT của bản dựng 0.2-dev (phiên bản 1, bộ mẫu đóng băng, có certificate_photo_ids) → bản này chuyển 1 → 2.
+FIX="docs/v0.2/schema/test-vectors/released/0.2-dev-before-attachments"
+EXPECTED="docs/v0.2/schema/test-vectors/released/expected/0.2-dev-before-attachments.json"
+# Chép một tệp từ máy dựng vào thư mục riêng của ứng dụng (ứng dụng chưa chạy lần nào sau khi cài).
+put() { adb exec-in "run-as $PKG sh -c 'mkdir -p \$(dirname $2) && cat > $2'" < "$1"; }
+seed_store() {
+  local dir="$1"
+  adb uninstall "$PKG" >/dev/null 2>&1 || true
+  adb install "$NEW" || fail "không cài được bản mới"
+  put "$dir/lvhv.sqlite" files/lvhv.sqlite
+  for f in "$dir"/photos/*; do put "$f" "files/photos/$(basename "$f")"; done
+  adb shell run-as "$PKG" ls -la files files/photos
+}
+
+say "Ca chuyển đổi dữ liệu 0.2-dev (phiên bản 1) → bản mới: bộ mẫu thật"
+seed_store "$FIX/store"
+put "$EXPECTED" files/r14-expected.json
+run_main   # mở ứng dụng như người dùng: kho được chuyển đổi khi mở
+R="$(self_check verify-migrated)"; echo "$R"
+case "$R" in OK*) ;; *) fail "chuyển đổi 1 → 2: $R" ;; esac
+end
+
+say "Ca chuyển đổi lỗi: quay lui, chế độ chỉ đọc, vẫn xuất sao lưu"
+# Lõi chỉ có tùy chọn buộc lỗi ở API Rust (OpenOptions::force_migration_failure, không qua FFI). Ở đây làm lỗi bằng dữ
+# liệu: một hồ sơ trong kho phiên bản 1 có `kind` không hợp lệ → kiểm tra 01 §6.2 sau chuyển đổi thất bại.
+BAD="$(mktemp -d)"; cp -r "$FIX/store/." "$BAD/"
+sqlite3 "$BAD/lvhv.sqlite" "UPDATE person SET json = json_set(json, '\$.kind', 'xyz') WHERE id = '0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e03';" \
+  || fail "không sửa được bản sao bộ mẫu"
+BEFORE="$(sha256sum "$BAD/lvhv.sqlite" | cut -c1-64)"
+seed_store "$BAD"
+run_main
+R="$(self_check verify-readonly)"; echo "$R"
+case "$R" in OK*) ;; *) fail "chỉ đọc: $R" ;; esac
+# Dữ liệu cũ còn nguyên từng byte (kho không đổi sau khi quay lui).
+adb exec-out run-as "$PKG" cat files/lvhv.sqlite > "$BAD/after.sqlite"
+sqlite3 "$BAD/after.sqlite" "PRAGMA user_version;" | grep -qx 1 || fail "chỉ đọc: kho không còn ở phiên bản 1"
+echo "sha256 trước: $BEFORE — sau: $(sha256sum "$BAD/after.sqlite" | cut -c1-64) (WAL có thể gộp trang; so nội dung bằng user_version + số hồ sơ)"
+[ "$(sqlite3 "$BAD/after.sqlite" 'SELECT count(*) FROM person;')" = "3" ] || fail "chỉ đọc: số hồ sơ đổi"
 end
 
 adb logcat -d -s LvhvR14:I LvhvNhac:W AndroidRuntime:E | tail -50
