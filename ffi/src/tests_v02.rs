@@ -688,7 +688,8 @@ fn add_cert_photo(s: &LvhvStore) -> String {
         "/../docs/v0.2/schema/test-vectors/photo-0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09.jpg"
     ))
     .unwrap();
-    s.add_photo(id.clone(), "image/jpeg".into(), 64, 64, bytes)
+    // Ảnh mẫu là JPEG sạch 768×1024 (04 B6: kích thước khai phải đúng).
+    s.add_photo(id.clone(), "image/jpeg".into(), 768, 1024, bytes)
         .unwrap();
     id
 }
@@ -947,8 +948,10 @@ fn notice_validation() {
     ))
     .is_err());
     assert!(save(bad("attachments", json!([att(&cert, "giay")]))).is_err());
-    assert!(save(bad("certificate_photo_ids", json!([]))).is_err()); // khóa cũ không còn
-                                                                     // Tệp đính kèm: PDF phải bắt đầu bằng %PDF-, ảnh ≤ 2 MB, PDF ≤ 10 MB.
+    // BM2-02: khóa cũ không còn bị từ chối mà được chuyển (certificate_photo_ids_migrated_on_save); ở đây có CẢ hai
+    // khóa (X22) nên dị dạng.
+    assert!(save(bad("certificate_photo_ids", json!([]))).is_err());
+    // Tệp đính kèm: PDF phải bắt đầu bằng %PDF-, ảnh ≤ 2 MB, PDF ≤ 10 MB.
     let id = new_uuid().unwrap();
     assert!(s
         .add_attachment(
@@ -966,17 +969,26 @@ fn notice_validation() {
             vec![0; 2 * 1024 * 1024 + 1]
         )
         .is_err());
+    let webp = std::fs::read(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../docs/v0.2/schema/test-vectors/media/webp-ok-16x16.webp"
+    ))
+    .unwrap();
+    // 04 B6: 100 byte không phải WebP → từ chối.
+    assert!(s
+        .add_attachment(id.clone(), "image/webp".into(), None, vec![1; 100])
+        .is_err());
     let m = v(&s
         .add_attachment(
             id.clone(),
             "image/webp".into(),
             Some("ảnh.webp".into()),
-            vec![1; 100],
+            webp.clone(),
         )
         .unwrap());
     assert_eq!(
         (m["stripped"].clone(), m["bytes"].clone()),
-        (json!(true), json!(100))
+        (json!(true), json!(webp.len()))
     );
     s.delete_attachment(id.clone()).unwrap();
     assert!(matches!(
@@ -1392,4 +1404,37 @@ fn migration_status_via_ffi() {
     for d in [d0, dir, bad] {
         let _ = std::fs::remove_dir_all(d);
     }
+}
+
+/// BM2-02: ứng dụng native còn gửi `death.notice.certificate_photo_ids` (bản trước #28) → lưu được, ảnh giấy báo tử
+/// thành tệp đính kèm loại giấy chứng tử (cùng byte), bản gốc trong `legacy`; id treo → V3 (M09).
+#[test]
+fn certificate_photo_ids_migrated_on_save() {
+    let (s, dir) = tmp_store();
+    let cert = add_cert_photo(&s);
+    let bytes = s.photo_bytes(cert.clone()).unwrap();
+    let mut a = person_a();
+    a["death"]["notice"] = json!({
+        "reported_by": null, "place": null, "reason": null, "notice_date": null,
+        "certificate_photo_ids": [cert], "note": null,
+    });
+    let p = v(&s.save_person_json(a.to_string()).unwrap());
+    let n = &p["death"]["notice"];
+    assert!(n.get("certificate_photo_ids").is_none());
+    assert_eq!(n["attachments"][0]["kind"], "giay_chung_tu");
+    assert_eq!(n["attachments"][0]["file_id"], cert.as_str());
+    assert_eq!(s.attachment_bytes(cert.clone()).unwrap(), bytes);
+    assert!(matches!(
+        s.photo_bytes(cert.clone()),
+        Err(LvhvDataError::NotFound(_))
+    ));
+    assert_eq!(p["legacy"]["certificate_photo_ids"], json!([cert]));
+    let mut b = person_a();
+    b["id"] = json!(new_uuid().unwrap());
+    b["death"]["notice"] = json!({
+        "reported_by": null, "place": null, "reason": null, "notice_date": null,
+        "certificate_photo_ids": [new_uuid().unwrap()], "note": null,
+    });
+    assert!(s.save_person_json(b.to_string()).is_err());
+    let _ = std::fs::remove_dir_all(dir);
 }

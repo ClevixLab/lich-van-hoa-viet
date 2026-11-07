@@ -2,6 +2,7 @@
 // `onupgradeneeded` của IndexedDB), giống hệt store/src/migrate.rs. Kiểm bằng bộ mẫu đóng băng
 // docs/v0.2/schema/test-vectors/released/ (cùng tệp kỳ vọng với bản Rust).
 import type { Json, JsonObj } from "./json";
+import { ValidationError } from "./validate";
 
 /** Phiên bản kho (như Rust STORE_VERSION): 1 = bản dựng 0.2 trước YC-2026-07, 2 = có tệp đính kèm. */
 export const STORE_VERSION = 2;
@@ -39,7 +40,8 @@ export function altId(id: string, taken: Set<string>): string {
 }
 
 /** 1 → 2 (YC-2026-07): `death.notice.certificate_photo_ids` → `death.notice.attachments` loại `giay_chung_tu`.
- *  Quy tắc như Rust `migrate_1_to_2` (xem chú thích ở đó). */
+ *  Quy tắc như Rust `migrate_1_to_2` (xem chú thích ở đó). Tài liệu dị dạng → ném ValidationError (cùng mã, đường dẫn):
+ *  X22 có cả `attachments` lẫn `certificate_photo_ids` (V1); M09 id không có ảnh (V3); không phải mảng chuỗi (V1). */
 export function migrate1to2(input: JsonObj): Migrated {
   const doc = structuredClone(input);
   const photos = new Map(((doc.photos as JsonObj[] | undefined) ?? []).map((p) => [p.id as string, p] as const));
@@ -49,19 +51,21 @@ export function migrate1to2(input: JsonObj): Migrated {
   for (const a of atts) taken.add(a.id as string);
   const memo = new Map<string, string>();
   const out: Migrated = { doc, blob_sources: [], moved_photos: [], changed: false };
-  for (const p of (doc.persons as JsonObj[] | undefined) ?? []) {
+  ((doc.persons as JsonObj[] | undefined) ?? []).forEach((p, pi) => {
     const d = p.death;
-    if (!isObj(d) || !isObj(d.notice) || !Object.prototype.hasOwnProperty.call(d.notice, "certificate_photo_ids")) continue;
+    if (!isObj(d) || !isObj(d.notice) || !Object.prototype.hasOwnProperty.call(d.notice, "certificate_photo_ids")) return;
     const n = d.notice;
     const old = n.certificate_photo_ids as Json;
     delete n.certificate_photo_ids;
+    const np = `/persons/${pi}/death/notice`;
+    if (Object.prototype.hasOwnProperty.call(n, "attachments")) throw new ValidationError("V1", np, "có cả attachments lẫn certificate_photo_ids (khóa cũ) — tài liệu dị dạng");
+    if (!Array.isArray(old) || !old.every((x) => typeof x === "string")) throw new ValidationError("V1", `${np}/certificate_photo_ids`, "phải là mảng UUID");
     out.changed = true;
     const items: JsonObj[] = Array.isArray(n.attachments) ? (n.attachments as JsonObj[]).slice() : [];
     const originals: JsonObj[] = [];
-    for (const pid of Array.isArray(old) ? old : []) {
-      if (typeof pid !== "string") continue;
+    (old as string[]).forEach((pid, j) => {
       const ph = photos.get(pid);
-      if (!ph) continue; // không có ảnh → chỉ còn trong legacy
+      if (!ph) throw new ValidationError("V3", `${np}/certificate_photo_ids/${j}`, "ảnh không tồn tại");
       let aid = memo.get(pid);
       if (aid === undefined) {
         aid = portrait.has(pid) ? altId(pid, taken) : pid;
@@ -73,12 +77,12 @@ export function migrate1to2(input: JsonObj): Migrated {
       }
       originals.push(structuredClone(ph));
       items.push({ id: pid, kind: "giay_chung_tu", file_id: aid });
-    }
+    });
     n.attachments = items;
     const legacy = isObj(p.legacy) ? p.legacy : (p.legacy = {});
     legacy.certificate_photo_ids = old;
     legacy.certificate_photos = originals;
-  }
+  });
   if (!out.changed) return out;
   const moved = new Set(out.moved_photos);
   if (Array.isArray(doc.photos)) doc.photos = (doc.photos as JsonObj[]).filter((p) => !moved.has(p.id as string));

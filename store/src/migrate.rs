@@ -10,7 +10,16 @@
 //!
 //! Quy tắc B5: không phép chuyển nào xóa dữ liệu. Trường cũ được chuyển sang trường mới; bản gốc được giữ trong khóa
 //! `legacy` của hồ sơ (đối tượng tự do, không hiển thị, có trong sao lưu).
+use crate::validate::ValidationError;
 use serde_json::{json, Value};
+
+fn verr(code: &'static str, path: String, msg: &str) -> ValidationError {
+    ValidationError {
+        code,
+        path,
+        msg: msg.into(),
+    }
+}
 use std::collections::{BTreeMap, HashSet};
 
 /// Phiên bản kho trên máy mà bản này hiểu.
@@ -60,16 +69,22 @@ pub fn alt_id(id: &str, taken: &HashSet<String>) -> String {
 
 /// 1 → 2 (YC-2026-07): `death.notice.certificate_photo_ids` → `death.notice.attachments` loại `giay_chung_tu`.
 ///
+/// Tài liệu dị dạng → `Err` (mã V1/V3 như 01 §6.2), không chuyển gì:
+/// - (X22) `death.notice` có **cả** `attachments` lẫn `certificate_photo_ids` (kể cả `[]`);
+/// - (M09) id trong `certificate_photo_ids` không có bản ghi `Photo` (tham chiếu treo, như V3);
+/// - `certificate_photo_ids` không phải mảng chuỗi.
+///
 /// Với mỗi id ảnh trong danh sách (theo thứ tự hồ sơ rồi thứ tự danh sách):
 /// - ảnh có bản ghi `Photo`: tạo `Attachment` {mime, bytes, sha256 của ảnh; `stripped = true`; `file_name = null`;
 ///   `created_at` của ảnh}. Id tệp = id ảnh, và bản ghi `Photo` được **chuyển** sang (bỏ khỏi `photos`), trừ khi ảnh
 ///   còn là ảnh chân dung của một hồ sơ — khi đó giữ `Photo`, tệp đính kèm lấy id [`alt_id`]. Một ảnh dùng ở nhiều hồ
 ///   sơ → một tệp đính kèm dùng chung. Phần tử danh sách: `{id: <id ảnh>, kind: "giay_chung_tu", file_id}`.
-/// - id không có ảnh: không chuyển được, chỉ giữ trong `legacy`.
+/// - Hai hồ sơ dùng chung một ảnh → **một** tệp đính kèm dùng chung (cùng `file_id`). Xóa hồ sơ chỉ xóa tệp khi
+///   không hồ sơ nào khác còn tham chiếu (đếm tham chiếu, `gc_attachments`).
 ///
 /// Hồ sơ có chuyển đổi nhận `legacy.certificate_photo_ids` (danh sách gốc) và `legacy.certificate_photos` (bản ghi
 /// `Photo` gốc của các ảnh đã chuyển) — không mất trường nào (`width`, `height` chỉ có ở đây).
-pub fn migrate_1_to_2(doc: &Value) -> Migrated {
+pub fn migrate_1_to_2(doc: &Value) -> Result<Migrated, ValidationError> {
     let mut doc = doc.clone();
     let photos: BTreeMap<String, Value> = doc["photos"]
         .as_array()
@@ -97,7 +112,7 @@ pub fn migrate_1_to_2(doc: &Value) -> Migrated {
         changed: false,
     };
     if let Some(persons) = doc["persons"].as_array_mut() {
-        for p in persons.iter_mut() {
+        for (pi, p) in persons.iter_mut().enumerate() {
             // `get_mut`, không dùng `p["death"]["notice"]`: chỉ mục ghi trên `null` sẽ tạo đối tượng mới.
             let Some(n) = p
                 .get_mut("death")
@@ -109,6 +124,24 @@ pub fn migrate_1_to_2(doc: &Value) -> Migrated {
             let Some(old) = n.remove("certificate_photo_ids") else {
                 continue;
             };
+            let np = format!("/persons/{pi}/death/notice");
+            if n.contains_key("attachments") {
+                return Err(verr(
+                    "V1",
+                    np,
+                    "có cả attachments lẫn certificate_photo_ids (khóa cũ) — tài liệu dị dạng",
+                ));
+            }
+            let ids_ok = old
+                .as_array()
+                .is_some_and(|a| a.iter().all(Value::is_string));
+            if !ids_ok {
+                return Err(verr(
+                    "V1",
+                    format!("{np}/certificate_photo_ids"),
+                    "phải là mảng UUID",
+                ));
+            }
             out.changed = true;
             let mut items: Vec<Value> = n
                 .get("attachments")
@@ -116,14 +149,19 @@ pub fn migrate_1_to_2(doc: &Value) -> Migrated {
                 .cloned()
                 .unwrap_or_default();
             let mut originals: Vec<Value> = Vec::new();
-            for pid in old
+            for (j, pid) in old
                 .as_array()
                 .into_iter()
                 .flatten()
                 .filter_map(Value::as_str)
+                .enumerate()
             {
                 let Some(ph) = photos.get(pid) else {
-                    continue; // không có ảnh → chỉ còn trong legacy
+                    return Err(verr(
+                        "V3",
+                        format!("{np}/certificate_photo_ids/{j}"),
+                        "ảnh không tồn tại",
+                    ));
                 };
                 let aid = match memo.get(pid) {
                     Some(a) => a.clone(),
@@ -161,7 +199,7 @@ pub fn migrate_1_to_2(doc: &Value) -> Migrated {
     }
     if !out.changed {
         out.doc = doc;
-        return out;
+        return Ok(out);
     }
     let moved: HashSet<&String> = out.moved_photos.iter().collect();
     if let Some(a) = doc["photos"].as_array_mut() {
@@ -180,7 +218,7 @@ pub fn migrate_1_to_2(doc: &Value) -> Migrated {
         }
     }
     out.doc = doc;
-    out
+    Ok(out)
 }
 
 /// Trạng thái chuyển đổi khi mở kho (04 B5) — để giao diện hiện "chỉ đọc" / lỗi.
@@ -236,7 +274,22 @@ mod tests {
                 {"id": "p3", "photo_id": null, "death": null}
             ]
         });
-        let m = migrate_1_to_2(&doc);
+        // M09: id treo → lỗi V3.
+        let e = migrate_1_to_2(&doc).unwrap_err();
+        assert_eq!(
+            (e.code, e.path.as_str()),
+            ("V3", "/persons/0/death/notice/certificate_photo_ids/2")
+        );
+        let mut doc = doc;
+        doc["persons"][0]["death"]["notice"]["certificate_photo_ids"]
+            .as_array_mut()
+            .unwrap()
+            .pop();
+        // X22: có cả hai khóa → lỗi V1.
+        let mut both = doc.clone();
+        both["persons"][1]["death"]["notice"]["attachments"] = json!([]);
+        assert_eq!(migrate_1_to_2(&both).unwrap_err().code, "V1");
+        let m = migrate_1_to_2(&doc).unwrap();
         assert!(m.changed);
         let d = &m.doc;
         // Ảnh 01 là ảnh chân dung → giữ Photo, tệp đính kèm id thay thế; ảnh 02 chuyển hẳn, dùng chung cho p1 và p2.
@@ -253,13 +306,13 @@ mod tests {
             d["persons"][1]["death"]["notice"]["attachments"][0]["file_id"],
             "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e02"
         );
-        // Id thiếu ảnh và bản ghi gốc nằm trong legacy.
+        // Danh sách gốc và bản ghi gốc nằm trong legacy.
         assert_eq!(
             d["persons"][0]["legacy"]["certificate_photo_ids"]
                 .as_array()
                 .unwrap()
                 .len(),
-            3
+            2
         );
         assert_eq!(
             d["persons"][0]["legacy"]["certificate_photos"][0]["width"],
@@ -271,7 +324,7 @@ mod tests {
         );
         assert_eq!(m.blob_sources.len(), 2);
         // Chạy lại: không còn gì để chuyển.
-        let again = migrate_1_to_2(&m.doc);
+        let again = migrate_1_to_2(&m.doc).unwrap();
         assert!(!again.changed);
         assert_eq!(again.doc, m.doc);
     }

@@ -13,6 +13,7 @@
 import { canonicalJson, type Json, type JsonObj } from "./json";
 import { mergeDocs } from "./merge";
 import { STORE_VERSION, hasCertificatePhotoIds, migrate1to2, type MigrationStatus } from "./migrate";
+import { MediaError, checkAttachment, checkPhoto, mediaMessage } from "./media";
 import * as V from "./validate";
 
 export const DB_NAME = "lvhv";
@@ -60,6 +61,8 @@ async function attachmentMeta(a: NewAttachment): Promise<JsonObj> {
   const name = a.file_name === null ? null : a.file_name.normalize("NFC").trim() || null;
   const meta: JsonObj = { bytes: a.bytes.length, created_at: nowRfc3339(), file_name: name, id: a.id, mime: a.mime, sha256: await sha256Hex(a.bytes), stripped: !pdf };
   try { V.attachment(meta, "/attachment"); } catch (e) { throw vErr(e); }
+  // 04 B6 / BM2-08: kiểm chặt byte trước khi ghi (như Rust add_attachment).
+  try { checkAttachment(a.mime, a.bytes); } catch (e) { throw e instanceof MediaError ? new StoreError("input", mediaMessage(e.code, "Tệp đính kèm")) : e; }
   return meta;
 }
 
@@ -93,7 +96,9 @@ function done(tx: IDBTransaction): Promise<void> {
   return new Promise((ok, ko) => { tx.oncomplete = () => ok(); tx.onerror = () => ko(tx.error); tx.onabort = () => ko(tx.error ?? new DOMException("abort", "AbortError")); });
 }
 
-function upgrade(db: IDBDatabase, tx: IDBTransaction, from: number): void {
+interface UpgradeCtx { badBlobs: Map<string, string>; forceFail: boolean }
+
+function upgrade(db: IDBDatabase, tx: IDBTransaction, from: number, ctx: UpgradeCtx = { badBlobs: new Map(), forceFail: false }): void {
   if (from < 1) {
     db.createObjectStore("persons", { keyPath: "id" });
     const ev = db.createObjectStore("events", { keyPath: "id" });
@@ -110,7 +115,7 @@ function upgrade(db: IDBDatabase, tx: IDBTransaction, from: number): void {
   }
   if (from < 2 && !db.objectStoreNames.contains("attachments")) db.createObjectStore("attachments", { keyPath: "id" });
   // Phiên bản sau: thêm nhánh `if (from < N)` với migrate_{N-1}_to_N (01 §7).
-  if (from >= 1 && from < 3) migrateData1to2(tx);
+  if (from >= 1 && from < 3) migrateData1to2(tx, ctx);
 }
 
 /**
@@ -119,7 +124,7 @@ function upgrade(db: IDBDatabase, tx: IDBTransaction, from: number): void {
  * như Rust), ghi lại, rồi kiểm 01 §6.2. Lỗi → `abort()`: IndexedDB quay lui toàn bộ nâng cấp (giữ nguyên phiên bản và
  * dữ liệu cũ — chính là "bản sao dữ liệu cũ" của 01 §7 trên trình duyệt); openStore mở lại ở chế độ chỉ đọc.
  */
-function migrateData1to2(tx: IDBTransaction): void {
+function migrateData1to2(tx: IDBTransaction, ctx: UpgradeCtx): void {
   const all = <T>(name: StoreName, then: (rows: T[]) => void) => {
     const r = tx.objectStore(name).getAll();
     r.onsuccess = () => then(r.result as T[]);
@@ -128,12 +133,16 @@ function migrateData1to2(tx: IDBTransaction): void {
     all<{ id: string; meta: JsonObj; blob: Blob }>("attachments", (atts) => {
       try {
         const m = migrate1to2({ persons, photos: photos.map((x) => x.meta), attachments: atts.map((x) => x.meta) });
+        if (ctx.forceFail) throw new Error("buộc lỗi chuyển đổi (tùy chọn kiểm định)");
         if (!m.changed) return;
         const blob = new Map(photos.map((x) => [x.id, x.blob] as const));
         const metas = new Map(((m.doc.attachments as JsonObj[] | undefined) ?? []).map((a) => [a.id as string, a] as const));
         for (const [aid, pid] of m.blob_sources) {
           const b = blob.get(pid);
           if (!b) throw new Error(`thiếu byte ảnh ${pid}`);
+          // 04 B6: byte đã kiểm chặt (không đồng bộ) trước khi nâng cấp — xem precheckBlobs.
+          const why = ctx.badBlobs.get(pid);
+          if (why) throw new Error(`ảnh giấy báo tử ${pid}: ${why}`);
           tx.objectStore("attachments").put({ id: aid, meta: metas.get(aid)!, blob: b });
         }
         for (const pid of m.moved_photos) tx.objectStore("photos").delete(pid);
@@ -158,13 +167,59 @@ function migrateData1to2(tx: IDBTransaction): void {
  * StoreError("newer_schema"). Chuyển đổi lỗi → mở lại kho cũ (đã quay lui) ở chế độ chỉ đọc; `migrationStatus()`
  * cho giao diện biết để hiện chế độ chỉ đọc và hướng dẫn xuất sao lưu.
  */
-export function openStore(factory: IDBFactory = indexedDB): Promise<Store> {
+/**
+ * 04 B6 cho bước chuyển đổi: đọc byte các ảnh giấy báo tử của kho cũ (không đồng bộ — không làm được trong
+ * `onupgradeneeded`) và kiểm chặt như tệp đính kèm. Kho chưa có (mới cài) → hủy việc tạo, không ghi gì.
+ */
+function precheckBlobs(factory: IDBFactory): Promise<Map<string, string>> {
+  return new Promise((ok) => {
+    const bad = new Map<string, string>();
+    let r: IDBOpenDBRequest;
+    try { r = factory.open(DB_NAME); } catch { ok(bad); return; }
+    r.onupgradeneeded = () => { r.transaction?.abort(); };
+    r.onerror = () => ok(bad);
+    r.onblocked = () => ok(bad);
+    r.onsuccess = () => {
+      const db = r.result;
+      const done2 = () => { db.close(); ok(bad); };
+      if (db.version >= IDB_VERSION || !db.objectStoreNames.contains("photos") || !db.objectStoreNames.contains("persons")) { done2(); return; }
+      const tx = db.transaction(["persons", "photos"]);
+      const pr = tx.objectStore("persons").getAll();
+      pr.onsuccess = () => {
+        const ids = new Set<string>();
+        for (const p of pr.result as JsonObj[]) {
+          const n = (p.death as JsonObj | null)?.notice as JsonObj | null | undefined;
+          if (n && Array.isArray(n.certificate_photo_ids)) for (const x of n.certificate_photo_ids) if (typeof x === "string") ids.add(x);
+        }
+        const ph = tx.objectStore("photos").getAll();
+        ph.onsuccess = async () => {
+          for (const rec of ph.result as { id: string; meta: JsonObj; blob: Blob }[]) {
+            if (!ids.has(rec.id)) continue;
+            try { checkAttachment(rec.meta.mime as string, new Uint8Array(await rec.blob.arrayBuffer())); }
+            catch (e) { bad.set(rec.id, e instanceof MediaError ? e.code : String(e)); }
+          }
+          done2();
+        };
+        ph.onerror = done2;
+      };
+      pr.onerror = done2;
+    };
+  });
+}
+
+export interface OpenOptions {
+  /** Kiểm định (`store-tool --force-migration-failure`): làm bước chuyển đổi thất bại để quan sát quay lui + chỉ đọc. */
+  forceMigrationFailure?: boolean;
+}
+
+export async function openStore(factory: IDBFactory = indexedDB, opts: OpenOptions = {}): Promise<Store> {
+  const badBlobs = await precheckBlobs(factory);
   return new Promise((ok, ko) => {
     let r: IDBOpenDBRequest;
     let from = IDB_VERSION;
     let upgradeTx: IDBTransaction | null = null;
     try { r = factory.open(DB_NAME, IDB_VERSION); } catch (e) { ko(e); return; }
-    r.onupgradeneeded = (e) => { from = e.oldVersion; upgradeTx = r.transaction!; upgrade(r.result, r.transaction!, e.oldVersion); };
+    r.onupgradeneeded = (e) => { from = e.oldVersion; upgradeTx = r.transaction!; upgrade(r.result, r.transaction!, e.oldVersion, { badBlobs, forceFail: !!opts.forceMigrationFailure }); };
     r.onsuccess = () => ok(new Store(r.result, { state: from > 0 && from < IDB_VERSION ? "migrated" : "ok", from_version: from, to_version: IDB_VERSION, error: null }));
     r.onerror = (ev) => {
       if (r.error?.name === "VersionError") { ko(new StoreError("newer_schema", "Dữ liệu được tạo bởi phiên bản mới hơn — hãy cập nhật ứng dụng")); return; }
@@ -291,6 +346,8 @@ export class Store {
     for (const np of newPhoto ? [newPhoto] : []) {
       const meta: JsonObj = { bytes: np.bytes.length, created_at: nowRfc3339(), height: np.height, id: np.id, mime: np.mime, sha256: await sha256Hex(np.bytes), stripped: true, width: np.width };
       try { V.photo(meta, "/photo"); } catch (e) { throw vErr(e); }
+      // 04 B6 / BM2-08: như Rust add_photo.
+      try { checkPhoto(np.mime, np.bytes, np.width, np.height); } catch (e) { throw e instanceof MediaError ? new StoreError("input", mediaMessage(e.code, "Ảnh")) : e; }
       recs.push({ id: np.id, meta, blob: new Blob([np.bytes as Uint8Array<ArrayBuffer>], { type: np.mime }) });
     }
     const all = await this.persons();
@@ -609,7 +666,8 @@ export async function verifyContents(json: string, blobsIn: { id: string; bytes:
     const a = attMeta.get(b.id);
     if (!a) throw perr("ảnh thừa");
     if (a.sha256 !== (await sha256Hex(b.bytes)) || a.bytes !== b.bytes.length) throw aerr("sha256/bytes không khớp");
-    if (a.mime === "application/pdf" && String.fromCharCode(...b.bytes.subarray(0, 5)) !== "%PDF-") throw aerr("PDF không hợp lệ");
+    // 04 B6 (BM2-01, X21): chữ ký khớp mime, kích thước, không siêu dữ liệu, PDF có %%EOF.
+    try { checkAttachment(a.mime as string, b.bytes); } catch (e) { if (e instanceof MediaError) throw aerr(e.code); throw e; }
     if (atts.has(b.id)) throw aerr("tệp đính kèm trùng");
     atts.set(b.id, b.bytes);
   }

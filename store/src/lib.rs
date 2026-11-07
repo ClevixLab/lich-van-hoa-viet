@@ -10,6 +10,7 @@
 #![forbid(unsafe_code)]
 
 pub mod derive;
+pub mod media;
 pub mod migrate;
 pub mod model;
 pub mod names;
@@ -328,6 +329,14 @@ const MIGRATIONS: &[&str] = &[
     "#,
 ];
 
+/// Tùy chọn khi mở kho.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct OpenOptions {
+    /// Kiểm định: làm bước chuyển đổi thất bại (sau khi đã chạy) để quan sát bản sao trước chuyển đổi, quay lui và
+    /// chế độ chỉ đọc. Không dùng trong ứng dụng.
+    pub force_migration_failure: bool,
+}
+
 /// Kho dữ liệu trên một thư mục.
 #[derive(Debug)]
 pub struct Store {
@@ -350,6 +359,11 @@ fn parse_col(s: &str) -> Result<Value> {
 impl Store {
     /// Mở (hoặc tạo) kho trong thư mục `dir`, chạy chuyển đổi phiên bản nếu cần (01 §7).
     pub fn open(dir: impl AsRef<Path>) -> Result<Store> {
+        Self::open_with(dir, OpenOptions::default())
+    }
+
+    /// Như [`Store::open`] với tùy chọn kiểm định (`lvhv-store-tool --force-migration-failure`).
+    pub fn open_with(dir: impl AsRef<Path>, opts: OpenOptions) -> Result<Store> {
         let dir = dir.as_ref().to_path_buf();
         std::fs::create_dir_all(dir.join(PHOTO_DIR))?;
         std::fs::create_dir_all(dir.join(ATTACHMENT_DIR))?;
@@ -379,7 +393,7 @@ impl Store {
                 }
                 status.backup_path = Some(bak.to_string_lossy().into_owned());
             }
-            match Self::run_migrations(&mut conn, &dir, ver) {
+            match Self::run_migrations(&mut conn, &dir, ver, opts.force_migration_failure) {
                 Ok(()) => {
                     if ver > 0 {
                         status.state = "migrated";
@@ -398,13 +412,19 @@ impl Store {
 
     /// Chạy chuỗi chuyển đổi từ `ver` lên [`migrate::STORE_VERSION`] trong **một** giao dịch, rồi kiểm 01 §6.2 trên
     /// mọi hồ sơ và tệp đính kèm. Lỗi → quay lui toàn bộ.
-    fn run_migrations(conn: &mut Connection, dir: &Path, ver: i64) -> Result<()> {
+    fn run_migrations(conn: &mut Connection, dir: &Path, ver: i64, force_fail: bool) -> Result<()> {
         let tx = conn.transaction_with_behavior(TransactionBehavior::Exclusive)?;
         for m in &MIGRATIONS[ver as usize..] {
             tx.execute_batch(m)?;
         }
         if ver == 1 {
             migrate_data_1_to_2(&tx, dir)?;
+        }
+        if force_fail && ver > 0 {
+            // Chỉ để kiểm định quan sát quay lui + chỉ đọc (01 §7.1); giao dịch bị hủy khi trả lỗi.
+            return Err(StoreError::Input(
+                "buộc lỗi chuyển đổi (tùy chọn kiểm định)".into(),
+            ));
         }
         tx.pragma_update(None, "user_version", migrate::STORE_VERSION)?;
         {
@@ -645,11 +665,22 @@ impl Store {
     ///
     /// Ảnh mà bản cũ của hồ sơ này dùng nhưng bản mới bỏ (đổi/xóa ảnh chân dung, bỏ ảnh giấy báo tử) bị xóa trong
     /// cùng giao dịch nếu không hồ sơ nào khác còn dùng.
+    ///
+    /// BM2-02 / 04 B5: hồ sơ gửi tới còn khóa cũ `death.notice.certificate_photo_ids` (ứng dụng chưa cập nhật) được
+    /// chuyển bằng [`migrate::migrate_1_to_2`] trong **cùng** giao dịch: ảnh giấy báo tử thành tệp đính kèm.
     pub fn put_person(&mut self, p: &Value) -> Result<()> {
         self.writable()?;
-        validate::person(p, "/person")?;
         let now = now_rfc3339();
+        let dir = self.dir.clone();
         let tx = self.conn.transaction()?;
+        let migrated;
+        let p = if migrate::has_certificate_photo_ids(&json!({ "persons": [p] })) {
+            migrated = migrate_person_in_tx(&tx, &dir, p)?;
+            &migrated
+        } else {
+            p
+        };
+        validate::person(p, "/person")?;
         check_refs_person(&tx, p)?;
         let old: Option<String> = tx
             .query_row(
@@ -708,6 +739,7 @@ impl Store {
             "file_name": name, "created_at": now_rfc3339(),
         });
         validate::attachment(&meta, "/attachment")?;
+        media::check_attachment(mime, bytes).map_err(|e| media_input(e, "Tệp đính kèm"))?;
         write_atomic(&self.attachment_path(id), bytes)?;
         let tx = self.conn.transaction()?;
         tx.execute(
@@ -832,6 +864,7 @@ impl Store {
             "sha256": sha256_hex(bytes), "stripped": true, "created_at": now_rfc3339(),
         });
         validate::photo(&meta, "/photo")?;
+        media::check_photo(mime, bytes, width, height).map_err(|e| media_input(e, "Ảnh"))?;
         write_atomic(&self.photo_path(id), bytes)?;
         let tx = self.conn.transaction()?;
         tx.execute(
@@ -1289,12 +1322,30 @@ fn migrate_data_1_to_2(tx: &rusqlite::Transaction<'_>, dir: &Path) -> Result<()>
         "photos": col("SELECT json FROM photo ORDER BY id")?,
         "attachments": col("SELECT json FROM attachment ORDER BY id")?,
     });
-    let m = migrate::migrate_1_to_2(&doc);
+    let m = migrate::migrate_1_to_2(&doc)?;
     if !m.changed {
         return Ok(());
     }
+    // 04 B6: kiểm chặt byte của mỗi tệp đính kèm mới TRƯỚC khi ghi; lỗi → quay lui, chỉ đọc.
+    let mime: HashMap<&str, &str> = m.doc["attachments"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .map(|a| {
+            (
+                a["id"].as_str().unwrap_or_default(),
+                a["mime"].as_str().unwrap_or_default(),
+            )
+        })
+        .collect();
+    let mut blobs = Vec::new();
     for (aid, pid) in &m.blob_sources {
         let b = std::fs::read(dir.join(PHOTO_DIR).join(format!("{pid}.img")))?;
+        media::check_attachment(mime.get(aid.as_str()).copied().unwrap_or_default(), &b)
+            .map_err(|e| media_input(e, &format!("ảnh giấy báo tử {pid}")))?;
+        blobs.push((aid, b));
+    }
+    for (aid, b) in blobs {
         write_atomic(&dir.join(ATTACHMENT_DIR).join(format!("{aid}.bin")), &b)?;
     }
     for a in m.doc["attachments"].as_array().into_iter().flatten() {
@@ -1310,6 +1361,80 @@ fn migrate_data_1_to_2(tx: &rusqlite::Transaction<'_>, dir: &Path) -> Result<()>
         tx.execute("DELETE FROM photo WHERE id = ?1", params![pid])?;
     }
     Ok(())
+}
+
+/// Chuyển một hồ sơ còn `certificate_photo_ids` (BM2-02) trong giao dịch `tx`: dựng tài liệu từ kho (hồ sơ khác + hồ sơ
+/// này, ảnh, tệp đính kèm), áp [`migrate::migrate_1_to_2`], kiểm chặt byte (04 B6), ghi tệp đính kèm mới, chuyển bản
+/// ghi ảnh. Trả hồ sơ đã chuyển (người gọi kiểm và ghi).
+fn migrate_person_in_tx(tx: &rusqlite::Transaction<'_>, dir: &Path, p: &Value) -> Result<Value> {
+    let col = |sql: &str| -> Result<Vec<Value>> {
+        let mut st = tx.prepare(sql)?;
+        let rows: Vec<String> = st
+            .query_map([], |r| r.get(0))?
+            .collect::<core::result::Result<_, _>>()?;
+        rows.iter().map(|r| parse_col(r)).collect()
+    };
+    let id = p["id"].as_str().unwrap_or_default();
+    let mut persons: Vec<Value> = col("SELECT json FROM person ORDER BY id")?
+        .into_iter()
+        .filter(|x| x["id"].as_str() != Some(id))
+        .collect();
+    persons.push(p.clone());
+    let doc = json!({
+        "persons": persons,
+        "photos": col("SELECT json FROM photo ORDER BY id")?,
+        "attachments": col("SELECT json FROM attachment ORDER BY id")?,
+    });
+    let m = migrate::migrate_1_to_2(&doc)?;
+    let mime: HashMap<&str, &str> = m.doc["attachments"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .map(|a| {
+            (
+                a["id"].as_str().unwrap_or_default(),
+                a["mime"].as_str().unwrap_or_default(),
+            )
+        })
+        .collect();
+    let mut blobs = Vec::new();
+    for (aid, pid) in &m.blob_sources {
+        let b = std::fs::read(dir.join(PHOTO_DIR).join(format!("{pid}.img")))?;
+        media::check_attachment(mime.get(aid.as_str()).copied().unwrap_or_default(), &b)
+            .map_err(|e| media_input(e, &format!("ảnh giấy báo tử {pid}")))?;
+        blobs.push((aid.clone(), b));
+    }
+    let new_ids: std::collections::HashSet<&str> =
+        m.blob_sources.iter().map(|(a, _)| a.as_str()).collect();
+    for a in m.doc["attachments"].as_array().into_iter().flatten() {
+        if new_ids.contains(a["id"].as_str().unwrap_or_default()) {
+            tx.execute(
+                "INSERT OR REPLACE INTO attachment(id, json, sha256) VALUES (?1, ?2, ?3)",
+                params![a["id"].as_str(), jtext(a), a["sha256"].as_str()],
+            )?;
+        }
+    }
+    for pid in &m.moved_photos {
+        tx.execute("DELETE FROM photo WHERE id = ?1", params![pid])?;
+    }
+    for (aid, b) in blobs {
+        write_atomic(&dir.join(ATTACHMENT_DIR).join(format!("{aid}.bin")), &b)?;
+    }
+    m.doc["persons"]
+        .as_array()
+        .and_then(|a| a.iter().find(|x| x["id"].as_str() == Some(id)))
+        .cloned()
+        .ok_or(StoreError::NotFound)
+}
+
+/// Lỗi kiểm chặt ảnh (04 B6) khi **thêm** ảnh / tệp: câu cho người dùng. (Khi nhập sao lưu dùng thông báo chung.)
+fn media_input(e: media::MediaError, what: &str) -> StoreError {
+    StoreError::Input(match e {
+        media::MediaError::Metadata => format!("{what}: ảnh chưa được xử lý bỏ siêu dữ liệu"),
+        media::MediaError::TooLarge => format!("{what}: tệp quá lớn"),
+        media::MediaError::PdfNoEof => format!("{what}: tệp PDF không hoàn chỉnh"),
+        _ => format!("{what}: tệp không đúng định dạng đã khai ({})", e.code()),
+    })
 }
 
 /// Như [`gc_photos`] cho tệp đính kèm (bảng `attachment`).
@@ -1590,7 +1715,7 @@ pub fn verify_contents(c: &lvhv_backup::Contents) -> Result<VerifiedBackup> {
     let mut doc = doc;
     let mut migrated: Option<Vec<(String, Vec<u8>)>> = None;
     if migrate::has_certificate_photo_ids(&doc) {
-        let m = migrate::migrate_1_to_2(&doc);
+        let m = migrate::migrate_1_to_2(&doc)?;
         let src: HashMap<String, &[u8]> = c
             .photos
             .iter()
@@ -1680,8 +1805,11 @@ pub fn verify_contents(c: &lvhv_backup::Contents) -> Result<VerifiedBackup> {
             {
                 return Err(aerr("sha256/bytes không khớp"));
             }
-            if m["mime"] == "application/pdf" && !b.bytes.starts_with(b"%PDF-") {
-                return Err(aerr("PDF không hợp lệ"));
+            // 04 B6 (BM2-01, X21): chữ ký khớp mime, kích thước, không siêu dữ liệu, PDF có %%EOF.
+            if let Err(e) =
+                media::check_attachment(m["mime"].as_str().unwrap_or_default(), &b.bytes)
+            {
+                return Err(aerr(e.code()));
             }
             if attachments.insert(id, b.bytes.clone()).is_some() {
                 return Err(aerr("tệp đính kèm trùng"));

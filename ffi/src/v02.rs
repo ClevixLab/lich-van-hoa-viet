@@ -307,7 +307,11 @@ fn normalize_notice(n: &Value) -> R<Value> {
         o.insert(k.into(), v);
     }
     o.entry("notice_date").or_insert(Value::Null);
-    o.entry("attachments").or_insert(json!([]));
+    // Khóa cũ `certificate_photo_ids` (ứng dụng chưa cập nhật, BM2-02) để nguyên cho lớp lưu trữ chuyển đổi; khi đó
+    // không thêm `attachments` (có cả hai khóa là dị dạng — X22).
+    if !o.contains_key("certificate_photo_ids") {
+        o.entry("attachments").or_insert(json!([]));
+    }
     Ok(Value::Object(o))
 }
 

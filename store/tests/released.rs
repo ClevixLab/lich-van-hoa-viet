@@ -315,3 +315,70 @@ fn failed_migration_is_read_only() {
     assert!(matches!(Store::open(&dir), Err(StoreError::NewerSchema(3))));
     let _ = std::fs::remove_dir_all(dir);
 }
+
+/// Báo cáo kiểm định B5 mục 4: chuyển đổi có thể làm hai hồ sơ dùng chung **một** tệp đính kèm (bộ mẫu: 5e0c là ảnh
+/// giấy báo tử của cả 5e01 và 5e02). Xóa hồ sơ đếm tham chiếu: chỉ xóa tệp khi không còn hồ sơ nào dùng.
+#[test]
+fn shared_attachment_reference_counted() {
+    let fix = released().join(FIX);
+    let dir = tmpdir("shared");
+    copy_dir(&fix.join("store"), &dir);
+    let mut s = Store::open(&dir).unwrap();
+    let shared = "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e0c";
+    let users = |s: &Store| -> usize {
+        s.persons()
+            .unwrap()
+            .iter()
+            .filter(|p| {
+                lvhv_store::validate::person_attachment_refs(p)
+                    .iter()
+                    .any(|a| a == shared)
+            })
+            .count()
+    };
+    assert_eq!(users(&s), 2);
+    s.delete_person("0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e01")
+        .unwrap();
+    assert_eq!(users(&s), 1);
+    assert!(
+        s.attachment_bytes(shared).is_ok(),
+        "còn hồ sơ 5e02 dùng → giữ tệp"
+    );
+    assert!(dir
+        .join("attachments")
+        .join(format!("{shared}.bin"))
+        .exists());
+    s.delete_person("0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e02")
+        .unwrap();
+    assert!(
+        s.attachment_bytes(shared).is_err(),
+        "không còn ai dùng → xóa"
+    );
+    assert!(s.attachments().unwrap().is_empty());
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+/// Kiểm định: `OpenOptions::force_migration_failure` → bản sao trước chuyển đổi, quay lui, chỉ đọc.
+#[test]
+fn forced_migration_failure() {
+    let fix = released().join(FIX);
+    let dir = tmpdir("forced");
+    copy_dir(&fix.join("store"), &dir);
+    let before = db_content(&dir.join(lvhv_store::DB_FILE));
+    let s = Store::open_with(
+        &dir,
+        lvhv_store::OpenOptions {
+            force_migration_failure: true,
+        },
+    )
+    .unwrap();
+    let st = s.migration_status().clone();
+    assert_eq!(st.state, "read_only");
+    assert!(db_content(&dir.join(lvhv_store::DB_FILE)) == before);
+    assert!(db_content(Path::new(st.backup_path.as_ref().unwrap())) == before);
+    drop(s);
+    // Mở lại bình thường → chuyển được.
+    let s = Store::open(&dir).unwrap();
+    assert_eq!(s.migration_status().state, "migrated");
+    let _ = std::fs::remove_dir_all(dir);
+}

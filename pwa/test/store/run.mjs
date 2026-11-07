@@ -498,8 +498,9 @@ let r6File;
   const xf = await sb.exportBackup("mật khẩu thử nghiệm", { version: "0.2.0", platform: "pwa" });
   ok(xf.length > 1000, "B5: chỉ đọc vẫn xuất được tệp sao lưu");
   sb.close();
-  // Hàm thuần: cùng kết quả với Rust trên ca biên (ảnh chân dung dùng chung, id thiếu ảnh, chạy lại không đổi).
-  const pure = S.migrate1to2({
+  // Hàm thuần: cùng kết quả với Rust trên ca biên (ảnh chân dung dùng chung, id treo → V3, hai khóa → V1, chạy lại
+  // không đổi) — như store/src/migrate.rs shared_portrait_missing_and_noop.
+  const edge = {
     photos: [
       { id: "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e01", mime: "image/jpeg", width: 10, height: 20, bytes: 5, sha256: "a".repeat(64), stripped: true, created_at: "2026-01-01T00:00:00Z" },
       { id: "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e02", mime: "image/webp", width: 10, height: 20, bytes: 6, sha256: "b".repeat(64), stripped: true, created_at: "2026-01-02T00:00:00Z" }],
@@ -507,12 +508,99 @@ let r6File;
       { id: "p1", photo_id: "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e01", death: { notice: { certificate_photo_ids: ["0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e01", "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e02", "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5eff"] } } },
       { id: "p2", photo_id: null, death: { notice: { certificate_photo_ids: ["0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e02"] } } },
       { id: "p3", photo_id: null, death: null }],
-  });
-  ok(pure.doc.photos.length === 1 && pure.doc.attachments.length === 2 && pure.doc.persons[0].legacy.certificate_photo_ids.length === 3
+  };
+  const err = (d) => { try { S.migrate1to2(d); return "OK"; } catch (e) { return `${e.code} ${e.path}`; } };
+  ok(err(edge) === "V3 /persons/0/death/notice/certificate_photo_ids/2", "M09: certificate_photo_ids trỏ tới ảnh không có → V3 (như Rust)");
+  edge.persons[0].death.notice.certificate_photo_ids.pop();
+  const both = structuredClone(edge); both.persons[1].death.notice.attachments = [];
+  ok(err(both) === "V1 /persons/1/death/notice", "X22: có cả attachments lẫn certificate_photo_ids → V1 (như Rust)");
+  const pure = S.migrate1to2(edge);
+  ok(pure.doc.photos.length === 1 && pure.doc.attachments.length === 2 && pure.doc.persons[0].legacy.certificate_photo_ids.length === 2
     && pure.doc.persons[0].legacy.certificate_photos[0].width === 10 && pure.doc.persons[2].death === null
     && S.altId("0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e0c", new Set()) === "0b8e4f52-3c1a-4d2e-9f60-e5d4c3b2a1f3"
     && !S.migrate1to2(pure.doc).changed, "B5: migrate1to2 cùng ca biên với Rust (store/src/migrate.rs)");
+  // Kiểm định: buộc lỗi chuyển đổi → chỉ đọc, dữ liệu cũ nguyên.
+  const ff = await v1Store();
+  const sf = await S.openStore(ff, { forceMigrationFailure: true });
+  ok(sf.migrationStatus().state === "read_only" && sf.db.version === 1, "B5: forceMigrationFailure → quay lui, chỉ đọc (như Rust OpenOptions)");
+  sf.close();
+  // 04 B6 trong chuyển đổi: ảnh giấy báo tử của kho cũ còn EXIF → không chuyển, chỉ đọc, dữ liệu cũ nguyên.
+  const exifJpg = readFileSync(join(TV, "media", "jpeg-exif-gps.jpg"));
+  const fx = new (await import("fake-indexeddb")).IDBFactory();
+  {
+    const doc = structuredClone(old);
+    await new Promise((okk, ko) => {
+      const r = fx.open("lvhv", 1);
+      r.onupgradeneeded = () => {
+        const db = r.result, tx = r.transaction;
+        for (const n of ["photos", "persons", "events"]) db.createObjectStore(n, { keyPath: "id" });
+        db.createObjectStore("event_types", { keyPath: "id" }).createIndex("by_name_key", "name_key", { unique: true });
+        db.createObjectStore("settings"); db.createObjectStore("meta");
+        tx.objectStore("settings").put(doc.settings, "app");
+        for (const t of doc.event_types) tx.objectStore("event_types").put({ id: t.id, name_key: S.validate.nameKey(t.ten), doc: t });
+        for (const p of doc.persons) tx.objectStore("persons").put(p);
+        for (const ph of doc.photos) tx.objectStore("photos").put({ id: ph.id, meta: ph, blob: new Blob([ph.id.endsWith("5e0c") ? exifJpg : readFileSync(join(RD, "store", "photos", `${ph.id}.img`))]) });
+      };
+      r.onsuccess = () => { r.result.close(); okk(); };
+      r.onerror = () => ko(r.error);
+    });
+  }
+  const sx = await S.openStore(fx);
+  ok(sx.migrationStatus().state === "read_only" && /metadata/.test(sx.migrationStatus().error ?? ""), `B6: ảnh giấy báo tử còn EXIF → không chuyển, chỉ đọc (${sx.migrationStatus().error})`);
+  sx.close();
   results.released = { frozen, migrated_equals_rust: S.canonicalJson(got) === S.canonicalJson(exp.state) };
+}
+
+// ---------- 04 B6 / BM2-01: kiểm tra chặt ảnh và tệp đính kèm — cùng manifest, cùng mã với Rust (store/tests/media.rs) ----------
+{
+  const MD = join(TV, "media");
+  const mm = JSON.parse(readFileSync(join(MD, "manifest.json"), "utf8"));
+  let filesOk = true;
+  for (const [f, h] of Object.entries(mm.files)) if (sha(readFileSync(join(MD, f))) !== h) filesOk = false;
+  ok(filesOk, "B6: tệp mẫu media đúng sha256 của manifest");
+  const wrong = [];
+  for (const c of mm.cases) {
+    const got = S.mediaVerdict(c.kind, c.mime, new Uint8Array(readFileSync(join(MD, c.file))), c.width, c.height);
+    if (got !== c.expect) wrong.push(`${c.file}/${c.mime}/${c.kind}: ${got} ≠ ${c.expect}`);
+  }
+  ok(wrong.length === 0, `B6: ${mm.cases.length} ca media cho đúng mã kỳ vọng (= Rust) ${wrong.join("; ")}`);
+  // Tệp sao lưu (của kẻ gửi) mang tệp đính kèm độc → từ chối toàn bộ, thông báo chung (S12).
+  const SD = join(TV, "supplement-yc05");
+  const sdoc = JSON.parse(readFileSync(join(SD, "notice-v1.json"), "utf8"));
+  const pdf0 = new Uint8Array(readFileSync(join(SD, "giay-chung-tu.pdf")));
+  const blobsOf = (doc, over) => [...doc.photos.map((p) => ({ id: p.id, bytes: exPhoto })),
+    ...doc.attachments.map((a) => ({ id: a.id, bytes: over?.[a.id] ?? (a.mime === "application/pdf" ? pdf0 : exPhoto) }))];
+  ok((await code(() => S.verifyContents(S.canonicalJson(sdoc), blobsOf(sdoc)))) === "OK", "B6: đối chứng — vector bổ sung hợp lệ");
+  const evil = [
+    [0, "image/jpeg", "pdf-ok.pdf"], [0, "image/jpeg", "png-20000x20000-bomb.png"], [0, "image/jpeg", "html-as-image.html"],
+    [0, "image/jpeg", "jpeg-exif-gps.jpg"], [0, "image/webp", "webp-exif.webp"], [1, "application/pdf", "pdf-fake-no-eof.pdf"],
+    [1, "application/pdf", "html-as-image.html"]];
+  const bad = [];
+  for (const [i, mime, f] of evil) {
+    const d = structuredClone(sdoc);
+    const b = new Uint8Array(readFileSync(join(MD, f)));
+    Object.assign(d.attachments[i], { mime, bytes: b.length, sha256: sha(b), stripped: mime !== "application/pdf" });
+    let msg = "";
+    try { await S.verifyContents(S.canonicalJson(d), blobsOf(d, { [d.attachments[i].id]: b })); } catch (e) { msg = e.message; }
+    if (msg !== "Sai mật khẩu hoặc tệp bị hỏng") bad.push(`${f}:${msg}`);
+  }
+  ok(bad.length === 0, `B6/S12: ${evil.length} tệp sao lưu có tệp đính kèm độc (X21 PDF khai image/jpeg, bom PNG, HTML, EXIF, WebP EXIF, PDF giả) → từ chối, thông báo chung ${bad.join("; ")}`);
+  // Thêm ảnh / tệp (BM2-08).
+  const sa = await freshStore();
+  ok((await code(() => sa.addAttachment({ id: "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e7a", mime: "image/jpeg", file_name: null, bytes: new Uint8Array(readFileSync(join(MD, "jpeg-exif-gps.jpg"))) }))) === "input",
+    "B6/BM2-08: addAttachment ảnh còn EXIF → input");
+  ok((await code(() => sa.addAttachment({ id: "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e7a", mime: "application/pdf", file_name: null, bytes: new Uint8Array(readFileSync(join(MD, "pdf-fake-no-eof.pdf"))) }))) === "input",
+    "B6: addAttachment PDF không có %%EOF → input");
+  // X22 / M09 khi nhập tệp sao lưu của bản dựng cũ.
+  const RD2 = join(TV, "released", "0.2-dev-before-attachments");
+  const odoc = JSON.parse(readFileSync(join(RD2, "store-snapshot.json"), "utf8"));
+  const ob = odoc.photos.map((p) => ({ id: p.id, bytes: new Uint8Array(readFileSync(join(RD2, "store", "photos", `${p.id}.img`))) }));
+  ok((await code(() => S.verifyContents(S.canonicalJson(odoc), ob))) === "OK", "B5: tài liệu cũ hợp lệ được chuyển khi nhập");
+  const x22 = structuredClone(odoc); x22.persons[0].death.notice.attachments = [];
+  const m09 = structuredClone(odoc); m09.persons[0].death.notice.certificate_photo_ids = ["0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5eff"];
+  ok((await code(() => S.verifyContents(S.canonicalJson(x22), ob))) === "invalid" && (await code(() => S.verifyContents(S.canonicalJson(m09), ob))) === "invalid",
+    "X22/M09: nhập tài liệu có cả hai khóa, hoặc id ảnh treo → từ chối");
+  results.media = { cases: mm.cases.length, mismatches: wrong.length };
 }
 
 writeFileSync(join(OUT, "results.json"), JSON.stringify(results, null, 2) + "\n");
