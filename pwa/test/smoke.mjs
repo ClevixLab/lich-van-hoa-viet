@@ -25,6 +25,7 @@ const COMPRESS = new Set([".html", ".js", ".css", ".svg", ".webmanifest", ".txt"
 let bytesSent = 0;
 let online = true;
 let serveDir = DIST; // mục 1b đổi sang bản B để mô phỏng phát hành bản mới
+let swExtra = ""; // mục 1b: thêm vài byte vào sw.js → trình duyệt coi là service worker mới (cài lại, báo lần nữa)
 const served = [];
 const server = createServer((req, res) => {
   const url = new URL(req.url, "http://x");
@@ -34,6 +35,7 @@ const server = createServer((req, res) => {
   if (!online) { req.socket.destroy(); return; }
   if (!f.startsWith(serveDir) || !existsSync(f) || statSync(f).isDirectory()) { res.writeHead(404); res.end("not found"); return; }
   let body = readFileSync(f);
+  if (p === "sw.js" && swExtra) body = Buffer.concat([body, Buffer.from(swExtra)]);
   const ext = extname(f);
   const headers = { "content-type": TYPES[ext] ?? "application/octet-stream", "cache-control": "no-cache" };
   if (COMPRESS.has(ext) && /gzip/.test(req.headers["accept-encoding"] ?? "")) { body = gzipSync(body, { level: 9 }); headers["content-encoding"] = "gzip"; }
@@ -529,6 +531,19 @@ const DIST_B = join(TMP_B, "dist");
   check((await page.innerText(".foot")).includes(`Phiên bản ${VERSION_A}`), `trước khi đồng ý vẫn chạy bản ${VERSION_A} (RS-08)`);
   await page.click(".update-bar .ubtn:not(.primary)");
   check(await page.locator(".update-bar").isHidden(), "Để sau → ẩn thanh");
+  // "Để sau" phải giữ cho tới lần kiểm tra kế tiếp. Một phát hành báo HAI lần (version.json, rồi service worker mới
+  // cài xong); trước đây lần báo sau bỏ "Để sau" của người dùng — thanh tự hiện lại (kiểm thử nâng cấp chập chờn
+  // 1/20). Kiểm tất định: sau "Để sau", cho một service worker mới cài xong (sw.js đổi vài byte) và chờ ĐÚNG lần báo
+  // của nó tới thanh (data-reports tăng), rồi kiểm thanh vẫn ẩn.
+  const rep0 = await page.evaluate(() => Number(document.querySelector(".update-bar").dataset.reports ?? 0));
+  swExtra = "\n// b2\n";
+  await page.evaluate(async () => {
+    const r = await navigator.serviceWorker.getRegistration();
+    const got = new Promise((ok) => r.addEventListener("updatefound", () => { const w = r.installing; w.addEventListener("statechange", () => { if (w.state === "installed") ok(); }); }, { once: true }));
+    await r.update(); await got;
+  });
+  await page.waitForFunction((n) => Number(document.querySelector(".update-bar").dataset.reports ?? 0) > n, rep0, { timeout: 15000 });
+  check(await page.locator(".update-bar").isHidden(), "Để sau giữ nguyên khi bản mới cài xong và báo lần nữa (thanh không tự hiện lại)");
 
   // Cập nhật ngay → kích hoạt SW mới, tải lại một lần
   await page.goto(BASE + "#/gioi-thieu");

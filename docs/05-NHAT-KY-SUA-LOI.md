@@ -281,3 +281,34 @@ chạy), mở trong Chromium, rồi máy chủ đổi sang bản 0.1.1.
 - Khi kiểm tra `sw.js`, trình duyệt bỏ qua bộ nhớ đệm HTTP của chính nó (mặc định `updateViaCache: "imports"`).
   Bộ nhớ đệm phía máy chủ/CDN của GitHub Pages có thể làm chậm vài phút sau khi phát hành (chưa đo được từ
   sandbox vì proxy chặn truy cập trang).
+
+## J. "Để sau" bị bỏ qua — thanh cập nhật tự hiện lại (PWA, 2026-11-07)
+
+**Triệu chứng.** Thanh "Đã có phiên bản mới X.Y.Z. [Cập nhật ngay] [Để sau]": người dùng bấm **Để sau**, vài giây sau
+thanh tự hiện lại. Tìm thấy qua kiểm thử nâng cấp `pwa/test/upgrade.mjs` chập chờn: 1 lỗi trong 20 lần chạy, đúng
+kiểm tra `(a) "Để sau" → ẩn thanh, bản cũ chạy tiếp` (nhật ký lần 13). 19 lần còn lại đạt.
+
+**Nguyên nhân.** Một lần phát hành được báo tới thanh hai lần:
+- lần 1 khi đọc `version.json` (autoCheck lúc mở ứng dụng);
+- lần 2 khi service worker mới cài xong (`attachRegistration`).
+
+Lúc mở lại ứng dụng mà đã có bản chờ, hai lần kiểm tra chạy song song. Mỗi lần báo cùng phiên bản đều đặt
+`updateBar.hidden = false`. Nếu người dùng bấm "Để sau" sau lần báo thứ nhất nhưng trước lần báo thứ hai, lần báo thứ
+hai bỏ qua lựa chọn đó. Lỗi có trong bản 0.1.4 đang phát hành và bản 0.2-dev. Không liên quan tới IndexedDB hay
+việc kích hoạt service worker.
+
+**Sửa (trong ứng dụng).**
+- `update.ts`: mỗi lần kiểm tra mang nguồn (`user` / `auto` / `install`) và số thứ tự lúc bắt đầu.
+- `main.ts`: sau "Để sau", cùng phiên bản đó không tự hiện lại vì lần báo `install`, cũng không vì một lần kiểm tra đã
+  bắt đầu trước khi bấm.
+- Vẫn nhắc lại khi có lần kiểm tra mới: mở lại ứng dụng (tối đa 6 giờ một lần) hoặc bấm **Kiểm tra cập nhật**.
+- Phiên bản khác thì báo ngay, như hướng dẫn sử dụng (06) đã mô tả.
+
+**Kiểm thử.**
+- `smoke.mjs` mục 1b, kiểm tất định. Sau "Để sau", cho một service worker mới cài xong, chờ đúng lần báo của nó tới
+  thanh (`data-reports` tăng), rồi kiểm thanh vẫn ẩn. Trước khi sửa: LỖI mỗi lần. Sau khi sửa: ĐẠT.
+- `upgrade.mjs`. Bản cũ là mã đã phát hành, không sửa được, nên kiểm thử mở lại ứng dụng khi bản mới đã ở trạng thái
+  chờ, rồi chờ đủ hai lần đọc `version.json` của bản cũ (và mạng yên) mới bấm "Để sau". Đây là chờ đúng điều kiện,
+  không thử lại. Kết quả: 20/20 lần đạt.
+- Người đang dùng 0.1.4 có thể còn gặp lỗi này một lần cho tới khi cập nhật lên bản có bản sửa.
+

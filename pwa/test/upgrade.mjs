@@ -68,24 +68,54 @@ async function controlled(page) {
   if (!(await page.evaluate(() => !!navigator.serviceWorker.controller))) await page.reload({ waitUntil: "load" });
   await page.waitForFunction(() => !!navigator.serviceWorker.controller, null, { timeout: 15000 });
 }
+/** Chờ service worker của bản mới cài xong và ở trạng thái chờ (trang vẫn do bản cũ điều khiển). */
+async function newWorkerWaiting(page) {
+  await page.evaluate(async () => {
+    const r = await navigator.serviceWorker.getRegistration();
+    const installed = (w) => new Promise((ok) => {
+      if (w.state === "installed" || w.state === "activated") { ok(); return; }
+      w.addEventListener("statechange", () => { if (w.state === "installed" || w.state === "activated") ok(); });
+    });
+    if (r.waiting) return;
+    if (!r.installing) await r.update();
+    if (!r.waiting && r.installing) await installed(r.installing);
+  });
+}
+/**
+ * Mở lại ứng dụng khi bản mới đang chờ, rồi chờ CẢ HAI lần báo của bản cũ tới thanh: lúc mở, update.ts của bản cũ
+ * kiểm tra hai lần (autoCheck, và attachRegistration vì đã có bản chờ), mỗi lần đọc version.json một lần.
+ * Vì sao phải chờ: bản 0.1.4 và 0.2-dev có lỗi "Để sau" bị lần báo đến sau bỏ qua — thanh tự hiện lại (đây là
+ * nguyên nhân kiểm thử này chập chờn 1/20). Lỗi đã sửa trong app (main.ts, update.ts; kiểm tất định ở smoke.mjs),
+ * nhưng mã của bản đã phát hành không sửa được, nên ở đây người dùng giả lập bấm "Để sau" khi các lần báo đã xong.
+ */
+async function reopenWithPending(page) {
+  await page.reload({ waitUntil: "load" });
+  await page.waitForSelector(".update-bar:not([hidden])", { timeout: 30000 });
+  // Chỉ đếm lần đọc của CHÍNH trang vừa mở (Resource Timing của tài liệu này), không lẫn yêu cầu của trang trước.
+  const vjDone = () => performance.getEntriesByType("resource").filter((e) => e.name.endsWith("/version.json") && e.responseEnd > 0).length;
+  await page.waitForFunction(`(${vjDone})() >= 2`, null, { timeout: 30000 })
+    .catch(async () => { throw new Error(`bản cũ chỉ đọc version.json ${await page.evaluate(`(${vjDone})()`)}/2 lần sau khi mở lại`); });
+  await page.waitForLoadState("networkidle"); // phản hồi đã tới trang và kết quả đã báo tới thanh
+  return page.evaluate(`(${vjDone})()`);
+}
 /** Phát hành bản mới (thay thư mục phục vụ), đi đúng đường người dùng: thanh cập nhật → "Để sau" → "Cập nhật ngay". */
 async function releaseNew(page, hash) {
   serveDir = DIST;
   await page.goto(BASE + hash);
-  await page.reload({ waitUntil: "load" });
-  await page.waitForSelector(".update-bar:not([hidden])", { timeout: 30000 });
+  await newWorkerWaiting(page);
+  const reports1 = await reopenWithPending(page);
   await page.click(".update-bar .ubtn:not(.primary)"); // Để sau
   const laterHidden = await page.locator(".update-bar").isHidden();
   const stillOld = await page.evaluate(() => navigator.serviceWorker.controller?.scriptURL ?? "");
-  await page.reload({ waitUntil: "load" });
-  await page.waitForSelector(".update-bar:not([hidden])", { timeout: 30000 });
+  const hasWaiting = await page.evaluate(async () => !!(await navigator.serviceWorker.getRegistration())?.waiting);
+  const reports2 = await reopenWithPending(page);
   await Promise.all([
     page.waitForEvent("framenavigated", { timeout: 30000 }),
     page.click(".update-bar .ubtn.primary"),
   ]);
   await page.waitForLoadState("load");
   await page.waitForFunction(() => !!document.querySelector('.tab[data-r="nguoi-than"]') && !!navigator.serviceWorker.controller, null, { timeout: 30000 });
-  return { laterHidden, stillOld };
+  return { laterHidden, stillOld, hasWaiting, reports1, reports2 };
 }
 
 // Ghi dữ liệu bằng mã của BẢN CŨ (window.__lvhv.storage của bản 0.2-dev): 3 hồ sơ, ảnh chân dung, thông tin báo tử có
@@ -139,7 +169,7 @@ try {
     for (let i = 0; i < 3 && (await page.evaluate(() => JSON.parse(localStorage.getItem("lvhv.ui") ?? "{}").theme)) !== "dark"; i++) await page.click(".themebtn");
     const before = await page.evaluate(() => localStorage.getItem("lvhv.ui"));
     const r = await releaseNew(page, "#/ngay/2026-07-25");
-    check(r.laterHidden && /sw\.js/.test(r.stillOld), "(a) \"Để sau\" → ẩn thanh, bản cũ chạy tiếp; mở lại → nhắc lại");
+    check(r.laterHidden && /sw\.js/.test(r.stillOld) && r.hasWaiting, `(a) "Để sau" → ẩn thanh, bản cũ chạy tiếp; mở lại → nhắc lại (${JSON.stringify(r)})`);
     const after = await page.evaluate(() => ({ ls: localStorage.getItem("lvhv.ui"), size: document.documentElement.dataset.size, theme: document.documentElement.dataset.theme }));
     check(JSON.parse(before).size === "3" && JSON.parse(before).theme === "dark" && JSON.parse(after.ls).size === "3" && JSON.parse(after.ls).theme === "dark" && after.size === "3",
       `R14 (a) 0.1.4 → mới qua "Cập nhật ngay": cỡ chữ A++ và giao diện tối giữ nguyên (${before} → ${after.ls})`);

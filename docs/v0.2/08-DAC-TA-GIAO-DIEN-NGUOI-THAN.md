@@ -983,6 +983,9 @@ hướng dẫn tạo tệp sao lưu và có nút "Đi tới Sao lưu".
 - Bản cũ dựng từ lịch sử git; thay bằng bản mới qua đường cập nhật thật của service worker: thanh cập nhật → "Để sau" →
   mở lại → "Cập nhật ngay".
 - (a) 0.1.4 (d9650c7): cỡ chữ A++ và giao diện tối giữ nguyên; "Để sau" giữ bản cũ chạy tiếp.
+  - Mã cũ (0.1.4, 0.2-dev) có lỗi "Để sau" bị lần báo thứ hai bỏ qua (05 mục J). Lỗi đã sửa trong app, nhưng mã
+    cũ không sửa được. Vì vậy kiểm thử mở lại khi bản mới đã chờ sẵn và chờ đủ hai lần đọc `version.json` rồi mới
+    bấm "Để sau".
 - (b) 0.2-dev (c4d3128, kho v1): dữ liệu ghi bằng mã của bản cũ — 3 hồ sơ, ảnh chân dung, thông tin báo tử có 2 ảnh
   giấy báo tử, 2 sự kiện, cài đặt nhắc sao lưu 60 ngày, A+. Sau nâng cấp so **từng byte** với
   `migrate1to2(tài liệu cũ)` của lõi:
