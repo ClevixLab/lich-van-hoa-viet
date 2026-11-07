@@ -134,6 +134,48 @@ enum DemoSeed {
         m.toast = nil
     }
 
+    /// Gắn ảnh mâm lễ thử cho một người (chỉ khi chưa có).
+    static func seedTray(_ m: PeopleModel, _ pid: String) {
+        guard let p = m.person(pid), p["memorial"]["tray_photo_id"].str == nil,
+              let raw = exifJPEG(), let t = try? PhotoProcessor.process(raw, maxSide: TrayPhoto.maxSide, maxBytes: TrayPhoto.maxBytes),
+              let photo = try? m.addPhoto(t) else { return }
+        // Cùng đường lưu với biểu mẫu: bản nháp → JSON → save_person_json.
+        var d = PersonDraft(person: p, settings: m.settings)
+        d.trayPhotoId = photo
+        do { _ = try m.savePerson(d.build(photoId: p["photo_id"].str, today: m.today)) }
+        catch { print("seedTray: \(error)"); m.discardPhoto(photo) }
+        m.toast = nil
+    }
+
+    /// Ảnh mâm thử 2400 × 1800 có EXIF GPS và tên máy (để thấy ảnh lưu đã bỏ siêu dữ liệu và đã thu nhỏ ≤ 1600 px).
+    static func exifJPEG() -> Data? {
+        let w = 2400, h = 1800
+        guard let ctx = CGContext(data: nil, width: w, height: h, bitsPerComponent: 8, bytesPerRow: 0,
+                                  space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                                  bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue) else { return nil }
+        ctx.setFillColor(CGColor(red: 0.42, green: 0.27, blue: 0.17, alpha: 1))
+        ctx.fill(CGRect(x: 0, y: 0, width: w, height: h))
+        ctx.setFillColor(CGColor(red: 0.8, green: 0.64, blue: 0.32, alpha: 1))
+        ctx.fillEllipse(in: CGRect(x: 300, y: 300, width: 1800, height: 900))
+        let fruits: [(CGFloat, CGFloat, CGFloat, CGFloat)] = [(0.95, 0.6, 0.15, 700), (0.45, 0.65, 0.25, 1000),
+                                                              (0.85, 0.25, 0.2, 1300), (0.98, 0.82, 0.3, 1600)]
+        for (r, g, b, x) in fruits {
+            ctx.setFillColor(CGColor(red: r, green: g, blue: b, alpha: 1))
+            ctx.fillEllipse(in: CGRect(x: x - 150, y: 700, width: 300, height: 300))
+        }
+        guard let img = ctx.makeImage() else { return nil }
+        let out = NSMutableData()
+        guard let dst = CGImageDestinationCreateWithData(out, UTType.jpeg.identifier as CFString, 1, nil) else { return nil }
+        let props: [CFString: Any] = [
+            kCGImagePropertyGPSDictionary: [kCGImagePropertyGPSLatitude: 21.03, kCGImagePropertyGPSLatitudeRef: "N",
+                                            kCGImagePropertyGPSLongitude: 105.85, kCGImagePropertyGPSLongitudeRef: "E"],
+            kCGImagePropertyTIFFDictionary: [kCGImagePropertyTIFFModel: "MayChupThu"],
+        ]
+        CGImageDestinationAddImage(dst, img, props as CFDictionary)
+        guard CGImageDestinationFinalize(dst) else { return nil }
+        return out as Data
+    }
+
     /// Tìm id theo tên khi kho đã có sẵn dữ liệu mẫu từ lần chạy trước.
     private static func id(_ key: String, _ m: PeopleModel) -> String {
         if let v = ids[key] { return v }
@@ -163,6 +205,27 @@ enum DemoSeed {
         case "mark": return (.profiles, [.person(id("D", m)), .markDeceased(id("D", m))])
         case "memorial": return (.profiles, [.person(id("B", m)), .memorial(id("B", m))])
         case "memorial-a": return (.profiles, [.person(id("A", m)), .memorial(id("A", m))])
+        case "memorial-cg":
+            // Công giáo (08 §16.1): đổi `tray_style` của E rồi mở màn hình tưởng niệm.
+            let e = id("E", m)
+            if let p = m.person(e), p["memorial"]["tray_style"].str != "cong_giao" {
+                var j = PersonDraft(person: p, settings: m.settings).build(photoId: p["photo_id"].str, today: m.today)
+                var mem = j["memorial"]
+                mem["tray_style"] = "cong_giao"
+                mem["incense"] = false
+                j["memorial"] = mem
+                do { _ = try m.savePerson(j) } catch { print("memorial-cg: \(error)") }
+                m.toast = nil
+            }
+            return (.profiles, [.person(e), .memorial(e)])
+        case "memorial-tray":
+            // 08 §16.4 ca 2: ảnh mâm lễ có EXIF (GPS, tên máy) đi qua đúng đường xử lý của biểu mẫu rồi gắn cho A.
+            seedTray(m, id("A", m))
+            return (.profiles, [.person(id("A", m)), .memorial(id("A", m))])
+        case "form-tray":
+            seedTray(m, id("A", m))
+            return (.profiles, [.person(id("A", m)), .editTray(id("A", m))])
+        case "form-tray-empty": return (.profiles, [.person(id("B", m)), .editTray(id("B", m))])
         case "settings": return (.upcoming, [.settings])
         default: return (.upcoming, [])
         }

@@ -68,6 +68,7 @@ xcodebuild -create-xcframework \
   -output "$XCF"
 
 "$HERE/gen-version.sh"
+"$HERE/gen-trays.sh"
 
 echo "Xong: $XCF"
 echo "      $HERE/Generated/LvhvCore.swift"
