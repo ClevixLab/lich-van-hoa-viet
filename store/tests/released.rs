@@ -369,6 +369,7 @@ fn forced_migration_failure() {
         &dir,
         lvhv_store::OpenOptions {
             force_migration_failure: true,
+            ..Default::default()
         },
     )
     .unwrap();
@@ -381,4 +382,153 @@ fn forced_migration_failure() {
     let s = Store::open(&dir).unwrap();
     assert_eq!(s.migration_status().state, "migrated");
     let _ = std::fs::remove_dir_all(dir);
+}
+
+fn open_at(dir: &Path, now_unix: i64, fail: bool) -> Store {
+    Store::open_with(
+        dir,
+        lvhv_store::OpenOptions {
+            force_migration_failure: fail,
+            now_unix: Some(now_unix),
+        },
+    )
+    .unwrap()
+}
+
+fn has_legacy(s: &Store) -> usize {
+    s.persons()
+        .unwrap()
+        .iter()
+        .filter(|p| p.get("legacy").is_some())
+        .count()
+}
+
+/// BM2-06, BM2-07 (01 §7): 7 ngày sau chuyển đổi THÀNH CÔNG, bỏ `legacy` và xóa bản sao CSDL trước chuyển đổi; tệp
+/// sao lưu xuất trong 7 ngày đó không mang `legacy`; chuyển đổi lỗi thì bản sao giữ nguyên.
+#[test]
+fn legacy_and_backup_pruned_after_7_days() {
+    let fix = released().join(FIX);
+    let dir = tmpdir("prune");
+    copy_dir(&fix.join("store"), &dir);
+    let t0 = lvhv_store::unix_from_rfc3339("2026-11-10T00:00:00Z").unwrap();
+    let day = 86_400;
+    let mut s = open_at(&dir, t0, false);
+    assert_eq!(s.migration_status().state, "migrated");
+    let bak = PathBuf::from(s.migration_status().backup_path.clone().unwrap());
+    assert!(bak.exists());
+    assert_eq!(has_legacy(&s), 2);
+    // Xuất trong 7 ngày: không có `legacy` (tệp nhập vào máy khác không mang theo bản gốc nội bộ).
+    let f = s
+        .export_backup(
+            PASSWORD,
+            &AppInfo {
+                version: "0.2.0".into(),
+                platform: "android".into(),
+            },
+        )
+        .unwrap();
+    let v = open_backup(&f, PASSWORD).unwrap();
+    assert!(v.document()["persons"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .all(|p| p.get("legacy").is_none()));
+    let before_hash = s.state_hash().unwrap();
+    drop(s);
+    // 6 ngày 23 giờ: chưa dọn.
+    let s = open_at(&dir, t0 + 7 * day - 3600, false);
+    assert_eq!(has_legacy(&s), 2);
+    assert!(bak.exists());
+    assert_eq!(s.state_hash().unwrap(), before_hash);
+    drop(s);
+    // Đủ 7 ngày: bỏ legacy, xóa bản sao; dữ liệu khác giữ nguyên (rev không đổi).
+    let s = open_at(&dir, t0 + 7 * day, false);
+    assert_eq!(s.migration_status().state, "ok");
+    assert_eq!(has_legacy(&s), 0);
+    assert!(
+        !bak.exists(),
+        "bản sao trước chuyển đổi phải bị xóa sau 7 ngày"
+    );
+    let want: Value = serde_json::from_slice(&std::fs::read(expected_path()).unwrap()).unwrap();
+    let mut exp_persons = want["state"]["persons"].clone();
+    for p in exp_persons.as_array_mut().unwrap() {
+        p.as_object_mut().unwrap().remove("legacy");
+    }
+    assert_eq!(state_doc(&s)["persons"], exp_persons);
+    assert_eq!(state_doc(&s)["attachments"], want["state"]["attachments"]);
+    drop(s);
+    let _ = std::fs::remove_dir_all(dir);
+    // Chuyển đổi lỗi: không bắt đầu đếm; 30 ngày sau bản sao vẫn còn.
+    let dir = tmpdir("prune-fail");
+    copy_dir(&fix.join("store"), &dir);
+    let s = open_at(&dir, t0, true);
+    assert_eq!(s.migration_status().state, "read_only");
+    let bak = PathBuf::from(s.migration_status().backup_path.clone().unwrap());
+    drop(s);
+    let s = open_at(&dir, t0 + 30 * day, true);
+    assert_eq!(s.migration_status().state, "read_only");
+    assert!(bak.exists(), "chuyển đổi lỗi: bản sao giữ nguyên");
+    drop(s);
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+/// Mọi tệp trong thư mục kho (đường dẫn tương đối), trừ tệp tạm của SQLite.
+fn file_set(dir: &Path) -> std::collections::BTreeSet<String> {
+    fn walk(base: &Path, d: &Path, out: &mut std::collections::BTreeSet<String>) {
+        for e in std::fs::read_dir(d).unwrap().flatten() {
+            let p = e.path();
+            if p.is_dir() {
+                walk(base, &p, out);
+            } else {
+                let rel = p.strip_prefix(base).unwrap().to_string_lossy().into_owned();
+                if !rel.ends_with("-wal") && !rel.ends_with("-shm") {
+                    out.insert(rel);
+                }
+            }
+        }
+    }
+    let mut out = Default::default();
+    walk(dir, dir, &mut out);
+    out
+}
+
+/// Báo cáo PR #36: (1) bản sao trước chuyển đổi giống TỪNG BYTE kho cũ; (2) chuyển đổi lỗi (sau khi đã ghi tệp đính kèm)
+/// không để lại tệp mồ côi — tập tệp của thư mục kho như trước, chỉ thêm bản sao trước chuyển đổi.
+#[test]
+fn failed_migration_leaves_folder_unchanged_and_copy_is_byte_identical() {
+    let fix = released().join(FIX);
+    let orig = std::fs::read(fix.join("store").join(lvhv_store::DB_FILE)).unwrap();
+    for fail in [true, false] {
+        let dir = tmpdir(if fail { "orph-fail" } else { "orph-ok" });
+        copy_dir(&fix.join("store"), &dir);
+        let before = file_set(&dir);
+        let s = Store::open_with(
+            &dir,
+            lvhv_store::OpenOptions {
+                force_migration_failure: fail,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let st = s.migration_status().clone();
+        let bak = PathBuf::from(st.backup_path.clone().unwrap());
+        assert_eq!(
+            std::fs::read(&bak).unwrap(),
+            orig,
+            "bản sao phải giống từng byte kho cũ"
+        );
+        drop(s);
+        let mut after = file_set(&dir);
+        assert!(after.remove(&format!("{}.pre-v2.bak", lvhv_store::DB_FILE)));
+        if fail {
+            assert_eq!(st.state, "read_only");
+            assert_eq!(after, before, "chuyển đổi lỗi không để lại tệp nào");
+        } else {
+            assert_eq!(st.state, "migrated");
+            let added: Vec<_> = after.difference(&before).cloned().collect();
+            assert_eq!(added.len(), 2, "{added:?}"); // hai tệp đính kèm mới
+            assert!(added.iter().all(|f| f.starts_with("attachments/")));
+        }
+        let _ = std::fs::remove_dir_all(dir);
+    }
 }

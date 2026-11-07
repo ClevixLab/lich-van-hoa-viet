@@ -335,7 +335,14 @@ pub struct OpenOptions {
     /// Kiểm định: làm bước chuyển đổi thất bại (sau khi đã chạy) để quan sát bản sao trước chuyển đổi, quay lui và
     /// chế độ chỉ đọc. Không dùng trong ứng dụng.
     pub force_migration_failure: bool,
+    /// Đồng hồ cho kiểm thử (giây Unix): "bây giờ" khi mở kho — để kiểm việc dọn sau 7 ngày (BM2-06, BM2-07).
+    /// `None` = đồng hồ hệ thống.
+    pub now_unix: Option<i64>,
 }
+
+/// Số ngày giữ khóa `legacy` và bản sao CSDL trước chuyển đổi sau một lần chuyển đổi **thành công** (01 §7, BM2-06,
+/// BM2-07). Chuyển đổi lỗi thì không đếm — bản sao giữ nguyên.
+pub const MIGRATION_KEEP_DAYS: i64 = 7;
 
 /// Kho dữ liệu trên một thư mục.
 #[derive(Debug)]
@@ -367,6 +374,28 @@ impl Store {
         let dir = dir.as_ref().to_path_buf();
         std::fs::create_dir_all(dir.join(PHOTO_DIR))?;
         std::fs::create_dir_all(dir.join(ATTACHMENT_DIR))?;
+        // Bản sao trước chuyển đổi phải giống TỪNG BYTE kho cũ (báo cáo PR #36): đọc `user_version` thẳng từ phần đầu tệp
+        // (byte 60–63, big-endian) và chép thô tệp chính (+ `-wal` nếu có) TRƯỚC khi mở kết nối — mở kết nối và đặt
+        // chế độ WAL sẽ ghi lại phần đầu tệp (byte 18–19, bộ đếm thay đổi).
+        let bak = dir.join(format!("{DB_FILE}.pre-v{}.bak", migrate::STORE_VERSION));
+        let mut raw_copy = None;
+        if let Ok(head) = std::fs::read(dir.join(DB_FILE)).map(|b| b.get(..100).map(<[u8]>::to_vec))
+        {
+            if let Some(h) = head.filter(|h| h.starts_with(b"SQLite format 3\0")) {
+                let uv = i64::from(u32::from_be_bytes([h[60], h[61], h[62], h[63]]));
+                if uv > 0 && uv < migrate::STORE_VERSION && !bak.exists() {
+                    std::fs::copy(dir.join(DB_FILE), &bak)?;
+                    let wal = dir.join(format!("{DB_FILE}-wal"));
+                    if wal.exists() {
+                        std::fs::copy(
+                            &wal,
+                            dir.join(format!("{DB_FILE}.pre-v{}.bak-wal", migrate::STORE_VERSION)),
+                        )?;
+                    }
+                    raw_copy = Some(bak.clone());
+                }
+            }
+        }
         let mut conn = Connection::open(dir.join(DB_FILE))?;
         conn.pragma_update(None, "foreign_keys", true)?;
         conn.pragma_update(None, "journal_mode", "WAL")?;
@@ -382,13 +411,19 @@ impl Store {
             backup_path: None,
             error: None,
         };
+        let now = opts
+            .now_unix
+            .map(rfc3339_from_unix)
+            .unwrap_or_else(now_rfc3339);
         if ver < migrate::STORE_VERSION {
             if ver > 0 {
-                // 01 §7, 04 B5: bản sao nội bộ không mã hóa trước khi chuyển đổi. Không bao giờ tự xóa. Tệp ảnh và
-                // tệp đính kèm không bị xóa bởi phép chuyển nào, nên bản sao CSDL + thư mục ảnh = toàn bộ dữ liệu cũ.
-                let bak = dir.join(format!("{DB_FILE}.pre-v{}.bak", migrate::STORE_VERSION));
-                conn.execute_batch("PRAGMA wal_checkpoint(TRUNCATE)")?;
-                if !bak.exists() {
+                // 01 §7, 04 B5: bản sao nội bộ không mã hóa trước khi chuyển đổi; xóa 7 ngày sau khi chuyển THÀNH CÔNG
+                // (BM2-06), giữ nguyên nếu chuyển lỗi. Tệp ảnh và tệp đính kèm không bị xóa bởi phép chuyển nào, nên bản
+                // sao CSDL + thư mục ảnh = toàn bộ dữ liệu cũ.
+                if raw_copy.is_none() && !bak.exists() {
+                    // Dự phòng (phần đầu tệp không đọc được như trên): chép sau khi gộp WAL — dữ liệu đủ, byte phần
+                    // đầu có thể khác.
+                    conn.execute_batch("PRAGMA wal_checkpoint(TRUNCATE)")?;
                     std::fs::copy(dir.join(DB_FILE), &bak)?;
                 }
                 status.backup_path = Some(bak.to_string_lossy().into_owned());
@@ -397,6 +432,14 @@ impl Store {
                 Ok(()) => {
                     if ver > 0 {
                         status.state = "migrated";
+                        // Bắt đầu đếm 7 ngày (01 §7): thời điểm chuyển xong + tên bản sao cần dọn.
+                        conn.execute(
+                            "INSERT OR REPLACE INTO meta(key, value) VALUES ('migrated_at', ?1), ('migration_backup', ?2)",
+                            params![
+                                now,
+                                format!("{DB_FILE}.pre-v{}.bak", migrate::STORE_VERSION)
+                            ],
+                        )?;
                     }
                 }
                 Err(e) => {
@@ -407,18 +450,40 @@ impl Store {
                 }
             }
         }
+        if status.state != "read_only" {
+            post_migration_cleanup(&mut conn, &dir, &now)?;
+        }
         Ok(Store { conn, dir, status })
     }
 
     /// Chạy chuỗi chuyển đổi từ `ver` lên [`migrate::STORE_VERSION`] trong **một** giao dịch, rồi kiểm 01 §6.2 trên
     /// mọi hồ sơ và tệp đính kèm. Lỗi → quay lui toàn bộ.
     fn run_migrations(conn: &mut Connection, dir: &Path, ver: i64, force_fail: bool) -> Result<()> {
+        let mut written = Vec::new();
+        let r = Self::run_migrations_tx(conn, dir, ver, force_fail, &mut written);
+        if r.is_err() {
+            // Giao dịch đã quay lui: xóa tệp đính kèm mới ghi trong lúc chuyển — thư mục kho trở lại như trước, chỉ
+            // thêm bản sao trước chuyển đổi (báo cáo PR #36).
+            for f in written {
+                let _ = std::fs::remove_file(f);
+            }
+        }
+        r
+    }
+
+    fn run_migrations_tx(
+        conn: &mut Connection,
+        dir: &Path,
+        ver: i64,
+        force_fail: bool,
+        written: &mut Vec<PathBuf>,
+    ) -> Result<()> {
         let tx = conn.transaction_with_behavior(TransactionBehavior::Exclusive)?;
         for m in &MIGRATIONS[ver as usize..] {
             tx.execute_batch(m)?;
         }
         if ver == 1 {
-            migrate_data_1_to_2(&tx, dir)?;
+            migrate_data_1_to_2(&tx, dir, written)?;
         }
         if force_fail && ver > 0 {
             // Chỉ để kiểm định quan sát quay lui + chỉ đọc (01 §7.1); giao dịch bị hủy khi trả lỗi.
@@ -670,12 +735,25 @@ impl Store {
     /// chuyển bằng [`migrate::migrate_1_to_2`] trong **cùng** giao dịch: ảnh giấy báo tử thành tệp đính kèm.
     pub fn put_person(&mut self, p: &Value) -> Result<()> {
         self.writable()?;
+        let mut written = Vec::new();
+        let r = self.put_person_inner(p, &mut written);
+        if r.is_err() {
+            // Tệp đính kèm ghi trong lúc chuyển khi lưu mà giao dịch không xác nhận → xóa (báo cáo PR #36).
+            for f in written {
+                let _ = std::fs::remove_file(f);
+            }
+        }
+        r
+    }
+
+    fn put_person_inner(&mut self, p: &Value, written: &mut Vec<PathBuf>) -> Result<()> {
         let now = now_rfc3339();
         let dir = self.dir.clone();
         let tx = self.conn.transaction()?;
         let migrated;
         let p = if migrate::has_certificate_photo_ids(&json!({ "persons": [p] })) {
-            migrated = migrate_person_in_tx(&tx, &dir, p)?;
+            migrated = migrate_person_in_tx(&tx, &dir, p, written)?;
+            note_legacy(&tx, &now)?;
             &migrated
         } else {
             p
@@ -998,7 +1076,13 @@ impl Store {
         app: &AppInfo,
         exported_at: &str,
     ) -> Result<(Value, Vec<PhotoBlob>)> {
-        let doc = self.snapshot(app, exported_at)?;
+        let mut doc = self.snapshot(app, exported_at)?;
+        // 01 §7 (BM2-07): khóa `legacy` chỉ để khôi phục trên chính máy đã chuyển đổi — không đưa vào tệp sao lưu.
+        for p in doc["persons"].as_array_mut().into_iter().flatten() {
+            if let Some(o) = p.as_object_mut() {
+                o.remove("legacy");
+            }
+        }
         let mut blobs = Vec::new();
         for ph in doc["photos"].as_array().into_iter().flatten() {
             let id = ph["id"].as_str().unwrap_or_default();
@@ -1218,6 +1302,14 @@ impl Store {
             for p in target["persons"].as_array().into_iter().flatten() {
                 upsert_person(&tx, p)?;
             }
+            if target["persons"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .any(|p| p.get("legacy").is_some())
+            {
+                note_legacy(&tx, &now)?;
+            }
             for e in target["events"].as_array().into_iter().flatten() {
                 upsert_event(&tx, e)?;
             }
@@ -1307,9 +1399,76 @@ fn gc_photos(tx: &rusqlite::Transaction<'_>, mut candidates: Vec<String>) -> Res
     Ok(gone)
 }
 
+/// Ghi lại rằng kho vừa nhận khóa `legacy` (chuyển đổi khi lưu, hoặc nhập tài liệu đã chuyển): bắt đầu (lại) đếm
+/// 7 ngày tới lúc dọn (BM2-07).
+fn note_legacy(tx: &rusqlite::Transaction<'_>, now: &str) -> Result<()> {
+    tx.execute(
+        "INSERT OR REPLACE INTO meta(key, value) VALUES ('migrated_at', ?1)",
+        params![now],
+    )?;
+    Ok(())
+}
+
+/// 01 §7, BM2-06/BM2-07: 7 ngày sau lần chuyển đổi thành công (`meta.migrated_at`), bỏ khóa `legacy` khỏi mọi hồ sơ
+/// (không đổi `rev`/`updated_at`: đây là dọn nội bộ, không phải sửa của người dùng) và xóa bản sao CSDL trước chuyển
+/// đổi ghi ở `meta.migration_backup`. Chưa đủ 7 ngày, hoặc chưa từng chuyển thành công → không làm gì.
+fn post_migration_cleanup(conn: &mut Connection, dir: &Path, now: &str) -> Result<()> {
+    let get = |k: &str| -> Result<Option<String>> {
+        Ok(conn
+            .query_row("SELECT value FROM meta WHERE key = ?1", params![k], |r| {
+                r.get(0)
+            })
+            .optional()?)
+    };
+    let Some(at) = get("migrated_at")? else {
+        return Ok(());
+    };
+    let backup = get("migration_backup")?;
+    let (Some(a), Some(n)) = (unix_from_rfc3339(&at), unix_from_rfc3339(now)) else {
+        return Ok(());
+    };
+    if n - a < MIGRATION_KEEP_DAYS * 86_400 {
+        return Ok(());
+    }
+    let tx = conn.transaction()?;
+    let rows: Vec<String> = {
+        let mut st = tx.prepare("SELECT json FROM person ORDER BY id")?;
+        let r = st
+            .query_map([], |r| r.get(0))?
+            .collect::<core::result::Result<_, _>>()?;
+        r
+    };
+    for r in rows {
+        let mut p = parse_col(&r)?;
+        if p.as_object_mut().and_then(|o| o.remove("legacy")).is_some() {
+            upsert_person(&tx, &p)?;
+        }
+    }
+    tx.execute(
+        "DELETE FROM meta WHERE key IN ('migrated_at', 'migration_backup')",
+        [],
+    )?;
+    tx.execute(
+        "INSERT OR REPLACE INTO meta(key, value) VALUES ('legacy_pruned_at', ?1)",
+        params![now],
+    )?;
+    tx.commit()?;
+    if let Some(b) =
+        backup.filter(|b| b.starts_with(DB_FILE) && b.ends_with(".bak") && !b.contains('/'))
+    {
+        let _ = std::fs::remove_file(dir.join(format!("{b}-wal")));
+        let _ = std::fs::remove_file(dir.join(b));
+    }
+    Ok(())
+}
+
 /// Bước dữ liệu của chuyển đổi kho 1 → 2 (YC-2026-07): đọc hồ sơ, ảnh, tệp đính kèm; áp
 /// [`migrate::migrate_1_to_2`]; chép byte ảnh sang tệp đính kèm (không xóa tệp ảnh nào); ghi lại trong giao dịch `tx`.
-fn migrate_data_1_to_2(tx: &rusqlite::Transaction<'_>, dir: &Path) -> Result<()> {
+fn migrate_data_1_to_2(
+    tx: &rusqlite::Transaction<'_>,
+    dir: &Path,
+    written: &mut Vec<PathBuf>,
+) -> Result<()> {
     let col = |sql: &str| -> Result<Vec<Value>> {
         let mut st = tx.prepare(sql)?;
         let rows: Vec<String> = st
@@ -1346,7 +1505,12 @@ fn migrate_data_1_to_2(tx: &rusqlite::Transaction<'_>, dir: &Path) -> Result<()>
         blobs.push((aid, b));
     }
     for (aid, b) in blobs {
-        write_atomic(&dir.join(ATTACHMENT_DIR).join(format!("{aid}.bin")), &b)?;
+        // Ghi trước khi giao dịch được xác nhận; người gọi xóa các tệp này nếu giao dịch quay lui (báo cáo PR #36).
+        let f = dir.join(ATTACHMENT_DIR).join(format!("{aid}.bin"));
+        if !f.exists() {
+            written.push(f.clone());
+        }
+        write_atomic(&f, &b)?;
     }
     for a in m.doc["attachments"].as_array().into_iter().flatten() {
         tx.execute(
@@ -1366,7 +1530,12 @@ fn migrate_data_1_to_2(tx: &rusqlite::Transaction<'_>, dir: &Path) -> Result<()>
 /// Chuyển một hồ sơ còn `certificate_photo_ids` (BM2-02) trong giao dịch `tx`: dựng tài liệu từ kho (hồ sơ khác + hồ sơ
 /// này, ảnh, tệp đính kèm), áp [`migrate::migrate_1_to_2`], kiểm chặt byte (04 B6), ghi tệp đính kèm mới, chuyển bản
 /// ghi ảnh. Trả hồ sơ đã chuyển (người gọi kiểm và ghi).
-fn migrate_person_in_tx(tx: &rusqlite::Transaction<'_>, dir: &Path, p: &Value) -> Result<Value> {
+fn migrate_person_in_tx(
+    tx: &rusqlite::Transaction<'_>,
+    dir: &Path,
+    p: &Value,
+    written: &mut Vec<PathBuf>,
+) -> Result<Value> {
     let col = |sql: &str| -> Result<Vec<Value>> {
         let mut st = tx.prepare(sql)?;
         let rows: Vec<String> = st
@@ -1418,7 +1587,12 @@ fn migrate_person_in_tx(tx: &rusqlite::Transaction<'_>, dir: &Path, p: &Value) -
         tx.execute("DELETE FROM photo WHERE id = ?1", params![pid])?;
     }
     for (aid, b) in blobs {
-        write_atomic(&dir.join(ATTACHMENT_DIR).join(format!("{aid}.bin")), &b)?;
+        // Ghi trước khi giao dịch được xác nhận; người gọi xóa các tệp này nếu giao dịch quay lui (báo cáo PR #36).
+        let f = dir.join(ATTACHMENT_DIR).join(format!("{aid}.bin"));
+        if !f.exists() {
+            written.push(f.clone());
+        }
+        write_atomic(&f, &b)?;
     }
     m.doc["persons"]
         .as_array()
@@ -1795,6 +1969,15 @@ pub fn verify_contents(c: &lvhv_backup::Contents) -> Result<VerifiedBackup> {
             }
             if !attachments.is_empty() {
                 return Err(perr("ảnh phải đứng trước tệp đính kèm"));
+            }
+            // 04 B6 + B7 (BM2-01): ảnh chân dung — chữ ký khớp mime, kích thước bằng bản ghi và ≤ 2048, không EXIF/XMP/IPTC.
+            if let Err(e) = media::check_photo(
+                m["mime"].as_str().unwrap_or_default(),
+                &b.bytes,
+                m["width"].as_u64().unwrap_or(0) as u32,
+                m["height"].as_u64().unwrap_or(0) as u32,
+            ) {
+                return Err(perr(e.code()));
             }
             if photos.insert(id, b.bytes.clone()).is_some() {
                 return Err(perr("ảnh trùng"));
