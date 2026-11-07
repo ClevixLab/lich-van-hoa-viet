@@ -12,7 +12,12 @@
 //   node test/tools/lvhv-store-tool.mjs check-media <photo|attachment> <mime> <tệp> [width height]
 //   node test/tools/lvhv-store-tool.mjs export <thư-mục-bộ-mẫu|-> <mật-khẩu> <tệp-ra> [--now <unix_s>]
 //   node test/tools/lvhv-store-tool.mjs inspect-export <tệp-sao-lưu> <mật-khẩu>
-//   Tùy chọn chung cho open/import/save-person/export: --state <tệp> (giữ kho giữa các lần chạy, xem dưới).
+//   node test/tools/lvhv-store-tool.mjs add-photo <thư-mục-bộ-mẫu|-> <mime> <tệp> <width> <height> [--id <uuid>]
+//   node test/tools/lvhv-store-tool.mjs delete-person <thư-mục-bộ-mẫu|-> <id>
+//   node test/tools/lvhv-store-tool.mjs scenario tray_photo [<thư-mục-làm-việc>]
+//   Tùy chọn chung cho open/import/save-person/export/add-photo/delete-person: --state <tệp> (giữ kho giữa các lần
+//   chạy, xem dưới). `scenario tray_photo` (04 Bổ sung B8, R15 (g)) in đúng cùng JSON với bản Rust; thư mục làm việc
+//   không dùng (kho IndexedDB trong tiến trình), nhận để cùng cú pháp.
 //
 // Khác bản Rust (do trình duyệt không có "thư mục kho"):
 // - Kho IndexedDB chỉ sống trong tiến trình. <thư-mục-bộ-mẫu> là một thư mục theo bố cục bộ mẫu đóng băng
@@ -44,7 +49,10 @@ const USAGE = `dùng:
   node test/tools/lvhv-store-tool.mjs check-media <photo|attachment> <mime> <tệp> [width height]
   node test/tools/lvhv-store-tool.mjs export <thư-mục-bộ-mẫu|-> <mật-khẩu> <tệp-ra> [--now <unix_s>]
   node test/tools/lvhv-store-tool.mjs inspect-export <tệp-sao-lưu> <mật-khẩu>
-  tùy chọn chung (open, import, save-person, export): --state <tệp>`;
+  node test/tools/lvhv-store-tool.mjs add-photo <thư-mục-bộ-mẫu|-> <mime> <tệp> <width> <height> [--id <uuid>]
+  node test/tools/lvhv-store-tool.mjs delete-person <thư-mục-bộ-mẫu|-> <id>
+  node test/tools/lvhv-store-tool.mjs scenario tray_photo [<thư-mục-làm-việc>]
+  tùy chọn chung (open, import, save-person, export, add-photo, delete-person): --state <tệp>`;
 
 class Usage extends Error {}
 const sha = (b) => createHash("sha256").update(b).digest("hex");
@@ -349,6 +357,204 @@ async function cmdInspectExport(a) {
   }, true];
 }
 
+// ---------- add-photo, delete-person (YC-2026-10) ----------
+async function cmdAddPhoto(a) {
+  const pos = []; let id = null;
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] === "--id") { id = a[++i]; if (id === undefined) throw new Usage("--id cần <uuid>"); }
+    else if (a[i].startsWith("--")) throw new Usage(`tùy chọn lạ: ${a[i]}`);
+    else pos.push(a[i]);
+  }
+  if (pos.length !== 5) throw new Usage("cần <thư-mục-bộ-mẫu|-> <mime> <tệp> <width> <height>");
+  const [dir, mime, file, w, h] = pos;
+  const [width, height] = [Number(w), Number(h)];
+  if (![width, height].every((x) => Number.isInteger(x) && x >= 0)) throw new Usage("width/height phải là số nguyên không âm");
+  let bytes;
+  try { bytes = new Uint8Array(readFileSync(file)); } catch (e) { return [{ command: "add-photo", ok: false, stage: "read_file", error: errJson(e) }, false]; }
+  let o;
+  try { o = await openFrom(dir); } catch (e) { return [{ command: "add-photo", ok: false, stage: "open", error: errJson(e) }, false]; }
+  const { st } = o;
+  try {
+    const photo = await st.addPhoto({ id: id ?? randomUUID(), mime, width, height, bytes });
+    await finish(st);
+    return [{ command: "add-photo", ok: true, photo }, true];
+  } catch (e) {
+    await finish(st);
+    return [{ command: "add-photo", ok: false, stage: "add_photo", error: errJson(e), outcome: outcomeOf(e) }, false];
+  }
+}
+
+async function cmdDeletePerson(a) {
+  if (a.length !== 2) throw new Usage("cần <thư-mục-bộ-mẫu|-> <id>");
+  const [dir, id] = a;
+  let o;
+  try { o = await openFrom(dir); } catch (e) { return [{ command: "delete-person", ok: false, stage: "open", error: errJson(e) }, false]; }
+  const { st } = o;
+  try { await st.deletePerson(id); await finish(st); return [{ command: "delete-person", ok: true, id }, true]; }
+  catch (e) { await finish(st); return [{ command: "delete-person", ok: false, stage: "delete_person", error: errJson(e), outcome: outcomeOf(e) }, false]; }
+}
+
+// ---------- scenario tray_photo (04 Bổ sung B8, R15 (c)–(g)) — cùng bước, cùng JSON với bản Rust ----------
+const vCode = (msg) => { const m = /(?:^| )(V\d \/\S*?)(?=: |$)/.exec(String(msg)); return m ? m[1] : null; };
+/** Như Rust `ffi_outcome` / `store_outcome`: "ok" | "invalid <mã> <đường dẫn>" | "input" | "not_found" | "backup" | "storage". */
+function outcomeOf(e) {
+  if (e instanceof S.validate.ValidationError) return `invalid ${e.code} ${e.path}`;
+  const c = e?.cause;
+  if (e?.code === "invalid") {
+    if (c instanceof S.validate.ValidationError) return `invalid ${c.code} ${c.path}`;
+    const v = vCode(e.message);
+    return v ? `invalid ${v}` : "input";
+  }
+  if (e?.code === "input" || e?.code === "read_only") return "input";
+  if (e?.code === "not_found") return "not_found";
+  if (e?.code === "backup" || e?.code === "newer_schema") return "backup";
+  return "storage";
+}
+const outcome = async (fn) => { try { await fn(); return "ok"; } catch (e) { return outcomeOf(e); } };
+
+const TP = "mật khẩu thử nghiệm";
+const T1 = "0b8e4f52-3c1a-4d2e-9f60-0000000000a1", T2 = "0b8e4f52-3c1a-4d2e-9f60-0000000000a2";
+const T3 = "0b8e4f52-3c1a-4d2e-9f60-0000000000a3", T4 = "0b8e4f52-3c1a-4d2e-9f60-0000000000a4";
+const TX = "0b8e4f52-3c1a-4d2e-9f60-0000000000af";
+const D1 = "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e01", D2 = "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e02", L3 = "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e03";
+const PORTRAIT = "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09";
+const TV = join(REPO, "docs/v0.2/schema/test-vectors");
+
+class Tray {
+  constructor(st) { this.st = st; }
+  static async fresh() { return new Tray(await S.openStore(new IDBFactory())); }
+  person(id) { return this.st.person(id); }
+  /** Như cmdSavePerson (đường lưu của màn hình hồ sơ, như Rust save_person_json). */
+  async save(input) {
+    return outcome(async () => {
+      const now = S.nowRfc3339();
+      const old = await this.st.person(input.id).catch(() => null);
+      const base = { ...structuredClone(input), created_at: old?.created_at ?? now, updated_at: now, rev: old ? old.rev + 1 : 1 };
+      const p = S.buildPerson(S.normalizePersonNames(base));
+      S.validate.person(p, "/person");
+      await this.st.putPerson(p);
+    });
+  }
+  async withTray(id, tray) { const p = structuredClone(await this.person(id)); p.memorial.tray_photo_id = tray; return this.save(p); }
+  add(id, file, w, h) { return outcome(() => this.st.addPhoto({ id, mime: "image/jpeg", width: w, height: h, bytes: new Uint8Array(readFileSync(join(TV, file))) })); }
+  async photos() {
+    const ids = (await this.st.photos()).map((p) => p.id).sort();
+    const used = new Set((await this.st.persons()).flatMap((p) => S.validate.personPhotoRefs(p)));
+    let missing = 0;
+    for (const id of ids) await this.st.photoBytes(id).catch(() => { missing += 1; });
+    return { ids, orphan_files: missing, orphan_records: ids.filter((i) => !used.has(i)).length };
+  }
+  async trayOf(id) {
+    const p = await this.person(id);
+    const m = p.memorial;
+    if (m === null || typeof m !== "object") return "no_memorial";
+    return Object.prototype.hasOwnProperty.call(m, "tray_photo_id") ? m.tray_photo_id : "absent";
+  }
+  async photoSha(id) { try { return sha(await this.st.photoBytes(id)); } catch { return null; } }
+}
+/** Kết quả `openBackup` như người dùng thấy: lỗi nào cũng là thông báo chung (03 §2.4) → "backup" (như Rust FFI
+ *  `open_backup` → `LvhvDataError::Backup`); chi tiết xem ở `verify`. */
+const openOutcome = (e) => (e?.code === "backup" || e?.message === "Sai mật khẩu hoặc tệp bị hỏng" ? "backup" : outcomeOf(e));
+async function trayImport(t, file, mode) {
+  let v;
+  try { v = await S.openBackup(new Uint8Array(file), TP); } catch (e) { return openOutcome(e); }
+  return outcome(() => t.st.applyImport(v, mode));
+}
+async function contentsOf(t) {
+  const d = await t.st.snapshot({ version: "0.2.0", platform: "pwa" }, "2026-11-07T00:00:00Z");
+  d.app = { name: "Lịch và Văn hóa Việt", version: "0.2.0", platform: "android" };
+  d.exported_at = "2026-11-07T00:00:00Z";
+  const blobs = [];
+  for (const p of d.photos) blobs.push([p.id, await t.st.photoBytes(p.id)]);
+  return [d, blobs];
+}
+async function crafted(doc, blobs) {
+  const json = S.canonicalJson(doc);
+  const verify = await outcome(() => S.verifyContents(json, blobs.map(([id, bytes]) => ({ id, bytes }))));
+  const file = await S.bc.exportWithFixedRng(TP, json, blobs.map(([id, bytes]) => ({ id: S.bc.uuidToBytes(id), bytes })), new Uint8Array(16).fill(0x11), new Uint8Array(24).fill(0x22));
+  let open = "ok";
+  try { await S.openBackup(file, TP); } catch (e) { open = openOutcome(e); }
+  return { open_backup: open, verify };
+}
+
+async function cmdScenario(a) {
+  if (a.length < 1 || a.length > 2) throw new Usage("cần tray_photo [<thư-mục-làm-việc>]");
+  if (a[0] !== "tray_photo") throw new Usage(`kịch bản lạ: ${a[0]}`);
+  const out = {};
+  const example = readFileSync(join(TV, "example-v1.lvhv"));
+  const exampleDoc = JSON.parse(readFileSync(join(TV, "example-v1.json"), "utf8"));
+  const cj = S.canonicalJson;
+
+  // (e) R14.
+  const t = await Tray.fresh();
+  const r = await trayImport(t, example, "replace");
+  const got = await t.st.snapshot({ version: "0.2.0", platform: "pwa" }, "2026-11-07T00:00:00Z");
+  delete got.app; delete got.exported_at; delete got.settings;
+  const unchanged = cj(got.persons) === cj(exampleDoc.persons) && cj(got.photos) === cj(exampleDoc.photos) && cj(got.events) === cj(exampleDoc.events);
+  out.e_old_backup = { import: r, unchanged, has_tray_key: cj(got).includes("tray_photo_id"), tray_d1: await t.trayOf(D1) };
+
+  // (c) phía lõi.
+  const exif = await t.add(TX, "media/jpeg-exif-gps.jpg", 768, 1024);
+  const big = new Uint8Array(1_048_577); big.set(readFileSync(join(TV, "media/jpeg-ok.jpg")));
+  const overBig = await outcome(() => t.st.addPhoto({ id: TX, mime: "image/jpeg", width: 768, height: 1024, bytes: big }));
+  const add1 = await t.add(T1, "r6v2/photo-00.jpg", 300, 400);
+  out.c_add_photo = { exif, over_1mib: overBig, ok: add1 };
+
+  // V3.
+  const set = await t.withTray(D1, T1);
+  const l3 = structuredClone(await t.person(L3)); l3.photo_id = T1;
+  const v3 = {
+    dangling: await t.withTray(D2, "0b8e4f52-3c1a-4d2e-9f60-0000000000ee"),
+    shared_tray: await t.withTray(D2, T1),
+    tray_is_other_portrait: await t.withTray(D2, PORTRAIT),
+    tray_is_own_portrait: await t.withTray(D1, PORTRAIT),
+    portrait_is_other_tray: await t.save(l3),
+  };
+  out.set = { save: set, tray_d1: await t.trayOf(D1), photos: await t.photos(), v3 };
+
+  // (d)
+  const file = await t.st.exportBackup(TP, { version: "0.2.0", platform: "pwa" });
+  const sha1 = await t.photoSha(T1);
+  const d = {};
+  for (const [k, mode, seed] of [["replace", "replace", false], ["merge_empty", "merge", false], ["merge_over_old", "merge", true]]) {
+    const u = await Tray.fresh();
+    if (seed) await trayImport(u, example, "replace");
+    const ri = await trayImport(u, file, mode);
+    d[k] = { import: ri, tray_d1: await u.trayOf(D1), sha_equal: sha1 !== null && (await u.photoSha(T1)) === sha1, photos: await u.photos() };
+    u.st.close();
+  }
+  const [doc, blobs] = await contentsOf(t);
+  const dangling = structuredClone(doc); dangling.photos = dangling.photos.filter((p) => p.id !== T1);
+  const exifB = new Uint8Array(readFileSync(join(TV, "media/jpeg-exif-gps.jpg")));
+  const exifDoc = structuredClone(doc);
+  for (const ph of exifDoc.photos) if (ph.id === T1) { ph.bytes = exifB.length; ph.sha256 = sha(exifB); ph.width = 768; ph.height = 1024; }
+  const shared = structuredClone(doc); shared.persons.find((p) => p.id === L3).photo_id = T1;
+  d.crafted = {
+    dangling_tray: await crafted(dangling, blobs.filter(([i]) => i !== T1)),
+    tray_with_exif: await crafted(exifDoc, blobs.map(([i, b]) => [i, i === T1 ? exifB : b])),
+    shared_tray: await crafted(shared, blobs),
+    control: await crafted(doc, blobs),
+  };
+  out.d_round_trip = d;
+
+  // (f)
+  const f = {};
+  await t.add(T2, "r6v2/photo-02.jpg", 302, 402);
+  f.replace = { save: await t.withTray(D1, T2), photos: await t.photos() };
+  f.remove = { save: await t.withTray(D1, null), tray_d1: await t.trayOf(D1), photos: await t.photos() };
+  await t.add(T3, "r6v2/photo-04.jpg", 304, 404);
+  const s3 = await t.withTray(D1, T3);
+  const p = structuredClone(await t.person(D1));
+  p.kind = "living"; p.death = null; p.memorial = null; p.reminders.gio = null; p.noi_an_tang = "";
+  f.to_living = { set: s3, save: await t.save(p), tray_d1: await t.trayOf(D1), photos: await t.photos() };
+  await t.add(T4, "r6v2/photo-06.jpg", 306, 406);
+  const s4 = await t.withTray(D2, T4);
+  f.delete_person = { set: s4, delete: await outcome(() => t.st.deletePerson(D2)), photos: await t.photos() };
+  out.f_cleanup = f;
+  t.st.close();
+  return [{ command: "scenario", scenario: "tray_photo", ok: true, result: out }, true];
+}
+
 const argv = process.argv.slice(2);
 const si = argv.indexOf("--state");
 if (si >= 0) {
@@ -357,10 +563,11 @@ if (si >= 0) {
 }
 const [cmd, ...rest] = argv;
 const table = { open: cmdOpen, import: cmdImport, "save-person": cmdSavePerson, suggestions: cmdSuggestions, "display-capitalize": cmdDisplay,
-  "check-media": cmdCheckMedia, export: cmdExport, "inspect-export": cmdInspectExport };
+  "check-media": cmdCheckMedia, export: cmdExport, "inspect-export": cmdInspectExport, "add-photo": cmdAddPhoto, "delete-person": cmdDeletePerson,
+  scenario: cmdScenario };
 try {
   if (si >= 0 && !STATE) throw new Usage("--state cần <tệp>");
-  if (si >= 0 && !["open", "import", "save-person", "export"].includes(cmd)) throw new Usage(`--state không dùng với ${cmd}`);
+  if (si >= 0 && !["open", "import", "save-person", "export", "add-photo", "delete-person"].includes(cmd)) throw new Usage(`--state không dùng với ${cmd}`);
   if (!table[cmd]) throw new Usage("");
   const [out, ok] = await table[cmd](rest);
   process.stdout.write(S.canonicalJson(out) + "\n");

@@ -801,10 +801,14 @@ fn mark_deceased_same_record_and_b4() {
 fn notice_never_leaks() {
     let (s, dir) = tmp_store();
     let cert = add_cert_attachment(&s);
+    // YC-2026-10 (R15 (f)): ảnh mâm lễ cũng không bao giờ có trong thông báo, .ics, danh sách.
+    let tray = add_cert_photo(&s);
     let mut a = person_a();
     a["death"]["notice"] = v(&secret_notice(&cert));
+    a["memorial"]["tray_photo_id"] = json!(tray);
     let a = v(&s.save_person_json(a.to_string()).unwrap());
     assert_eq!(a["death"]["notice"]["place"], SECRET[1]);
+    assert_eq!(a["memorial"]["tray_photo_id"], json!(tray));
     let ds = s.dataset_json().unwrap();
     assert!(
         ds.contains(SECRET[2]),
@@ -865,6 +869,7 @@ fn notice_never_leaks() {
     let mut needles: Vec<String> = SECRET.iter().map(|x| x.to_string()).collect();
     needles.extend([
         cert.clone(),
+        tray.clone(),
         date_iso,
         date_ics,
         "dòng hai".into(),
@@ -896,6 +901,10 @@ fn notice_never_leaks() {
     assert_eq!(
         t.attachment_bytes(cert.clone()).unwrap(),
         s.attachment_bytes(cert).unwrap()
+    );
+    assert_eq!(
+        t.photo_bytes(tray.clone()).unwrap(),
+        s.photo_bytes(tray).unwrap()
     );
     assert!(t.dataset_json().unwrap().contains(SECRET_FILE));
     let _ = std::fs::remove_dir_all(dir);
@@ -1441,6 +1450,17 @@ fn certificate_photo_ids_migrated_on_save() {
 
 /// Báo cáo kiểm định vòng 3 (01 §1): khi lưu, chuỗi được cắt khoảng trắng rồi mới viết hoa; chỉ còn khoảng trắng →
 /// chuỗi rỗng (các trường này không nhận null). display_capitalize cũng cắt.
+#[test]
+fn save_tray_photo_null_omitted() {
+    // YC-2026-10: `memorial.tray_photo_id: null` ≡ thiếu — tài liệu lưu không có khóa (giống bản trước từng byte).
+    let (s, dir) = tmp_store();
+    let mut a = person_a();
+    a["memorial"]["tray_photo_id"] = Value::Null;
+    let p = v(&s.save_person_json(a.to_string()).unwrap());
+    assert!(p["memorial"].get("tray_photo_id").is_none());
+    let _ = std::fs::remove_dir_all(dir);
+}
+
 #[test]
 fn save_trims_then_capitalises() {
     let (s, dir) = tmp_store();

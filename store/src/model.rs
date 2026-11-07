@@ -233,6 +233,10 @@ pub struct MemorialSettings {
     pub loi_tuong_niem: String,
     pub gio_het_nam: u32,
     pub huong_duong_duoi: i32,
+    /// YC-2026-10: ảnh mâm lễ của gia đình (id một `Photo`). Khóa tùy chọn, thiếu ≡ `null`; không ghi khi `None`
+    /// (tài liệu không dùng trường giống từng byte bản trước).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tray_photo_id: Option<String>,
 }
 
 /// `"deceased"` | `"living"`.

@@ -250,9 +250,30 @@ export function deathNotice(v: Json, path: string): void {
   });
 }
 
-/** Every photo id a Person references: `photo_id`. */
+/** Mọi id ảnh mà một Person tham chiếu: `photo_id`, `memorial.tray_photo_id` (YC-2026-10) — như Rust `person_photo_refs`. */
 export function personPhotoRefs(pj: JsonObj): string[] {
-  return typeof pj.photo_id === "string" ? [pj.photo_id] : [];
+  const t = trayPhotoRef(pj);
+  return [...(typeof pj.photo_id === "string" ? [pj.photo_id] : []), ...(t === null ? [] : [t])];
+}
+
+/** `memorial.tray_photo_id` (YC-2026-10) hoặc null — như Rust `tray_photo_ref`. */
+export function trayPhotoRef(pj: JsonObj): string | null {
+  const m = pj.memorial;
+  return m && isObj(m) && typeof (m as JsonObj).tray_photo_id === "string" ? ((m as JsonObj).tray_photo_id as string) : null;
+}
+
+/** Như Rust `tray_photo_shared`: ảnh mâm lễ chỉ thuộc một người. Trả đường dẫn tương đối của trường vi phạm hoặc null. */
+export function trayPhotoShared(pj: JsonObj, persons: JsonObj[]): string | null {
+  const tray = trayPhotoRef(pj);
+  const ph = typeof pj.photo_id === "string" ? pj.photo_id : null;
+  if (tray !== null && tray === ph) return "memorial/tray_photo_id";
+  for (const q of persons) {
+    if (q.id === pj.id) continue;
+    if (tray !== null && (q.photo_id === tray || trayPhotoRef(q) === tray)) return "memorial/tray_photo_id";
+    const qt = trayPhotoRef(q);
+    if (ph !== null && qt !== null && ph === qt) return "photo_id";
+  }
+  return null;
 }
 
 /** Every attachment id a Person references: `death.notice.attachments[].file_id` (YC-2026-07). */
@@ -296,7 +317,10 @@ function deathInfo(v: Json, path: string): void {
 }
 
 function memorial(v: Json, path: string): void {
-  const o = obj(v, path, ["tray_style", "incense", "bia_tieu_de", "loi_tuong_niem", "gio_het_nam", "huong_duong_duoi"]);
+  // `tray_photo_id` (YC-2026-10, 01 §3.7): khóa tùy chọn, thiếu ≡ null — như Rust.
+  const hasTray = isObj(v) && has(v, "tray_photo_id");
+  const o = obj(v, path, ["tray_style", "incense", "bia_tieu_de", "loi_tuong_niem", "gio_het_nam", "huong_duong_duoi", ...(hasTray ? ["tray_photo_id"] : [])]);
+  if (hasTray && o.tray_photo_id !== null) uuid(o.tray_photo_id, p(path, "tray_photo_id"));
   const style = enumStr(o.tray_style, p(path, "tray_style"), ["phat_giao", "truyen_thong", "cong_giao"]);
   const incense = boolean(o.incense, p(path, "incense"));
   text(o.bia_tieu_de, p(path, "bia_tieu_de"), 0, 60, false, false);
@@ -472,6 +496,10 @@ export function document(v: Json): void {
   persons.forEach((x, i) => {
     const pid = (x as JsonObj).photo_id;
     if (typeof pid === "string" && !photoIds.has(pid)) throw err("V3", `/persons/${i}/photo_id`, "ảnh không tồn tại");
+    const tray = trayPhotoRef(x as JsonObj);
+    if (tray !== null && !photoIds.has(tray)) throw err("V3", `/persons/${i}/memorial/tray_photo_id`, "ảnh mâm lễ không tồn tại");
+    const sh = trayPhotoShared(x as JsonObj, persons as JsonObj[]);
+    if (sh !== null) throw err("V3", `/persons/${i}/${sh}`, "ảnh mâm lễ dùng chung với hồ sơ khác");
     const d = (x as JsonObj).death as JsonObj | null;
     const n = d && isObj(d) ? (d.notice as JsonObj | null | undefined) : null;
     if (n && isObj(n)) {

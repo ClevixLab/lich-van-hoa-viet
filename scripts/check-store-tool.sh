@@ -7,6 +7,8 @@
 #   - save-person: viết hoa khi lưu (danh_xung, quan_he), gioi_tinh null → bỏ khóa
 #   - suggestions, display-capitalize
 #   - check-media: mọi ca của media/manifest.json (B6)
+#   - YC-2026-10 (04 Bổ sung B8, R15 (g)): `scenario tray_photo` hai bản = tray-photo/expected-scenario.json;
+#     add-photo / delete-person / save-person với memorial.tray_photo_id từ dòng lệnh
 #   - --now: dọn `legacy` + bản sao trước chuyển đổi sau 7 ngày (mở 3 lần trên cùng một kho; TS qua --state)
 #   - export + inspect-export: tệp xuất không có `legacy`; Rust và TS đọc được tệp của nhau
 # Cần: cargo, node ≥ 20, python3, pwa/node_modules (npm ci). Không sửa tệp nào trong kho mã (làm trên bản sao tạm).
@@ -136,6 +138,36 @@ for side in rs ts; do
   run "$side-inspect-wrongpw" 1 "${CMD[@]}" inspect-export "$TV/example-v1.lvhv" "sai mật khẩu 1"
 done
 
+# YC-2026-10: ảnh mâm lễ — kịch bản cố định, và các lệnh rời (thêm ảnh, gắn ảnh mâm lễ, xóa hồ sơ).
+TRAY=0b8e4f52-3c1a-4d2e-9f60-0000000000b1
+python3 - "$TV/example-v1.json" "$WORK/tray-person.json" "$TRAY" <<'EOF'
+import json, sys
+p = json.load(open(sys.argv[1], encoding="utf-8"))["persons"][1]   # người đã mất, không ảnh chân dung
+p["memorial"]["tray_photo_id"] = sys.argv[3]
+json.dump(p, open(sys.argv[2], "w", encoding="utf-8"), ensure_ascii=False)
+EOF
+run rs-tray 0 "$BIN" scenario tray_photo "$WORK/rs-tray-work"
+run ts-tray 0 "${TS[@]}" scenario tray_photo
+run rs-tp-import 0 "$BIN" import "$TV/example-v1.lvhv" "$PW" --replace --into "$WORK/rs-tp"
+run rs-tp-exif 1 "$BIN" add-photo "$WORK/rs-tp" image/jpeg "$TV/media/jpeg-exif-gps.jpg" 768 1024 --id "$TRAY"
+run rs-tp-dangling 1 "$BIN" save-person "$WORK/rs-tp" "$WORK/tray-person.json"
+run rs-tp-add 0 "$BIN" add-photo "$WORK/rs-tp" image/jpeg "$TV/r6v2/photo-00.jpg" 300 400 --id "$TRAY"
+run rs-tp-save 0 "$BIN" save-person "$WORK/rs-tp" "$WORK/tray-person.json"
+run rs-tp-export 0 "$BIN" export "$WORK/rs-tp" "$PW" "$WORK/rs-tp.lvhv"
+run rs-tp-inspect 0 "$BIN" inspect-export "$WORK/rs-tp.lvhv" "$PW"
+run rs-tp-delete 0 "$BIN" delete-person "$WORK/rs-tp" 0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e02
+run rs-tp-after 0 "$BIN" open "$WORK/rs-tp"
+TST="$WORK/ts-tp.json"
+run ts-tp-import 0 "${TS[@]}" import "$TV/example-v1.lvhv" "$PW" --replace --state "$TST"
+run ts-tp-exif 1 "${TS[@]}" add-photo - image/jpeg "$TV/media/jpeg-exif-gps.jpg" 768 1024 --id "$TRAY" --state "$TST"
+run ts-tp-dangling 1 "${TS[@]}" save-person - "$WORK/tray-person.json" --state "$TST"
+run ts-tp-add 0 "${TS[@]}" add-photo - image/jpeg "$TV/r6v2/photo-00.jpg" 300 400 --id "$TRAY" --state "$TST"
+run ts-tp-save 0 "${TS[@]}" save-person - "$WORK/tray-person.json" --state "$TST"
+run ts-tp-export 0 "${TS[@]}" export - "$PW" "$WORK/ts-tp.lvhv" --state "$TST"
+run ts-tp-inspect 0 "${TS[@]}" inspect-export "$WORK/ts-tp.lvhv" "$PW"
+run ts-tp-delete 0 "${TS[@]}" delete-person - 0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e02 --state "$TST"
+run ts-tp-after 0 "${TS[@]}" open - --state "$TST"
+
 echo "[store-tool] kiểm kết quả"
 python3 - "$WORK" "$TV" <<'EOF'
 import json, sys
@@ -250,6 +282,24 @@ for n in ("open", "import-old", "import-ex", "import-notice"):
 vol = ("id", "created_at", "updated_at")
 a, b = J("rs-save")["saved"], J("ts-save")["saved"]
 ok({k: v for k, v in a.items() if k not in vol} == {k: v for k, v in b.items() if k not in vol}, "Rust ≡ TS: save-person (trừ id, thời điểm)")
+# YC-2026-10 (R15 (g)): kịch bản tray_photo — hai bản cho cùng kết quả, đúng tệp kỳ vọng đã commit.
+tray_exp = json.load(open(f"{TV}/tray-photo/expected-scenario.json", encoding="utf-8"))
+ok(J("rs-tray") == tray_exp, "rs scenario tray_photo = tray-photo/expected-scenario.json")
+ok(J("ts-tray") == tray_exp, "ts scenario tray_photo = tray-photo/expected-scenario.json")
+ok(J("rs-tray") == J("ts-tray"), "Rust ≡ TS: scenario tray_photo")
+TRAY = "0b8e4f52-3c1a-4d2e-9f60-0000000000b1"
+for side in ("rs", "ts"):
+    ok(J(f"{side}-tp-exif")["stage"] == "add_photo", f"{side} add-photo ảnh còn EXIF → từ chối")
+    ok(J(f"{side}-tp-dangling")["ok"] is False, f"{side} save-person tray_photo_id trỏ ảnh chưa có → từ chối (V3)")
+    ok(J(f"{side}-tp-save")["saved"]["memorial"]["tray_photo_id"] == TRAY, f"{side} save-person gắn ảnh mâm lễ")
+    i = J(f"{side}-tp-inspect")
+    d = i["document"]
+    ok(any((p.get("memorial") or {}).get("tray_photo_id") == TRAY for p in d["persons"]) and TRAY in [b["id"] for b in i["blobs"]],
+       f"{side} tệp xuất có tray_photo_id và khối ảnh của nó")
+    a = J(f"{side}-tp-after")["store"]
+    ok(TRAY not in a["photo_bytes"] and all(TRAY != (p.get("memorial") or {}).get("tray_photo_id") for p in a["document"]["persons"]),
+       f"{side} delete-person → ảnh mâm lễ bị xóa")
+ok(J("rs-tp-inspect")["blobs"] == J("ts-tp-inspect")["blobs"], "Rust ≡ TS: khối của tệp xuất có ảnh mâm lễ")
 print("ĐẠT" if not fails else f"KHÔNG ĐẠT: {fails} lỗi")
 sys.exit(1 if fails else 0)
 EOF

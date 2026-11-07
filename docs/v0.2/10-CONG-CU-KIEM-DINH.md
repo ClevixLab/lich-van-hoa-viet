@@ -8,7 +8,8 @@ quả ra dạng JSON để so với kỳ vọng mà không phải đọc mã ngu
 - (iii) gọi lưu hồ sơ và danh sách gợi ý cách gọi, quan hệ.
 
 Bản sau thêm `--now` (giả lập đồng hồ để kiểm việc dọn sau 7 ngày), kho TS giữ được giữa các lần chạy (`--state`),
-`export` và `inspect-export` (kiểm tệp sao lưu xuất ra không mang `legacy`).
+`export` và `inspect-export` (kiểm tệp sao lưu xuất ra không mang `legacy`). YC-2026-10 thêm `add-photo`,
+`delete-person` và `scenario tray_photo` (ảnh mâm lễ, 04 Bổ sung B8 / R15 (c)(d)(e)(g) — §3.9–§3.11).
 
 Có hai bản, cùng lệnh, cùng dạng kết quả:
 
@@ -198,6 +199,54 @@ kiểm tra nội dung, không chuyển đổi, không ghi vào kho nào. In ra:
 
 Sai mật khẩu hoặc tệp hỏng: `ok: false`, `stage = "decrypt"`.
 
+### 3.9 `add-photo <thư-mục> <mime> <tệp> <width> <height> [--id <uuid>]`
+
+Thêm một ảnh (`Photo`, 01 §3.8) chưa gắn hồ sơ: Rust `LvhvStore::add_photo`, TS `Store.addPhoto` — đúng hàm ứng dụng
+gọi cho ảnh chân dung và ảnh mâm lễ (YC-2026-10). `width`/`height` là kích thước khai trong bản ghi. Lõi kiểm như khi
+nhập: bản ghi (≤ 1 MiB — V1 `/photo/bytes`) và byte (04 B6: chữ ký, không EXIF/XMP/IPTC, không dữ liệu nối sau ảnh,
+kích thước đúng, ≤ 2048 px). Việc thu nhỏ về cạnh dài ≤ 1600 px và mã hóa lại là của nền tảng (giao diện), không phải
+của lõi: lõi chỉ nhận byte đã xử lý. In `photo` (bản ghi) khi nhận; khi từ chối in `ok: false`, `stage = "add_photo"`,
+`outcome` (§3.11). Không có `--id` → id ngẫu nhiên. Gắn ảnh vào hồ sơ bằng `save-person` với `photo_id` hoặc
+`memorial.tray_photo_id`. TS cần `--state` để giữ kho (§3.0).
+
+### 3.10 `delete-person <thư-mục> <id>`
+
+Xóa một hồ sơ (Rust `LvhvStore::delete_person`, TS `Store.deletePerson`). Ảnh chân dung và ảnh mâm lễ của người đó bị
+xóa trong cùng giao dịch nếu không hồ sơ nào khác dùng (R15 (f)). Kiểm kết quả bằng `open` (Rust) hoặc `open -
+--state` (TS): `store.photo_bytes` không còn id ảnh.
+
+### 3.11 `scenario tray_photo <thư-mục-làm-việc>`
+
+Kịch bản cố định của R15 (04 Bổ sung B8), chạy trên kho mới (Rust: trong `<thư-mục-làm-việc>`, xóa khi xong; TS: kho
+trong tiến trình, đối số này bỏ qua). Mọi thao tác đi qua đúng đường của ứng dụng (Rust: `LvhvStore` của FFI; TS: `Store`
++ `buildPerson(normalizePersonNames(…))` như màn hình hồ sơ). In `result` đã chuẩn hóa: không có thời điểm hay byte
+ngẫu nhiên, nên hai bản phải in **cùng một JSON** (R15 (g)); tệp kỳ vọng
+`docs/v0.2/schema/test-vectors/tray-photo/expected-scenario.json`. Mỗi thao tác cho một `outcome`: `ok`,
+`invalid <mã> <đường dẫn>` (ví dụ `invalid V3 /person/memorial/tray_photo_id`), `input` (lỗi đầu vào không có mã V, ví dụ
+ảnh còn EXIF), `not_found`, `backup` (thông báo chung khi nhập tệp: "Sai mật khẩu hoặc tệp bị hỏng"), `storage`.
+
+| Khóa | Mệnh đề | Nội dung |
+|---|---|---|
+| `e_old_backup` | (e) | Nhập `example-v1.lvhv` (bản trước, không có trường): `unchanged` = kho giống tệp; `has_tray_key = false`; `tray_d1 = "absent"` |
+| `c_add_photo` | (c) phía lõi | Ảnh còn EXIF → `input`; ảnh > 1 MiB → `invalid V1 /photo/bytes`; ảnh sạch → `ok` |
+| `set` | V3 | Gắn ảnh mâm lễ cho người đã mất 5e01. `v3`: ảnh không tồn tại; ảnh mâm lễ của người khác; ảnh chân dung của người khác; ảnh chân dung của chính mình; ảnh chân dung trỏ ảnh mâm lễ của người khác → mọi ca `invalid V3 …` |
+| `d_round_trip` | (d) | Xuất rồi nhập (Thay toàn bộ; Gộp vào kho trống; Gộp vào kho có bản cũ): `tray_d1` giữ, `sha_equal = true`, 0 ảnh mồ côi. `crafted`: tệp sửa tay có ảnh mâm lễ không tồn tại, ảnh mâm lễ còn EXIF, ảnh mâm lễ dùng chung → `open_backup = "backup"` (thông báo chung) và `verify` cho lý do (`invalid V3 …`, `invalid PHOTO /photos`); `control` (tệp đúng) → `ok` |
+| `f_cleanup` | (f) | Đổi ảnh, bỏ ảnh (`null` → khóa bị bỏ), đổi về đang sống, xóa hồ sơ → ảnh cũ không còn trong `photos.ids`; `orphan_records = 0` (bản ghi ảnh không hồ sơ nào dùng); `orphan_files = 0` (Rust: tệp `photos/*.img` không có bản ghi và ngược lại; TS: bản ghi không đọc được byte) |
+
+Chạy cả hai bản và so:
+
+```
+target/debug/lvhv-store-tool scenario tray_photo /tmp/tray-rs > rs.json
+node pwa/test/tools/lvhv-store-tool.mjs scenario tray_photo > ts.json
+cmp rs.json ts.json && cmp <(python3 -c 'import json,sys; print(json.dumps(json.load(open(sys.argv[1])),sort_keys=True))' rs.json) \
+  <(python3 -c 'import json,sys; print(json.dumps(json.load(open(sys.argv[1])),sort_keys=True))' docs/v0.2/schema/test-vectors/tray-photo/expected-scenario.json)
+```
+
+Ngoài kịch bản, bên kiểm định có thể tự làm từng bước bằng lệnh rời: `import` một tệp → `add-photo` → `save-person` với
+`memorial.tray_photo_id` → `export` → `inspect-export` (tệp có khóa và khối ảnh) → `import` tệp đó (`--replace` /
+`--merge`) → `delete-person` → `open` (ảnh không còn). Tệp sao lưu tự dựng có `tray_photo_id` trỏ ảnh không có, hay
+ảnh có siêu dữ liệu, phải bị `import` từ chối ở `stage = "open_backup"`.
+
 ## 4. Kiểm trên CI
 
 `scripts/check-store-tool.sh` (job `store` của `.github/workflows/ci.yml`) chạy mọi lệnh của cả hai bản trên vector
@@ -213,7 +262,11 @@ trong `docs/v0.2/schema/test-vectors/`:
 - `save-person` hai lần trên cùng kho (`rev` 1 → 2);
 - `export` ở T0 + 1 ngày (khi kho còn `legacy`), ở T0 + 8 ngày và từ kho mới; mật khẩu ngắn bị từ chối;
 - `inspect-export` trên mọi tệp xuất của cả hai bản và trên `example-v1.lvhv`: không có `legacy`, JSON chuẩn, tệp xuất
-  khớp kho (bỏ `legacy`, `app`, `exported_at`). Mỗi bản đọc tệp của bản kia, và hai bản cho cùng bản rõ, cùng khối.
+  khớp kho (bỏ `legacy`, `app`, `exported_at`). Mỗi bản đọc tệp của bản kia, và hai bản cho cùng bản rõ, cùng khối;
+- YC-2026-10: `scenario tray_photo` của hai bản = `tray-photo/expected-scenario.json` (và hai bản bằng nhau); lệnh rời
+  `add-photo` (ảnh EXIF bị từ chối, ảnh sạch nhận), `save-person` với `tray_photo_id` (trỏ ảnh chưa có → từ chối; sau
+  `add-photo` → nhận), `export` + `inspect-export` (tệp có khóa và khối ảnh, hai bản cùng khối), `delete-person` (ảnh bị
+  xóa). `scripts/check-store.sh` (bước 5/5) cũng so kịch bản này giữa hai bản.
 
 Script kiểm kết quả với các tệp kỳ vọng đã commit, rồi so bản Rust với bản TS: tài liệu kho, byte ảnh và tệp đính
 kèm, gợi ý, hồ sơ đã lưu (trừ id và thời điểm), kho ở từng mốc `--now`, tài liệu xuất (trừ `app`, `exported_at`). Chạy tại chỗ: `scripts/check-store-tool.sh`, cần `cargo`, `node` ≥
