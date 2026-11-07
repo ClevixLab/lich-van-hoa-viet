@@ -36,6 +36,8 @@ data class LichColors(
     val green: Color,
     val greenTint: Color,
     val bandInk: Color,
+    /** Viền điều khiển (nút viền, ô chọn, thẻ mục): ≥ 3:1 với cả paper và wall (WCAG 1.4.11, TKN-A-04). */
+    val outline: Color = Color(0xFF7F716E),
 )
 
 val LightLich = LichColors(
@@ -51,7 +53,7 @@ val DarkLich = LichColors(
     ink = Color(0xFFF1E9E6), ink2 = Color(0xFFCDBFBB), ink3 = Color(0xFFA99A96),
     red = Color(0xFFFF6B63), redDeep = Color(0xFF7A1214), redInk = Color(0xFFFF8A83), redTint = Color(0xFF3A1D1E),
     gold = Color(0xFFE3B45C), goldTint = Color(0xFF352A18), green = Color(0xFF7FD1A2), greenTint = Color(0xFF1B2E24),
-    bandInk = Color(0xFFFFF1EC),
+    bandInk = Color(0xFFFFF1EC), outline = Color(0xFF8A7A77),
 )
 
 val LocalLich = staticCompositionLocalOf { LightLich }

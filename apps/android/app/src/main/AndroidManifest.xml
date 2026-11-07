@@ -1,9 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Lịch và Văn hóa Việt. KHÔNG xin quyền INTERNET hay bất kỳ quyền nào: ứng dụng chạy hoàn toàn
-     ngoại tuyến. Kiểm tra trong CI: android.yml đọc manifest đã gộp và báo lỗi nếu có uses-permission. -->
+<!-- Lịch và Văn hóa Việt. KHÔNG xin quyền INTERNET: ứng dụng chạy hoàn toàn ngoại tuyến.
+     Danh sách quyền cho phép (S6, docs/v0.2/04; O-6: báo thức không chính xác, KHÔNG có SCHEDULE_EXACT_ALARM):
+       - POST_NOTIFICATIONS: thông báo nhắc ngày giỗ / sinh nhật (Android 13+, hỏi khi bật nhắc lần đầu);
+       - RECEIVE_BOOT_COMPLETED: đặt lại chuỗi báo thức sau khi khởi động lại (02 §7.3).
+     Ảnh chọn qua Photo Picker → không có quyền đọc bộ nhớ/ảnh. CI (android.yml) kiểm đúng danh sách này. -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
+    <!-- S5: không sao lưu tự động lên đám mây / chuyển máy (allowBackup=false + quy tắc trích xuất loại trừ). -->
     <application
         android:allowBackup="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -18,6 +25,7 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
+            android:launchMode="singleTop"
             android:windowSoftInputMode="adjustResize"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|density|uiMode">
             <intent-filter>
@@ -25,5 +33,29 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Chuỗi báo thức nhắc việc (02 §7.3): báo thức của chính ứng dụng + các sự kiện hệ thống cần đặt lại
+             chuỗi. exported=false: hệ thống vẫn gửi các broadcast được bảo vệ này; ứng dụng khác không gửi được. -->
+        <receiver
+            android:name=".notify.ReminderReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Chia sẻ tệp .ics qua bảng chia sẻ của hệ thống (chỉ thư mục cache/ics, quyền đọc tạm thời). -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.files"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
     </application>
 </manifest>
