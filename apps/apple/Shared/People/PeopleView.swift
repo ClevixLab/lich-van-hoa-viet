@@ -91,19 +91,32 @@ struct PeopleView: View {
         .background(C.wall)
     }
 
-    /// Chuyển đổi dữ liệu lỗi (01 §7.1, B5): dữ liệu cũ còn nguyên, chỉ xem và xuất sao lưu.
+    /// Chuyển đổi dữ liệu lỗi (01 §7.1, B5): câu chuẩn của mọi nền tảng (08 §12l TKN3-X-03, "mở lại ứng dụng" thay cho
+    /// "tải lại trang"); câu của lõi chỉ ở mục "Chi tiết kỹ thuật" đóng sẵn (DV23-02).
     private var readOnlyBanner: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Label { Text("Đang ở chế độ chỉ đọc").ps(17, .semibold) } icon: { Image(systemName: "lock.fill") }
-                .foregroundStyle(C.redInk)
-            Text("Ứng dụng chưa chuyển được dữ liệu sang bản mới. Dữ liệu cũ vẫn còn nguyên trên máy; trong lúc này bạn xem được hồ sơ và nên xuất một bản sao lưu.")
-                .ps(15).foregroundStyle(C.ink).fixedSize(horizontal: false, vertical: true)
-            if let msg = m.migration?.message, !msg.isEmpty {
-                Text("Chi tiết: \(msg)")
-                    .ps(13).foregroundStyle(C.ink2).fixedSize(horizontal: false, vertical: true)
-                    .textSelection(.enabled)
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Image(systemName: "lock.fill").foregroundStyle(C.redInk).accessibilityHidden(true)
+                (Text("Chưa chuyển được dữ liệu sang bản mới.").bold()
+                 + Text(" Dữ liệu cũ vẫn còn nguyên trên máy và đang mở ở chế độ chỉ đọc: xem được, nhưng chưa thêm hay sửa được."))
+                    .ps(16).foregroundStyle(C.ink).fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("people.readOnly.text")
             }
-            Button("Xuất sao lưu") { section = .backup }.buttonStyle(PrimaryButtonStyle())
+            Text("Hãy tạo ngay một tệp sao lưu để giữ dữ liệu: vào Sao lưu → “Tạo tệp sao lưu…”, rồi cất tệp ở nơi an toàn. Sau đó thử mở lại ứng dụng; nếu vẫn thấy thông báo này, hãy báo cho Clevix Lab kèm tệp sao lưu.")
+                .ps(15).foregroundStyle(C.ink).fixedSize(horizontal: false, vertical: true)
+            Button("Đi tới Sao lưu") { path.removeAll(); section = .backup }
+                .buttonStyle(PrimaryButtonStyle())
+                .accessibilityIdentifier("people.readOnly.backup")
+            if let msg = m.migration?.message, !msg.isEmpty {
+                DisclosureGroup("Chi tiết kỹ thuật") {
+                    Text(msg).ps(13).foregroundStyle(C.ink2).fixedSize(horizontal: false, vertical: true)
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .ps(14)
+                .tint(C.ink2)
+                .accessibilityIdentifier("people.readOnly.details")
+            }
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -117,6 +130,9 @@ struct PeopleView: View {
         Group {
             switch r {
             case .person(let id): PersonDetailView(id: id, path: $path)
+            // Chế độ chỉ đọc (08 §12l TKN3-P-01): không dựng biểu mẫu ghi.
+            case .add where m.readOnly, .edit where m.readOnly, .event where m.readOnly, .markDeceased where m.readOnly:
+                ReadOnlyBlockedView()
             case .add(let kind): PersonFormView(kind: kind, editId: nil, path: $path)
             case .edit(let id): PersonFormView(kind: m.person(id)?["kind"].str ?? "living", editId: id, path: $path)
             case .editTray(let id): PersonFormView(kind: "deceased", editId: id, path: $path, focusTray: true)
@@ -219,16 +235,17 @@ struct UpcomingSection: View {
         }
     }
 
+    @ViewBuilder
     private var addButtons: some View {
-        FlowLayout(spacing: 10) {
-            NavigationLink(value: PRoute.add("deceased")) { Text("+ Thêm người đã mất") }
-                .buttonStyle(PrimaryButtonStyle())
-                .accessibilityIdentifier("people.addDeceased")
-                .disabled(m.readOnly)
-            NavigationLink(value: PRoute.add("living")) { Text("+ Thêm người đang sống") }
-                .buttonStyle(SecondaryButtonStyle())
-                .accessibilityIdentifier("people.addLiving")
-                .disabled(m.readOnly)
+        if !m.readOnly {
+            FlowLayout(spacing: 10) {
+                NavigationLink(value: PRoute.add("deceased")) { Text("+ Thêm người đã mất") }
+                    .buttonStyle(PrimaryButtonStyle())
+                    .accessibilityIdentifier("people.addDeceased")
+                NavigationLink(value: PRoute.add("living")) { Text("+ Thêm người đang sống") }
+                    .buttonStyle(SecondaryButtonStyle())
+                    .accessibilityIdentifier("people.addLiving")
+            }
         }
     }
 
@@ -414,9 +431,11 @@ struct ProfilesSection: View {
         ViewThatFits(in: .horizontal) {
             HStack(alignment: .top, spacing: 14) {
                 group(title: "Người đã mất", kind: "deceased", list: m.deceased)
+                    .frame(minWidth: 300, idealWidth: 320, maxWidth: .infinity)
                 group(title: "Người đang sống", kind: "living", list: m.living)
+                    .frame(minWidth: 300, idealWidth: 320, maxWidth: .infinity)
             }
-            .frame(minWidth: 700)
+            .frame(minWidth: 640)
             VStack(alignment: .leading, spacing: 14) {
                 group(title: "Người đã mất", kind: "deceased", list: m.deceased)
                 group(title: "Người đang sống", kind: "living", list: m.living)
@@ -429,11 +448,12 @@ struct ProfilesSection: View {
             HStack {
                 PHeading("\(title) (\(list.count))")
                 Spacer()
-                NavigationLink(value: PRoute.add(kind)) { Text("+ Thêm") }
-                    .buttonStyle(SecondaryButtonStyle())
-                    .disabled(m.readOnly)
-                    .accessibilityLabel("Thêm \(title.lowercased())")
-                    .accessibilityIdentifier("profiles.add.\(kind)")
+                if !m.readOnly {
+                    NavigationLink(value: PRoute.add(kind)) { Text("+ Thêm") }
+                        .buttonStyle(SecondaryButtonStyle())
+                        .accessibilityLabel("Thêm \(title.lowercased())")
+                        .accessibilityIdentifier("profiles.add.\(kind)")
+                }
             }
             if list.isEmpty {
                 PBody("Chưa có ai.")
@@ -490,3 +510,14 @@ extension DemoSeed { static let isDiag = false }
 enum DemoSeed {}
 struct UpgradeDiagView: View { var body: some View { EmptyView() } }
 #endif
+
+/// Mở thẳng một biểu mẫu ghi khi đang ở chế độ chỉ đọc (08 §12l TKN3-P-01).
+struct ReadOnlyBlockedView: View {
+    var body: some View {
+        PCard {
+            PBody("Đang ở chế độ chỉ đọc nên chưa thêm hay sửa được. Dữ liệu cũ vẫn còn nguyên; hãy tạo một tệp sao lưu ở mục Sao lưu.")
+        }
+        .pageWidth()
+        .accessibilityIdentifier("people.readOnly.blocked")
+    }
+}

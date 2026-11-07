@@ -227,3 +227,63 @@ có kiểm thử giao diện. CI `apple` xanh trên commit mã cuối `181eedc`.
 3. Không thay cho thử trên máy thật (T11): R5 (thông báo đúng giờ, sau khởi động lại, xoay vòng 64), P8, P9, thông báo trên macOS,
    ảnh HEIC thật, Quick Look trên Mac, ảnh bộ chuyển ứng dụng khi đang mở PDF (DV23-04), giao diện tối và cỡ chữ AX3–AX5 trên
    iPhone thật.
+
+---
+
+## Vòng 2 — 2026-11-07: kiểm lại DV23-01 … DV23-10 trên PR #61
+
+| Mục | Giá trị |
+|---|---|
+| PR | #61 `v0.2-dv23-apple` (base `main`) |
+| Đầu mã được duyệt | `2b42004` (gộp `main` gồm #47 vào nhánh); các commit sửa: `b3876e1`, `0e0cd2d`, `9ccb5e1` |
+| Đầu nhánh | `8a8901e` — chỉ thêm ảnh chụp của CI (run 353) |
+| So với | `git diff origin/main...2b42004` (11 tệp ngoài ảnh, +267 / −62) |
+| CI | `apple` run 353 (id 42384396315) trên `2b42004`: `build` và `upgrade` `success`. XCTest 22/22; XCUITest 11/11 trên iPhone (2 ca R14 bỏ qua có chủ đích), 3/3 trên iPad; "Bản Release không có mã kiểm thử."; job `upgrade`: "R14 (Apple, mô phỏng): ĐẠT ca A, B và C". `ci` run 682 `success`. Các run trên `8a8901e` (commit ảnh) ở `action_required` — không có mã mới |
+| Ảnh | `apps/apple/screenshots/` ở `8a8901e`: đã xem `ios-restore-preview-*`, `ios-restore-running-light`, `upgrade/upgrade-readonly-{diag,profiles,person,backup}`, `ipad-person-deceased-light`, `ipad-profiles-light`, `ios-form-living-am-*-2`, `ios-event-light`, `ios-altar-{huong,clevix,cong-giao,tray}-*-2` |
+
+Giới hạn như vòng 1: không chạy được Xcode hay thiết bị Apple.
+
+### V2.1 Từng mục của vòng 1
+
+| Mã | Mức | Kết quả | Bằng chứng |
+|---|---|---|---|
+| DV23-01 | nên sửa | **ĐÃ SỬA** | `BackupView.swift` `RestoreSheet`: nút Hủy `.disabled(busy)` cùng nút "Khôi phục" và `interactiveDismissDisabled(busy)`. Kiểm thử `testRestoreSheetLocksCancelWhileRunning` (bản Debug làm chậm 4 giây qua `lvhvSlowRestore`, trong `#if DEBUG`): Hủy bật trước, tắt khi đang chạy — đạt run 353. Ảnh `ios-restore-running-light`: Hủy và Khôi phục mờ, "Đang khôi phục…" |
+| DV23-02 | nên sửa | **ĐÃ SỬA** | `PeopleView.swift` `readOnlyBanner`: câu chuẩn TKN3-X-03 nguyên văn (đổi "tải lại trang" → "mở lại ứng dụng" như Windows), nút "Đi tới Sao lưu", câu của lõi trong `DisclosureGroup("Chi tiết kỹ thuật")` đóng sẵn. TKN3-P-01: "+ Thêm", Sửa, Cập nhật: đã mất, Xóa hồ sơ, "+ Thêm sự kiện", Sửa/Xóa sự kiện, khối Khôi phục, Nhắc sao lưu, công tắc và "Lưu mặc định" của Cài đặt nhắc đều bị ẩn (`if !m.readOnly`); nút "Thêm ảnh mâm lễ của gia đình" (#47) cũng ẩn (`MemorialView.swift:124`); mở thẳng `.add/.edit/.event/.markDeceased` → `ReadOnlyBlockedView`. Job `upgrade` khẳng định: lời chính bắt đầu bằng "Chưa chuyển được dữ liệu sang bản mới.", không "mime", không UUID, không có `mime_` hiển thị; không có 6 nút ghi trên trang hồ sơ; Sao lưu không có `backup.pick`, vẫn có `backup.export`. Ảnh `upgrade-readonly-diag/-person/-backup`: đúng như mô tả |
+| DV23-03 | nên sửa | **ĐÃ SỬA** | `RadioRow` (hai hàng, chữ xuống dòng, vòng tròn đặc + viền đỏ + nền đỏ nhạt khi chọn, `isSelected` cho trợ năng). Ảnh `ios-restore-preview-light/-large`: đủ chữ "Xóa dữ liệu đang có trên máy rồi dùng dữ liệu trong tệp.", to theo Accessibility L; mặc định Gộp (kiểm thử khẳng định `isSelected`) |
+| DV23-04 | nên sửa | **ĐÃ SỬA** (cần thử trên iPhone thật) | `AttachmentViewer`: `onChange(of: scenePhase)` khác `.active` → `preview = nil` (đóng Quick Look, tệp tạm bị xóa nhờ `onChange(of: preview)`); bản chép tạm ghi với `.completeFileProtection`, thư mục `tmp/att` lớp `.complete` (iOS). Ảnh bộ chuyển ứng dụng khi đang mở PDF vẫn phải xem trên máy thật (T11). Góp ý V2-04 về macOS |
+| DV23-05 | góp ý | **ĐÃ SỬA** | Ghim bề rộng lý tưởng các cột (`PersonDetailView` cột trái min 380 / cột phải 300; `ProfilesSection` mỗi khung min 300, khung ngoài min 640). Ảnh `ipad-person-deceased-light` (iPad dọc 820 pt): hai cột (Lần tới, Thông tin, Báo tử | Sự kiện, Nhắc, Xóa); `ipad-profiles-light`: hai khung cạnh nhau — đúng A-14 |
+| DV23-06 | góp ý | **ĐÃ SỬA** | `PeopleUI.swift` `calChoices` luôn "Nhập theo dương lịch / Nhập theo âm lịch". Ảnh `ios-form-living-am-light-2` (ngày sinh), `ios-event-light` (ngày sự kiện), `-large-2` |
+| DV23-07 | góp ý | **ĐÃ SỬA** | `apple.yml`: workflow `contents: read`; chỉ job `build`, `upgrade` có `contents: write`; cả hai `checkout` có `persist-credentials: false`; `GH_TOKEN: ${{ github.token }}` chỉ ở hai bước ghi ảnh, `commit_shots.sh` tự đặt `http.extraheader`. `-retry-tests-on-failure -test-iterations 2` cho bước XCUITest. Góp ý nhỏ V2-02 |
+| DV23-08 | góp ý | **ĐÃ SỬA** | Sau dựng Release: `grep -rqaF "LichVanHoaViet-before"` trên app iOS và macOS → lỗi nếu có; đối chứng trên bản Debug (`build/ddt/.../LichViet.app`) phải tìm thấy. Chuỗi này chỉ có ở `DemoSeed.swift` (trong `#if DEBUG`). Nhật ký run 353: "Bản Release không có mã kiểm thử." Chỉ một dấu hiệu — đủ cho mục đích (cả `DemoSeed` nằm trong một khối `#if DEBUG`). Phần "R14 kiểm bằng bản Debug" của DV23-08 để lại (rủi ro thấp, đã ghi ở vòng 1) |
+| DV23-09 | góp ý | **ĐÃ SỬA** | `BackupView.swift` `openFile`: rỗng hoặc quá lớn → "Tệp này không phải tệp sao lưu của ứng dụng hoặc quá lớn"; không mở được → "Không đọc được tệp này" |
+| DV23-10 | góp ý | **ĐÃ SỬA** | #47 đã vào `main` trước; #61 gộp `main` (`2b42004`). Ảnh `ios-altar-huong-*-2`: nến · bát hương ba nén · nến, không mâm; `ios-altar-cong-giao-*-2`: nến · hoa · nến; `ios-altar-clevix-*-2`: ảnh mâm lễ dưới bàn thờ + dòng ghi công + "Thêm ảnh mâm lễ của gia đình" |
+
+**Gộp `apple.yml` với #47:** `git diff origin/main 2b42004 -- .github/workflows/apple.yml` chỉ gồm các dòng DV23-07/-08 (+25/−2);
+mọi phần của #47 trên `main` còn nguyên — bộ lọc `paths:` của sự kiện, bước kiểm `NSCameraUsageDescription` (YC-2026-10 N-5), các
+bước dựng/kiểm thử khác. Không mất phía nào.
+
+Tóm lại: **10/10 mục DV23 đã sửa** (DV23-04 còn bước thử trên iPhone thật; DV23-08 để lại phần R14 bằng bản Debug, góp ý).
+
+### V2.2 Phát hiện mới
+
+Không có mục **chặn**, không có mục **nên sửa**.
+
+| Mã | Mức | Điều thấy | Đề xuất |
+|---|---|---|---|
+| V2-01 | góp ý | `main` sau khi #61 tách nhánh có #77 (08 §16.1: dòng ghi công ảnh Clevix là **nguyên văn** `ghi_cong`, thống nhất bốn nền tảng). Apple vẫn ghép `"Ảnh: \(author) · \(license)"` (`TrayPhoto.swift:217`); ảnh `ios-altar-clevix-*` ghi "Ảnh: Clevix Lab · CC BY 4.0". Không thuộc phạm vi DV23; GitHub báo #61 gộp được, không xung đột | Việc riêng cho YC-2026-10 Apple: hiện `it.credit` nguyên văn; thêm khẳng định vào `testTrayPhoto` |
+| V2-02 | góp ý | `commit_shots.sh` ghi `http.https://github.com/.extraheader` có mã thông báo vào `.git/config` và không gỡ; các bước sau trong cùng job (chạy thử Simulator, tải tạo phẩm) vẫn thấy nó | `trap 'git config --unset-all http.https://github.com/.extraheader' EXIT` trong `commit_shots.sh` |
+| V2-03 | góp ý | `PeopleView.destination`: `.editTray` (thêm từ #47) không nằm trong danh sách chặn ở chế độ chỉ đọc. Lối vào duy nhất (nút ở trang tưởng niệm) đã ẩn, nên hiện không với tới được | Thêm `.editTray where m.readOnly` vào cùng `case` với `ReadOnlyBlockedView` cho đủ |
+| V2-04 | góp ý | DV23-04 áp cho mọi nền tảng: trên macOS `scenePhase` thành `.inactive` khi người dùng bấm sang ứng dụng khác, nên cửa sổ Quick Look tự đóng; trên iOS nó cũng đóng khi kéo Trung tâm điều khiển | Giới hạn `#if os(iOS)`; trên Mac không có ảnh bộ chuyển ứng dụng như iOS |
+| V2-05 | góp ý | `PeopleUpgradeTests.testFailedMigrationIsReadOnly`: phần trang hồ sơ nằm trong `if first.waitForExistence(…)` — không thấy hồ sơ thì bỏ qua lặng lẽ (lần này có chạy: có ảnh `upgrade-readonly-person`) | `XCTAssertTrue(first.waitForExistence(timeout: 5))` thay cho `if` |
+
+### V2.3 Kết luận vòng 2
+
+| Nhóm | Mục vòng 1 | Đã sửa | Chặn mới | Nên sửa mới | Góp ý mới |
+|---|---|---|---|---|---|
+| Nên sửa (DV23-01 … -04) | 4 | 4 | — | — | — |
+| Góp ý (DV23-05 … -10) | 6 | 6 | — | — | — |
+| Mới | — | — | **0** | **0** | 5 (V2-01 … V2-05) |
+
+**PR #61: DUYỆT — gộp được.** Mọi mục DV23 đã sửa, có kiểm thử và ảnh; CI `apple` xanh trên `2b42004`; gộp `apple.yml` giữ
+đủ cả hai phía. Các góp ý V2-01 … V2-05 làm sau (V2-01 thuộc việc YC-2026-10 của Apple). Vẫn chờ thử trên máy thật (T11): ảnh bộ
+chuyển ứng dụng khi đang mở PDF (DV23-04) cùng các mục đã liệt kê ở §4 vòng 1.

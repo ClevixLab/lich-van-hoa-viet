@@ -91,13 +91,40 @@ final class PeopleUpgradeTests: XCTestCase {
         print("R14 ca lỗi:\n\(r)")
         XCTAssertEqual(value(r, "migration"), "read_only", r)
         XCTAssertEqual(value(r, "persons"), "5", "dữ liệu cũ vẫn xem được: \(r)")
-        XCTAssertTrue(app.otherElements["people.readOnly"].exists || app.staticTexts["Đang ở chế độ chỉ đọc"].exists)
+        // DV23-02: câu chuẩn của 08 §12l (TKN3-X-03); không có mã kỹ thuật trong lời chính.
+        let text = app.staticTexts["people.readOnly.text"].firstMatch
+        XCTAssertTrue(text.waitForExistence(timeout: 5))
+        XCTAssertTrue(text.label.hasPrefix("Chưa chuyển được dữ liệu sang bản mới."), text.label)
+        XCTAssertFalse(text.label.lowercased().contains("mime"), text.label)
+        XCTAssertNil(text.label.range(of: "[0-9a-f]{8}-[0-9a-f]{4}-", options: .regularExpression), "không hiện mã UUID")
+        XCTAssertTrue(app.buttons["people.readOnly.backup"].exists, "nút Đi tới Sao lưu")
+        XCTAssertFalse(app.staticTexts.containing(NSPredicate(format: "label CONTAINS 'mime_'")).firstMatch.exists,
+                       "câu của lõi chỉ nằm trong mục Chi tiết kỹ thuật đang đóng")
         shot("upgrade-readonly-diag")
         app.terminate()
         app.launchArguments = ["-lvhvScreen", "profiles", "-lvhvToday", "2026-11-07"]
         app.launch()
         Thread.sleep(forTimeInterval: 3)
         shot("upgrade-readonly-profiles")
-        XCTAssertFalse(app.buttons["profiles.add.deceased"].isEnabled, "chỉ đọc: không thêm được hồ sơ")
+        // TKN3-P-01: ẩn mọi việc ghi.
+        XCTAssertFalse(app.buttons["profiles.add.deceased"].exists, "chỉ đọc: không có nút thêm hồ sơ")
+        XCTAssertFalse(app.buttons["profiles.add.living"].exists)
+        let first = app.buttons.matching(NSPredicate(format: "label CONTAINS 'Nguyễn Văn A'")).firstMatch
+        if first.waitForExistence(timeout: 5) {
+            first.tap()
+            Thread.sleep(forTimeInterval: 2)
+            for id in ["person.edit", "person.delete", "person.addEvent", "person.markDeceased", "person.event.edit",
+                       "person.event.delete"] {
+                XCTAssertFalse(app.buttons[id].exists, "chỉ đọc: không có \(id)")
+            }
+            shot("upgrade-readonly-person")
+        }
+        app.terminate()
+        app.launchArguments = ["-lvhvScreen", "backup", "-lvhvToday", "2026-11-07"]
+        app.launch()
+        Thread.sleep(forTimeInterval: 3)
+        XCTAssertFalse(app.buttons["backup.pick"].exists, "chỉ đọc: không có khối Khôi phục")
+        XCTAssertTrue(app.buttons["backup.export"].exists, "vẫn tạo được tệp sao lưu")
+        shot("upgrade-readonly-backup")
     }
 }
