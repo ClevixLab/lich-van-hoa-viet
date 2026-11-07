@@ -555,6 +555,13 @@ impl LvhvStore {
         ))
     }
 
+    /// Xóa một ảnh không hồ sơ nào dùng (ví dụ đã `add_photo` rồi người dùng hủy, không lưu hồ sơ). Ảnh mà hồ sơ
+    /// bỏ khi đổi/xóa ảnh thì `save_person_json` đã tự xóa, không cần gọi hàm này. Ảnh còn được dùng → `Invalid`;
+    /// không có → `NotFound`.
+    pub fn delete_photo(&self, id: String) -> R<()> {
+        Ok(self.lock().delete_photo(&id)?)
+    }
+
     /// Byte của một ảnh (kiểm `sha256` khi đọc).
     pub fn photo_bytes(&self, id: String) -> R<Vec<u8>> {
         Ok(self.lock().photo_bytes(&id)?)
@@ -782,6 +789,7 @@ fn item_json(it: &period::PeriodItem) -> Value {
             _ => None,
         },
         "headline": o.headline,
+        "headline_plain": o.headline_plain,
         "date_line": date_line(cal(), o.date),
     })
 }

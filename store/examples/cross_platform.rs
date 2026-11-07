@@ -4,7 +4,8 @@
 //!     node pwa/test/store/run.mjs                                            # JS mở tệp Rust; JS xuất r6-from-pwa.lvhv
 //!     cargo run --release -p lvhv-store --example cross_platform -- check   # Rust mở tệp của PWA → so state_hash
 //!
-//! `scripts/check-store.sh` chạy cả ba bước (CI gọi script này).
+//! `scripts/check-store.sh` chạy cả ba bước (CI gọi script này). Bước `write` còn chạy kịch bản dọn ảnh không
+//! còn dùng (`photo_gc`) trên bộ R6 và ghi kết quả ra `photo-gc-rust.json`; PWA chạy cùng kịch bản và so.
 use lvhv_backup::PhotoBlob;
 use lvhv_store::{canonical_json, open_backup, AppInfo, ImportMode, Store};
 use serde_json::Value;
@@ -39,6 +40,47 @@ fn seeded(dir: &PathBuf) -> Store {
     s
 }
 
+/// Kịch bản dọn ảnh, giống hệt `photoGc` trong pwa/test/store/run.mjs. Hai hồ sơ có ảnh đầu tiên (theo id) là
+/// A và B. (1) A đổi sang ảnh của B → ảnh cũ của A bị xóa. (2) B bỏ ảnh → ảnh vẫn còn A dùng nên giữ.
+/// (3) `delete_photo` ảnh đang dùng → lỗi "input"; ảnh đã xóa → "not_found".
+fn photo_gc(s: &mut Store) -> Value {
+    let mut ps: Vec<Value> = s
+        .persons()
+        .unwrap()
+        .into_iter()
+        .filter(|p| p["photo_id"].is_string())
+        .collect();
+    ps.sort_by(|a, b| a["id"].as_str().cmp(&b["id"].as_str()));
+    let (mut a, mut b) = (ps[0].clone(), ps[1].clone());
+    let (pa, pb) = (a["photo_id"].clone(), b["photo_id"].clone());
+    let bump = |p: &mut Value| {
+        p["rev"] = serde_json::json!(p["rev"].as_i64().unwrap() + 1);
+        p["updated_at"] = serde_json::json!("2026-11-07T00:00:00Z");
+    };
+    a["photo_id"] = pb.clone();
+    bump(&mut a);
+    s.put_person(&a).unwrap();
+    let after1 = s.photos().unwrap().len();
+    b["photo_id"] = Value::Null;
+    bump(&mut b);
+    s.put_person(&b).unwrap();
+    let after2 = s.photos().unwrap().len();
+    let code = |r: lvhv_store::Result<()>| match r {
+        Ok(()) => "ok",
+        Err(lvhv_store::StoreError::Input(_)) => "input",
+        Err(lvhv_store::StoreError::NotFound) => "not_found",
+        Err(_) => "other",
+    };
+    let e_used = code(s.delete_photo(pb.as_str().unwrap()));
+    let e_gone = code(s.delete_photo(pa.as_str().unwrap()));
+    serde_json::json!({
+        "photos_after": [after1, after2],
+        "delete_used": e_used,
+        "delete_gone": e_gone,
+        "state_sha256": s.state_hash().unwrap(),
+    })
+}
+
 fn main() {
     let mode = std::env::args().nth(1).unwrap_or_default();
     let tmp = std::env::temp_dir().join(format!("lvhv-cross-{}", std::process::id()));
@@ -70,6 +112,15 @@ fn main() {
                 .unwrap();
             std::fs::write(out().join("r6-from-rust.lvhv"), &f).unwrap();
             println!("ok: r6-from-rust.lvhv ({} byte)", f.len());
+            let mut g = seeded(&tmp.join("gc"));
+            let r = photo_gc(&mut g);
+            assert_eq!(r["photos_after"], serde_json::json!([19, 19]), "{r}");
+            assert_eq!(
+                (r["delete_used"].as_str(), r["delete_gone"].as_str()),
+                (Some("input"), Some("not_found"))
+            );
+            std::fs::write(out().join("photo-gc-rust.json"), canonical_json(&r)).unwrap();
+            println!("ok: photo-gc-rust.json ({})", r["state_sha256"]);
         }
         "check" => {
             let f = std::fs::read(out().join("r6-from-pwa.lvhv"))

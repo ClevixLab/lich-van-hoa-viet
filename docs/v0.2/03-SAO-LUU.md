@@ -86,8 +86,9 @@ export(password):
   hdr := header(…, len(pt))
   ct  := XChaCha20Poly1305.encrypt(key, nonce, pt, aad = hdr)
   zeroize(key, pt)
+  trả byte tệp                                    # lõi: export_backup — KHÔNG đổi last_backup_at
   ghi tệp qua hộp thoại lưu của hệ điều hành / tải về (không ghi tệp tạm bản rõ)
-  settings.last_backup_at := now
+  chỉ khi ghi xong: mark_backup_saved(now)        # settings.last_backup_at := now (xem dưới)
 
 import(file, password):
   kiểm tra §2.2
@@ -97,6 +98,18 @@ import(file, password):
   unpack → kiểm tra 01 §6.3 → xem trước → Thay toàn bộ / Gộp → một giao dịch
 ```
 
+- **Tạo byte và ghi nhận "đã sao lưu" là hai bước** (duyệt mã native MA3N-23-01). `export_backup` chỉ tạo byte
+  tệp và nhớ thời điểm tạo (`meta.last_export_at`). Ứng dụng gọi `mark_backup_saved(now)` **một lần**, chỉ khi hệ
+  điều hành báo ghi tệp xong. Khi đó `settings.last_backup_at := now`, và `backup_pending_since` chỉ bị xóa nếu nó
+  không muộn hơn lần tạo tệp (thay đổi xảy ra giữa lúc tạo tệp và lúc lưu chưa có trong tệp, nên vẫn chờ sao lưu).
+  Hủy hộp "Lưu" hoặc ghi lỗi thì **không** gọi, nên nhắc sao lưu vẫn còn. Gọi khi chưa tạo tệp nào (hoặc gọi lần thứ
+  hai cho cùng một tệp) → lỗi đầu vào. Byte tệp không đổi: vectơ R6 giữ nguyên.
+- Mật khẩu: ứng dụng dùng `backup_password_error(password, confirm)` của lõi (tsport `backupPasswordError`).
+  Hàm trả `null` nếu hợp lệ, "Mật khẩu cần ít nhất 8 ký tự" nếu dưới 8 điểm mã sau NFC, và "Hai lần nhập mật khẩu
+  chưa giống nhau" nếu ô nhập lại có giá trị và khác sau NFC. Ô mật khẩu khi khôi phục gọi với `confirm = null`.
+- Trước khi đọc cả tệp, ứng dụng native gọi `backup_header_check(72 byte đầu, kích thước tệp)`. Hàm kiểm §2.2,
+  kể cả `plaintext_len` khớp kích thước, nên tệp quá lớn hay không phải tệp sao lưu bị từ chối mà không phải đọc
+  hết vào bộ nhớ.
 - Không phân biệt "sai mật khẩu" với "tệp bị sửa" (AEAD không cho biết, và không nên đoán).
 - Bản rõ chỉ ở trong bộ nhớ; không ghi tệp tạm, không đưa vào bộ nhớ đệm của Service Worker.
 - Không giới hạn số lần thử trong ứng dụng (kẻ tấn công ngoại tuyến cũng không bị giới hạn); sức chống dò mật khẩu
@@ -261,8 +274,10 @@ mục Security), đọc 2026-11-06; §4.2 cho phần Rust.
   vào kho `meta` (`persist`); giao diện đợt 3 đọc `persistResult()` để hiện cảnh báo 01 §4.1.
 - Hook nhắc sao lưu: `backupReminderDue(now)` = có thay đổi chưa sao lưu (`meta.backup_pending_since`, ghi ở thay
   đổi đầu tiên sau lần xuất gần nhất) và `now − backup_pending_since ≥ backup_nag_days` ngày; `backup_nag_days = 0`
-  tắt. Xuất thành công đặt `settings.last_backup_at` và xóa `backup_pending_since`. Cùng quy tắc ở Rust
-  (`Store::backup_reminder_due`).
+  tắt. `exportBackup` chỉ tạo byte và ghi `meta.last_export_at`. Sau khi tải tệp, giao diện gọi
+  `markBackupSaved(now)`: đặt `settings.last_backup_at`, xóa `backup_pending_since` nếu không có thay đổi nào sau
+  lúc tạo tệp, và xóa `last_export_at` (§2.4). Cùng quy tắc ở Rust (`Store::backup_reminder_due`,
+  `Store::mark_backup_saved`).
 
 ### B1.4 Những điểm đặc tả chưa nói rõ — cách đã cài (cả hai bản như nhau)
 

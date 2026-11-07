@@ -46,22 +46,30 @@ lược đồ `docs/v0.2/schema/backup-v1.schema.json` (Person, Event, EventType
 | `settings_json()`, `put_settings_json(json)` | `AppSettings` |
 | `mark_deceased_json(person_id, death_date_value_json, notice_json?, today)` | Cập nhật người đang sống thành đã mất trên **cùng** hồ sơ (01 §3.2a, US-M-07): thêm `death` + thông tin báo tử tùy chọn, `kind = deceased`, tăng `rev`, bỏ quy tắc nhắc sinh nhật; theo 02 §6.1 (B4) sinh nhật và sự kiện của người này không còn lần xuất hiện |
 | `persons_json()`, `person_json(id)`, `save_person_json(json)`, `delete_person(id)` | Hồ sơ. `save_person_json` tự tính trường dẫn xuất (02 §1, §4), gắn id/`created_at`/`updated_at`/`rev`, kiểm V1–V8 |
+| `delete_person_and_orphan_events(id)` → id sự kiện đã xóa | Xóa người và, cùng giao dịch, các sự kiện chỉ gắn người đó (sự kiện vốn không gắn ai thì giữ) |
 | `events_json()`, `save_event_json(json)`, `delete_event(id)` | Sự kiện |
 | `event_types_json()`, `save_event_type_json(json)` | Loại sự kiện (tên duy nhất — V7) |
 | `add_photo(id, mime, width, height, bytes)`, `photo_bytes(id)` | Ảnh chân dung (đã mã hóa lại, không EXIF) |
+| `delete_photo(id)` | Xóa ảnh chưa gắn hồ sơ nào (đã `add_photo` rồi hủy). Ảnh hồ sơ bỏ khi đổi/xóa ảnh thì `save_person_json` đã tự xóa. Ảnh còn dùng → `Invalid` |
 | `dataset_json()` | Toàn bộ kho dạng tài liệu sao lưu — đầu vào `dataset_json` của các hàm dưới |
-| `backup_reminder_due()`, `export_backup(password, app_version, platform)`, `apply_import(backup, mode)` | Sao lưu (03); `mode` = `Replace` \| `Merge` |
+| `backup_reminder_due()`, `export_backup(password, app_version, platform)`, `apply_import(backup, mode)` | Sao lưu (03); `mode` = `Replace` \| `Merge`. `export_backup` chỉ tạo byte, **không** đổi `last_backup_at` |
+| `mark_backup_saved(saved_at_unix_s)` | Gọi một lần, chỉ khi hệ điều hành báo lưu tệp xong (03 §2.4). Hủy hoặc lỗi ghi thì không gọi. Chưa tạo tệp → `Invalid` |
+| `backup_password_error(password, confirm)` → `null` \| câu lỗi | Quy tắc mật khẩu (03 §2.4); ô khôi phục: `confirm = null` |
+| `backup_header_check(head, file_len)` | Kiểm 72 byte đầu và kích thước tệp trước khi đọc cả tệp (03 §2.2); lỗi → `Backup(<câu>)` |
 | `open_backup(file, password)` → `VerifiedBackup` (`preview()`) | Giải mã + kiểm tra toàn bộ, chưa ghi gì; lỗi → "Sai mật khẩu hoặc tệp bị hỏng" |
 | `derive_person_json(json)`, `save_death_json(date_value)`, `derive_birth_json(date_value)` | Tính/kiểm trường dẫn xuất không ghi (xem trước trong màn hình nhập) |
 | `person_summary_json(person, today)` | Tên hiển thị, Can Chi, tuổi dương/tuổi âm (02 §4.3), "Hưởng thọ … tuổi" (02 §4.2), ngày mất âm lịch |
 | `upcoming_json(dataset, today, days)` | Danh sách "Sắp tới" (02 §7.2) |
 | `period_bounds(kind, anchor)`, `period_prev`, `period_next`, `events_in_period_json(dataset, kind, anchor, filter)` | Danh sách theo kỳ (02 §7.6, R13) |
 | `reminders_json(dataset, now, zone, horizon_days, show_names = false)` | Lời nhắc (02 §7.1), văn bản màn hình khóa theo O-9 |
+| `due_today_json(dataset, today, zone)`, `LvhvStore::due_today_json(today, zone)` | Thẻ nhắc trong ứng dụng hôm nay (02 §7.5): như `reminders_json`, tiêu đề có tên, sắp theo giờ |
 | `reschedule_json(dataset, now, zone, pending_json, show_names = false)`, `sentinel_info() -> SentinelInfo {id, text}` | Xoay vòng 64 yêu cầu chờ cho iOS/macOS/Windows (02 §7.4) |
 | `android_alarm_step_json(dataset, now, last_run, zone, show_names = false)` | Một bước chuỗi báo thức Android (02 §7.3): lời nhắc cần đăng ngay + báo thức kế tiếp (không giới hạn cửa sổ) |
 | `LvhvStore::lock_screen_names()`, `set_lock_screen_names(bool)` | Tùy chọn O-9 "hiện tên trên màn hình khóa", mặc định `false`, lưu cục bộ trong kho (bảng `meta`), không vào sao lưu |
 | `LvhvStore::reminders_json(now, zone, horizon)`, `reschedule_json(now, zone, pending)`, `android_alarm_step_json(now, last_run, zone)`, `upcoming_json(today, days)`, `events_in_period_json(kind, anchor, filter)` | Như các hàm tự do nhưng đọc dữ liệu **và tùy chọn O-9** từ kho — ứng dụng native **nên dùng các hàm này** |
-| `ics_export(dataset, today, now, only_ids)` → `IcsExport {file_name, content, events, persons}` | Tệp .ics 10 năm (02 §8); `persons` cho hộp xác nhận S10 |
+| `ics_export(dataset, today, now, only_ids)` → `IcsExport {file_name, content, events, persons, summary}` | Tệp .ics 10 năm (02 §8); `summary` cho hộp xác nhận S10 |
+| `ics_summary(dataset, today, only_ids)` → `IcsSummary {events, persons, from, to, kinds, privacy_text, preview}` | Hộp xác nhận S10 mà không sinh tệp: câu riêng tư, tối đa 5 dòng xem trước |
+| `lunar_leap_month(year)` → tháng nhuận \| `null` | Năm âm 1899–3000, cho ô "nhuận" (01 §6.1) |
 | `new_uuid()` | UUID v4 (01 §1) |
 
 Lược đồ đầu ra: `docs/v0.2/schema/ffi-v02-output.schema.json` (mọi đối tượng đóng; kiểm thử `output_matches_schema`

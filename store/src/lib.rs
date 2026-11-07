@@ -500,14 +500,55 @@ impl Store {
     // ---------------- ghi ----------------
 
     /// Ghi (thêm/sửa) một `Person` đã đủ trường (kể cả trường dẫn xuất); kiểm tra V1–V8 trước khi ghi.
+    ///
+    /// Ảnh mà bản cũ của hồ sơ này dùng nhưng bản mới bỏ (đổi/xóa ảnh chân dung, bỏ ảnh giấy báo tử) bị xóa trong
+    /// cùng giao dịch nếu không hồ sơ nào khác còn dùng.
     pub fn put_person(&mut self, p: &Value) -> Result<()> {
         validate::person(p, "/person")?;
         let now = now_rfc3339();
         let tx = self.conn.transaction()?;
         check_refs_person(&tx, p)?;
+        let old: Option<String> = tx
+            .query_row(
+                "SELECT json FROM person WHERE id = ?1",
+                params![p["id"].as_str()],
+                |r| r.get(0),
+            )
+            .optional()?;
+        let old_refs = match old {
+            Some(s) => validate::person_photo_refs(&parse_col(&s)?),
+            None => Vec::new(),
+        };
         upsert_person(&tx, p)?;
+        let gone = gc_photos(&tx, old_refs)?;
         Self::mark_changed(&tx, &now)?;
         tx.commit()?;
+        for pid in gone {
+            let _ = std::fs::remove_file(self.photo_path(&pid));
+        }
+        Ok(())
+    }
+
+    /// Xóa một ảnh không hồ sơ nào dùng — ví dụ ảnh đã thêm bằng [`Store::add_photo`] rồi người dùng bỏ không lưu
+    /// hồ sơ. Ảnh còn được hồ sơ dùng → `Input`; không có → `NotFound`.
+    pub fn delete_photo(&mut self, id: &str) -> Result<()> {
+        let tx = self.conn.transaction()?;
+        let n: i64 = tx.query_row(
+            "SELECT count(*) FROM photo WHERE id = ?1",
+            params![id],
+            |r| r.get(0),
+        )?;
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        if gc_photos(&tx, vec![id.to_owned()])?.is_empty() {
+            return Err(StoreError::Input(
+                "Ảnh đang được dùng trong một hồ sơ nên chưa xóa được".into(),
+            ));
+        }
+        Self::mark_changed(&tx, &now_rfc3339())?;
+        tx.commit()?;
+        let _ = std::fs::remove_file(self.photo_path(id));
         Ok(())
     }
 
@@ -637,18 +678,7 @@ impl Store {
         }
         tx.execute("DELETE FROM person WHERE id = ?1", params![id])?;
         // Ảnh còn được hồ sơ khác dùng thì giữ.
-        let mut used: std::collections::HashSet<String> = Default::default();
-        {
-            let mut st = tx.prepare("SELECT json FROM person")?;
-            let rows = st.query_map([], |r| r.get::<_, String>(0))?;
-            for r in rows {
-                used.extend(validate::person_photo_refs(&parse_col(&r?)?));
-            }
-        }
-        let gone: Vec<String> = refs.into_iter().filter(|r| !used.contains(r)).collect();
-        for pid in &gone {
-            tx.execute("DELETE FROM photo WHERE id = ?1", params![pid])?;
-        }
+        let gone = gc_photos(&tx, refs)?;
         Self::mark_changed(&tx, &now)?;
         tx.commit()?;
         for pid in gone {
@@ -910,6 +940,32 @@ fn write_atomic(path: &Path, bytes: &[u8]) -> Result<()> {
     std::fs::write(&tmp, bytes)?;
     std::fs::rename(&tmp, path)?;
     Ok(())
+}
+
+/// Xóa (bảng `photo`) những ảnh trong `candidates` mà không hồ sơ nào còn dùng; trả id đã xóa (sắp, không lặp) để
+/// xóa tệp sau khi giao dịch xong.
+fn gc_photos(tx: &rusqlite::Transaction<'_>, mut candidates: Vec<String>) -> Result<Vec<String>> {
+    candidates.sort();
+    candidates.dedup();
+    if candidates.is_empty() {
+        return Ok(candidates);
+    }
+    let mut used: std::collections::HashSet<String> = Default::default();
+    {
+        let mut st = tx.prepare("SELECT json FROM person")?;
+        let rows = st.query_map([], |r| r.get::<_, String>(0))?;
+        for r in rows {
+            used.extend(validate::person_photo_refs(&parse_col(&r?)?));
+        }
+    }
+    let mut gone = Vec::new();
+    for pid in candidates {
+        if !used.contains(&pid) && tx.execute("DELETE FROM photo WHERE id = ?1", params![pid])? > 0
+        {
+            gone.push(pid);
+        }
+    }
+    Ok(gone)
 }
 
 fn check_refs_person(tx: &rusqlite::Transaction<'_>, p: &Value) -> Result<()> {

@@ -216,12 +216,14 @@ let r6File;
   ok(h1 === manifest.dataset_r6.store_state_sha256, "stateHash(IndexedDB) = state_hash(SQLite) của Rust");
   const fixed = await bc.exportWithFixedRng(PW, dsText, dsPhotos.map((p) => ({ id: bc.uuidToBytes(p.id), bytes: p.bytes })), SALT, NONCE);
   ok(sha(fixed) === manifest.dataset_r6.fixed_rng_file_sha256, "tệp R6 salt/nonce cố định: JS = Rust (giống từng byte)");
+  const lastBefore = (await s.settings()).last_backup_at;
   const t0 = performance.now();
   r6File = await s.exportBackup(PW, { version: "0.2.0", platform: "pwa" });
   const exportMs = performance.now() - t0;
-  ok((await s.settings()).last_backup_at === null, "MA3N-23-01: tạo byte sao lưu chưa ghi nhận là đã sao lưu");
-  await s.markBackupSaved(nowRfc3339T());
-  ok((await s.backupPendingSince()) === null && typeof (await s.settings()).last_backup_at === "string", "sau markBackupSaved: last_backup_at được đặt, hết trạng thái chờ sao lưu");
+  ok((await s.settings()).last_backup_at === lastBefore && (await s.stateHash()) === h1, "MA3N-23-01: tạo byte sao lưu không đổi last_backup_at (chưa ghi nhận là đã sao lưu), stateHash không đổi");
+  const savedAt = nowRfc3339T();
+  await s.markBackupSaved(savedAt);
+  ok((await s.backupPendingSince()) === null && (await s.settings()).last_backup_at === savedAt, "sau markBackupSaved: last_backup_at = lúc lưu, hết trạng thái chờ sao lưu");
   let twice = false;
   try { await s.markBackupSaved(nowRfc3339T()); } catch { twice = true; }
   ok(twice, "markBackupSaved hai lần cho một lần tạo tệp → lỗi");
@@ -328,9 +330,47 @@ let r6File;
   ok((await s.eventsOf(p.id)).length === 1, "chỉ mục by_person");
   await s.deletePerson(p.id);
   ok((await s.events())[0].person_ids.length === 0, "xóa người → gỡ khỏi sự kiện (01 §3.4)");
+  // MA3N-24-08: deleteOrphanEvents xóa sự kiện chỉ gắn người đó, giữ sự kiện vốn không gắn ai và sự kiện còn người khác.
+  {
+    const q = S.buildPerson({ ...ex.persons[1], id: "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e71" });
+    const r = S.buildPerson({ ...ex.persons[1], id: "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e72", ho_ten: "Lê Văn D" });
+    await s.putPerson(q); await s.putPerson(r);
+    const ev = (id, rid, pids) => ({ ...ex.events[0], id, reminder: { ...ex.events[0].reminder, id: rid }, person_ids: pids });
+    await s.putEvent(ev("0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e81", "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e91", [q.id]));
+    await s.putEvent(ev("0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e82", "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e92", [q.id, r.id]));
+    const removed = await s.deletePerson(q.id, { deleteOrphanEvents: true });
+    const left = (await s.events()).map((e) => e.id).sort();
+    ok(JSON.stringify(removed) === JSON.stringify(["0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e81"]), "deleteOrphanEvents → trả id sự kiện chỉ của người đó");
+    ok(JSON.stringify(left) === JSON.stringify([ex.events[0].id, "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e82"].sort()), "giữ sự kiện không gắn ai và sự kiện còn người khác");
+    await s.deletePerson(r.id);
+  }
   let bad = p; bad = { ...bad, death: { ...bad.death, lunar: { ...bad.death.lunar, day: 11 } } };
   ok((await code(() => s.putPerson(bad))) === "invalid", "V5: trường dẫn xuất sai → từ chối");
   results.store_api = "ok";
+}
+
+// Dọn ảnh không còn dùng — cùng kịch bản `photo_gc` của store/examples/cross_platform.rs, so với kết quả Rust.
+{
+  const s = await seeded();
+  const ps = (await s.persons()).filter((p) => typeof p.photo_id === "string").sort((x, y) => (x.id < y.id ? -1 : 1));
+  const [a, b] = [structuredClone(ps[0]), structuredClone(ps[1])];
+  const [pa, pb] = [a.photo_id, b.photo_id];
+  const bump = (p) => { p.rev += 1; p.updated_at = "2026-11-07T00:00:00Z"; };
+  a.photo_id = pb; bump(a); await s.putPerson(a);
+  const after1 = (await s.photos()).length;
+  b.photo_id = null; bump(b); await s.putPerson(b);
+  const after2 = (await s.photos()).length;
+  const got = {
+    delete_used: await code(() => s.deletePhoto(pb)),
+    delete_gone: await code(() => s.deletePhoto(pa)),
+    photos_after: [after1, after2],
+    state_sha256: await s.stateHash(),
+  };
+  const rust = JSON.parse(readFileSync(join(OUT, "photo-gc-rust.json"), "utf8"));
+  ok(JSON.stringify(got.photos_after) === "[19,19]" && got.delete_used === "input" && got.delete_gone === "not_found",
+    `dọn ảnh: đổi ảnh xóa ảnh cũ, ảnh còn hồ sơ khác dùng thì giữ; deletePhoto đang dùng → input, đã xóa → not_found (${JSON.stringify(got)})`);
+  ok(JSON.stringify(got, Object.keys(got).sort()) === JSON.stringify(rust, Object.keys(rust).sort()), "dọn ảnh: kết quả và stateHash giống hệt Rust (photo-gc-rust.json)");
+  results.photo_gc = got;
 }
 
 writeFileSync(join(OUT, "results.json"), JSON.stringify(results, null, 2) + "\n");

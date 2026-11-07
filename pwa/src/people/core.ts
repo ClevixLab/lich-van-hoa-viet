@@ -106,7 +106,7 @@ export function occLabel(o: M.Occurrence): string {
     }
     case "sinh_nhat": return o.n !== null ? `Sinh nhật thứ ${o.n}` : "Sinh nhật";
     case "sinh_nhat_am": return o.n !== null ? `Sinh nhật âm lịch (tuổi âm ${o.n + 1})` : "Sinh nhật âm lịch";
-    default: return o.headline;
+    default: return o.headline_plain; // tên người ghép riêng (itemTitle)
   }
 }
 

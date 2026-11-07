@@ -445,8 +445,9 @@ trên mục giỗ của hôm nay ở "Sắp tới".
   kiện gắn với người này vẫn còn nếu có người khác cùng tham gia. Không hoàn tác được." — nút "Xóa hồ sơ" (đỏ) / "Giữ
   lại" (tiêu điểm mặc định). Xong: về "Hồ sơ", thông báo "Đã xóa hồ sơ."
   Sự kiện chỉ gắn với người bị xóa: lớp lưu trữ gỡ id khỏi sự kiện (01 §3.4), sự kiện còn lại không có người. Giao diện
-  **xóa luôn** những sự kiện mà sau khi gỡ không còn ai (để không còn mục mồ côi trong danh sách) — trong cùng thao tác
-  sau khi xóa hồ sơ.
+  **xóa luôn** những sự kiện mà sau khi gỡ không còn ai (để không còn mục mồ côi trong danh sách). Việc này làm trong
+  **cùng giao dịch** với xóa hồ sơ, bằng hàm của lớp lưu trữ `deletePerson(id, { deleteOrphanEvents: true })`
+  (FFI `delete_person_and_orphan_events`). Sự kiện vốn không gắn ai thì giữ.
 - **Xóa sự kiện**: hộp "Xóa sự kiện "Tốt nghiệp"? Không hoàn tác được." — "Xóa sự kiện" / "Giữ lại".
 
 ---
@@ -506,7 +507,8 @@ trên mục giỗ của hôm nay ở "Sắp tới".
 tệp; người dùng mở tệp bằng ứng dụng Lịch.
 
 **L9 — Xuất sao lưu**: "Sao lưu" → "Tạo tệp sao lưu…" → nhập mật khẩu hai lần → "Tạo và tải tệp" → tiến độ → tải tệp →
-"Lần sao lưu gần nhất: hôm nay"; nhắc sao lưu (nếu có) biến mất.
+`markBackupSaved` (03 §2.4) → "Lần sao lưu gần nhất: hôm nay"; nhắc sao lưu (nếu có) biến mất. Tạo byte xong mà
+chưa tải thì chưa tính là đã sao lưu.
 
 **L10 — Nhập sao lưu**: "Sao lưu" → "Chọn tệp sao lưu…" → mật khẩu → "Mở tệp" → xem trước → "Gộp" (mặc định) hoặc
 "Thay toàn bộ" (+ xác nhận thứ hai) → "Khôi phục" → thông báo kết quả.
@@ -615,7 +617,17 @@ nhắc rồi thứ tự 02 §7.2; quá 3 thẻ
 - Lần xuất hiện, nhãn, thứ tự, câu nhắc, .ics: **chỉ** dùng hàm của lõi `tsport/src/memorial*` (`occurrencesWithTt`,
   `upcoming`, `reminderTextNamed`, `generateIcs`, `tuoiDuong`, `tuoiAm`…), không tự viết lại thuật toán ở giao diện.
 - Lưu trữ: `pwa/src/store` (đợt 2): `buildPerson`, `putPerson`, `putEvent`, `putEventType`, `deletePerson`,
-  `deleteEvent`, `exportBackup`, `openBackup`, `applyImport`, `backupReminderDue`, `persistResult`.
+  `deleteEvent`, `exportBackup`, `markBackupSaved`, `openBackup`, `applyImport`, `backupReminderDue`, `persistResult`.
+- Các quy tắc sau trước đây giao diện tự viết, nay gọi hàm của lõi (duyệt mã native MA3N-24-08). Ứng dụng native
+  gọi các hàm FFI cùng tên trong ngoặc.
+  - Thẻ nhắc hôm nay (§5.5, 02 §7.5): `dueToday` (`due_today_json`).
+  - Hộp xác nhận .ics (§3.8 A): `icsSummary` (`ics_summary`, `IcsExport.summary`). Hàm cho số mục, số người, cửa
+    sổ từ–đến, câu riêng tư `privacy_text` và tối đa 5 dòng xem trước. PWA vẫn ghép dòng xem trước có tên người
+    bằng `itemTitle` cho cùng các mục đầu.
+  - Lỗi mật khẩu sao lưu (§3.8 B): `backupPasswordError` (`backup_password_error`).
+  - Xóa người (§3.10): `deletePerson(id, { deleteOrphanEvents: true })` (`delete_person_and_orphan_events`). Các sự
+    kiện chỉ gắn người đó bị xóa cùng giao dịch.
+  - Tháng nhuận cho ô "nhuận": `cal.leapMonth` (`lunar_leap_month`).
 
 ### 8.2 Danh sách theo kỳ (R13) — hàm của lõi
 
@@ -912,3 +924,4 @@ Kiểm chéo bằng `scripts/check-store.sh` (CI "Lưu trữ + sao lưu"), gồm
 | O-9 `show_names` | Lõi lưu tùy chọn "hiện tên trên màn hình khóa" theo từng máy, mặc định **không** hiện (`lock_screen_names`, chỉ trong kho Rust). PWA không có thông báo trên màn hình khóa nên không có tùy chọn này. Thẻ nhắc trong ứng dụng vẫn ghi tên, vì chỉ hiện khi người dùng đã mở ứng dụng. Khung "Ứng dụng web" ở Sắp tới có câu giải thích (`#web-names`) để thống nhất với ứng dụng điện thoại và máy tính |
 | MA3-15-03 (kiểm thử) | Kiểm thử Esc khi mã hóa trước đây đếm hộp còn mở, nên kết quả phụ thuộc thời gian mã hóa. Nay kiểm thử ghi lại sự kiện `cancel`: phải có ít nhất một lần nhấn Esc khi hộp đang bận và lần đó bị chặn |
 | TK-31 (a), `metrics.json` | Giữ nguyên như hiện tại; điều phối sẽ hỏi chủ dự án |
+| TKN-A-08 | Lõi ghép tên người vào tiêu đề sự kiện (02 §8: `Tốt nghiệp đại học · Lê Văn Cường`) cho .ics và thông báo khi bật hiện tên. Giao diện tự ghép tên riêng (`itemTitle`), nên nhãn dùng `headline_plain` (không tên) để tên không lặp hai lần |

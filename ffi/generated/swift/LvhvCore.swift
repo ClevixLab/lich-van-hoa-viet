@@ -612,6 +612,13 @@ public protocol LvhvStoreProtocol: AnyObject, Sendable {
     func deletePersonAndOrphanEvents(id: String) throws  -> [String]
     
     /**
+     * Xóa một ảnh không hồ sơ nào dùng (ví dụ đã `add_photo` rồi người dùng hủy, không lưu hồ sơ). Ảnh mà hồ sơ
+     * bỏ khi đổi/xóa ảnh thì `save_person_json` đã tự xóa, không cần gọi hàm này. Ảnh còn được dùng → `Invalid`;
+     * không có → `NotFound`.
+     */
+    func deletePhoto(id: String) throws 
+    
+    /**
      * `due_today_json` trên dữ liệu của kho.
      */
     func dueTodayJson(today: SolarDay, zone: DeviceZone) throws  -> String
@@ -882,6 +889,18 @@ open func deletePersonAndOrphanEvents(id: String)throws  -> [String]  {
         FfiConverterString.lower(id),$0
     )
 })
+}
+    
+    /**
+     * Xóa một ảnh không hồ sơ nào dùng (ví dụ đã `add_photo` rồi người dùng hủy, không lưu hồ sơ). Ảnh mà hồ sơ
+     * bỏ khi đổi/xóa ảnh thì `save_person_json` đã tự xóa, không cần gọi hàm này. Ảnh còn được dùng → `Invalid`;
+     * không có → `NotFound`.
+     */
+open func deletePhoto(id: String)throws   {try rustCallWithError(FfiConverterTypeLvhvDataError_lift) {
+    uniffi_lvhv_ffi_fn_method_lvhvstore_delete_photo(self.uniffiClonePointer(),
+        FfiConverterString.lower(id),$0
+    )
+}
 }
     
     /**
@@ -3466,6 +3485,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_lvhv_ffi_checksum_method_lvhvstore_delete_person_and_orphan_events() != 33298) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_lvhv_ffi_checksum_method_lvhvstore_delete_photo() != 19012) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_lvhv_ffi_checksum_method_lvhvstore_due_today_json() != 53614) {

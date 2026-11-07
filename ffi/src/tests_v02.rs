@@ -1079,3 +1079,131 @@ fn password_rules_leap_month_header_check() {
     assert!(backup_header_check(vec![0u8; 72], 4 << 30).is_err());
     let _ = std::fs::remove_dir_all(dir);
 }
+
+/// Duyệt thiết kế TKN-A-08: tiêu đề sự kiện kèm tên người — trong .ics và thông báo khi bật hiện tên; ẩn tên
+/// (O-9, mặc định) vẫn là câu chung không tên.
+#[test]
+fn event_titles_name_the_people() {
+    let want = "Kỷ niệm 11 năm ngày cưới: Ngày cưới anh chị C · Chị Lê Thị C";
+    let f = ics_export(
+        EXAMPLE.into(),
+        sd(2026, 7, 1),
+        unix_vn(2026, 7, 1, 0, 0),
+        None,
+    )
+    .unwrap();
+    let unfolded = f.content.replace("\r\n ", "");
+    assert!(
+        unfolded.contains(&format!("SUMMARY:{want}\r\n")),
+        "{unfolded}"
+    );
+    let now = unix_vn(2026, 12, 10, 0, 0);
+    let ev = |show: bool| -> Vec<Value> {
+        v(&reminders_json(EXAMPLE.into(), now, vn(), 60, show).unwrap())
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|r| {
+                r["id"]
+                    .as_str()
+                    .unwrap()
+                    .contains("0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e22")
+            })
+            .cloned()
+            .collect()
+    };
+    let named = ev(true);
+    assert_eq!(named[0]["title"], format!("Còn 1 ngày: {want}"));
+    let hidden = ev(false);
+    assert_eq!(hidden.len(), named.len());
+    assert!(hidden
+        .iter()
+        .all(|r| r["title"] == "Sắp đến sự kiện" && !r.to_string().contains("Lê Thị C")));
+    // "Sắp tới": headline có tên (như .ics).
+    let up = v(&upcoming_json(EXAMPLE.into(), sd(2026, 12, 1), 30).unwrap());
+    let w = up
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|o| o["class"] == "su_kien_duong_lap")
+        .unwrap();
+    assert_eq!(w["headline"], want);
+    assert_eq!(
+        w["headline_plain"],
+        "Kỷ niệm 11 năm ngày cưới: Ngày cưới anh chị C"
+    );
+    // Sự kiện chưa gắn ai → không có " · ".
+    let mut ds = v(EXAMPLE);
+    ds["events"][0]["person_ids"] = json!([]);
+    let f = ics_export(
+        ds.to_string(),
+        sd(2026, 7, 1),
+        unix_vn(2026, 7, 1, 0, 0),
+        None,
+    )
+    .unwrap();
+    assert!(f
+        .content
+        .replace("\r\n ", "")
+        .contains("SUMMARY:Kỷ niệm 11 năm ngày cưới: Ngày cưới anh chị C\r\n"));
+}
+
+/// Ảnh không còn dùng (yêu cầu từ ứng dụng Apple): đổi/bỏ ảnh trong `save_person_json` xóa ảnh cũ nếu không hồ sơ
+/// nào khác dùng; `delete_photo` xóa ảnh chưa gắn hồ sơ nào.
+#[test]
+fn orphan_photos_are_removed() {
+    let (s, dir) = tmp_store();
+    let photo_ids = |s: &LvhvStore| -> Vec<String> {
+        let mut v: Vec<String> = v(&s.dataset_json().unwrap())["photos"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|p| p["id"].as_str().unwrap().to_owned())
+            .collect();
+        v.sort();
+        v
+    };
+    let a = add_cert_photo(&s);
+    let mut c = v(EXAMPLE)["persons"][2].clone();
+    c["id"] = json!("");
+    c["photo_id"] = json!(a);
+    let c = v(&s.save_person_json(c.to_string()).unwrap());
+    // Hồ sơ thứ hai dùng chung ảnh A.
+    let mut d = v(EXAMPLE)["persons"][2].clone();
+    d["id"] = json!("");
+    d["ho_ten"] = json!("Lê Văn D");
+    d["photo_id"] = json!(a);
+    let d = v(&s.save_person_json(d.to_string()).unwrap());
+    // C đổi sang ảnh B: A còn D dùng → giữ.
+    let b = add_cert_photo(&s);
+    let mut c2 = c.clone();
+    c2["photo_id"] = json!(b);
+    let c2 = v(&s.save_person_json(c2.to_string()).unwrap());
+    let mut want = vec![a.clone(), b.clone()];
+    want.sort();
+    assert_eq!(photo_ids(&s), want);
+    // D bỏ ảnh: A không còn ai dùng → xóa (bản ghi và tệp).
+    let mut d2 = d.clone();
+    d2["photo_id"] = Value::Null;
+    s.save_person_json(d2.to_string()).unwrap();
+    assert_eq!(photo_ids(&s), vec![b.clone()]);
+    assert!(matches!(
+        s.photo_bytes(a.clone()),
+        Err(LvhvDataError::NotFound(_))
+    ));
+    assert!(!dir.join("photos").join(format!("{a}.img")).exists());
+    assert!(dir.join("photos").join(format!("{b}.img")).exists());
+    // Lưu lại không đổi ảnh → giữ ảnh.
+    s.save_person_json(c2.to_string()).unwrap();
+    assert_eq!(photo_ids(&s), vec![b.clone()]);
+    // delete_photo: ảnh đang dùng → Invalid; ảnh chưa gắn → xóa; không có → NotFound.
+    assert!(matches!(
+        s.delete_photo(b.clone()),
+        Err(LvhvDataError::Invalid(_))
+    ));
+    let x = add_cert_photo(&s);
+    s.delete_photo(x.clone()).unwrap();
+    assert_eq!(photo_ids(&s), vec![b.clone()]);
+    assert!(matches!(s.delete_photo(x), Err(LvhvDataError::NotFound(_))));
+    let _ = std::fs::remove_dir_all(dir);
+}

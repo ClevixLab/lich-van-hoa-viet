@@ -306,6 +306,11 @@ void uniffi_lvhv_ffi_fn_method_lvhvstore_delete_person(void*_Nonnull ptr, RustBu
 RustBuffer uniffi_lvhv_ffi_fn_method_lvhvstore_delete_person_and_orphan_events(void*_Nonnull ptr, RustBuffer id, RustCallStatus *_Nonnull out_status
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_DELETE_PHOTO
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_DELETE_PHOTO
+void uniffi_lvhv_ffi_fn_method_lvhvstore_delete_photo(void*_Nonnull ptr, RustBuffer id, RustCallStatus *_Nonnull out_status
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_DUE_TODAY_JSON
 #define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_FN_METHOD_LVHVSTORE_DUE_TODAY_JSON
 RustBuffer uniffi_lvhv_ffi_fn_method_lvhvstore_due_today_json(void*_Nonnull ptr, RustBuffer today, RustBuffer zone, RustCallStatus *_Nonnull out_status
@@ -1207,6 +1212,12 @@ uint16_t uniffi_lvhv_ffi_checksum_method_lvhvstore_delete_person(void
 #ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_DELETE_PERSON_AND_ORPHAN_EVENTS
 #define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_DELETE_PERSON_AND_ORPHAN_EVENTS
 uint16_t uniffi_lvhv_ffi_checksum_method_lvhvstore_delete_person_and_orphan_events(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_DELETE_PHOTO
+#define UNIFFI_FFIDEF_UNIFFI_LVHV_FFI_CHECKSUM_METHOD_LVHVSTORE_DELETE_PHOTO
+uint16_t uniffi_lvhv_ffi_checksum_method_lvhvstore_delete_photo(void
     
 );
 #endif

@@ -269,7 +269,12 @@ fn roundtrip_replace_identical() {
     drop(s);
     let mut s = Store::open(&a).unwrap();
     // MA3N-23-01: tạo byte chưa phải là đã sao lưu; chỉ mark_backup_saved (sau khi lưu tệp xong) mới ghi nhận.
-    assert!(s.settings().unwrap()["last_backup_at"].is_null());
+    // (Bộ R6 có sẵn last_backup_at = giá trị của tệp; xuất không được đổi nó, cũng không đổi state_hash.)
+    assert_eq!(
+        s.settings().unwrap()["last_backup_at"],
+        snap1["settings"]["last_backup_at"]
+    );
+    assert_eq!(s.state_hash().unwrap(), h1);
     s.mark_backup_saved("2026-11-07T01:00:00Z").unwrap();
     assert_eq!(
         s.settings().unwrap()["last_backup_at"],

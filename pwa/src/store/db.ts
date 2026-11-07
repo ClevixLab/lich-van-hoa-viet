@@ -163,7 +163,12 @@ export class Store {
       try { V.photo(meta, "/photo"); } catch (e) { throw vErr(e); }
       recs.push({ id: np.id, meta, blob: new Blob([np.bytes as Uint8Array<ArrayBuffer>], { type: np.mime }) });
     }
-    const first = (await this.persons()).length === 0;
+    const all = await this.persons();
+    const first = all.length === 0;
+    // Ảnh bản cũ dùng mà bản mới bỏ, không hồ sơ nào khác dùng → xóa cùng giao dịch (như Rust put_person).
+    const old = all.find((x) => x.id === p.id);
+    const keep = new Set([...V.personPhotoRefs(p), ...all.filter((x) => x.id !== p.id).flatMap((x) => V.personPhotoRefs(x))]);
+    const gone = [...new Set(old ? V.personPhotoRefs(old) : [])].filter((x) => !keep.has(x));
     const tx = this.tx(["persons", "photos", "meta"], "readwrite");
     const fin = done(tx);
     for (const r of recs) tx.objectStore("photos").put(r);
@@ -174,6 +179,7 @@ export class Store {
       r.onsuccess = () => { if (r.result === undefined) { tx.abort(); } };
     }
     tx.objectStore("persons").put(normNotice(p));
+    for (const pid of gone) tx.objectStore("photos").delete(pid);
     Store.markChanged(tx, nowRfc3339());
     try { await fin; } catch (e) { throw new StoreError("invalid", "V3 /person/photo_id: ảnh không tồn tại", e); }
     if (first && (await this.persistResult()) === null) await requestPersistentStorage(this);
@@ -238,6 +244,20 @@ export class Store {
     Store.markChanged(tx, now);
     await fin;
     return removed.sort();
+  }
+
+  /** Xóa một ảnh không hồ sơ nào dùng (như Rust `delete_photo`). Còn được dùng → "input"; không có → "not_found". */
+  async deletePhoto(id: string): Promise<void> {
+    const has = await req(this.tx("photos").objectStore("photos").getKey(id));
+    if (has === undefined) throw new StoreError("not_found", "không tìm thấy");
+    if ((await this.persons()).some((x) => V.personPhotoRefs(x).includes(id))) {
+      throw new StoreError("input", "Ảnh đang được dùng trong một hồ sơ nên chưa xóa được");
+    }
+    const tx = this.tx(["photos", "meta"], "readwrite");
+    const fin = done(tx);
+    tx.objectStore("photos").delete(id);
+    Store.markChanged(tx, nowRfc3339());
+    await fin;
   }
 
   async deleteEvent(id: string): Promise<void> {

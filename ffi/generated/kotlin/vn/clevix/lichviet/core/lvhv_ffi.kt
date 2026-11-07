@@ -860,6 +860,8 @@ internal interface UniffiForeignFutureCompleteVoid : com.sun.jna.Callback {
 
 
 
+
+
 // For large crates we prevent `MethodTooLargeException` (see #2340)
 // N.B. the name of the extension is very misleading, since it is 
 // rather `InterfaceTooLargeException`, caused by too many methods 
@@ -972,6 +974,8 @@ fun uniffi_lvhv_ffi_checksum_method_lvhvstore_delete_event(
 fun uniffi_lvhv_ffi_checksum_method_lvhvstore_delete_person(
 ): Short
 fun uniffi_lvhv_ffi_checksum_method_lvhvstore_delete_person_and_orphan_events(
+): Short
+fun uniffi_lvhv_ffi_checksum_method_lvhvstore_delete_photo(
 ): Short
 fun uniffi_lvhv_ffi_checksum_method_lvhvstore_due_today_json(
 ): Short
@@ -1088,6 +1092,8 @@ fun uniffi_lvhv_ffi_fn_method_lvhvstore_delete_person(`ptr`: Pointer,`id`: RustB
 ): Unit
 fun uniffi_lvhv_ffi_fn_method_lvhvstore_delete_person_and_orphan_events(`ptr`: Pointer,`id`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
+fun uniffi_lvhv_ffi_fn_method_lvhvstore_delete_photo(`ptr`: Pointer,`id`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
 fun uniffi_lvhv_ffi_fn_method_lvhvstore_due_today_json(`ptr`: Pointer,`today`: RustBuffer.ByValue,`zone`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_lvhv_ffi_fn_method_lvhvstore_event_types_json(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
@@ -1487,6 +1493,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_lvhv_ffi_checksum_method_lvhvstore_delete_person_and_orphan_events() != 33298.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_lvhv_ffi_checksum_method_lvhvstore_delete_photo() != 19012.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_lvhv_ffi_checksum_method_lvhvstore_due_today_json() != 53614.toShort()) {
@@ -2060,6 +2069,13 @@ public interface LvhvStoreInterface {
     fun `deletePersonAndOrphanEvents`(`id`: kotlin.String): List<kotlin.String>
     
     /**
+     * Xóa một ảnh không hồ sơ nào dùng (ví dụ đã `add_photo` rồi người dùng hủy, không lưu hồ sơ). Ảnh mà hồ sơ
+     * bỏ khi đổi/xóa ảnh thì `save_person_json` đã tự xóa, không cần gọi hàm này. Ảnh còn được dùng → `Invalid`;
+     * không có → `NotFound`.
+     */
+    fun `deletePhoto`(`id`: kotlin.String)
+    
+    /**
      * `due_today_json` trên dữ liệu của kho.
      */
     fun `dueTodayJson`(`today`: SolarDay, `zone`: DeviceZone): kotlin.String
@@ -2386,6 +2402,23 @@ open class LvhvStore: Disposable, AutoCloseable, LvhvStoreInterface
     }
     )
     }
+    
+
+    
+    /**
+     * Xóa một ảnh không hồ sơ nào dùng (ví dụ đã `add_photo` rồi người dùng hủy, không lưu hồ sơ). Ảnh mà hồ sơ
+     * bỏ khi đổi/xóa ảnh thì `save_person_json` đã tự xóa, không cần gọi hàm này. Ảnh còn được dùng → `Invalid`;
+     * không có → `NotFound`.
+     */
+    @Throws(LvhvDataException::class)override fun `deletePhoto`(`id`: kotlin.String)
+        = 
+    callWithPointer {
+    uniffiRustCallWithError(LvhvDataException) { _status ->
+    UniffiLib.INSTANCE.uniffi_lvhv_ffi_fn_method_lvhvstore_delete_photo(
+        it, FfiConverterString.lower(`id`),_status)
+}
+    }
+    
     
 
     

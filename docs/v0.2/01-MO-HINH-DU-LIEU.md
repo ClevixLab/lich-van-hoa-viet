@@ -204,6 +204,11 @@ Dữ liệu ảnh: PWA lưu `Blob` trong kho `photos` của IndexedDB; native l�
 (`files/photos/<id>.jpg` trên Android, `Application Support/photos/` trên Apple, `%LOCALAPPDATA%\ClevixLab\LichVanHoaViet\photos\` trên
 Windows), bảng SQLite chỉ giữ siêu dữ liệu trên. Ảnh **không** nằm trong thư viện ảnh chung của máy.
 
+Ảnh không còn dùng: khi lưu hồ sơ, ảnh mà bản cũ của hồ sơ dùng (`photo_id`, `certificate_photo_ids`) nhưng bản mới
+bỏ đi bị xóa (bản ghi và tệp) trong cùng giao dịch, nếu không hồ sơ nào khác còn dùng. Ảnh đã thêm mà chưa gắn hồ sơ
+nào (người dùng hủy màn hình nhập) xóa bằng `delete_photo(id)` (PWA `deletePhoto`). Ảnh còn được dùng thì không xóa
+được. Hai bản cài đặt kiểm chéo bằng `scripts/check-store.sh` (kịch bản `photo_gc`).
+
 ### 3.9 `AppSettings` — cài đặt chung (một bản ghi)
 
 | Trường | Kiểu | Mặc định | Ghi chú |
