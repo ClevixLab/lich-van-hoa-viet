@@ -17,6 +17,7 @@ duyệt; nếu duyệt đổi yêu cầu, phần mã đã viết được sửa 
 | YC-2026-03 | 07/11 | "anh muốn bổ sung ngay module cho người đã mất, và module cho người còn sống; lưu ý người dùng có thể xem danh sách sự kiện cho người sống/mất theo tuần/tháng/quý/năm" | Cao |
 | YC-2026-04 | 07/11 | Mọi mở rộng đều theo quy trình chuyên nghiệp (docs/08) | Bắt buộc |
 | YC-2026-05 | 07/11 | "Khi cập nhật một người từ sống thành mất thì nên có phần ghi chú ( ai báo, mất ở đâu, lý do, giấy báo tử nếu có)" | Cao |
+| YC-2026-07 | 07/11 | "trong phần cách gọi, các đại từ nhân xưng như: Ông/Bà/Cụ/Kỵ/Bác/Cô/Chú/Dì/Cậu/Mợ/Thím/Anh/Chị/Cháu/Con/Bạn, Ông Tổ họ, Bà Cô Tổ họ, Bé đỏ... đều phải viết hóa chữ cái đầu tiên để thể hiện sự tôn trọng. Thông tin báo tử nên cho phép người dùng load và lưu file ảnh tin báo tử, hoặc bản scanned giấy chứng tử, hoặc một trường text để có thể note lại. Lưu ý các đại từ nhân xưng như: Cụ, Kỵ, Bà Cô Tổ, Ông Tổ họ, Bé đỏ không xuất hiện trong mục danh xưng người sống nhé (cách gọi đứng trước tên). Trong mục người thân nên có thêm mục giới tính" — xử lý ở 01 §3.1, §3.2a, §3.8a | Cao |
 | YC-2026-06 | 07/11 | Với người đã mất chỉ nhắc ngày giỗ; dùng từ thường ngày (ông/bà/cụ/kỵ…), bỏ "Hiển khảo" (04 Bổ sung B4) | Cao |
 
 ## 2. Câu chuyện người dùng
@@ -91,6 +92,7 @@ dùng bản TypeScript trùng từng byte.
 | R-CUL-2 | Hình mâm cúng, bia không hợp phong tục vùng miền | Vừa | Vừa | Một phong cách trung tính trước; nguồn trong `content/memorial/PHONG-TUC.md`; thêm phong cách ở đợt 4 | Vai nội dung |
 | R-NAT-1 | Bốn nền tảng làm giao diện riêng → lệch hành vi | Cao | Vừa | Mọi tính toán ở lõi qua FFI; giao diện chỉ hiển thị; cùng đặc tả 08; ca kiểm thử giao diện chung | Điều phối viên |
 | R-PRIV-2 | Lý do mất và giấy báo tử là thông tin nhạy cảm | Vừa | Cao | Chỉ lưu trên máy; không bao giờ đưa vào thông báo, .ics, màn hình tưởng niệm, tên tệp, URL; có trong sao lưu mã hóa; hộp xác nhận xuất ghi rõ "gồm thông tin báo tử"; ảnh giấy tờ bỏ siêu dữ liệu (S9) | Vai lõi + PWA |
+| R-PDF-1 | Tệp PDF quét giấy chứng tử lưu nguyên bản, có thể còn siêu dữ liệu (tên máy quét, phần mềm) | Vừa | Thấp | Chỉ lưu trên máy và trong sao lưu mã hóa; giao diện báo rõ; ảnh thì luôn bỏ siêu dữ liệu | Vai lõi |
 | R-PERF-1 | Tính danh sách năm cho nhiều hồ sơ chậm trên máy yếu | Thấp | Vừa | Đo với 200 hồ sơ; ngưỡng ghi vào biên bản | Vai lõi |
 
 ## 7. Kế hoạch và phân công

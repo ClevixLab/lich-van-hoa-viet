@@ -71,10 +71,11 @@ Event   1 ──── 1   ReminderRule     (nhúng)
 |---|---|---|---|
 | `id` | UUID v4 | có | §1 |
 | `kind` | `"deceased"` \| `"living"` | có | Đổi `living` → `deceased` được (thêm `death`); đổi ngược lại phải xóa `death` và `memorial`, có hộp xác nhận |
-| `danh_xung` | chuỗi 0–40 | không | Gợi ý trong giao diện: cụ, kị, ông, bà, bác, chú, thím, cô, dì, cậu, mợ, anh, chị, em, bố, mẹ, cha, má, ba… Người dùng gõ tự do được. Không kiểm tra theo danh sách |
+| `danh_xung` | chuỗi 0–40 | không | Cách gọi đứng trước tên. **Viết hoa chữ cái đầu** (YC-2026-07): lớp lưu trữ chuẩn hóa chữ cái đầu tiên thành chữ hoa khi lưu (NFC, phần còn lại giữ nguyên như người dùng gõ). Gợi ý cho **người đã mất**: Ông, Bà, Cụ, Kỵ, Bác, Cô, Chú, Dì, Cậu, Mợ, Thím, Anh, Chị, Em, Cháu, Con, Bạn, Bố, Mẹ, Ông Tổ họ, Bà Cô Tổ họ, Bé đỏ. Gợi ý cho **người đang sống**: như trên nhưng **không có** Cụ, Kỵ, Ông Tổ họ, Bà Cô Tổ họ, Bé đỏ. Người dùng gõ tự do được; không kiểm tra theo danh sách |
+| `gioi_tinh` | `"nam"` \| `"nu"` \| `null` | không | Giới tính (YC-2026-07). Hiển thị "Nam" / "Nữ" / "Không ghi". Dùng để gợi ý cách gọi phù hợp (ví dụ Ông/Bà); **không** ảnh hưởng ngày giỗ, tuổi, lời nhắc. Thiếu khóa = `null` (tệp cũ vẫn hợp lệ) |
 | `ho_ten` | chuỗi 1–120 | **có** | Không rỗng sau khi cắt khoảng trắng |
 | `ten_hieu` | chuỗi 0–120 | không | Tên hiệu, pháp danh, tên thánh… (nhãn hiển thị chung "Tên hiệu / pháp danh") |
-| `quan_he` | chuỗi 0–120 | không | Quan hệ gia đình, tự do (ví dụ "ông nội", "bà ngoại bên mẹ") |
+| `quan_he` | chuỗi 0–120 | không | Quan hệ gia đình, tự do (ví dụ "Ông nội", "Bà ngoại bên mẹ"). Chữ cái đầu viết hoa khi lưu, như `danh_xung` |
 | `birth` | `BirthInfo` \| `null` | không | §3.3 |
 | `death` | `DeathInfo` \| `null` | khi `deceased` | §3.2 |
 | `noi_an_tang` | chuỗi 0–300 | không | Chỉ `deceased` |
@@ -112,7 +113,7 @@ hai đầu, rỗng ghi là `null`.
 | `place` | chuỗi ≤ 200 \| `null` | Mất ở đâu (khác nơi an táng ở `Person`) |
 | `reason` | chuỗi ≤ 500 \| `null` | Lý do. **Nhạy cảm**: chỉ hiện trên trang hồ sơ |
 | `notice_date` | `DateValue` \| `null` | Ngày nhận tin (dương), không được sau hôm nay |
-| `certificate_photo_ids` | mảng UUID, 0–4 phần tử | Ảnh giấy báo tử, lưu như `Photo` (§3.8: mã hóa lại, bỏ siêu dữ liệu), thuộc về hồ sơ này; xóa hồ sơ thì xóa ảnh |
+| `attachments` | mảng 0–6 phần tử `{ "id": UUID, "kind": "tin_bao_tu" \| "giay_chung_tu" \| "khac", "file_id": UUID }` | Tệp đính kèm (YC-2026-07, **thay** `certificate_photo_ids`): ảnh tin báo tử, bản chụp/quét giấy chứng tử, hoặc tệp khác. `file_id` trỏ tới một `Attachment` (§3.8a). Thuộc về hồ sơ này; xóa hồ sơ hoặc gỡ khỏi danh sách thì xóa tệp |
 | `note` | chuỗi ≤ 2000 \| `null` | Ghi chú |
 
 Quy tắc: `notice` chỉ có khi có `DeathInfo`. Không trường nào của `notice` được đưa vào thông báo, tệp .ics, màn hình
@@ -203,6 +204,21 @@ Loại có sẵn (không xóa được, đổi tên được):
 Dữ liệu ảnh: PWA lưu `Blob` trong kho `photos` của IndexedDB; native lưu tệp trong thư mục riêng của ứng dụng
 (`files/photos/<id>.jpg` trên Android, `Application Support/photos/` trên Apple, `%LOCALAPPDATA%\ClevixLab\LichVanHoaViet\photos\` trên
 Windows), bảng SQLite chỉ giữ siêu dữ liệu trên. Ảnh **không** nằm trong thư viện ảnh chung của máy.
+
+### 3.8a `Attachment` — tệp đính kèm thông tin báo tử (YC-2026-07, 2026-11-07)
+
+| Trường | Kiểu | Kiểm tra / ghi chú |
+|---|---|---|
+| `id` | UUID v4 | — |
+| `mime` | `"image/jpeg"` \| `"image/webp"` \| `"application/pdf"` | Ảnh: luôn giải mã và mã hóa lại như `Photo` (§3.8, bỏ siêu dữ liệu, cạnh dài ≤ 2048 px để giấy tờ còn đọc được, ≤ 2 MB). PDF (bản quét): lưu **nguyên byte**, ≤ 10 MB, phải bắt đầu bằng `%PDF-`; giao diện báo rõ "Tệp PDF được lưu nguyên bản" |
+| `bytes` | số nguyên | Theo giới hạn trên |
+| `sha256` | 64 hex | Kiểm tra khi nhập sao lưu |
+| `stripped` | boolean | `true` với ảnh; `false` với PDF |
+| `file_name` | chuỗi ≤ 120 \| `null` | Tên gốc để hiển thị; **không** dùng làm tên tệp khi lưu trên máy |
+| `created_at` | RFC 3339 UTC | — |
+
+Lưu trên máy như ảnh (§3.8), thư mục `attachments/`. Có trong tệp sao lưu mã hóa; giới hạn tổng tệp sao lưu (03) giữ nguyên.
+Không bao giờ đưa vào thông báo, .ics, màn hình tưởng niệm.
 
 ### 3.9 `AppSettings` — cài đặt chung (một bản ghi)
 
