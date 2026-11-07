@@ -140,7 +140,8 @@ class TrayFormStateTest {
     fun processingCleansUpEvenWhenCancelled() = runBlocking {
         val f = form()
         val cap = capturedFile(exifJpeg(4000, 3000))
-        val job = launch(Dispatchers.Default, start = CoroutineStart.UNDISPATCHED) { processTrayPick(ctx, f, Uri.fromFile(cap), cap) }
+        // Trên vòng lặp của runBlocking: chạy tới chỗ chuyển sang Dispatchers.Default (đang xử lý) rồi trả về đây.
+        val job = launch(start = CoroutineStart.UNDISPATCHED) { processTrayPick(ctx, f, Uri.fromFile(cap), cap) }
         assertTrue(f.trayBusy)
         job.cancel() // khối "Tưởng niệm" thu gọn / rời biểu mẫu
         job.join()
