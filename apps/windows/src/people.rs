@@ -3095,15 +3095,20 @@ fn bg<T: Send + 'static>(
         std::thread::spawn(move || {
             let r = work();
             let _ = slint::invoke_from_event_loop(move || {
-                if let Some(ui) = w.upgrade() {
-                    let ps = PS_TLS.with(|t| t.borrow().clone());
-                    if let Some(ps) = ps {
-                        done(&ui, &mut ps.borrow_mut(), r);
-                    }
-                }
+                deliver(&w, r, done);
             });
         });
     }
+}
+
+/// Phần của `bg` chạy trên luồng giao diện khi việc ở luồng phụ xong: tìm lại cửa sổ và trạng thái mô-đun rồi gọi
+/// `done`. Tách riêng để kiểm thử gọi được (DV25-03). Trả `false` khi cửa sổ đã đóng hoặc mô-đun chưa nối (`done` không
+/// chạy — khi đó cũng không còn nút nào để mở khóa).
+pub(crate) fn deliver<T>(w: &slint::Weak<AppWindow>, r: T, done: fn(&AppWindow, &mut PState, T)) -> bool {
+    let Some(ui) = w.upgrade() else { return false };
+    let Some(ps) = PS_TLS.with(|t| t.borrow().clone()) else { return false };
+    done(&ui, &mut ps.borrow_mut(), r);
+    true
 }
 
 /// Đọc + mã hóa lại một ảnh; kiểm 25 MB **trước** khi đọc tệp (MA3N-25-07).
@@ -3284,18 +3289,21 @@ fn open_backup_file(ui: &AppWindow, ps: &mut PState) {
             let bytes = std::fs::read(&path).map_err(|e| format!("Không đọc được tệp: {e}"))?;
             lvhv_ffi::open_backup(bytes, pw).map_err(|e| e.to_string())
         },
-        |ui, ps, r| {
-            let p = People::get(ui);
-            p.set_restore_busy(false);
-            match r {
-                Err(e) => p.set_restore_error(ss(e)),
-                Ok(b) => {
-                    p.set_restore_error(ss(""));
-                    show_restore_preview(ui, ps, b);
-                }
-            }
-        },
+        backup_opened,
     );
+}
+
+/// Kết quả giải mã tệp sao lưu (luồng giao diện): mở khóa nút "Mở tệp" ở **cả hai** nhánh (MA3C-25-05, DV25-03).
+pub(crate) fn backup_opened(ui: &AppWindow, ps: &mut PState, r: Result<std::sync::Arc<lvhv_ffi::VerifiedBackup>, String>) {
+    let p = People::get(ui);
+    p.set_restore_busy(false);
+    match r {
+        Err(e) => p.set_restore_error(ss(e)),
+        Ok(b) => {
+            p.set_restore_error(ss(""));
+            show_restore_preview(ui, ps, b);
+        }
+    }
 }
 
 /// Hộp xem trước khôi phục (03 §2.4, 08 §3.8 C) cho một tệp đã giải mã và kiểm tra.
