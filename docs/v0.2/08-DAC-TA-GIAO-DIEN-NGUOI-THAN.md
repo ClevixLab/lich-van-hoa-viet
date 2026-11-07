@@ -961,3 +961,16 @@ tối `-dark`, chữ rất lớn Accessibility L `-large`; bố cục iPad `ipad
 **Cần máy thật (không làm được trên CI mô phỏng, chưa ký):** R5 trên iPhone thật (thông báo đến đúng giờ, sau khởi
 động lại, xoay vòng 64 khi để lâu), P8 (Argon2id trên iPhone), P9 (bộ nhớ, 0 lần đánh thức nền), thông báo trên macOS
 (app chưa ký), chọn ảnh HEIC thật từ thư viện (S9 với ảnh iPhone).
+
+**Riêng tư, bảo mật và nâng cấp (bản Apple, sau rà soát `RA-SOAT-BAO-MAT-V02.md` và 04 Bổ sung B5/B6):**
+
+| Mã | Bản Apple |
+|---|---|
+| BM2-04 | Khi ứng dụng rời tiền cảnh (`scenePhase` khác `.active`), cửa sổ chính và mọi tấm (sao lưu, khôi phục, .ics) bị phủ một lớp nền + tên ứng dụng — ảnh của bộ chuyển ứng dụng không chứa thông tin báo tử, ảnh giấy tờ hay ô mật khẩu |
+| BM2-10, B6 mục 3 | Giải mã ảnh để hiển thị: đọc kích thước từ phần đầu tệp, từ chối > 12 000 px mỗi cạnh hoặc > 50 Mpx, lấy mẫu xuống ≤ 2048 px bằng ImageIO (không giải mã đầy đủ) |
+| BM2-14 | Ô mật khẩu sao lưu không đặt `textContentType(.password)` — hệ điều hành không đề nghị lưu vào Keychain (BK-I5) |
+| BM2-17 | Mật khẩu khôi phục bị xóa khỏi ô ngay sau khi mở tệp, kể cả khi lỗi; `VerifiedBackup` được thả khi đóng tấm |
+| BM2-20 | Thư mục `photos/` (và `attachments/` khi có) dùng lớp bảo vệ `.complete`; `lvhv.sqlite` giữ mặc định để lập lịch lại thông báo khi máy còn khóa |
+| §5.3 | Xem tệp đính kèm: Quick Look trên tệp tạm `tmp/att/TepDinhKem.pdf|.jpg` (tên chung), xóa khi đóng và khi mở ứng dụng. Phần dữ liệu tệp đính kèm chờ lõi (YC-2026-07, PR #28) |
+| R14 (B5) | CI `apple` job `upgrade`: (A) bản 0.1 (`main`) → bản mới: cỡ chữ, sáng/tối, "Để sau" giữ nguyên; (B) bản 0.2-dev (`89dedb3`) tạo 5 hồ sơ, 1 sự kiện, 2 ảnh, thông tin báo tử → cài đè bản mới: dữ liệu giống hệt bản chép trước khi cài đè, ảnh đọc lại được, lịch nhắc được đặt lại. Dữ liệu ở `Application Support/LichVanHoaViet/`, không có mã nào xóa nó khi cập nhật. Ca chuyển đổi lỗi và băng chỉ đọc: chờ hàm trạng thái chuyển đổi của lõi (PR #28) |
+| YC-2026-07 | Đã làm phần không cần lõi: viết hoa chữ đầu cách gọi/quan hệ khi lưu và khi hiển thị; gợi ý cách gọi riêng cho người đã mất / đang sống. Chờ lõi: giới tính (`gioi_tinh`), "Tệp đính kèm" (≤ 6, ba loại, ảnh/PDF) — lược đồ hiện tại của lõi chưa nhận các trường này |

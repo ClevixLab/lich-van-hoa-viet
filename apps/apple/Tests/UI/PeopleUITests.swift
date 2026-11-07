@@ -115,11 +115,8 @@ final class PeopleUITests: XCTestCase {
             _ = app.alerts.firstMatch.waitForExistence(timeout: 40)
             snap("restore-replace-confirm-\(v)")
             app.terminate()
-            app = launch(screen: "mark", dark: dark, big: big)
-            for (id, val) in [("death.day", "1"), ("death.month", "11"), ("death.year", "2026")] {
-                let f = app.textFields[id]
-                if f.waitForExistence(timeout: 5) { f.tap(); f.typeText(val) }
-            }
+            // Ngày mất điền sẵn (-lvhvPrefill mark) để không phụ thuộc bàn phím mô phỏng.
+            app = launch(screen: "mark", dark: dark, big: big, extra: ["-lvhvPrefill", "mark"])
             tapScrolling(app, app.buttons["mark.save"].firstMatch)
             _ = app.alerts.firstMatch.waitForExistence(timeout: 5)
             snap("mark-confirm-\(v)")

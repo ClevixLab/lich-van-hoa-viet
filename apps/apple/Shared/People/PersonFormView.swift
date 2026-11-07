@@ -409,9 +409,17 @@ struct MarkDeceasedView: View {
     let id: String
     @Binding var path: [PRoute]
     @ObservedObject private var m = PeopleModel.shared
-    @State private var death = DateDraft()
+    @State private var death = MarkDeceasedView.demoDeath
     @State private var notice = NoticeDraft()
     @State private var noticeOpen = true
+
+    private static var demoDeath: DateDraft {
+        var d = DateDraft()
+        #if DEBUG
+        if UserDefaults.standard.string(forKey: "lvhvPrefill") == "mark" { d.day = "1"; d.month = "11"; d.year = "2026" }
+        #endif
+        return d
+    }
     @State private var submitted = false
     @State private var confirm = false
     @State private var saveError: String?
