@@ -18,6 +18,19 @@ export const SCHEMA_VERSION = 1;
 const STORES = ["persons", "events", "event_types", "photos", "settings", "meta"] as const;
 type StoreName = (typeof STORES)[number];
 
+/**
+ * 01 §3.2a: `death.notice` vắng ≡ `null`. Bản Rust (chuẩn) đọc `null` thành `None` và KHÔNG ghi khóa khi `None`
+ * (`skip_serializing_if`), nên ở đây cũng bỏ khóa `"notice": null` trước khi lưu — để `stateHash` và tệp xuất
+ * giống Rust từng byte kể cả khi tài liệu nhập vào có ghi `null`.
+ */
+export function normNotice(p: JsonObj): JsonObj {
+  const d = p.death as JsonObj | null;
+  if (!d || typeof d !== "object" || !Object.prototype.hasOwnProperty.call(d, "notice") || d.notice !== null) return p;
+  const { notice: _n, ...rest } = d;
+  void _n;
+  return { ...p, death: rest };
+}
+
 export class StoreError extends Error {
   constructor(public code: "invalid" | "input" | "newer_schema" | "not_found" | "backup", msg: string, public cause?: unknown) { super(msg); }
 }
@@ -141,24 +154,26 @@ export class Store {
    * Ghi một Person (đã đủ trường dẫn xuất — derive.buildPerson) và, nếu có, ảnh mới của người đó, trong
    * **một** giao dịch (01 §4.1). Lần lưu hồ sơ đầu tiên gọi requestPersistentStorage().
    */
-  async putPerson(p: JsonObj, newPhoto?: NewPhoto): Promise<void> {
+  async putPerson(p: JsonObj, newPhoto?: NewPhoto, extraPhotos: NewPhoto[] = []): Promise<void> {
     try { V.person(p, "/person"); } catch (e) { throw vErr(e); }
-    let photoRec: { id: string; meta: JsonObj; blob: Blob } | null = null;
-    if (newPhoto) {
-      const meta: JsonObj = { bytes: newPhoto.bytes.length, created_at: nowRfc3339(), height: newPhoto.height, id: newPhoto.id, mime: newPhoto.mime, sha256: await sha256Hex(newPhoto.bytes), stripped: true, width: newPhoto.width };
+    // `extraPhotos`: ảnh giấy báo tử mới (01 §3.2a) — ghi cùng giao dịch với hồ sơ.
+    const recs: { id: string; meta: JsonObj; blob: Blob }[] = [];
+    for (const np of newPhoto ? [newPhoto, ...extraPhotos] : extraPhotos) {
+      const meta: JsonObj = { bytes: np.bytes.length, created_at: nowRfc3339(), height: np.height, id: np.id, mime: np.mime, sha256: await sha256Hex(np.bytes), stripped: true, width: np.width };
       try { V.photo(meta, "/photo"); } catch (e) { throw vErr(e); }
-      photoRec = { id: newPhoto.id, meta, blob: new Blob([newPhoto.bytes as Uint8Array<ArrayBuffer>], { type: newPhoto.mime }) };
+      recs.push({ id: np.id, meta, blob: new Blob([np.bytes as Uint8Array<ArrayBuffer>], { type: np.mime }) });
     }
     const first = (await this.persons()).length === 0;
     const tx = this.tx(["persons", "photos", "meta"], "readwrite");
     const fin = done(tx);
-    if (photoRec) tx.objectStore("photos").put(photoRec);
+    for (const r of recs) tx.objectStore("photos").put(r);
+    const fresh = new Set(recs.map((r) => r.id));
     for (const pid of V.personPhotoRefs(p)) {
-      if (pid === photoRec?.id) continue;
+      if (fresh.has(pid)) continue;
       const r = tx.objectStore("photos").getKey(pid);
       r.onsuccess = () => { if (r.result === undefined) { tx.abort(); } };
     }
-    tx.objectStore("persons").put(p);
+    tx.objectStore("persons").put(normNotice(p));
     Store.markChanged(tx, nowRfc3339());
     try { await fin; } catch (e) { throw new StoreError("invalid", "V3 /person/photo_id: ảnh không tồn tại", e); }
     if (first && (await this.persistResult()) === null) await requestPersistentStorage(this);
@@ -314,7 +329,7 @@ export class Store {
     for (const n of ["persons", "events", "event_types", "photos"] as const) tx.objectStore(n).clear();
     for (const r of [...keptPhotos, ...recs]) tx.objectStore("photos").put(r);
     for (const t of target.event_types as JsonObj[]) tx.objectStore("event_types").put({ id: t.id, name_key: V.nameKey(t.ten as string), doc: t });
-    for (const p of target.persons as JsonObj[]) tx.objectStore("persons").put(p);
+    for (const p of target.persons as JsonObj[]) tx.objectStore("persons").put(normNotice(p));
     for (const e of target.events as JsonObj[]) tx.objectStore("events").put(e);
     if (mode === "replace") tx.objectStore("settings").put(target.settings, "app");
     Store.markChanged(tx, nowRfc3339());
