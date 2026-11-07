@@ -38,10 +38,11 @@ class AboutScreenTest {
         rule.onNodeWithText("Về ứng dụng").performScrollTo()
         rule.waitForIdle()
         captureScreenRoboImage(File(shotDir, "and-gioi-thieu-1-ve-ung-dung-$theme.png").path)
-        rule.onNodeWithText("Bắt đầu trong một phút").performScrollTo()
+        // Cuộn tới mục cuối của phần (performScrollTo đưa nút tới mép dưới) để cả phần nằm trong khung chụp.
+        rule.onNodeWithText("Đúng ngày giỗ", substring = true).performScrollTo()
         rule.waitForIdle()
         captureScreenRoboImage(File(shotDir, "and-gioi-thieu-2-bat-dau-$theme.png").path)
-        rule.onNodeWithText("Quyền riêng tư").performScrollTo()
+        rule.onNodeWithText("Máy chỉ ghi nhớ thêm", substring = true).performScrollTo()
         rule.waitForIdle()
         captureScreenRoboImage(File(shotDir, "and-gioi-thieu-3-rieng-tu-$theme.png").path)
     }
