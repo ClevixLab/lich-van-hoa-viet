@@ -86,6 +86,8 @@ struct NoticeEditor: View {
                 }
                 FieldError(text: photoError ?? errors["notice.photos"])
                 PFine("Ảnh chỉ lưu trong ứng dụng trên máy này, đã bỏ thông tin vị trí và máy chụp.")
+                // Tạm thời tới khi lõi dọn ảnh không còn dùng (TKN-I-08, A-7).
+                PFine("“Bỏ ảnh” gỡ ảnh khỏi hồ sơ; ảnh được xóa hẳn khỏi máy khi xóa hồ sơ.")
             }
             PTextField(label: "Ghi chú", text: $n.note, error: errors["notice.note"], multiline: true, id: "notice.note")
         }
@@ -122,8 +124,16 @@ struct PersonFormView: View {
         self.editId = editId
         _path = path
         let m = PeopleModel.shared
-        let draft = editId.flatMap { m.person($0) }.map { PersonDraft(person: $0, settings: m.settings) }
+        var draft = editId.flatMap { m.person($0) }.map { PersonDraft(person: $0, settings: m.settings) }
             ?? PersonDraft(kind: kind, settings: m.settings)
+        var startSubmitted = false
+        #if DEBUG
+        if editId == nil, let pf = UserDefaults.standard.string(forKey: "lvhvPrefill") {
+            DemoSeed.prefill(&draft, pf)
+            startSubmitted = pf == "loi"
+        }
+        #endif
+        _submitted = State(initialValue: startSubmitted)
         _d = State(initialValue: draft)
         _original = State(initialValue: draft)
         _last = State(initialValue: draft)
@@ -401,8 +411,19 @@ struct MarkDeceasedView: View {
     @State private var submitted = false
     @State private var confirm = false
     @State private var saveError: String?
+    @State private var confirmDiscard = false
 
     private var name: String { m.person(id).map(PFmt.displayName) ?? "" }
+    private var dirty: Bool { !death.isEmpty || !notice.isEmpty }
+
+    private func cancel() {
+        if dirty { confirmDiscard = true } else if !path.isEmpty { path.removeLast() }
+    }
+
+    private func trySave() {
+        submitted = true
+        if errors.isEmpty { confirm = true }
+    }
 
     private var errors: FieldErrors {
         var e = FieldErrors()
@@ -436,11 +457,8 @@ struct MarkDeceasedView: View {
                 }
                 HStack(spacing: 12) {
                     Spacer()
-                    Button("Hủy") { if !path.isEmpty { path.removeLast() } }.buttonStyle(SecondaryButtonStyle())
-                    Button("Lưu") {
-                        submitted = true
-                        if errors.isEmpty { confirm = true }
-                    }
+                    Button("Hủy") { cancel() }.buttonStyle(SecondaryButtonStyle())
+                    Button("Lưu") { trySave() }
                     .buttonStyle(PrimaryButtonStyle())
                     .accessibilityIdentifier("mark.save")
                 }
@@ -452,6 +470,16 @@ struct MarkDeceasedView: View {
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
         #endif
+        // Như các biểu mẫu khác: ẩn nút quay lại (và cử chỉ vuốt) để không mất dữ liệu đang nhập (TKN-I-09).
+        .navigationBarBackButtonHidden(true)
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) { Button("Hủy") { cancel() } }
+            ToolbarItem(placement: .confirmationAction) { Button("Lưu") { trySave() } }
+        }
+        .alert("Bỏ các thay đổi chưa lưu?", isPresented: $confirmDiscard) {
+            Button("Tiếp tục sửa", role: .cancel) {}
+            Button("Bỏ thay đổi", role: .destructive) { if !path.isEmpty { path.removeLast() } }
+        }
         .alert("Cập nhật \(name) là người đã mất?", isPresented: $confirm) {
             Button("Quay lại", role: .cancel) {}
             Button("Lưu thay đổi") { apply() }

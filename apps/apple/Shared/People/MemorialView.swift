@@ -36,6 +36,7 @@ struct MemorialView: View {
     @ObservedObject private var m = PeopleModel.shared
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var phase
+    @Environment(\.dismiss) private var dismiss
     /// Thời điểm khói còn chạy tới (nil = đang đứng yên).
     @State private var smokeUntil: Date?
 
@@ -58,6 +59,23 @@ struct MemorialView: View {
         .toolbarBackground(.visible, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
         #endif
+        // Nút quay lại và tiêu đề màu vàng đồng trên nền gỗ, ở cả giao diện sáng và tối (TKN-I-03).
+        .navigationBarBackButtonHidden(true)
+        .toolbar {
+            ToolbarItem(placement: .navigation) {
+                Button { dismiss() } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "chevron.left").font(.body.weight(.semibold))
+                        Text("Về hồ sơ").ps(17)
+                    }
+                    .foregroundStyle(MC.gold)
+                }
+                .accessibilityIdentifier("memorial.back")
+            }
+            ToolbarItem(placement: .principal) {
+                Text("Tưởng niệm").ps(17, .semibold).foregroundStyle(MC.gold)
+            }
+        }
         .onAppear { light() }
         .onDisappear { smokeUntil = nil }
         .onChange(of: phase) { ph in if ph != .active { smokeUntil = nil } }
@@ -121,7 +139,7 @@ struct MemorialView: View {
             }
             return "\(label) · hôm nay \(lunar)"
         }
-        return "Ngày giỗ tới: \(lunar), \(g.civil.dmy)"
+        return "Ngày giỗ sắp tới: \(lunar), \(g.civil.dmy)"
     }
 
     private func stele(_ p: JV) -> some View {
@@ -157,7 +175,7 @@ struct MemorialView: View {
 
     private func yearsLine(_ p: JV) -> String {
         let d = p["death"]["lunar"]
-        guard let dy = d["year"].int else { return "Giỗ ngày \(PFmt.lunarText(d))" }
+        guard let dy = d["year"].int else { return "Giỗ ngày \(PFmt.gioText(d))" }
         let death = "\(Lich.canChi(year: dy)) \(dy)"
         if let by = p["birth"]["lunar_year"].int {
             return "\(p["birth"]["can_chi"].str ?? Lich.canChi(year: by)) \(by) — \(death)"

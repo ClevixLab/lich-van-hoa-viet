@@ -151,6 +151,9 @@ final class ReminderScheduler: ObservableObject {
     }
 
     func refreshPermission() async {
+        #if DEBUG
+        if UserDefaults.standard.bool(forKey: "lvhvFakeDenied") { permission = .denied; return }
+        #endif
         permission = await center.authorization()
     }
 

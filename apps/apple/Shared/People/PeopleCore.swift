@@ -113,6 +113,11 @@ struct OccItem: Decodable, Hashable, Identifiable {
     var id: String { "\(self.class)|\(entity_id)|\(key)|\(date)" }
     var civil: CivilDate { CivilDate(iso: date) ?? CivilDate(y: 2000, m: 1, d: 1) }
     var isGio: Bool { self.class == "gio" || self.class == "tien_thuong" }
+    /// Dòng 1 của mục: "Giỗ đầu · Ông Nguyễn Văn A" (08 §2) — chèn "·" trước tên trong tiêu đề của lõi.
+    var line1: String {
+        guard !isEvent, !name.isEmpty, let r = headline.range(of: " " + name) else { return headline }
+        return headline.replacingCharacters(in: r, with: " · " + name)
+    }
     var isEvent: Bool { self.class.hasPrefix("su_kien") }
     /// Hồ sơ mở ra khi chạm (sự kiện → người đầu tiên).
     var personId: String? { isEvent ? person_ids.first : entity_id }
@@ -219,6 +224,12 @@ enum PFmt {
         }
     }
 
+    /// Ngày giỗ hằng năm: không ghi "nhuận" vì giỗ cúng vào tháng thường (O-4, TKN-I-04).
+    static func gioText(_ l: JV) -> String {
+        guard let m = l["month"].int, let d = l["day"].int else { return "" }
+        return "\(d)/\(m) âm lịch"
+    }
+
     static func lunarText(_ l: JV) -> String {
         guard let m = l["month"].int, let d = l["day"].int else { return "" }
         return "\(d)/\(m)\(l["leap"].isTrue ? " nhuận" : "") âm lịch"
@@ -310,6 +321,9 @@ final class PeopleModel: ObservableObject {
         let dir = PeoplePaths.storeDir()
         do {
             try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+            #if DEBUG
+            DemoSeed.prepareStoreErrorIfRequested(dir)
+            #endif
             store = try LvhvStore.open(dir: dir.path)
             PeoplePaths.excludeFromBackup(dir)
             opened = true
@@ -340,6 +354,9 @@ final class PeopleModel: ObservableObject {
             }
             summaries = sums
             todayReminders = loadTodayReminders()
+            #if DEBUG
+            if UserDefaults.standard.bool(forKey: "lvhvNagDue") { backupDue = true }
+            #endif
             revision += 1
         } catch {
             openError = Core.message(error)
@@ -464,6 +481,15 @@ final class PeopleModel: ObservableObject {
     }
 
     func photoData(_ id: String) -> Data? { try? store?.photoBytes(id: id) }
+
+    /// Lời nhắc kế tiếp đúng như sẽ hiện trên màn hình khóa (văn bản của lõi, theo tùy chọn O-9 của máy).
+    func nextLockScreenText() -> (title: String, body: String, fireLocal: String)? {
+        guard let st = store,
+              let j = try? st.remindersJson(nowUnixS: Int64(PeopleClock.now().timeIntervalSince1970),
+                                            zone: DeviceZones.current(at: PeopleClock.now()), horizonDays: 400),
+              let first = JV.parse(j)?.array.first else { return nil }
+        return (first["title"].string, first["body"].string, first["fire_local"].string)
+    }
 
     func putSettings(_ s: JV) throws {
         guard let st = store else { return }

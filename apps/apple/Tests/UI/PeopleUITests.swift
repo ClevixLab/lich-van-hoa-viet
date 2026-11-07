@@ -9,12 +9,25 @@ final class PeopleUITests: XCTestCase {
                         extra: [String] = []) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = ["-lvhvReset", "1", "-lvhvSeed", seed, "-lvhvToday", "2026-11-07", "-lvhvNoNotif", "1",
-                               "-lvhvScreen", screen, "-theme", dark ? "2" : "1", "-size", "1"] + extra
+                               "-lvhvScreen", screen, "-theme", dark ? "2" : "1", "-size", "1"] + Self.extras(screen) + extra
         if big {
             app.launchArguments += ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityL"]
         }
         app.launch()
         return app
+    }
+
+    /// Tham số thêm cho từng màn hình kiểm thử (chỉ bản Debug).
+    static func extras(_ screen: String) -> [String] {
+        switch screen {
+        case "upcoming-denied": return ["-lvhvFakeDenied", "1"]
+        case "backup-nag": return ["-lvhvNagDue", "1"]
+        case "form-am-nhuan": return ["-lvhvPrefill", "am-nhuan"]
+        case "form-duong": return ["-lvhvPrefill", "duong"]
+        case "form-loi": return ["-lvhvPrefill", "loi"]
+        case "form-living-am": return ["-lvhvPrefill", "living-am"]
+        default: return []
+        }
     }
 
     private var prefix: String { ProcessInfo.processInfo.environment["SHOT_PREFIX"] ?? "ios" }
@@ -37,8 +50,10 @@ final class PeopleUITests: XCTestCase {
     /// Màn hình mở thẳng bằng -lvhvScreen; `scroll` = chụp thêm ảnh sau khi cuộn.
     static let screens: [(String, Int)] = [
         ("upcoming", 1), ("period", 1), ("profiles", 1), ("backup", 1), ("person-deceased", 2), ("person-living", 1),
-        ("form-deceased", 4), ("form-living", 2), ("event", 1), ("event-deceased", 1), ("mark", 2), ("memorial", 1),
-        ("memorial-a", 1), ("settings", 1),
+        ("form-deceased", 4), ("form-living", 2), ("event", 1), ("event-deceased", 1), ("mark", 2), ("memorial", 2),
+        ("memorial-a", 2), ("settings", 2),
+        ("form-am-nhuan", 2), ("form-duong", 3), ("form-loi", 2), ("form-living-am", 3),
+        ("upcoming-denied", 1), ("store-error", 1), ("backup-nag", 1),
     ]
 
     private func shoot(variant: String, dark: Bool, big: Bool, screens: [(String, Int)]) {
@@ -91,6 +106,14 @@ final class PeopleUITests: XCTestCase {
             app.terminate()
             app = launch(screen: "period", dark: dark, big: big, extra: ["-lvhvPeriodKind", "quy"])
             snap("period-quy-\(v)")
+            app.terminate()
+            app = launch(screen: "restore", dark: dark, big: big)
+            _ = app.otherElements["restore.sheet"].firstMatch.waitForExistence(timeout: 40)
+            snap("restore-preview-\(v)")
+            app.terminate()
+            app = launch(screen: "restore-replace", dark: dark, big: big)
+            _ = app.alerts.firstMatch.waitForExistence(timeout: 40)
+            snap("restore-replace-confirm-\(v)")
             app.terminate()
             app = launch(screen: "mark", dark: dark, big: big)
             for (id, val) in [("death.day", "1"), ("death.month", "11"), ("death.year", "2026")] {

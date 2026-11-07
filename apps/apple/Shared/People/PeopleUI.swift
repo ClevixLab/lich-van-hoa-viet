@@ -199,7 +199,7 @@ struct PTextField: View {
                     TextField("", text: $text)
                 }
             }
-            .textFieldStyle(.roundedBorder)
+            .pfield()
             .ps(17)
             .autocorrectionDisabled(true)
             .accessibilityLabel(label)
@@ -234,7 +234,7 @@ struct NumField: View {
         VStack(alignment: .leading, spacing: 4) {
             Text(label).ps(13).foregroundStyle(C.ink2)
             TextField("", text: $text)
-                .textFieldStyle(.roundedBorder)
+                .pfield()
                 .ps(18)
                 .frame(minWidth: width, maxWidth: width * 1.6)
                 #if os(iOS)
@@ -266,21 +266,12 @@ struct DateInputView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             if allowLunar {
-                Picker("Lịch", selection: $draft.cal) {
-                    Text(calChoices.0).tag(CalKind.solar)
-                    Text(calChoices.1).tag(CalKind.lunar)
-                }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-                .accessibilityIdentifier("\(idPrefix).cal")
+                SegmentChips(options: [SegOpt(CalKind.solar, calChoices.0), SegOpt(CalKind.lunar, calChoices.1)],
+                             selection: $draft.cal, idPrefix: "\(idPrefix).cal")
             }
             if allowYearOnly {
-                Picker("Độ chính xác", selection: $draft.yearOnly) {
-                    Text("Biết đủ ngày").tag(false)
-                    Text("Chỉ biết năm").tag(true)
-                }
-                .pickerStyle(.segmented)
-                .labelsHidden()
+                SegmentChips(options: [SegOpt(false, "Biết đủ ngày"), SegOpt(true, "Chỉ biết năm")],
+                             selection: $draft.yearOnly, idPrefix: "\(idPrefix).precision")
             }
             HStack(alignment: .bottom, spacing: 10) {
                 if !draft.yearOnly {
@@ -433,13 +424,13 @@ struct OccRow: View {
             .background(C.paper2, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
             .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 3) {
-                Text(item.headline).ps(17, .semibold).foregroundStyle(C.ink)
+                Text(item.line1).ps(17, .semibold).foregroundStyle(C.ink)
                     .fixedSize(horizontal: false, vertical: true)
                 Text(item.dateText).ps(14).foregroundStyle(C.ink2)
                     .fixedSize(horizontal: false, vertical: true)
                 if let extra { Text(extra).ps(14).foregroundStyle(C.ink3).fixedSize(horizontal: false, vertical: true) }
                 HStack(spacing: 6) {
-                    Image(systemName: OccIcon.symbol(item.class)).accessibilityHidden(true)
+                    OccIconView(cls: item.class).accessibilityHidden(true)
                     Text("\(item.class_text) · \(PFmt.distance(days))").ps(14, .semibold)
                 }
                 .foregroundStyle(days == 0 ? C.redInk : C.ink2)
@@ -573,5 +564,104 @@ struct InfoRow: View {
 extension View {
     func pageWidth(_ max: CGFloat = 720) -> some View {
         self.padding(16).frame(maxWidth: max).frame(maxWidth: .infinity)
+    }
+}
+
+// MARK: - Nhóm chọn to theo chữ (thay Picker phân đoạn không theo Dynamic Type — TKN-I-05)
+
+struct SegOpt<T: Hashable>: Identifiable {
+    let value: T
+    let title: String
+    init(_ v: T, _ t: String) { value = v; title = t }
+    var id: String { title }
+}
+
+struct SegmentChips<T: Hashable>: View {
+    let options: [SegOpt<T>]
+    @Binding var selection: T
+    var idPrefix: String
+    var body: some View {
+        FlowLayout(spacing: 8) {
+            ForEach(Array(options.enumerated()), id: \.offset) { i, o in
+                ChoiceChip(title: o.title, on: selection == o.value) { selection = o.value }
+                    .accessibilityIdentifier("\(idPrefix).\(i)")
+            }
+        }
+    }
+}
+
+// MARK: - Ô nhập có viền rõ (TKN-I-06)
+
+struct PFieldStyle: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .textFieldStyle(.plain)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 9)
+            .background(C.field, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(C.fieldBorder, lineWidth: 1))
+    }
+}
+
+extension View {
+    func pfield() -> some View { modifier(PFieldStyle()) }
+}
+
+// MARK: - Biểu tượng loại (thống nhất với PWA/Android/Windows — TKN-I-12, TKN-X-07)
+
+/// Ba nén hương trên bát hương (giỗ).
+struct IncenseIcon: View {
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(alignment: .bottom, spacing: 2.5) {
+                ForEach(0..<3, id: \.self) { i in
+                    VStack(spacing: 0) {
+                        Circle().frame(width: 3, height: 3)
+                        Rectangle().frame(width: 1.6, height: i == 1 ? 10 : 8)
+                    }
+                }
+            }
+            RoundedRectangle(cornerRadius: 1.5).frame(width: 13, height: 4)
+        }
+        .frame(width: 18, height: 18)
+    }
+}
+
+/// Bánh sinh nhật có nến.
+struct CakeIcon: View {
+    var body: some View {
+        VStack(spacing: 0.5) {
+            HStack(spacing: 3) {
+                ForEach(0..<2, id: \.self) { _ in Rectangle().frame(width: 1.6, height: 4) }
+            }
+            RoundedRectangle(cornerRadius: 1.5).frame(width: 10, height: 4)
+            RoundedRectangle(cornerRadius: 1.5).frame(width: 15, height: 6)
+        }
+        .frame(width: 18, height: 18)
+    }
+}
+
+/// Mâm nhỏ (tiên thường).
+struct TrayIcon: View {
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 1) {
+                ForEach(0..<3, id: \.self) { _ in Circle().frame(width: 4, height: 4) }
+            }
+            Capsule().frame(width: 16, height: 3)
+        }
+        .frame(width: 18, height: 18)
+    }
+}
+
+struct OccIconView: View {
+    let cls: String
+    var body: some View {
+        switch cls {
+        case "gio": IncenseIcon()
+        case "tien_thuong": TrayIcon()
+        case "sinh_nhat", "sinh_nhat_am": CakeIcon()
+        default: Image(systemName: "star").frame(width: 18, height: 18)
+        }
     }
 }

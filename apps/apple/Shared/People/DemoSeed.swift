@@ -32,6 +32,40 @@ enum DemoSeed {
         return try? PhotoProcessor.process(jpg)
     }
 
+    /// "store-error": tạo kho rồi ghi `user_version` = 99 vào phần đầu tệp SQLite (byte 60–63) để lõi báo
+    /// "phiên bản mới hơn" thật khi mở.
+    static func prepareStoreErrorIfRequested(_ dir: URL) {
+        guard UserDefaults.standard.string(forKey: "lvhvScreen") == "store-error" else { return }
+        do { _ = try LvhvStore.open(dir: dir.path) } catch { return }
+        let db = dir.appendingPathComponent("lvhv.sqlite")
+        guard let h = try? FileHandle(forUpdating: db) else { return }
+        try? h.seek(toOffset: 60)
+        h.write(Data([0, 0, 0, 99]))
+        try? h.close()
+    }
+
+    /// Điền sẵn biểu mẫu để chụp ô ngày đang nhập, kết quả đổi lịch và lỗi.
+    static func prefill(_ d: inout PersonDraft, _ kind: String) {
+        switch kind {
+        case "am-nhuan":
+            d.danhXung = "Bà"; d.hoTen = "Trần Thị B"; d.quanHe = "Bà nội"
+            d.death.cal = .lunar; d.death.day = "15"; d.death.month = "6"; d.death.year = "2025"; d.death.leap = true
+        case "duong":
+            d.danhXung = "Ông"; d.hoTen = "Nguyễn Văn A"; d.quanHe = "Ông nội"
+            d.death.day = "8"; d.death.month = "8"; d.death.year = "2025"
+            d.birth.day = "1"; d.birth.month = "5"; d.birth.year = "1940"
+        case "loi":
+            d.death.day = "30"; d.death.month = "2"; d.death.year = "2026"
+            d.birth.day = "1"; d.birth.month = "5"; d.birth.year = "1940"
+            d.gio.hour = "25"
+        case "living-am":
+            d.hoTen = "Lê Văn C"; d.quanHe = "Con trai"
+            d.birth.day = "20"; d.birth.month = "1"; d.birth.year = "1990"
+            d.sinhNhatAmOn = true; d.amSame = false
+        default: break
+        }
+    }
+
     static func seedIfNeeded(_ m: PeopleModel) {
         let kind = UserDefaults.standard.string(forKey: "lvhvSeed") ?? ""
         guard kind == "demo", m.persons.isEmpty else { return }
@@ -99,7 +133,10 @@ enum DemoSeed {
         seedIfNeeded(m)
         guard let s = UserDefaults.standard.string(forKey: "lvhvScreen") else { return nil }
         switch s {
-        case "upcoming": return (.upcoming, [])
+        case "upcoming", "upcoming-denied", "backup-nag", "store-error": return (.upcoming, [])
+        case "restore", "restore-replace": return (.backup, [])
+        case "form-am-nhuan", "form-duong", "form-loi": return (.profiles, [.add("deceased")])
+        case "form-living-am": return (.profiles, [.add("living")])
         case "period": return (.period, [])
         case "profiles": return (.profiles, [])
         case "backup": return (.backup, [])

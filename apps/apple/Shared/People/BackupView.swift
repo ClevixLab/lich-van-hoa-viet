@@ -53,10 +53,12 @@ struct BackupSection: View {
     @State private var verified: VerifiedBackup?
     @State private var preview: BackupPreview?
     @State private var opening = false
+    /// Ngày xuất của tệp đã "Thay toàn bộ" (TK-16): tùy chọn giao diện của máy, không vào sao lưu.
+    @AppStorage("restoredFrom") private var restoredFrom = ""
 
     private var lastBackup: String {
         if let s = m.settings["last_backup_at"].str, let d = PFmt.rfcToLocalDate(s) { return "Lần sao lưu gần nhất: \(d)" }
-        return "Chưa sao lưu lần nào"
+        return restoredFrom.isEmpty ? "Chưa sao lưu lần nào" : "Chưa sao lưu lần nào trên máy này"
     }
 
     var body: some View {
@@ -71,6 +73,7 @@ struct BackupSection: View {
             PCard {
                 PHeading("Sao lưu dữ liệu")
                 PBody(lastBackup)
+                if !restoredFrom.isEmpty { PBody("Dữ liệu được khôi phục từ bản sao lưu ngày \(restoredFrom)") }
                 PFine("Dữ liệu người thân không tự sao lưu lên iCloud. Hãy tạo tệp sao lưu có mật khẩu và cất ở nơi an toàn.")
                 Button("Tạo tệp sao lưu…") { exportOpen = true }
                     .buttonStyle(PrimaryButtonStyle())
@@ -85,7 +88,7 @@ struct BackupSection: View {
                 PBody(picked.map { "Đã chọn: \($0.lastPathComponent)" } ?? "Chưa chọn tệp.")
                 LabeledField(label: "Mật khẩu của tệp", error: importError) {
                     SecureField("", text: $importPassword)
-                        .textFieldStyle(.roundedBorder)
+                        .pfield()
                         .ps(17)
                         .passwordContent()
                         .accessibilityLabel("Mật khẩu của tệp")
@@ -122,9 +125,15 @@ struct BackupSection: View {
         .fileExporter(isPresented: $exporting, document: exportDoc, contentType: .data,
                       defaultFilename: "LichVanHoaViet-saoluu-\(m.today.iso).lvhv") { r in
             if case .success = r {
+                restoredFrom = ""
                 m.toast = "Đã tạo tệp sao lưu. Hãy cất tệp ở nơi an toàn (ổ đám mây, USB) — tệp không tự gửi đi đâu."
             }
             exportDoc = nil
+        }
+        .task {
+            #if DEBUG
+            await demoRestore()
+            #endif
         }
         .fileImporter(isPresented: $importing, allowedContentTypes: [.data, .item]) { r in
             if case .success(let u) = r { picked = u; importError = nil }
@@ -134,6 +143,7 @@ struct BackupSection: View {
                 guard let v = verified else { return }
                 do {
                     try await m.applyImport(v, replace: replace)
+                    if replace { restoredFrom = PFmt.rfcToLocalDate(box.p.exportedAt) ?? "" }
                     m.toast = "Đã khôi phục: \(box.p.persons) người, \(box.p.events) sự kiện."
                 } catch {
                     importError = "Chưa khôi phục được — dữ liệu trên máy giữ nguyên."
@@ -145,6 +155,20 @@ struct BackupSection: View {
             .frameForMac()
         }
     }
+
+    #if DEBUG
+    /// Kiểm thử giao diện: tạo một tệp sao lưu từ dữ liệu mẫu rồi mở để thấy tấm khôi phục.
+    private func demoRestore() async {
+        guard let s = UserDefaults.standard.string(forKey: "lvhvScreen"), s.hasPrefix("restore"), preview == nil else { return }
+        let pw = "nha o Ha Dong co cay bang"
+        guard let data = try? await m.exportBackup(password: pw),
+              let v = try? await Task.detached(priority: .userInitiated, operation: { try openBackup(file: data, password: pw) }).value
+        else { return }
+        picked = URL(fileURLWithPath: "/LichVanHoaViet-saoluu-\(m.today.iso).lvhv")
+        verified = v
+        preview = v.preview()
+    }
+    #endif
 
     struct PreviewBox: Identifiable { let p: BackupPreview; var id: String { p.exportedAt } }
 
@@ -214,7 +238,7 @@ struct IcsConfirmSheet: View {
                             PBody("Chưa có hồ sơ nào bật nhắc.")
                         } else {
                             let to = m.today.adding(3652 - 1)
-                            PBody("Tệp này chứa tên, ngày giỗ, sinh nhật và sự kiện của \(ics.persons) người. Bất kỳ ai có tệp đều đọc được.")
+                            PBody("Tệp này chứa tên, ngày giỗ, sinh nhật và sự kiện của \(ics.persons) người. Bất kỳ ai có tệp đều đọc được. Không gồm thông tin báo tử.")
                             PBody("Gồm \(ics.events) ngày trong 10 năm tới (từ \(m.today.dmy) đến \(to.dmy)), mỗi ngày có lời nhắc như đã đặt.")
                             Text("Xem trước:").ps(15, .semibold).foregroundStyle(C.ink)
                             ForEach(IcsPreview.lines(ics.content), id: \.self) { l in
@@ -238,7 +262,7 @@ struct IcsConfirmSheet: View {
                 ToolbarItem(placement: .cancellationAction) { Button("Hủy") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
                     if let u = fileURL, (ics?.events ?? 0) > 0 {
-                        ShareLink(item: u) { Text("Lưu / chia sẻ tệp .ics") }
+                        ShareLink(item: u) { Text("Lưu tệp…") }
                             .accessibilityIdentifier("ics.share")
                     }
                 }
@@ -297,11 +321,11 @@ struct BackupExportSheet: View {
                         PBody("Tệp gồm cả thông tin báo tử (người báo tin, nơi mất, lý do, ảnh giấy báo tử) — chỉ ai biết mật khẩu mới đọc được.")
                     }
                     LabeledField(label: "Mật khẩu (ít nhất 8 ký tự)", error: submitted ? pwError : nil) {
-                        SecureField("", text: $pw).textFieldStyle(.roundedBorder).ps(17).passwordContent()
+                        SecureField("", text: $pw).pfield().ps(17).passwordContent()
                             .accessibilityLabel("Mật khẩu").accessibilityIdentifier("backup.pw")
                     }
                     LabeledField(label: "Nhập lại mật khẩu", error: submitted ? pw2Error : nil) {
-                        SecureField("", text: $pw2).textFieldStyle(.roundedBorder).ps(17).passwordContent()
+                        SecureField("", text: $pw2).pfield().ps(17).passwordContent()
                             .accessibilityLabel("Nhập lại mật khẩu").accessibilityIdentifier("backup.pw2")
                     }
                     Text("Lưu ý: quên mật khẩu là mất dữ liệu trong tệp — không ai lấy lại được, kể cả Clevix Lab.")
@@ -361,9 +385,17 @@ struct RestoreSheet: View {
     var onApply: (Bool) async -> Void
     @Environment(\.dismiss) private var dismiss
     @ObservedObject private var m = PeopleModel.shared
-    @State private var replace = false
+    @State private var replace = RestoreSheet.demoReplace
     @State private var confirmReplace = false
     @State private var busy = false
+
+    private static var demoReplace: Bool {
+        #if DEBUG
+        return UserDefaults.standard.string(forKey: "lvhvScreen") == "restore-replace"
+        #else
+        return false
+        #endif
+    }
 
     private func run(_ r: Bool) {
         busy = true
@@ -408,6 +440,10 @@ struct RestoreSheet: View {
                 .padding(20)
             }
             .background(C.wall)
+            .accessibilityIdentifier("restore.sheet")
+            .onAppear {
+                if Self.demoReplace { DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { confirmReplace = true } }
+            }
             .navigationTitle("Khôi phục dữ liệu")
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
@@ -460,6 +496,7 @@ struct PeopleSettingsView: View {
                         .accessibilityIdentifier("settings.showNames")
                     PFine("Khi tắt (mặc định), thông báo chỉ ghi “Sắp đến ngày giỗ”, “Sắp đến sinh nhật” hoặc “Sắp đến sự kiện”, không có tên. Tùy chọn này chỉ lưu trên máy này, không đi vào tệp sao lưu.")
                 }
+                lockScreenPreview
                 PCard {
                     RuleEditor(rule: $defaults, title: "Mặc định cho hồ sơ mới", errors: defaults.validate(prefix: "d"),
                                prefix: "d", showToggle: false)
@@ -506,6 +543,47 @@ struct PeopleSettingsView: View {
                 .buttonStyle(SecondaryButtonStyle())
                 .accessibilityIdentifier("settings.allow")
         }
+    }
+
+    /// Thông báo kế tiếp như sẽ hiện trên màn hình khóa (văn bản của lõi theo tùy chọn trên).
+    @ViewBuilder
+    private var lockScreenPreview: some View {
+        if let n = m.nextLockScreenText() {
+            PCard {
+                PHeading("Thông báo kế tiếp sẽ hiện như sau")
+                HStack(alignment: .top, spacing: 10) {
+                    Image(systemName: "calendar")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .frame(width: 34, height: 34)
+                        .background(Color(red: 0.56, green: 0.08, blue: 0.09), in: RoundedRectangle(cornerRadius: 8))
+                        .accessibilityHidden(true)
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack {
+                            Text("LỊCH VIỆT").ps(12, .semibold).foregroundStyle(Color.white.opacity(0.75))
+                            Spacer()
+                            Text(Self.when(n.fireLocal)).ps(12).foregroundStyle(Color.white.opacity(0.75))
+                        }
+                        Text(n.title).ps(15, .semibold).foregroundStyle(.white).fixedSize(horizontal: false, vertical: true)
+                        if !n.body.isEmpty {
+                            Text(n.body).ps(14).foregroundStyle(Color.white.opacity(0.9)).fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                }
+                .padding(12)
+                .background(Color(red: 0.22, green: 0.2, blue: 0.22), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .accessibilityElement(children: .combine)
+                .accessibilityIdentifier("settings.lockPreview")
+                PFine(m.showNames ? "Đang hiện tên người trên màn hình khóa." : "Không hiện tên người — chỉ loại ngày.")
+            }
+        }
+    }
+
+    /// "2026-11-24T07:00" → "07:00, 24/11/2026".
+    static func when(_ fl: String) -> String {
+        let p = fl.split(separator: "T")
+        guard p.count == 2, let d = CivilDate(iso: String(p[0])) else { return fl }
+        return "\(p[1]), \(d.dmy)"
     }
 
     private func saveDefaults() {

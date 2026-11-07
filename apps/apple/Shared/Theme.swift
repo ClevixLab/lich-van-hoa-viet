@@ -47,6 +47,9 @@ enum C {
     static let green = dyn(0x1F6B45, 0x7FD1A2)
     static let greenTint = dyn(0xE7F2EC, 0x1B2E24)
     static let bandInk = dyn(0xFFF8F4, 0xFFF1EC)
+    /// Ô nhập của mô-đun Người thân: nền và viền (viền ≥ 3:1 với nền thẻ — TKN-I-06).
+    static let field = dyn(0xFFFFFF, 0x161112)
+    static let fieldBorder = dyn(0x8F807D, 0x8A7B78)
 }
 
 /// Phông "LVHV Serif" (Lora rút gọn, OFL 1.1), co giãn theo Dynamic Type và theo cỡ chữ người dùng chọn.

@@ -49,7 +49,7 @@ struct PersonDetailView: View {
                         VStack(spacing: 14) { eventsCard(p, deceased: deceased); remindCard(p, deceased: deceased); deleteCard(name) }
                             .frame(width: 340)
                     }
-                    .frame(minWidth: 820)
+                    .frame(minWidth: 740)
                     VStack(spacing: 14) {
                         next(p, deceased: deceased)
                         info(p, deceased: deceased)
@@ -135,7 +135,7 @@ struct PersonDetailView: View {
             }
             ForEach(list) { it in
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(it.headline).ps(16, .semibold).foregroundStyle(C.ink).fixedSize(horizontal: false, vertical: true)
+                    Text(it.line1).ps(16, .semibold).foregroundStyle(C.ink).fixedSize(horizontal: false, vertical: true)
                     Text("\(it.dateText) · \(PFmt.distance(it.civil.dayNumber - m.today.dayNumber).lowercased())")
                         .ps(14).foregroundStyle(C.ink2).fixedSize(horizontal: false, vertical: true)
                 }

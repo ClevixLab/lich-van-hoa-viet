@@ -63,12 +63,8 @@ struct PeopleView: View {
                     .accessibilityLabel("Cài đặt nhắc")
                     .accessibilityIdentifier("people.settings")
                 }
-                Picker("Trang", selection: $section) {
-                    ForEach(PSection.allCases) { s in Text(s.rawValue).tag(s) }
-                }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-                .accessibilityIdentifier("people.sections")
+                SegmentChips(options: PSection.allCases.map { SegOpt($0, $0.rawValue) }, selection: $section,
+                             idPrefix: "people.sections")
                 ToastBar(text: $m.toast)
                 if let e = m.openError {
                     PCard {
@@ -118,13 +114,40 @@ struct UpcomingSection: View {
 
     var body: some View {
         let today = m.today
-        VStack(alignment: .leading, spacing: 14) {
+        Group {
             if m.persons.isEmpty {
                 welcome
             } else {
-                reminderCards(today)
-                if m.backupDue { backupNag }
-                if sched.permission == .denied { permissionCard }
+                ViewThatFits(in: .horizontal) {
+                    HStack(alignment: .top, spacing: 16) {
+                        VStack(alignment: .leading, spacing: 14) {
+                            reminderCards(today)
+                            list(today)
+                        }
+                        VStack(alignment: .leading, spacing: 14) {
+                            if m.backupDue { backupNag }
+                            if sched.permission == .denied { permissionCard }
+                            PCard { addButtons }
+                        }
+                        .frame(width: 300)
+                    }
+                    .frame(minWidth: 740)
+                    VStack(alignment: .leading, spacing: 14) {
+                        reminderCards(today)
+                        if m.backupDue { backupNag }
+                        if sched.permission == .denied { permissionCard }
+                        list(today)
+                        addButtons
+                    }
+                }
+            }
+        }
+        .task { await sched.refreshPermission() }
+    }
+
+    @ViewBuilder
+    private func list(_ today: CivilDate) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
                 PHeading("30 ngày tới")
                 if m.upcoming.isEmpty {
                     PCard {
@@ -155,10 +178,7 @@ struct UpcomingSection: View {
                         }
                     }
                 }
-                addButtons
-            }
         }
-        .task { await sched.refreshPermission() }
     }
 
     private func extra(_ it: OccItem) -> String? {
@@ -368,7 +388,7 @@ struct ProfilesSection: View {
                 group(title: "Người đã mất", kind: "deceased", list: m.deceased)
                 group(title: "Người đang sống", kind: "living", list: m.living)
             }
-            .frame(minWidth: 760)
+            .frame(minWidth: 700)
             VStack(alignment: .leading, spacing: 14) {
                 group(title: "Người đã mất", kind: "deceased", list: m.deceased)
                 group(title: "Người đang sống", kind: "living", list: m.living)
@@ -419,7 +439,7 @@ struct ProfilesSection: View {
 
     private func summary(_ p: JV, _ id: String) -> String {
         if p["kind"].str == "deceased" {
-            var s = "Giỗ \(PFmt.lunarText(p["death"]["lunar"]))"
+            var s = "Giỗ \(PFmt.gioText(p["death"]["lunar"]))"
             if let g = m.nextGio(for: id) {
                 s += " · lần tới \(g.civil.dmy) (\(PFmt.distance(g.civil.dayNumber - m.today.dayNumber).lowercased()))"
             }
