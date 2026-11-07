@@ -140,23 +140,26 @@ case "$R" in OK*) ;; *) fail "chỉ đọc (lần mở thứ hai): $R" ;; esac
 # Kho cũ trên máy giống hệt trước khi mở: từng dòng mọi bảng, từng ảnh; không có tệp đính kèm mồ côi.
 mkdir -p "$BAD/after"
 adb exec-out run-as "$PKG" cat files/lvhv.sqlite > "$BAD/after/lvhv.sqlite"
-adb exec-out run-as "$PKG" sh -c 'cat files/lvhv.sqlite-wal 2>/dev/null' > "$BAD/after/lvhv.sqlite-wal"
+adb exec-out "run-as $PKG sh -c 'cat files/lvhv.sqlite-wal 2>/dev/null'" > "$BAD/after/lvhv.sqlite-wal"
 [ -s "$BAD/after/lvhv.sqlite-wal" ] || rm -f "$BAD/after/lvhv.sqlite-wal"
 content "$BAD/after/lvhv.sqlite" > "$BAD/after.txt"
 if diff -u "$BAD/before.txt" "$BAD/after.txt"; then echo "kho cũ: $(wc -l < "$BAD/before.txt") dòng giống hệt"; else fail "chỉ đọc: nội dung kho đổi sau khi mở"; fi
-adb exec-out run-as "$PKG" sh -c 'cd files/photos && sha256sum *' | tr -d '\r' | sort > "$BAD/photos-after.txt"
+adb exec-out "run-as $PKG sh -c 'cd files/photos && sha256sum *'" | tr -d '\r' | sort > "$BAD/photos-after.txt"
+cat "$BAD/photos-after.txt"
+[ "$(wc -l < "$BAD/photos-after.txt")" = "$(ls "$BAD/photos" | wc -l)" ] || fail "chỉ đọc: không đọc được danh sách ảnh trên máy"
 diff -u "$BAD/photos-before.txt" "$BAD/photos-after.txt" || fail "chỉ đọc: ảnh đổi hoặc mất"
 adb shell run-as "$PKG" ls -la files files/attachments || true
-# Chẩn đoán: giải mã tệp sao lưu máy xuất bằng công cụ của lõi trên máy dựng (cùng mã nguồn).
+# Giải mã thêm tệp sao lưu máy xuất bằng công cụ của lõi trên máy dựng (cùng mã nguồn) — nhập vào kho trống.
 adb exec-out run-as "$PKG" cat files/r14-export.lvhv > "$BAD/r14-export.lvhv" || true
 if [ -s "$BAD/r14-export.lvhv" ]; then
-  cargo run -q -p lvhv-ffi --bin lvhv-store-tool -- import "$BAD/r14-export.lvhv" "mật khẩu thử nghiệm" --replace --into "$BAD/import" | cut -c1-600 || true
+  OUTJ="$(cargo run -q -p lvhv-ffi --bin lvhv-store-tool -- import "$BAD/r14-export.lvhv" "mật khẩu thử nghiệm" --replace --into "$BAD/import")"
+  echo "$OUTJ" | cut -c1-400
+  echo "$OUTJ" | grep -q '"ok":true' || fail "chỉ đọc: công cụ của lõi không nhập được tệp sao lưu máy xuất"
+else
+  fail "chỉ đọc: không lấy được tệp sao lưu máy xuất"
 fi
-cp -r "$FIX/store/." "$BAD/host/" 2>/dev/null || { mkdir -p "$BAD/host" && cp -r "$FIX/store/." "$BAD/host/"; }
-sqlite3 "$BAD/host/lvhv.sqlite" "CREATE TRIGGER kiem_dinh_loi_chuyen_doi BEFORE INSERT ON meta BEGIN SELECT RAISE(ABORT, 'R14 kiem dinh: loi chuyen doi'); END;"
-cargo run -q -p lvhv-ffi --bin lvhv-store-tool -- open "$BAD/host" | cut -c1-400 || true
-ls -la "$BAD/host" "$BAD/host/attachments" || true
-N_ATT="$(adb shell run-as "$PKG" sh -c 'ls files/attachments 2>/dev/null | wc -l' | tr -d '\r ')"
+N_ATT="$(adb shell "run-as $PKG sh -c 'ls files/attachments | wc -l'" | tr -d '\r ')"
+echo "tệp trong files/attachments: $N_ATT"
 [ "${N_ATT:-0}" = "0" ] || fail "chỉ đọc: còn $N_ATT tệp đính kèm mồ côi sau chuyển đổi lỗi"
 end
 

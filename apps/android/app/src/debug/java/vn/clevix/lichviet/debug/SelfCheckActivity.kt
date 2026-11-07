@@ -246,7 +246,7 @@ class SelfCheckActivity : Activity() {
             val write = runCatching { repo.putSettings(repo.settings()) }
             if (write.isSuccess) return "FAIL ghi được khi chỉ đọc"
             val photos = parseObj(repo.datasetJson()).objs("photos").size
-            val bytes = runCatching { repo.exportBackup("mật khẩu thử nghiệm", "r14") }
+            val bytes = runCatching { repo.exportBackup("mật khẩu thử nghiệm", vn.clevix.lichviet.BuildConfig.VERSION_NAME) }
             if (bytes.isFailure) return "FAIL không xuất được sao lưu: ${bytes.exceptionOrNull()?.message}"
             // Tệp xuất được giữ lại để CI giải mã thêm bằng công cụ của lõi trên máy dựng (chẩn đoán khi lỗi).
             File(ctx.filesDir, "r14-export.lvhv").writeBytes(bytes.getOrThrow())
