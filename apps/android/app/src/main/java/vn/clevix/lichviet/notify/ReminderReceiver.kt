@@ -16,6 +16,8 @@ class ReminderReceiver : BroadcastReceiver() {
             Intent.ACTION_MY_PACKAGE_REPLACED,
             Intent.ACTION_TIME_CHANGED,
             Intent.ACTION_TIMEZONE_CHANGED -> {
+                // Chỉ ghi tên action (không dữ liệu người dùng) — để kiểm R14 trên trình giả lập.
+                android.util.Log.i("LvhvNhac", "Đặt lại chuỗi nhắc: ${intent.action}")
                 val pending: PendingResult? = goAsync()
                 Reminders.rearmAsync(context) { pending?.finish() }
             }

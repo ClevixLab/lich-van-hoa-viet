@@ -29,7 +29,11 @@ self_check() {
     [ -n "$R" ] && break
     sleep 1
   done
-  adb shell am force-stop "$PKG"
+  # Không force-stop (force-stop đặt ứng dụng vào trạng thái "đã dừng" — hệ thống không gửi broadcast, khác người dùng
+  # thật): về màn hình chính rồi kết thúc tiến trình nền như hệ thống vẫn làm.
+  adb shell input keyevent KEYCODE_HOME
+  sleep 1
+  adb shell am kill "$PKG"
   echo "$R"
 }
 
@@ -67,6 +71,7 @@ adb shell run-as "$PKG" ls -la files files/photos
 adb install -r "$NEW" || fail "không cài đè được"
 sleep 10   # MY_PACKAGE_REPLACED → đặt lại chuỗi báo thức
 adb shell dumpsys alarm | grep -A2 "$PKG" | head -20 || true
+adb logcat -d -s LvhvNhac:I | tail -5
 R="$(self_check verify)"; echo "$R"
 case "$R" in OK*) ;; *) fail "sau cài đè: $R" ;; esac
 end
