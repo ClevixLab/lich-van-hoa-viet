@@ -307,7 +307,7 @@ final class PeopleUITests: XCTestCase {
             app = launch(screen: "memorial", dark: dark, extra: ["-lvhvTrayPack", "test"])
             XCTAssertTrue(any(app, "memorial.tray").waitForExistence(timeout: 15))
             XCTAssertEqual(any(app, "memorial.tray").label, "Ảnh mâm lễ")
-            XCTAssertTrue(any(app, "memorial.trayCredit").exists)
+            XCTAssertEqual(any(app, "memorial.trayCredit").label, "Clevix Lab, ảnh thử, CC BY 4.0", "ghi công nguyên văn")
             XCTAssertTrue(any(app, "memorial.addTray").exists)
             snap("altar-clevix-\(v)")
             // V2-02: cuộn để thấy ảnh Clevix dưới bàn thờ cùng dòng ghi công.

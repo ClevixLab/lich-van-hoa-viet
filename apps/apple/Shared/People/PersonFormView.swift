@@ -155,7 +155,11 @@ struct AttachmentViewer: ViewModifier {
         content
             // DV23-04 (BM2-04): trình xem PDF của hệ thống nằm ngoài lớp che của ứng dụng — rời tiền cảnh thì đóng nó
             // (tệp tạm bị xóa theo), để ảnh của bộ chuyển ứng dụng chỉ thấy lớp che.
-            .onChange(of: phase) { ph in if ph != .active, preview != nil { preview = nil } }
+            .onChange(of: phase) { ph in
+                #if os(iOS)
+                if ph != .active, preview != nil { preview = nil }
+                #endif
+            }
             .onChange(of: request) { r in
                 guard let r else { return }
                 request = nil

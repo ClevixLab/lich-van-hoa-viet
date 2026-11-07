@@ -214,7 +214,8 @@ enum TrayResolve {
         let style = p["memorial"]["tray_style"].str ?? "truyen_thong"
         guard let it = pack.item(style: style),
               let img = PhotoCache.shared.image("traypack:" + it.id, load: { try? Data(contentsOf: it.url) }) else { return nil }
-        let credit = it.credit.map { _ in "Ảnh: \(it.author) · \(it.license)" }
+        // 08 §16.1: dòng ghi công là nguyên văn `ghi_cong` của gói (null → không có dòng).
+        let credit = it.credit.flatMap { $0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : $0 }
         return TrayChoice(image: img, family: false, creditLine: credit)
     }
 }

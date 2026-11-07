@@ -22,6 +22,8 @@ done
 if [ -n "${GH_TOKEN:-}" ]; then
   AUTH=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 | tr -d '\n')
   git config http.https://github.com/.extraheader "AUTHORIZATION: basic $AUTH"
+  # V2-02: các bước sau trong job không được thấy mã thông báo.
+  trap 'git config --unset-all http.https://github.com/.extraheader || true' EXIT
 fi
 git config user.name "github-actions[bot]"
 git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
