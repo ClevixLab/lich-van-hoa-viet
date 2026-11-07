@@ -211,8 +211,17 @@ val trayPack by tasks.registering {
             approvedFile.writeText("{\"pack_version\": 1, \"approved\": []}\n")
             return@doLast
         }
-        val proc = ProcessBuilder("python3", File(repo, "scripts/check-tray-pack.py").path, "--manifest", manifest.path, "--out", approvedFile.path)
-            .redirectErrorStream(true).start()
+        // P46-08: cần Python 3 trên máy dựng; đổi lệnh bằng -Plvhv.python=<lệnh> (ví dụ "py" trên Windows).
+        val python = (project.findProperty("lvhv.python") as String?) ?: "python3"
+        val proc = try {
+            ProcessBuilder(python, File(repo, "scripts/check-tray-pack.py").path, "--manifest", manifest.path, "--out", approvedFile.path)
+                .redirectErrorStream(true).start()
+        } catch (e: java.io.IOException) {
+            throw GradleException(
+                "Không chạy được \"$python\" để kiểm gói ảnh mâm lễ (scripts/check-tray-pack.py, 04 R15 (b)). " +
+                    "Cài Python 3 hoặc chỉ lệnh khác bằng -Plvhv.python=<lệnh> (ví dụ -Plvhv.python=py trên Windows). Lỗi: ${e.message}",
+            )
+        }
         val log = proc.inputStream.bufferedReader().readText()
         if (proc.waitFor() != 0) throw GradleException("Gói ảnh mâm lễ không đạt (R15 (b)):\n$log")
         @Suppress("UNCHECKED_CAST")
