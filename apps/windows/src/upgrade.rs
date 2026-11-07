@@ -385,7 +385,7 @@ mod tests {
         let d = tmp("forced");
         copy_dir(&fixture().join("store"), &d).unwrap();
         let before = db_content(&d.join("lvhv.sqlite")).unwrap();
-        let s = lvhv_store::Store::open_with(&d, lvhv_store::OpenOptions { force_migration_failure: true }).unwrap();
+        let s = lvhv_store::Store::open_with(&d, lvhv_store::OpenOptions { force_migration_failure: true, ..Default::default() }).unwrap();
         assert_eq!(s.migration_status().state, "read_only");
         assert_eq!(db_content(&d.join("lvhv.sqlite")).unwrap(), before);
         drop(s);
