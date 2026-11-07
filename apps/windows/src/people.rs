@@ -203,6 +203,8 @@ enum DlgAction {
 
 pub struct PState {
     pub store: Option<Arc<LvhvStore>>,
+    /// Câu báo khi mở kho lỗi (chuyển đổi lược đồ hỏng, kho của bản mới hơn) — R14.
+    pub store_failed: Option<String>,
     pub dir: PathBuf,
     stack: Vec<String>,
     pkind: usize,
@@ -233,6 +235,7 @@ impl PState {
     pub fn new(dir: PathBuf) -> Self {
         PState {
             store: None,
+            store_failed: None,
             dir,
             stack: vec![],
             pkind: 1,
@@ -267,21 +270,46 @@ impl PState {
 pub type Ps = Rc<RefCell<PState>>;
 
 /// Mở kho nếu chưa mở. Lỗi → khung đỏ "Không mở được dữ liệu trên máy" (lịch vẫn dùng bình thường).
+/// Câu báo khi không mở được kho (R14, 04 Bổ sung B5 mục 3). Lõi chạy chuyển đổi lược đồ trong một giao dịch và
+/// giữ bản sao trước khi chuyển (01 §7), nên lỗi không làm mất gì; ứng dụng không thử tạo kho mới đè lên.
+pub fn store_open_message(e: &lvhv_ffi::LvhvDataError) -> String {
+    match e {
+        // Lõi gộp "kho của bản mới hơn" vào biến thể Backup khi mở kho.
+        lvhv_ffi::LvhvDataError::Backup(_) => "Dữ liệu Người thân trên máy được tạo bằng một bản mới hơn bản đang cài. \
+             Hãy cài lại bản mới nhất của Lịch và Văn hóa Việt. Ứng dụng không sửa và không xóa dữ liệu đó."
+            .into(),
+        _ => format!(
+            "Chưa chuyển được dữ liệu Người thân sang bản này. Dữ liệu cũ của bạn vẫn còn nguyên trên máy — ứng dụng \
+             không sửa và không xóa gì, và tạm để mục Người thân ở chế độ chỉ xem. Để giữ một bản dự phòng, hãy bấm \
+             \u{201c}Mở thư mục dữ liệu\u{201d} rồi chép cả thư mục sang USB hoặc ổ khác. Lịch vẫn dùng được bình \
+             thường. (Chi tiết kỹ thuật: {e})"
+        ),
+    }
+}
+
 pub fn ensure_store(ui: &AppWindow, ps: &mut PState) -> bool {
     if ps.store.is_some() {
         return true;
     }
     let p = People::get(ui);
+    // Đã lỗi trong lần chạy này: không thử chuyển đổi lại mỗi lần bấm.
+    if let Some(m) = &ps.store_failed {
+        p.set_store_error(ss(m));
+        p.set_store_failed(true);
+        return false;
+    }
     match LvhvStore::open(ps.dir.to_string_lossy().into_owned()) {
         Ok(s) => {
             ps.store = Some(s);
             p.set_store_error(ss(""));
+            p.set_store_failed(false);
             true
         }
         Err(e) => {
-            p.set_store_error(ss(format!(
-                "Không mở được dữ liệu trên máy: {e}. Lịch vẫn dùng được bình thường."
-            )));
+            let m = store_open_message(&e);
+            p.set_store_error(ss(&m));
+            p.set_store_failed(true);
+            ps.store_failed = Some(m);
             false
         }
     }
@@ -3237,6 +3265,15 @@ pub fn wire(ui: &AppWindow, ps: Ps) {
     }
     p.on_go(cb1!(SharedString, |ui: &AppWindow, ps: &mut PState, s: SharedString| go(ui, ps, &s)));
     p.on_back(cb0!(|ui: &AppWindow, ps: &mut PState| back(ui, ps)));
+    // R14: mở thư mục dữ liệu bằng Explorer để người dùng chép một bản dự phòng (không mở khi chạy kiểm thử/chụp ảnh).
+    p.on_open_data_dir(cb0!(|_ui: &AppWindow, ps: &mut PState| {
+        if !cfg!(test) && !platform::is_demo() {
+            #[cfg(windows)]
+            let _ = std::process::Command::new("explorer.exe").arg(&ps.dir).spawn();
+            #[cfg(not(windows))]
+            let _ = crate::update::open_with_os(&ps.dir.to_string_lossy());
+        }
+    }));
     p.on_open_person(cb1!(SharedString, |ui: &AppWindow, ps: &mut PState, s: SharedString| open_person(ui, ps, &s)));
     p.on_open_memorial(cb1!(SharedString, |ui: &AppWindow, ps: &mut PState, s: SharedString| open_memorial(ui, ps, &s)));
     p.on_add_dead(cb0!(|ui: &AppWindow, ps: &mut PState| {

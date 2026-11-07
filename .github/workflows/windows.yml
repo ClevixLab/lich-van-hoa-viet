@@ -191,6 +191,90 @@ jobs:
           Get-Content $o, $e | Tee-Object -FilePath $env:RUNNER_TEMP\toast.txt -Append
           Start-Process msiexec.exe -ArgumentList '/x', "`"$msi`"", '/qn' -Wait | Out-Null
 
+      # R14 (04 Bổ sung B5): nâng cấp tại chỗ không mất dữ liệu. Cài bản đang phát hành (v0.1.4, tải từ GitHub Releases),
+      # tạo dữ liệu (tệp "Để sau" đúng định dạng 0.1.4 ghi; sổ Người thân + ảnh + cài đặt), cài MSI mới đè lên (nâng cấp
+      # lớn), chạy bản đã cài với --kiem-nang-cap (so từng phần với ảnh chụp kỳ vọng, đặt lại thông báo), rồi gỡ cài đặt và
+      # kiểm thư mục dữ liệu còn nguyên từng byte. Kết quả ghi vào apps/windows/screenshots/nang-cap.txt. Chặn nếu KHÔNG ĐẠT.
+      - name: R14 — nâng cấp tại chỗ giữ nguyên dữ liệu (0.1.4 → bản này, rồi gỡ cài đặt)
+        working-directory: apps/windows
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $out = Join-Path $env:RUNNER_TEMP 'nang-cap.txt'
+          $r = Join-Path $env:RUNNER_TEMP 'r14'
+          New-Item -ItemType Directory -Force $r | Out-Null
+          function Log($s) { Add-Content -Path $out -Value $s -Encoding utf8; Write-Host $s }
+          function Fail($s) { Log "R14 Windows: KHÔNG ĐẠT — $s"; Write-Host "::error::R14: $s"; exit 1 }
+          function Arp { @(Get-ChildItem 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall' -ErrorAction SilentlyContinue | ForEach-Object { Get-ItemProperty $_.PSPath } | Where-Object { $_.DisplayName -eq 'Lich va Van hoa Viet' }) }
+          function Msi($verb, $file, $tag) {
+            $log = Join-Path $r "$tag.log"
+            $p = Start-Process msiexec.exe -ArgumentList $verb, "`"$file`"", '/qn', '/l*v', "`"$log`"" -Wait -PassThru
+            Log "msiexec $verb $(Split-Path $file -Leaf): mã $($p.ExitCode)"
+            if ($p.ExitCode -ne 0 -and $p.ExitCode -ne 3010) { Get-Content $log -Tail 40; Fail "msiexec $verb $tag thoát mã $($p.ExitCode)" }
+          }
+          function Run($exe, $argv, $tag) {
+            $o = Join-Path $r "$tag.out"; $e = Join-Path $r "$tag.err"
+            $p = Start-Process -FilePath $exe -ArgumentList $argv -Wait -PassThru -RedirectStandardOutput $o -RedirectStandardError $e
+            Get-Content $o, $e | ForEach-Object { Log "  $_" }
+            return $p.ExitCode
+          }
+          function Hashes($dir) { Get-ChildItem $dir -Recurse -File | Sort-Object FullName | ForEach-Object { "{0} {1}" -f $_.FullName.Substring($dir.Length), (Get-FileHash $_.FullName -Algorithm SHA256).Hash } }
+          $data = Join-Path $env:LOCALAPPDATA 'ClevixLab\LichVanHoaViet'
+          $flagDir = Join-Path $env:LOCALAPPDATA 'Clevix\LichVanHoaViet'
+          $prog = Join-Path $env:LOCALAPPDATA 'Programs\LichVanHoaViet\LichViet.exe'
+          Log "R14 Windows — $(Get-Date -Format 'yyyy-MM-dd HH:mm') UTC$((Get-Date).ToString('zzz')), bản mới $env:VERSION (run ${{ github.run_number }})"
+          # Máy CI sạch: các bước trước chỉ dùng kho tạm. Có dữ liệu sẵn thì dừng chứ không xóa.
+          if ((Test-Path $data) -or (Test-Path $flagDir)) { Fail "thư mục dữ liệu đã có trước khi thử" }
+          if ((Arp).Count -ne 0) { Fail "còn bản cài từ bước trước" }
+
+          # 1) Bản đang phát hành.
+          gh release download v0.1.4 -R $env:GITHUB_REPOSITORY -p 'LichViet-0.1.4-x64.msi' -D $r --clobber
+          if ($LASTEXITCODE -ne 0) { Fail "không tải được LichViet-0.1.4-x64.msi" }
+          Msi '/i' (Join-Path $r 'LichViet-0.1.4-x64.msi') 'cai-0.1.4'
+          $ov = (Get-Item $prog).VersionInfo.ProductVersion
+          Log "Đã cài bản cũ: LichViet.exe $ov"
+          if (-not ($ov -like '0.1.4*')) { Fail "bản cũ có ProductVersion $ov" }
+          # Bản 0.1.4 chạy được (8 giây) rồi tắt.
+          $p = Start-Process -FilePath $prog -PassThru; Start-Sleep -Seconds 8
+          if ($p.HasExited) { Fail "bản 0.1.4 tự thoát (mã $($p.ExitCode))" }
+          Stop-Process -Id $p.Id -Force; Start-Sleep -Seconds 1
+
+          # 2) Dữ liệu. "Để sau" (bản 0.1.4 chỉ lưu đúng tệp này; cỡ chữ và sáng/tối của bản Windows 0.1.4 không được lưu
+          #    giữa các lần mở nên không có gì để giữ): đúng một dòng YYYY-MM-DD như update.rs của 0.1.4 ghi.
+          New-Item -ItemType Directory -Force $flagDir | Out-Null
+          $snooze = (Get-Date).ToUniversalTime().AddDays(30).ToString('yyyy-MM-dd')
+          [IO.File]::WriteAllText((Join-Path $flagDir 'nhac-cap-nhat.txt'), $snooze)
+          Log "Để sau (định dạng 0.1.4): $snooze"
+          #    Sổ Người thân (hồ sơ, sự kiện, ảnh, cài đặt khác mặc định) tạo bằng bản dựng 0.2 này chạy từ .zip, chưa cài:
+          #    bản 0.1.4 không có mô-đun này và chưa có bản 0.2 nào phát hành.
+          Expand-Archive -Path "dist\LichViet-$env:VERSION-x64.zip" -DestinationPath (Join-Path $r 'zip') -Force
+          $zexe = Join-Path $r 'zip\LichViet.exe'
+          $snap = Join-Path $r 'anh-chup.json'
+          if ((Run $zexe @('--tao-du-lieu-mau', "`"$snap`"") 'tao') -ne 0) { Fail "--tao-du-lieu-mau lỗi" }
+
+          # 3) Cài MSI mới đè lên (nâng cấp lớn; cùng số phiên bản cũng phải nâng cấp chứ không cài song song).
+          Msi '/i' (Resolve-Path "dist\LichViet-$env:VERSION-x64.msi").Path 'cai-moi'
+          $a = Arp
+          Log "Mục trong Apps & features: $($a.Count) ($(($a | ForEach-Object { $_.DisplayVersion }) -join ', '))"
+          if ($a.Count -ne 1) { Fail "có $($a.Count) bản cài sau khi nâng cấp" }
+          if ((Get-FileHash $prog).Hash -ne (Get-FileHash $zexe).Hash) { Fail "LichViet.exe đã cài không phải bản mới" }
+          Log "LichViet.exe đã cài là bản mới ($((Get-Item $prog).VersionInfo.FileVersion))"
+
+          # 4) Tự kiểm: dữ liệu còn nguyên, đã chuyển lược đồ, thông báo được đặt lại.
+          if ((Run $prog @('--kiem-nang-cap', "`"$snap`"") 'kiem') -ne 0) { Fail "--kiem-nang-cap báo lỗi (xem trên)" }
+
+          # 5) Gỡ cài đặt: chương trình mất, dữ liệu còn nguyên từng byte.
+          $before = Hashes $data; $flagBefore = Get-Content (Join-Path $flagDir 'nhac-cap-nhat.txt') -Raw
+          Msi '/x' (Resolve-Path "dist\LichViet-$env:VERSION-x64.msi").Path 'go'
+          if ((Arp).Count -ne 0) { Fail "còn mục cài đặt sau khi gỡ" }
+          if (Test-Path $prog) { Fail "LichViet.exe còn sau khi gỡ" }
+          if (-not (Test-Path (Join-Path $data 'lvhv.sqlite'))) { Fail "gỡ cài đặt đã xóa sổ Người thân" }
+          $after = Hashes $data
+          if (Compare-Object $before $after) { Fail "thư mục dữ liệu đổi sau khi gỡ: $((Compare-Object $before $after | Out-String))" }
+          if ((Get-Content (Join-Path $flagDir 'nhac-cap-nhat.txt') -Raw) -ne $flagBefore) { Fail "tệp Để sau đổi sau khi gỡ" }
+          Log "Gỡ cài đặt: chương trình đã gỡ; thư mục dữ liệu còn nguyên ($($after.Count) tệp, SHA-256 khớp); tệp Để sau còn nguyên"
+          Log "R14 Windows: ĐẠT (0.1.4 → $env:VERSION bản dựng ${{ github.run_number }}; nâng cấp + gỡ cài đặt)"
+
       - uses: actions/upload-artifact@v4
         with:
           name: windows-x64
@@ -199,6 +283,7 @@ jobs:
             apps/windows/dist/*.msi
             ${{ runner.temp }}/mem.txt
             ${{ runner.temp }}/toast.txt
+            ${{ runner.temp }}/nang-cap.txt
           retention-days: 30
 
       # Tải tạo phẩm bị chặn trong môi trường duyệt, nên ảnh chụp (và số đo bộ nhớ, kết quả thử thông báo) được
@@ -221,6 +306,7 @@ jobs:
           Copy-Item (Join-Path $env:RUNNER_TEMP 'screens\*.png') $dst
           if (Test-Path (Join-Path $env:RUNNER_TEMP 'mem.txt')) { Copy-Item (Join-Path $env:RUNNER_TEMP 'mem.txt') (Join-Path $dst 'bo-nho.txt') }
           if (Test-Path (Join-Path $env:RUNNER_TEMP 'toast.txt')) { Copy-Item (Join-Path $env:RUNNER_TEMP 'toast.txt') (Join-Path $dst 'thong-bao.txt') }
+          if (Test-Path (Join-Path $env:RUNNER_TEMP 'nang-cap.txt')) { Copy-Item (Join-Path $env:RUNNER_TEMP 'nang-cap.txt') (Join-Path $dst 'nang-cap.txt') }
           git -C $wt add -A apps/windows/screenshots
           git -C $wt diff --cached --quiet
           if ($LASTEXITCODE -eq 0) { Write-Host "Ảnh không đổi"; exit 0 }

@@ -455,3 +455,36 @@ fn theo_ky_ics_sao_luu_the_nhac() {
     platform::set_dialog_override(None);
     let _ = std::fs::remove_dir_all(&tmp);
 }
+
+/// R14 (04 Bổ sung B5 mục 3): chuyển đổi lược đồ lỗi → khung báo chỉ xem, có nút mở thư mục dữ liệu; không tạo kho
+/// mới đè lên, không mất hồ sơ.
+#[test]
+fn chuyen_doi_loi_khung_chi_xem() {
+    let (ui, _st, ps, tmp, _s, _o, _d) = fixture("r14");
+    let p = People::get(&ui);
+    {
+        let s = lvhv_ffi::LvhvStore::open(tmp.to_string_lossy().into_owned()).unwrap();
+        crate::shots::seed_store(&s);
+    }
+    let c = rusqlite::Connection::open(tmp.join("lvhv.sqlite")).unwrap();
+    let n: i64 = c.query_row("SELECT count(*) FROM person", [], |r| r.get(0)).unwrap();
+    c.pragma_update(None, "user_version", 0).unwrap();
+    drop(c);
+    click(&ui, &by_label(&ui, "Người thân"));
+    assert!(ps.borrow().store.is_none());
+    assert!(p.get_store_failed());
+    assert!(p.get_store_error().contains("vẫn còn nguyên"), "{}", p.get_store_error());
+    assert!(!p.get_has_any());
+    assert_eq!(count_label(&ui, "+ Thêm người đã mất"), 0, "không mời tạo dữ liệu mới khi kho cũ chưa mở được");
+    press(&ui, "Mở thư mục dữ liệu");
+    seg(&ui, "Hồ sơ");
+    assert!(p.get_store_failed(), "không thử lại khi chuyển trang");
+    let c = rusqlite::Connection::open(tmp.join("lvhv.sqlite")).unwrap();
+    let m: i64 = c.query_row("SELECT count(*) FROM person", [], |r| r.get(0)).unwrap();
+    assert_eq!(m, n, "không mất hồ sơ");
+    drop(c);
+    platform::set_fake_now(None);
+    platform::set_fake_offset(None);
+    platform::set_dialog_override(None);
+    let _ = std::fs::remove_dir_all(&tmp);
+}

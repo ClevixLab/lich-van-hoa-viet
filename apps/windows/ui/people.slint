@@ -24,6 +24,9 @@ export global People {
     in-out property <string> page: "sap-toi";
     in-out property <string> back-label: "‹ Về danh sách hồ sơ";
     in-out property <string> store-error;
+    // R14: kho không mở được (chuyển đổi lỗi) → khung báo chỉ xem + nút mở thư mục dữ liệu để chép dự phòng.
+    in-out property <bool> store-failed;
+    callback open-data-dir();
     in-out property <string> toast;
     in-out property <bool> has-any;
     in-out property <float> scroll-frac: 0;
@@ -717,7 +720,13 @@ component Head inherits VerticalLayout {
         accessible-role: AccessibleRole.text; accessible-label: People.toast;
         HorizontalLayout { padding: 10px; T { text: People.toast; color: Theme.green; size: 15; font-weight: 600; } }
     }
-    if People.store-error != "": Notice { warn: true; text: People.store-error; }
+    if People.store-error != "": Notice {
+        warn: true; text: People.store-error;
+        if People.store-failed: HorizontalLayout {
+            alignment: start;
+            Btn { text: "Mở thư mục dữ liệu"; kind: "outline"; clicked => { People.open-data-dir(); } }
+        }
+    }
 }
 
 component SubHead inherits VerticalLayout {

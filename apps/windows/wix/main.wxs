@@ -36,8 +36,15 @@
             InstallPrivileges='limited'
             SummaryCodepage='1252'/>
 
+        <!-- Nâng cấp lớn (R14, 04 Bổ sung B5): gỡ bản cũ rồi cài bản mới; cùng số phiên bản cũng tính là nâng cấp
+             (AllowSameVersionUpgrades) để không bao giờ có hai bản cài song song.
+             DỮ LIỆU KHÔNG THUỘC BỘ CÀI: sổ Người thân ở %LOCALAPPDATA%\ClevixLab\LichVanHoaViet và tệp "Để sau" ở
+             %LOCALAPPDATA%\Clevix\LichVanHoaViet do ứng dụng tự tạo, không có thành phần MSI nào trỏ tới, nên cài đè,
+             nâng cấp hay gỡ cài đặt đều không xóa. Không dùng RemoveFile/RemoveFolderEx/util:RemoveFolderEx ngoài thư
+             mục chương trình. CI kiểm điều này ở bước R14 của windows.yml. -->
         <MajorUpgrade
             Schedule='afterInstallInitialize'
+            AllowSameVersionUpgrades='yes'
             DowngradeErrorMessage='Da co phien ban moi hon. Hay go phien ban do truoc.'/>
 
         <Media Id='1' Cabinet='media1.cab' EmbedCab='yes' DiskPrompt='CD-ROM #1'/>

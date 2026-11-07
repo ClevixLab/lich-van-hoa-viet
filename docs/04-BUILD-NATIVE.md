@@ -175,6 +175,17 @@ trong `lvhv-memorial`, `lvhv-store`, `lvhv-backup`. Giao diện chỉ hiển th�
   Android/Apple (MA3N-25-05).
 - **Việc nặng** (Argon2id khi tạo/mở sao lưu, khôi phục, giải mã ảnh) chạy ở luồng phụ; ảnh > 25 MB bị từ chối trước khi
   đọc tệp (MA3N-25-06, -07).
+- **Nâng cấp không mất dữ liệu (R14, 04 v0.2 Bổ sung B5):** dữ liệu không thuộc bộ cài — sổ Người thân ở
+  `%LOCALAPPDATA%\ClevixLab\LichVanHoaViet`, tệp "Để sau" của bản 0.1.x ở `%LOCALAPPDATA%\Clevix\LichVanHoaViet`;
+  MSI không có thành phần nào trỏ tới hai thư mục này nên cài đè, nâng cấp, gỡ cài đặt đều không xóa. `MajorUpgrade`
+  có `AllowSameVersionUpgrades` (cùng số phiên bản vẫn là nâng cấp, không cài song song). Mở kho lỗi (chuyển đổi lược
+  đồ hỏng — lõi lùi giao dịch, giữ bản sao trước chuyển đổi; hoặc kho của bản mới hơn) → mục Người thân hiện khung báo
+  chỉ xem "Dữ liệu cũ của bạn vẫn còn nguyên…" với nút "Mở thư mục dữ liệu" để chép dự phòng; không thử tạo kho mới, không
+  thử lại trong lần chạy đó. CI (bước R14 của `windows.yml`): cài `LichViet-0.1.4-x64.msi` từ GitHub Releases, ghi "Để
+  sau", tạo sổ Người thân mẫu (`--tao-du-lieu-mau`, từ `.zip` của bản dựng này), cài MSI mới đè lên, chạy bản đã cài
+  `--kiem-nang-cap` (so hồ sơ, sự kiện, loại sự kiện, cài đặt, hiện tên, băm SHA-256 từng ảnh, "Để sau"; đặt lại thông
+  báo), gỡ cài đặt rồi so băm từng tệp trong thư mục dữ liệu; kết quả ở `apps/windows/screenshots/nang-cap.txt`.
+  Bản Windows 0.1.4 không lưu cỡ chữ và sáng/tối giữa các lần mở, nên thứ duy nhất cần giữ từ 0.1.4 là "Để sau".
 - **Giới hạn đã biết:**
   - bản `.zip` chạy không cài không có lối tắt mang AUMID → Windows có thể không hiện thông báo dù đặt được; giao diện ghi
     "Windows chưa xác nhận…" và khuyên cài `.msi`;
