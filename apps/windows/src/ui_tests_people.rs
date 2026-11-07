@@ -187,6 +187,11 @@ fn nguoi_da_mat_tuong_niem_sua() {
     assert_eq!(p.get_m_rel(), "Bà nội", "dòng trên tên lấy từ ô Quan hệ, bỏ phần trong ngoặc");
     assert_eq!(p.get_m_name(), "Trần Thị Bình", "không lặp cách gọi");
     assert!(p.get_m_incense());
+    // YC-2026-10 (08 §16.4 ca 1): không có mâm, không lọ hoa; hai nến và bát hương.
+    assert_eq!(count_label(&ui, "Mâm ngũ quả"), 0);
+    assert_eq!(count_label(&ui, "Hoa"), 0);
+    assert_eq!(count_label(&ui, "Nến"), 2);
+    assert_eq!(count_label(&ui, "Bát hương với ba nén hương"), 1);
     assert!(p.get_m_dateline().contains("15/6 âm lịch"), "giỗ hằng năm vào tháng thường (O-4)");
     assert!(p.get_m_smoke());
     press(&ui, "Dừng khói");
@@ -205,6 +210,23 @@ fn nguoi_da_mat_tuong_niem_sua() {
     press(&ui, "Lưu");
     assert_eq!(page(&ui), "nguoi");
     assert_eq!(v(&store.person_json(bid.clone()).unwrap())["rev"], 2);
+
+    // YC-2026-10 (08 §16.4 ca 4): Công giáo → nến, hoa, nến; không hương, không mâm.
+    let mut pv = v(&store.person_json(bid.clone()).unwrap());
+    if pv["memorial"].is_object() {
+        pv["memorial"]["tray_style"] = serde_json::json!("cong_giao");
+        pv["memorial"]["incense"] = serde_json::json!(false);
+    } else {
+        pv["memorial"] = serde_json::json!({"tray_style": "cong_giao", "incense": false, "bia_tieu_de": "", "loi_tuong_niem": ""});
+    }
+    store.save_person_json(pv.to_string()).unwrap();
+    p.invoke_open_memorial(bid.clone().into());
+    assert_eq!(page(&ui), "tuong-niem");
+    assert!(p.get_m_catholic() && !p.get_m_incense());
+    assert_eq!(count_label(&ui, "Hoa"), 1);
+    assert_eq!(count_label(&ui, "Nến"), 2);
+    assert_eq!(count_label(&ui, "Bát hương với ba nén hương"), 0);
+    assert_eq!(count_label(&ui, "Dừng khói"), 0, "không hương thì không có nút khói");
 
     platform::set_fake_now(None);
     platform::set_fake_offset(None);
