@@ -148,10 +148,10 @@ class PeopleScreensTest {
         // Dữ liệu cũ vẫn xem được.
         assertTrue(rule.onAllNodesWithText("Nguyễn Văn A", substring = true).fetchSemanticsNodes().isNotEmpty())
         // TKN3-A-01: lời thường; mã kỹ thuật chỉ trong mục thu gọn "Chi tiết kỹ thuật".
-        assertTrue(rule.onAllNodesWithText("kiểm định: lỗi", substring = true).fetchSemanticsNodes().isEmpty())
+        assertTrue(rule.onAllNodesWithText("R14 kiem dinh", substring = true).fetchSemanticsNodes().isEmpty())
         shoot("41-chi-doc", variants = withXl)
         rule.onNodeWithText("Chi tiết kỹ thuật ▾").performClick()
-        rule.onNodeWithText("kiểm định: lỗi chuyển đổi", substring = true).assertExists()
+        rule.onNodeWithText("R14 kiem dinh", substring = true).assertExists()
         rule.onNodeWithText("Chi tiết kỹ thuật ▴").performClick()
         rule.onNodeWithText("Đi tới Sao lưu").performScrollTo().performClick()
         rule.waitForIdle()

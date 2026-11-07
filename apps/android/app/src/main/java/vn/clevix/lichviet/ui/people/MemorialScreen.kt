@@ -157,7 +157,9 @@ private fun yearsLine(p: vn.clevix.lichviet.people.Person): String? {
     val bcc = p.birth?.sn("can_chi")
     val dcc = PeopleRepo.canChi(dy)
     // 08 §3.9: Can Chi + năm, không ngoặc — thống nhất PWA, Android, Windows (TKN-X-02, TKN3-A-02).
-    return if (by != null && bcc != null) "$bcc $by — $dcc $dy" else "Mất năm $dcc $dy"
+    // Khoảng trắng không ngắt trong mỗi vế: ở 360 dp dòng chỉ xuống hàng sau dấu "—", không tách "Ất Tỵ" khỏi "2025".
+    fun nb(t: String) = t.replace(' ', '\u00A0')
+    return if (by != null && bcc != null) "${nb("$bcc $by")} — ${nb("$dcc $dy")}" else "Mất năm ${nb("$dcc $dy")}"
 }
 
 private val SteleShape = GenericShape { size, _ ->

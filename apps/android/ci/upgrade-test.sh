@@ -83,7 +83,19 @@ end
 FIX="docs/v0.2/schema/test-vectors/released/0.2-dev-before-attachments"
 EXPECTED="docs/v0.2/schema/test-vectors/released/expected/0.2-dev-before-attachments.json"
 # Chép một tệp từ máy dựng vào thư mục riêng của ứng dụng (ứng dụng chưa chạy lần nào sau khi cài).
-put() { adb exec-in "run-as $PKG sh -c 'mkdir -p \$(dirname $2) && cat > $2'" < "$1"; }
+# `adb exec-in` có thể trả về trước khi bên máy ghi xong, nên chờ tới khi kích thước khớp (không thì ứng dụng có thể mở một
+# kho chép dở).
+put() {
+  local want got
+  want="$(wc -c < "$1" | tr -d ' ')"
+  adb exec-in "run-as $PKG sh -c 'mkdir -p \$(dirname $2) && cat > $2'" < "$1"
+  for _ in $(seq 1 60); do
+    got="$(adb shell run-as "$PKG" sh -c "'wc -c < $2'" 2>/dev/null | tr -d '\r ')"
+    [ "$got" = "$want" ] && return 0
+    sleep 0.5
+  done
+  fail "chép $1 → $2: $got/$want byte"
+}
 seed_store() {
   local dir="$1"
   adb uninstall "$PKG" >/dev/null 2>&1 || true
@@ -108,7 +120,7 @@ say "Ca chuyển đổi lỗi: quay lui, chế độ chỉ đọc, vẫn xuất 
 # Lõi chỉ có tùy chọn buộc lỗi ở API Rust (OpenOptions::force_migration_failure, không qua FFI). Như Windows (upgrade.rs):
 # thêm trigger chặn ghi bảng `meta` → bước chuyển 1 → 2 lỗi thật ở câu SQL cuối giao dịch, dữ liệu cũ vẫn hợp lệ.
 BAD="$(mktemp -d)"; cp -r "$FIX/store/." "$BAD/"
-sqlite3 "$BAD/lvhv.sqlite" "CREATE TRIGGER kiem_dinh_loi_chuyen_doi BEFORE INSERT ON meta BEGIN SELECT RAISE(ABORT, 'kiểm định: lỗi chuyển đổi'); END;" \
+sqlite3 "$BAD/lvhv.sqlite" "CREATE TRIGGER kiem_dinh_loi_chuyen_doi BEFORE INSERT ON meta BEGIN SELECT RAISE(ABORT, 'R14 kiem dinh: loi chuyen doi'); END;" \
   || fail "không sửa được bản sao bộ mẫu"
 # Nội dung từng dòng mọi bảng + phiên bản (như db_content của Windows) và băm từng ảnh — trước khi mở.
 content() {

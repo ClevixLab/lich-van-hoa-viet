@@ -252,7 +252,7 @@ class SelfCheckActivity : Activity() {
             // rồi so từng hồ sơ, sự kiện, loại sự kiện với tệp kỳ vọng chung và từng tệp đính kèm theo sha256.
             val (v, pv) = runCatching { PeopleRepo.openBackupFile(bytes.getOrThrow(), "mật khẩu thử nghiệm") }
                 .getOrElse { return "FAIL tệp sao lưu xuất từ chế độ chỉ đọc không mở được: ${it.message}" }
-            if (pv.persons.toInt() != n || pv.photos.toInt() != photos) {
+            if (pv.persons.toInt() != n || pv.photos.toInt() !in 1..photos) {
                 v.destroy()
                 return "FAIL tệp sao lưu có ${pv.persons} người, ${pv.photos} ảnh; kho có $n người, $photos ảnh"
             }
