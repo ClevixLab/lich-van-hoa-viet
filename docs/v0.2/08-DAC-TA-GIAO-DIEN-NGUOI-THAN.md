@@ -1192,7 +1192,7 @@ thêm lượt `a3-*` ở cỡ chữ A++).
   hoa (`TRAY`, `VASE` ở PWA và hình tương ứng trên native). Công giáo: nến · hoa · nến, không hương (như cũ).
 - Có ảnh: ảnh nằm **dưới** hàng bàn thờ, rộng tối đa 480 px (360 px: toàn chiều rộng trừ lề 16 px), tỉ lệ gốc, cắt
   vừa khung 4:3 ở giữa, bo góc 12 px, viền mảnh vàng đồng; nhãn trợ năng "Ảnh mâm lễ của gia đình" hoặc "Ảnh mâm lễ".
-  Ảnh Clevix có giấy phép cần ghi công thì có dòng nhỏ dưới ảnh: "Ảnh: <tác giả> · <giấy phép>".
+  Ảnh Clevix có giấy phép cần ghi công thì có dòng nhỏ dưới ảnh, là **nguyên văn** trường `ghi_cong` của gói ảnh (quyết định 07/11/2026: bốn nền tảng hiển thị giống nhau; trước đây ghép "Ảnh: <tác giả> · <giấy phép>").
 - Không có ảnh gia đình: dưới lời tưởng niệm có nút chữ nhỏ "Thêm ảnh mâm lễ của gia đình" → mở biểu mẫu sửa hồ sơ, cuộn
   tới mục §16.2. Có ảnh gia đình → không có nút này.
 - Khói, nút "Dừng khói"/"Thắp lại", giảm chuyển động: như §3.9 (R8).

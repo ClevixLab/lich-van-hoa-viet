@@ -20,8 +20,8 @@ Một ảnh chỉ được đưa vào gói khi đủ **cả bốn** điều sau:
      `../HUONG-DAN-CHUP-ANH-MAM.md` §8);
    - ảnh có **giấy phép thoáng đã kiểm trên trang gốc**: phạm vi công cộng / CC0, CC BY, CC BY-SA.
    **Không bao giờ** dùng ảnh trên mạng không rõ quyền (ảnh lấy từ báo, mạng xã hội, trang bán hàng, kết quả tìm kiếm).
-3. **Ghi công đúng.** Ảnh CC BY hoặc CC BY-SA bắt buộc có dòng `ghi_cong` (tác giả, tên ảnh, giấy phép), hiện trong mục
-   "Giới thiệu" của ứng dụng. Ảnh CC BY-SA: bản đã chỉnh sửa cũng theo CC BY-SA. Ảnh tự chụp hay CC0: `ghi_cong` có thể
+3. **Ghi công đúng.** Ảnh CC BY hoặc CC BY-SA bắt buộc có dòng `ghi_cong` (tác giả, tên ảnh, giấy phép), hiện **nguyên văn** ngay dưới ảnh trên màn hình tưởng niệm
+   (cả bốn nền tảng; 08 §16.1) — viết sẵn thành một câu hoàn chỉnh, ví dụ "Ảnh: Nguyễn Văn A, CC BY 4.0". Ảnh CC BY-SA: bản đã chỉnh sửa cũng theo CC BY-SA. Ảnh tự chụp hay CC0: `ghi_cong` có thể
    là `null`.
 4. **Đạt chất lượng.** Chụp theo `../HUONG-DAN-CHUP-ANH-MAM.md` (ánh sáng cửa sổ một bên, không đèn flash, góc 3/4 hơi
    từ trên xuống, đủ nét, mâm đủ món theo lời chủ dự án: bát cơm có quả trứng luộc, khoanh giò, gà luộc, đĩa xôi, đĩa
