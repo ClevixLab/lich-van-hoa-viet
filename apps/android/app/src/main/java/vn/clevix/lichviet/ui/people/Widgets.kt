@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -60,6 +61,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
@@ -189,7 +191,7 @@ fun LinkButton(text: String, onClick: () -> Unit) {
 @Composable
 fun Choice(options: List<String>, selected: Int, onSelect: (Int) -> Unit, modifier: Modifier = Modifier) {
     val c = LocalLich.current
-    SingleChoiceSegmentedButtonRow(modifier.fillMaxWidth()) {
+    SingleChoiceSegmentedButtonRow(modifier.fillMaxWidth().height(androidx.compose.foundation.layout.IntrinsicSize.Min)) {
         options.forEachIndexed { i, t ->
             SegmentedButton(
                 selected = selected == i,
@@ -201,7 +203,7 @@ fun Choice(options: List<String>, selected: Int, onSelect: (Int) -> Unit, modifi
                     inactiveContainerColor = c.paper, inactiveContentColor = c.ink,
                     activeBorderColor = c.redDeep, inactiveBorderColor = c.rule,
                 ),
-                modifier = Modifier.heightIn(min = 48.dp),
+                modifier = Modifier.heightIn(min = 48.dp).fillMaxHeight(),
             ) { Text(t, maxLines = 2, textAlign = TextAlign.Center, style = MaterialTheme.typography.labelLarge) }
         }
     }
@@ -307,6 +309,7 @@ fun TextIn(
                 else -> KeyboardOptions.Default
             },
             modifier = Modifier.fillMaxWidth(),
+            colors = fieldColors(),
         )
         if (error != null) ErrorText(error)
         else if (help != null) Fine(help, Modifier.padding(top = 2.dp))
@@ -316,15 +319,23 @@ fun TextIn(
 /** Ô số nhỏ (ngày / tháng / năm / giờ). */
 @Composable
 fun NumIn(label: String, value: String, onChange: (String) -> Unit, modifier: Modifier = Modifier, isError: Boolean = false, maxLen: Int = 4) {
-    OutlinedTextField(
-        value = value,
-        onValueChange = { s -> onChange(s.filter { it.isDigit() }.take(maxLen)) },
-        label = { Text(label, maxLines = 1) },
-        singleLine = true,
-        isError = isError,
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-        modifier = modifier,
-    )
+    val c = LocalLich.current
+    // Nhãn nằm trên ô (không trong viền) để ô hẹp vẫn đọc được nhãn ở cỡ chữ lớn.
+    Column(modifier) {
+        Text(
+            label, style = MaterialTheme.typography.labelLarge, color = if (isError) c.red else c.ink2,
+            modifier = Modifier.padding(bottom = 4.dp).clearAndSetSemantics { },
+        )
+        OutlinedTextField(
+            value = value,
+            onValueChange = { s -> onChange(s.filter { it.isDigit() }.take(maxLen)) },
+            singleLine = true,
+            isError = isError,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            modifier = Modifier.fillMaxWidth().semantics { contentDescription = label },
+            colors = fieldColors(),
+        )
+    }
 }
 
 /** Hộp xác nhận (AlertDialog). Nút chính bên phải; nút an toàn "Hủy"/"Giữ lại". */
@@ -377,7 +388,9 @@ fun rememberPhoto(bytes: ByteArray?): ImageBitmap? = remember(bytes) {
 @Composable
 fun OvalPhoto(img: ImageBitmap?, name: String, w: Int = 120, h: Int = 150, frame: Color? = null) {
     val c = LocalLich.current
-    val shape = RoundedCornerShape(percent = 50)
+    val shape = androidx.compose.foundation.shape.GenericShape { size, _ ->
+        addOval(androidx.compose.ui.geometry.Rect(0f, 0f, size.width, size.height))
+    }
     Box(
         Modifier.size(w.dp, h.dp).clip(shape).background(c.paper2)
             .border(3.dp, frame ?: c.gold, shape),
@@ -409,6 +422,8 @@ fun occTitle(o: Occ): String {
     val h = o.headline
     return if (o.name.isNotEmpty() && h.endsWith(o.name) && h.length > o.name.length) {
         h.removeSuffix(o.name).trimEnd(' ', '·', '—', ':') + " · " + o.name
+    } else if (o.name.isNotEmpty() && !h.contains(o.name)) {
+        "$h · ${o.name}" // sự kiện: tên sự kiện · tên người
     } else h
 }
 
@@ -503,3 +518,20 @@ fun InfoLine(label: String, value: String) {
 
 @Composable
 fun Gap(h: Int = 8) = Spacer(Modifier.height(h.dp))
+
+/** Viền ô nhập đủ tương phản (≥ 3:1 với nền, 08 §6). */
+@Composable
+fun fieldColors(): androidx.compose.material3.TextFieldColors {
+    val c = LocalLich.current
+    return androidx.compose.material3.OutlinedTextFieldDefaults.colors(
+        unfocusedBorderColor = c.ink3,
+        focusedBorderColor = c.redInk,
+        focusedLabelColor = c.redInk,
+        unfocusedLabelColor = c.ink2,
+        cursorColor = c.redInk,
+        focusedTextColor = c.ink,
+        unfocusedTextColor = c.ink,
+        errorBorderColor = c.red,
+        errorLabelColor = c.red,
+    )
+}

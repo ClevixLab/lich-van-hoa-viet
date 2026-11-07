@@ -8,6 +8,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.ui.platform.LocalContext
 import vn.clevix.lichviet.notify.Reminders
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -117,7 +118,7 @@ fun PeopleModule(
     }
     BackHandler(enabled = nav.stack.size > 1) { nav.back() }
 
-    Box(Modifier.fillMaxSize()) {
+    Box(Modifier.fillMaxSize().background(LocalLich.current.wall)) {
         if (repo == null) {
             Page {
                 Header(nav)

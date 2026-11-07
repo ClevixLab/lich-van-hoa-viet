@@ -15,6 +15,7 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.unit.Density
@@ -129,7 +130,7 @@ class PeopleScreensTest {
         shoot("09-ho-so-dang-song")
         go(PRoute.PersonPage(ids.d))
         shoot("10-ho-so-bao-tu") {
-            runCatching { rule.onNodeWithText("Xem ▸").performClick() }
+            if (rule.onAllNodesWithText("Xem ▸").fetchSemanticsNodes().isNotEmpty()) rule.onNodeWithText("Xem ▸").performScrollTo().performClick()
             rule.onNode(hasScrollAction()).performScrollToNode(hasText("Người báo tin"))
         }
         go(PRoute.Memorial(ids.a))
@@ -170,9 +171,16 @@ class PeopleScreensTest {
             if (rule.onAllNodesWithText("Chia sẻ tệp .ics").fetchSemanticsNodes().isEmpty()) rule.onNodeWithText("Xuất tệp lịch (.ics)…").performClick()
         }
         rule.onNodeWithText("Hủy").performClick()
-        shoot("22-hop-sao-luu", screen = true) {
-            if (rule.onAllNodesWithText("Tạo và lưu tệp").fetchSemanticsNodes().isEmpty()) rule.onNodeWithText("Tạo tệp sao lưu…").performClick()
+        shoot("22-tao-sao-luu") {
+            if (rule.onAllNodesWithText("Tạo và lưu tệp").fetchSemanticsNodes().isEmpty()) {
+                rule.onNodeWithText("Tạo tệp sao lưu…").performScrollTo().performClick()
+            }
+            rule.onNode(hasScrollAction()).performScrollToNode(hasText("Nhập lại mật khẩu"))
         }
+        // Lỗi mật khẩu hiện ngay dưới ô (TK-14).
+        rule.onNodeWithText("Mật khẩu (ít nhất 8 ký tự)").performTextInput("ngan")
+        rule.onNodeWithText("Tạo và lưu tệp").performScrollTo().performClick()
+        rule.onNodeWithText("Mật khẩu cần ít nhất 8 ký tự").assertExists()
     }
 
     @Test
@@ -200,9 +208,9 @@ class PeopleScreensTest {
         show(r = r, start = PRoute.Profiles)
         go(PRoute.AddPerson(true))
         rule.onNodeWithText("Họ và tên *").performTextInput("Hoàng Văn E")
-        rule.onAllNodesWithText("Ngày")[0].performTextInput("8")
-        rule.onAllNodesWithText("Tháng")[0].performTextInput("8")
-        rule.onAllNodesWithText("Năm")[0].performTextInput("2025")
+        field("Ngày").performTextInput("8")
+        field("Tháng").performTextInput("8")
+        field("Năm").performTextInput("2025")
         rule.onNodeWithText("15/6 nhuận", substring = true).assertExists()
         rule.onNode(hasScrollAction()).performScrollToNode(hasText("Lưu"))
         rule.onNodeWithText("Lưu").performClick()
@@ -223,7 +231,8 @@ class PeopleScreensTest {
         rule.onNode(hasScrollAction()).performScrollToNode(hasText("Lưu"))
         rule.onNodeWithText("Lưu").performClick()
         rule.onNode(hasScrollAction()).performScrollToNode(hasText("chỗ cần sửa", substring = true))
-        rule.onNodeWithText("Họ tên không được để trống", substring = true).assertExists()
+        // Lỗi ở khung tóm tắt và ngay dưới ô.
+        assertEquals(2, rule.onAllNodesWithText("Họ tên không được để trống", substring = true).fetchSemanticsNodes().size)
         assertTrue(r.persons().isEmpty())
     }
 
@@ -232,9 +241,9 @@ class PeopleScreensTest {
     fun flowMarkDeceased() {
         show(start = PRoute.Profiles)
         go(PRoute.MarkDeceased(ids.m))
-        rule.onAllNodesWithText("Ngày")[0].performTextInput("1")
-        rule.onAllNodesWithText("Tháng")[0].performTextInput("11")
-        rule.onAllNodesWithText("Năm")[0].performTextInput("2026")
+        field("Ngày").performTextInput("1")
+        field("Tháng").performTextInput("11")
+        field("Năm").performTextInput("2026")
         rule.onNodeWithText("Người báo tin").performTextInput("Anh Tuấn")
         rule.onNode(hasScrollAction()).performScrollToNode(hasText("Lưu"))
         rule.onNodeWithText("Lưu").performClick()
@@ -290,4 +299,8 @@ class PeopleScreensTest {
     }
 
     private fun assertNull(v: Any?) = org.junit.Assert.assertNull(v)
+
+    /** Ô số đầu tiên có nhãn [label] (Ngày / Tháng / Năm của ô ngày đầu trang). */
+    private fun field(label: String) =
+        rule.onAllNodes(androidx.compose.ui.test.hasContentDescription(label) and androidx.compose.ui.test.hasSetTextAction())[0]
 }

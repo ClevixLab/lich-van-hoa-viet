@@ -136,24 +136,13 @@ fun BackupScreen(x: PeopleCtx) {
         val last = settings?.sn("last_backup_at")
         Body(if (last != null) "Lần sao lưu gần nhất: ${PFmt.dateOfInstant(last)}" else if (restoredFrom != null) "Chưa sao lưu lần nào trên máy này" else "Chưa sao lưu lần nào")
         restoredFrom?.let { Fine("Dữ liệu được khôi phục từ bản sao lưu ngày $it") }
-        PrimaryButton("Tạo tệp sao lưu…", { exportOpen = true; exportErr = null }, Modifier.fillMaxWidth())
-    }
-    if (exportOpen) {
-        val e1 = if (pwTouched && pw1.length < 8) "Mật khẩu cần ít nhất 8 ký tự" else null
-        val e2 = if (pwTouched && e1 == null && pw1 != pw2) "Hai lần nhập mật khẩu chưa giống nhau" else null
-        ConfirmDialog(
-            title = "Tạo tệp sao lưu", confirm = if (busy) "Đang mã hóa…" else "Tạo và lưu tệp",
-            confirmEnabled = !busy, dismissEnabled = !busy,
-            onDismiss = { exportOpen = false; pw1 = ""; pw2 = ""; pwTouched = false },
-            onConfirm = {
-                pwTouched = true
-                if (pw1.length >= 8 && pw1 == pw2) {
-                    busy = true
-                    exportErr = null
-                    createDoc.launch("LichVanHoaViet-saoluu-$today.lvhv")
-                }
-            },
-        ) {
+        if (!exportOpen) {
+            PrimaryButton("Tạo tệp sao lưu…", { exportOpen = true; exportErr = null }, Modifier.fillMaxWidth())
+        } else {
+            // Bản Android: các ô mật khẩu mở ngay trong khung (không đặt ô nhập trong hộp thoại) — 08 §13.
+            val e1 = if (pwTouched && pw1.length < 8) "Mật khẩu cần ít nhất 8 ký tự" else null
+            val e2 = if (pwTouched && e1 == null && pw1 != pw2) "Hai lần nhập mật khẩu chưa giống nhau" else null
+            H3("Tạo tệp sao lưu")
             Body("Tệp sẽ chứa ${ds.first} người, ${ds.second} sự kiện, ${ds.third} ảnh — đã mã hóa bằng mật khẩu.")
             Fine("Tệp gồm cả thông tin báo tử (người báo tin, nơi mất, lý do, ảnh giấy báo tử) — chỉ ai biết mật khẩu mới đọc được.")
             TextIn("Mật khẩu (ít nhất 8 ký tự)", pw1, { pw1 = it }, password = true, error = e1)
@@ -162,6 +151,15 @@ fun BackupScreen(x: PeopleCtx) {
             Fine("Gợi ý: dùng một câu dễ nhớ, ví dụ \"nhà ở Hà Đông có cây bàng\".")
             if (busy) { LinearProgressIndicator(Modifier.fillMaxWidth()); Fine("Đang mã hóa… (có thể mất vài giây)") }
             exportErr?.let { ErrorText(it) }
+            PrimaryButton(if (busy) "Đang mã hóa…" else "Tạo và lưu tệp", {
+                pwTouched = true
+                if (pw1.length >= 8 && pw1 == pw2) {
+                    busy = true
+                    exportErr = null
+                    createDoc.launch("LichVanHoaViet-saoluu-$today.lvhv")
+                }
+            }, Modifier.fillMaxWidth(), enabled = !busy)
+            SecondaryButton("Hủy", { exportOpen = false; pw1 = ""; pw2 = ""; pwTouched = false }, Modifier.fillMaxWidth(), enabled = !busy)
         }
     }
 
