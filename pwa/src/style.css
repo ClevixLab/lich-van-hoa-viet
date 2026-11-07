@@ -762,10 +762,9 @@ body[data-route="ngay"] .remind-host .remind { max-width: 520px; margin: 0 auto 
 .bia-years { font-family: var(--serif); color: var(--brass); margin-top: .7rem; font-size: 1rem; }
 .bia-age { font-family: var(--serif); font-weight: 600; color: #f3e6d0; margin-top: .25rem; }
 .altar { width: 100%; max-width: 420px; display: grid; margin-top: 4.6rem; }
-.altar-row { display: flex; align-items: flex-end; justify-content: center; gap: 2%; padding: 0 3%; position: relative; z-index: 1; }
-.altar-row .candle { width: 7%; height: auto; }
-.altar-row .tray { width: 30%; height: auto; }
-.altar-row .vase { width: 17%; height: auto; }
+.altar-row { display: flex; align-items: flex-end; justify-content: center; gap: 12%; padding: 0 3%; position: relative; z-index: 1; }
+.altar-row .candle { width: 8%; height: auto; }
+.altar-row .vase { width: 20%; height: auto; }
 .bowl-wrap { width: 28%; position: relative; display: grid; }
 .bowl-wrap .bowl { width: 100%; height: auto; position: relative; z-index: 2; }
 .altar-table { height: 22px; margin-top: -4px; border-radius: 4px; background: linear-gradient(180deg, #8a4b22, #5a2c12 60%, #3d1d0b); box-shadow: 0 8px 18px rgba(0,0,0,.5); }
