@@ -250,3 +250,103 @@ Quy tắc kết luận vòng 2 (khóa trước):
 - (d): V2-0 phần d, V2-2, V2-3 đúng hết → ĐẠT. Một ca sai → KHÔNG ĐẠT.
 - (e): V2-0 phần e và V2-4 đúng hết → ĐẠT. Một ca sai → KHÔNG ĐẠT.
 - (g): g1 và V2-5 đúng hết, 0 khác biệt → ĐẠT. Một khác biệt → KHÔNG ĐẠT.
+
+## 6. Kết quả vòng 2
+
+Phần đăng ký §5 được commit (`6545404`, 2026-11-07 18:37 +0700) trước khi chạy vòng 2.
+
+- Commit đo: `375d6d66530055ed91b77cbdf23e25b522ade767`, nhánh `v0.2-yc10-core`.
+- Cách dựng: như vòng 1, bản debug, trên bản sao kho mã riêng của commit này.
+- Script: `run_r15.py` chạy lại **không sửa** (V2-0), cùng `run_r15b.py` mới (V2-1..V2-5).
+- Dữ liệu thô ở `test-vectors/oracle-r15/raw/v2/`:
+  - `results.json`: V2-0;
+  - `results-v2.json`: V2-1..V2-5;
+  - `v2-images.json` và `images-manifest.json`: sha256 của ảnh thử.
+
+Chạy lại vòng 2:
+
+```
+python3 -I test-vectors/oracle-r15/make_inputs.py <w>/img
+python3 -I test-vectors/oracle-r15/run_r15.py  <repo> <w> <repo>/target/debug/lvhv-store-tool
+python3 -I test-vectors/oracle-r15/run_r15b.py <repo> <w> <repo>/target/debug/lvhv-store-tool
+```
+
+### 6.1 V2-0 — chạy lại toàn bộ vòng 1
+
+Mọi ca c1–c4, d1–d9, e1–e4 cho đúng kết quả như §2, ở cả hai bản.
+
+- g1: kịch bản `tray_photo` của hai bản giống nhau và bằng `expected-scenario.json` mới.
+- g2: 0 khác biệt giữa hai bản trên mọi ca. `stage` của các lần `save-person` bị từ chối nay là `save_person` ở cả hai
+  bản, nên F3 đã được sửa.
+- c5 (ảnh mâm lễ 2000 px): `add-photo` nhận, còn `save-person` từ chối với `invalid V1 /person/memorial/tray_photo_id`
+  ("ảnh mâm lễ có cạnh dài quá 1600 px"), ở cả hai bản. F1 đã được sửa.
+- e5 (`null` tường minh): kho không còn khóa `tray_photo_id` (`ABSENT`). F2 đã được sửa; xem thêm V2-4.
+
+### 6.2 V2-1 — giới hạn 1600 px khi lưu (c)
+
+Cả hai bản cho cùng kết quả ở mọi ca:
+
+| Ca | Kỳ vọng | Kết quả |
+|---|---|---|
+| Gắn ảnh 1601 × 100 làm ảnh mâm lễ | từ chối | từ chối, `stage = save_person`, V1 `/person/memorial/tray_photo_id`; ảnh mâm lễ cũ còn nguyên |
+| Gắn ảnh 100 × 1601 làm ảnh mâm lễ | từ chối | như trên |
+| Gắn ảnh 1600 × 100 làm ảnh mâm lễ | nhận | nhận |
+| Dùng ảnh 1601 × 100 làm ảnh chân dung | nhận | nhận |
+
+Kho sau cùng có một bản ghi ảnh không hồ sơ nào dùng: ảnh 100 × 1601. Ảnh này đã thêm bằng `add-photo` nhưng chưa từng
+được gắn vào hồ sơ nào, vì lần gắn bị từ chối. Theo 01 §3.8, ảnh chưa gắn như vậy được xóa bằng `delete_photo`, do
+ứng dụng gọi khi người dùng hủy. Đây không phải ảnh mồ côi do dọn ảnh sai.
+
+### 6.3 V2-2 — giới hạn 1600 px khi nhập (d)
+
+Cả hai bản cho cùng kết quả:
+
+| Tệp tự mã hóa | Thay toàn bộ | Gộp |
+|---|---|---|
+| Ảnh mâm lễ 1601 × 100 | từ chối ở `open_backup`, V1 `/persons/1/memorial/tray_photo_id`, kho không đổi | như Thay toàn bộ |
+| Đối chứng: ảnh mâm lễ 1600 × 100 | nhận | nhận |
+| Ảnh 1601 × 100 làm ảnh chân dung | nhận | nhận |
+
+### 6.4 V2-3 — dọn ảnh và tệp đính kèm sau Gộp, MA10-03 (d)
+
+Cả hai bản cho cùng kết quả.
+
+**Ca thuận** (tệp B có `rev` lớn hơn bản trên máy):
+- P0, F0, T0 không còn trong kho; ở Rust không còn tệp `photos/*.img` hay `attachments/*` nào thừa.
+- T1 có mặt, `sha256` bằng.
+- Q0 còn (vẫn được 5e03 dùng).
+- 0 bản ghi ảnh mồ côi, 0 bản ghi tệp đính kèm mồ côi. Rust: 0 tệp thừa hoặc thiếu.
+
+**Ca ngược** (bản trên máy có `rev` lớn hơn B):
+- P0, F0, T0, Q0 còn.
+- T1 không được thêm.
+- 0 mồ côi.
+
+### 6.5 V2-4 — `null` tường minh (e)
+
+Cả hai bản cho cùng kết quả:
+- Nhập tệp có `"tray_photo_id": null`, cả Thay toàn bộ và Gộp: nhận. Kho không có khóa `tray_photo_id`. Xuất lại thì
+  bản rõ không có chuỗi `tray_photo_id`.
+- `save-person` với `null`: bản đã lưu không có khóa này.
+
+### 6.6 V2-5 — tên `stage` và thư mục làm việc (g)
+
+- Tên `stage`: mọi lần `save-person` bị từ chối (9 ca c4 và c5 của V2-0, 2 ca của V2-1) có `stage = save_person` ở cả
+  hai bản.
+- Thư mục làm việc: Rust chạy `scenario tray_photo` trên một thư mục có sẵn `keep/file.txt`, mã thoát 0. Sau khi chạy,
+  trong thư mục chỉ còn `keep/file.txt`, nội dung nguyên vẹn, không có gì khác bị để lại. F4 đã được sửa.
+- Kết quả kịch bản: hai bản giống nhau và bằng `expected-scenario.json`.
+- So toàn kho (tài liệu bỏ thời điểm, `sha256` ảnh, `sha256` tệp đính kèm): 41/41 cặp kho giống hệt giữa hai bản. Cặp
+  e2 không so được qua `--state`, nhưng cả hai bản đều bằng `state_sha256` kỳ vọng.
+
+## 7. Kết luận vòng 2 (theo quy tắc khóa ở §5; thay cho §4 đối với commit `375d6d6`)
+
+| Mệnh đề | Kết luận | Lý do |
+|---|---|---|
+| (c) | **CHƯA ĐỦ BẰNG CHỨNG** | Phía lõi đạt hết, ở cả hai bản: c1–c4 đúng, V2-1 đúng (lõi chặn ảnh mâm lễ > 1600 px), 0 ảnh còn siêu dữ liệu. Còn thiếu bằng chứng của nền tảng: mã hóa lại và thu nhỏ khi chọn ảnh, ảnh chỉ hiện trên màn hình của đúng người đó, ưu tiên hơn ảnh Clevix. Công cụ hộp đen không kiểm được các phần này |
+| (d) | **ĐẠT** (Rust và TS) | Mọi ca d1–d9, V2-2, V2-3 đúng; sha256 bằng nhau; 0 ảnh và 0 tệp đính kèm mồ côi sau mỗi lần nhập |
+| (e) | **ĐẠT** (Rust và TS) | Mọi ca e1–e4 và V2-4 đúng; vector 03 §2.5 không đổi |
+| (g) | **ĐẠT** | g1: kịch bản hai bản giống nhau và bằng tệp kỳ vọng. g2 và V2-5: 0 khác biệt, `stage` thống nhất |
+
+Kết luận (g) của vòng 1 (KHÔNG ĐẠT, §4) vẫn đúng với commit `eafa96e`. Kết luận trên áp dụng cho commit `375d6d6`.
+Ngoài R15 (c)(d)(e)(g), không có phát hiện mới.
