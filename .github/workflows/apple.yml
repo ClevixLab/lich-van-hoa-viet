@@ -157,9 +157,10 @@ jobs:
             echo "::error::app macOS có quyền mạng"; exit 1
           fi
           # DV23-08: mã chỉ-Debug (DemoSeed, màn hình kiểm tra R14, gói ảnh thử) không được có trong bản Release.
-          # Dấu hiệu là chuỗi dài (> 15 byte, Swift không nhúng thẳng vào lệnh) chỉ có trong mã #if DEBUG.
+          # Dấu hiệu là chuỗi ASCII dài (> 15 byte: Swift không nhúng thẳng vào lệnh; chữ có dấu có thể được lưu dạng UTF-16
+          # nên không dùng) chỉ có trong mã #if DEBUG (DemoSeed.swift, màn hình kiểm tra R14).
           for APP in "$IOS" "$MAC"; do
-            for MARK in "Kiểm tra sau nâng cấp (R14)" "Gia đình đã báo cho họ hàng."; do
+            for MARK in "LichVanHoaViet-before"; do
               if grep -rqaF "$MARK" "$APP"; then echo "::error::$APP (Release) có mã kiểm thử: $MARK"; exit 1; fi
             done
           done
@@ -185,7 +186,7 @@ jobs:
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build-for-testing | tee build/test-build.log
           # DV23-08 đối chứng: bản Debug phải có dấu hiệu mà bước kiểm bản Release tìm (nếu không, phép kiểm vô nghĩa).
           DBG=build/ddt/Build/Products/Debug-iphonesimulator/LichViet.app
-          grep -rqaF "Kiểm tra sau nâng cấp (R14)" "$DBG" || { echo "::error::Đối chứng hỏng: bản Debug không có dấu hiệu"; exit 1; }
+          grep -rqaF "LichVanHoaViet-before" "$DBG" || { echo "::error::Đối chứng hỏng: bản Debug không có dấu hiệu"; exit 1; }
           mkdir -p "$RUNNER_TEMP/shots"
           TEST_RUNNER_SCREENSHOT_DIR="$RUNNER_TEMP/shots" TEST_RUNNER_SHOT_PREFIX=ios \
           xcodebuild -project LichVanHoaViet.xcodeproj -scheme LichViet-iOS -configuration Debug \
