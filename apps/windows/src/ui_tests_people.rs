@@ -57,6 +57,8 @@ fn people_flows() {
     let day0 = crate::D { y: 2026, m: 11, d: 7 };
     platform::set_fake_now(Some((day0.jdn() - 2_440_588) * 86_400 + 2 * 3600));
     platform::set_fake_offset(Some(420));
+    // Kiểm thử không đặt thông báo thật của Windows (máy CI hay máy người chạy kiểm thử).
+    platform::set_demo_mode();
     let ui = AppWindow::new().unwrap();
     let st = crate::setup(&ui);
     let ps = st.borrow().people.clone();
