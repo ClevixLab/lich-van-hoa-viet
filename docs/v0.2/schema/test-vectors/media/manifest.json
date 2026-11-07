@@ -1,0 +1,221 @@
+{
+ "description": "04 B6 / BM2-01: ảnh và tệp đính kèm hợp lệ và độc hại; kỳ vọng = mã lỗi của media::check_photo / check_attachment (Rust) và checkPhoto / checkAttachment (TS).",
+ "files": {
+  "html-as-image.html": "938496cf521561518c5bce2fa00f782a233b98d1125d0d21edcf6d7ddb8952f3",
+  "jpeg-4000x3000.jpg": "9e5a78168c7fa9207b75f208c98659e07d2104f5db6b51e0d28888af270e9783",
+  "jpeg-exif-gps.jpg": "535a967550b8f342e9287abe1c84d8be39666271128a9e0e2e8d71663d6edd56",
+  "jpeg-iptc.jpg": "4a9f7b835c5c2128002527f631b86ad7c074e9d0d25e29e8a8c28f30c1f1130b",
+  "jpeg-ok.jpg": "22a5c04266a6d2e27fa3085bd0623296dfb7e91b5763e8a746c6a4d220dfb7e9",
+  "jpeg-truncated.jpg": "6e510297e545a919f5f180d784225bc03d91e6b92e989c0066fd0ab024a5638b",
+  "jpeg-xmp.jpg": "3e0e95c6a0ba827d00ea897f10c16c9c90a82d0ebbcfa264787826352c953c5c",
+  "pdf-fake-no-eof.pdf": "49f9d3a3675605abddc50c8305bed959226eeb713d75a5dca396ffec72c3acac",
+  "pdf-ok.pdf": "79370862c6cb54e96ed3125464c11e4ce3e8b08fb5048723695b6b9e9728d701",
+  "png-20000x20000-bomb.png": "09d162bf831e6439bbe71e7169df2e6382062b7f491ff9897daefc694a20b382",
+  "webp-3000x10.webp": "f9614e4b060b46a22789680e194b29bb0e5c8aa39e382ed6204ea6ddc058a097",
+  "webp-exif.webp": "a43791118f31c6b74f7ce3859024f016c7411d528bc147f47be2f0eaaa2cdf6f",
+  "webp-ok-16x16.webp": "ff5f1295c880c952f0cceba4ec0cd6e5dea28a6fef5e45e2cdc27c2a11113f56",
+  "webp-xmp-chunk.webp": "b56ec6200df0ffbd3574a89345940e5b0e8db9a66f29ce828fb7a12e9d8d990d"
+ },
+ "cases": [
+  {
+   "file": "jpeg-ok.jpg",
+   "mime": "image/jpeg",
+   "kind": "photo",
+   "width": 768,
+   "height": 1024,
+   "expect": "ok"
+  },
+  {
+   "file": "jpeg-ok.jpg",
+   "mime": "image/jpeg",
+   "kind": "attachment",
+   "width": null,
+   "height": null,
+   "expect": "ok"
+  },
+  {
+   "file": "jpeg-ok.jpg",
+   "mime": "image/jpeg",
+   "kind": "photo",
+   "width": 800,
+   "height": 1024,
+   "expect": "dimensions_mismatch"
+  },
+  {
+   "file": "jpeg-ok.jpg",
+   "mime": "image/webp",
+   "kind": "photo",
+   "width": 768,
+   "height": 1024,
+   "expect": "mime_mismatch"
+  },
+  {
+   "file": "jpeg-exif-gps.jpg",
+   "mime": "image/jpeg",
+   "kind": "photo",
+   "width": 768,
+   "height": 1024,
+   "expect": "metadata"
+  },
+  {
+   "file": "jpeg-exif-gps.jpg",
+   "mime": "image/jpeg",
+   "kind": "attachment",
+   "width": null,
+   "height": null,
+   "expect": "metadata"
+  },
+  {
+   "file": "jpeg-xmp.jpg",
+   "mime": "image/jpeg",
+   "kind": "attachment",
+   "width": null,
+   "height": null,
+   "expect": "metadata"
+  },
+  {
+   "file": "jpeg-iptc.jpg",
+   "mime": "image/jpeg",
+   "kind": "photo",
+   "width": 768,
+   "height": 1024,
+   "expect": "metadata"
+  },
+  {
+   "file": "jpeg-4000x3000.jpg",
+   "mime": "image/jpeg",
+   "kind": "photo",
+   "width": 4000,
+   "height": 3000,
+   "expect": "too_large"
+  },
+  {
+   "file": "jpeg-4000x3000.jpg",
+   "mime": "image/jpeg",
+   "kind": "attachment",
+   "width": null,
+   "height": null,
+   "expect": "too_large"
+  },
+  {
+   "file": "jpeg-truncated.jpg",
+   "mime": "image/jpeg",
+   "kind": "attachment",
+   "width": null,
+   "height": null,
+   "expect": "bad_header"
+  },
+  {
+   "file": "png-20000x20000-bomb.png",
+   "mime": "image/jpeg",
+   "kind": "photo",
+   "width": 768,
+   "height": 1024,
+   "expect": "mime_mismatch"
+  },
+  {
+   "file": "png-20000x20000-bomb.png",
+   "mime": "image/webp",
+   "kind": "attachment",
+   "width": null,
+   "height": null,
+   "expect": "mime_mismatch"
+  },
+  {
+   "file": "html-as-image.html",
+   "mime": "image/jpeg",
+   "kind": "attachment",
+   "width": null,
+   "height": null,
+   "expect": "mime_mismatch"
+  },
+  {
+   "file": "html-as-image.html",
+   "mime": "application/pdf",
+   "kind": "attachment",
+   "width": null,
+   "height": null,
+   "expect": "mime_mismatch"
+  },
+  {
+   "file": "pdf-ok.pdf",
+   "mime": "application/pdf",
+   "kind": "attachment",
+   "width": null,
+   "height": null,
+   "expect": "ok"
+  },
+  {
+   "file": "pdf-ok.pdf",
+   "mime": "image/jpeg",
+   "kind": "attachment",
+   "width": null,
+   "height": null,
+   "expect": "mime_mismatch"
+  },
+  {
+   "file": "pdf-fake-no-eof.pdf",
+   "mime": "application/pdf",
+   "kind": "attachment",
+   "width": null,
+   "height": null,
+   "expect": "pdf_no_eof"
+  },
+  {
+   "file": "webp-ok-16x16.webp",
+   "mime": "image/webp",
+   "kind": "attachment",
+   "width": null,
+   "height": null,
+   "expect": "ok"
+  },
+  {
+   "file": "webp-ok-16x16.webp",
+   "mime": "image/webp",
+   "kind": "photo",
+   "width": 16,
+   "height": 16,
+   "expect": "ok"
+  },
+  {
+   "file": "webp-ok-16x16.webp",
+   "mime": "image/jpeg",
+   "kind": "photo",
+   "width": 16,
+   "height": 16,
+   "expect": "mime_mismatch"
+  },
+  {
+   "file": "webp-exif.webp",
+   "mime": "image/webp",
+   "kind": "attachment",
+   "width": null,
+   "height": null,
+   "expect": "metadata"
+  },
+  {
+   "file": "webp-xmp-chunk.webp",
+   "mime": "image/webp",
+   "kind": "photo",
+   "width": 16,
+   "height": 16,
+   "expect": "metadata"
+  },
+  {
+   "file": "webp-3000x10.webp",
+   "mime": "image/webp",
+   "kind": "attachment",
+   "width": null,
+   "height": null,
+   "expect": "too_large"
+  },
+  {
+   "file": "pdf-ok.pdf",
+   "mime": "application/zip",
+   "kind": "attachment",
+   "width": null,
+   "height": null,
+   "expect": "bad_mime"
+  }
+ ]
+}

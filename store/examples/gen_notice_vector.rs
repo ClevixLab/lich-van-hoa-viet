@@ -1,10 +1,12 @@
-//! Vector **bổ sung** cho thông tin báo tử (01 §3.2a, YC-2026-05) — không đụng vector đã khóa của 03 §2.5
-//! (`docs/v0.2/schema/test-vectors/*.json`, `manifest.json` giữ nguyên). Ghi vào
+//! Vector **bổ sung** cho thông tin báo tử (01 §3.2a, YC-2026-05; cập nhật theo YC-2026-07) — không đụng vector
+//! đã khóa của 03 §2.5 (`docs/v0.2/schema/test-vectors/*.json`, `manifest.json` giữ nguyên). Ghi vào
 //! `docs/v0.2/schema/test-vectors/supplement-yc05/`:
-//! - `notice-v1.json`     — `example-v1.json` + `death.notice` đủ trường cho người thứ nhất (đã mất) + một ảnh giấy
-//!   báo tử (`Photo` thứ hai, cùng byte ảnh mẫu), JSON chuẩn.
-//! - `notice-v1.lvhv`     — tệp sao lưu của `notice-v1.json` + hai ảnh, salt/nonce cố định như 03 §2.5, mật khẩu
-//!   "mật khẩu thử nghiệm".
+//! - `notice-v1.json`     — `example-v1.json` + `death.notice` đủ trường cho người thứ nhất (đã mất), có hai tệp
+//!   đính kèm (01 §3.8a): ảnh tin báo tử (cùng byte ảnh mẫu, `stripped = true`) và PDF giấy chứng tử
+//!   (`giay-chung-tu.pdf`, nguyên byte, `stripped = false`); người thứ nhất có `gioi_tinh = "nam"`. JSON chuẩn.
+//! - `notice-v1.lvhv`     — tệp sao lưu của `notice-v1.json` + ảnh + hai tệp đính kèm, salt/nonce cố định như
+//!   03 §2.5, mật khẩu "mật khẩu thử nghiệm".
+//! - `giay-chung-tu.pdf`  — byte PDF đính kèm (để bản JS dựng lại cùng tệp).
 //! - `manifest.json`      — sha256 từng tệp, `state_sha256` (băm kho sau khi nhập, như R6).
 //!
 //!     cargo run --release -p lvhv-store --example gen_notice_vector
@@ -19,8 +21,12 @@ pub const SALT: [u8; 16] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
 pub const NONCE: [u8; 24] = [
     16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39,
 ];
-/// Id ảnh giấy báo tử (UUID v4 cố định).
+/// Id tệp đính kèm ảnh tin báo tử (UUID v4 cố định).
 pub const CERT_ID: &str = "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e0c";
+/// Id tệp đính kèm PDF giấy chứng tử.
+pub const PDF_ID: &str = "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e0d";
+/// Byte PDF mẫu (một trang trống, tối thiểu).
+pub const PDF_BYTES: &[u8] = b"%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Kids[]/Count 0>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n";
 
 pub fn tv() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../docs/v0.2/schema/test-vectors")
@@ -29,14 +35,19 @@ pub fn out_dir() -> PathBuf {
     tv().join("supplement-yc05")
 }
 
-/// (tài liệu, ảnh theo thứ tự `photos`).
+/// (tài liệu, khối theo thứ tự của tệp: ảnh theo `photos`, rồi tệp đính kèm theo `attachments`).
 pub fn notice_doc() -> (Value, Vec<(String, Vec<u8>)>) {
     let photo = std::fs::read(tv().join("photo-0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09.jpg")).unwrap();
     let text = std::fs::read_to_string(tv().join("example-v1.json")).unwrap();
     let mut doc = validate::parse_json(&text).unwrap();
-    let mut cert = doc["photos"][0].clone();
-    cert["id"] = json!(CERT_ID);
-    doc["photos"].as_array_mut().unwrap().push(cert);
+    let at = doc["exported_at"].clone();
+    doc["attachments"] = json!([
+        {"id": CERT_ID, "mime": "image/jpeg", "bytes": photo.len(), "sha256": sha256_hex(&photo), "stripped": true,
+         "file_name": "tin-bao-tu.jpg", "created_at": at},
+        {"id": PDF_ID, "mime": "application/pdf", "bytes": PDF_BYTES.len(), "sha256": sha256_hex(PDF_BYTES),
+         "stripped": false, "file_name": "giay-chung-tu.pdf", "created_at": at},
+    ]);
+    doc["persons"][0]["gioi_tinh"] = json!("nam");
     // Dùng từ xưng hô thường ngày trên bia (chủ dự án, 07/11/2026), không dùng "Hiển khảo"/"Hiển tỷ" của tệp mẫu.
     doc["persons"][0]["memorial"]["bia_tieu_de"] = json!("Ông nội");
     doc["persons"][1]["memorial"]["bia_tieu_de"] = json!("Bà nội");
@@ -45,7 +56,10 @@ pub fn notice_doc() -> (Value, Vec<(String, Vec<u8>)>) {
         "place": "Bệnh viện đa khoa tỉnh",
         "reason": "Tuổi cao, bệnh nặng",
         "notice_date": {"calendar": "solar", "precision": "day", "year": 2025, "month": 8, "day": 8, "leap": false},
-        "certificate_photo_ids": [CERT_ID],
+        "attachments": [
+            {"id": "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e0e", "kind": "tin_bao_tu", "file_id": CERT_ID},
+            {"id": "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e0f", "kind": "giay_chung_tu", "file_id": PDF_ID}
+        ],
         "note": "Gia đình đã báo họ hàng.\nAn táng ở quê."
     });
     validate::document(&doc).unwrap();
@@ -56,6 +70,8 @@ pub fn notice_doc() -> (Value, Vec<(String, Vec<u8>)>) {
         .map(|p| (p["id"].as_str().unwrap().to_owned(), photo.clone()))
         .collect();
     photos.sort_by(|a, b| a.0.cmp(&b.0));
+    photos.push((CERT_ID.to_owned(), photo));
+    photos.push((PDF_ID.to_owned(), PDF_BYTES.to_vec()));
     (doc, photos)
 }
 
@@ -90,13 +106,15 @@ pub fn state_after_import(file: &[u8]) -> String {
 
 pub fn manifest(json_text: &str, file: &[u8], state: &str) -> String {
     let m = json!({
-        "description": "Vector bổ sung YC-2026-05 (thông tin báo tử, 01 §3.2a). Không thay vector đã khóa của 03 §2.5.",
+        "description": "Vector bổ sung YC-2026-05 / YC-2026-07 (thông tin báo tử, tệp đính kèm, giới tính; 01 §3.2a, §3.8a). Không thay vector đã khóa của 03 §2.5.",
         "password": PASSWORD,
         "salt_hex": SALT.iter().map(|b| format!("{b:02x}")).collect::<String>(),
         "nonce_hex": NONCE.iter().map(|b| format!("{b:02x}")).collect::<String>(),
         "json": {"file": "notice-v1.json", "sha256": sha256_hex(json_text.as_bytes())},
         "file": {"file": "notice-v1.lvhv", "sha256": sha256_hex(file)},
-        "cert_photo_id": CERT_ID,
+        "attachment_image_id": CERT_ID,
+        "attachment_pdf_id": PDF_ID,
+        "pdf": {"file": "giay-chung-tu.pdf", "sha256": sha256_hex(PDF_BYTES)},
         "state_sha256": state,
     });
     let mut s = serde_json::to_string_pretty(&m).unwrap();
@@ -113,6 +131,7 @@ fn main() {
     std::fs::create_dir_all(out_dir()).unwrap();
     std::fs::write(out_dir().join("notice-v1.json"), &text).unwrap();
     std::fs::write(out_dir().join("notice-v1.lvhv"), &file).unwrap();
+    std::fs::write(out_dir().join("giay-chung-tu.pdf"), PDF_BYTES).unwrap();
     std::fs::write(
         out_dir().join("manifest.json"),
         manifest(&text, &file, &state),

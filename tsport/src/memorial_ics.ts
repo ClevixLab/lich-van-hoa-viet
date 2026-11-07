@@ -86,6 +86,39 @@ export function icsOccurrences(cal: Cal, ds: Dataset, opt: IcsOptions): [Occurre
   return out;
 }
 
+export const ICS_PREVIEW_MAX = 5;
+export interface IcsSummary {
+  events: number; persons: number; preview: string[];
+  from: Ymd; to: Ymd; kinds: ("gio" | "sinh_nhat" | "su_kien")[]; privacy_text: string;
+}
+const p2s = (n: number) => String(n).padStart(2, "0");
+
+/** Summary for the .ics confirmation dialog (S10; mirror of Rust `ics::summary`). */
+export function icsSummary(cal: Cal, ds: Dataset, opt: IcsOptions): IcsSummary {
+  const occs = icsOccurrences(cal, ds, opt);
+  const persons = new Set<string>();
+  for (const [o] of occs) {
+    if (o.class.startsWith("su_kien")) {
+      for (const id of ds.events.find((e) => e.id === o.entity_id)?.person_ids ?? []) persons.add(id);
+    } else persons.add(o.entity_id);
+  }
+  const kinds: ("gio" | "sinh_nhat" | "su_kien")[] = [];
+  if (occs.some(([o]) => o.class === "gio" || o.class === "tien_thuong")) kinds.push("gio");
+  if (occs.some(([o]) => o.class === "sinh_nhat" || o.class === "sinh_nhat_am")) kinds.push("sinh_nhat");
+  if (occs.some(([o]) => o.class.startsWith("su_kien"))) kinds.push("su_kien");
+  const words = kinds.map((k) => (k === "gio" ? "ngày giỗ" : k === "sinh_nhat" ? "sinh nhật" : "sự kiện"));
+  const what = words.length > 1 ? `${words.slice(0, -1).join(", ")} và ${words[words.length - 1]}` : (words[0] ?? "");
+  return {
+    from: opt.today,
+    to: ymdFromJdn(ymdJdn(tenYearsEnd(opt.today)) - 1),
+    kinds,
+    privacy_text: occs.length === 0 ? "" : `Tệp này chứa tên, ${what} của ${persons.size} người. Bất kỳ ai có tệp đều đọc được.`,
+    events: occs.length,
+    persons: persons.size,
+    preview: occs.slice(0, ICS_PREVIEW_MAX).map(([o]) => `${p2s(o.date.d)}/${p2s(o.date.m)}/${String(o.date.y).padStart(4, "0")} — ${o.headline}`),
+  };
+}
+
 export function generateIcs(cal: Cal, ds: Dataset, opt: IcsOptions): string {
   const out: string[] = [];
   const l = (s: string) => foldInto(out, s);

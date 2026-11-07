@@ -48,7 +48,10 @@ function toBlob(c: HTMLCanvasElement, q: number): Promise<Blob | null> {
   return new Promise((ok) => c.toBlob(ok, "image/jpeg", q));
 }
 
-export async function processPhoto(file: Blob): Promise<Processed> {
+/** Giới hạn cho ảnh tệp đính kèm báo tử (01 §3.8a): cạnh dài ≤ 2048 px để giấy tờ còn đọc được, ≤ 2 MB. */
+export const ATTACHMENT_LIMITS = { maxEdge: 2048, maxStored: 2 * 1024 * 1024 } as const;
+
+export async function processPhoto(file: Blob, lim: { maxEdge: number; maxStored: number } = { maxEdge: MAX_EDGE, maxStored: MAX_STORED }): Promise<Processed> {
   if (file.size > MAX_INPUT) throw new PhotoError("Ảnh lớn hơn 25 MB — hãy chọn ảnh nhỏ hơn");
   // Chỉ đọc 256 KB đầu để tìm kích thước điểm ảnh (đủ cho JPEG có EXIF/ảnh nhỏ kèm theo).
   const head = new Uint8Array(await file.slice(0, 256 * 1024).arrayBuffer());
@@ -62,7 +65,7 @@ export async function processPhoto(file: Blob): Promise<Processed> {
   } catch {
     throw new PhotoError("Không đọc được ảnh này (định dạng không hỗ trợ)");
   }
-  const scale = Math.min(1, MAX_EDGE / Math.max(bmp.width, bmp.height));
+  const scale = Math.min(1, lim.maxEdge / Math.max(bmp.width, bmp.height));
   const w = Math.max(1, Math.round(bmp.width * scale)), hh = Math.max(1, Math.round(bmp.height * scale));
   const c = document.createElement("canvas");
   c.width = w; c.height = hh;
@@ -74,9 +77,9 @@ export async function processPhoto(file: Blob): Promise<Processed> {
   for (const q of [0.86, 0.75, 0.62, 0.5]) {
     const b = await toBlob(c, q);
     if (!b) break;
-    if (b.size <= MAX_STORED) return { bytes: new Uint8Array(await b.arrayBuffer()), width: w, height: hh, mime: "image/jpeg" };
+    if (b.size <= lim.maxStored) return { bytes: new Uint8Array(await b.arrayBuffer()), width: w, height: hh, mime: "image/jpeg" };
   }
-  throw new PhotoError("Ảnh quá chi tiết, chưa nén được dưới 1 MB");
+  throw new PhotoError(`Ảnh quá chi tiết, chưa nén được dưới ${Math.round(lim.maxStored / (1024 * 1024))} MB`);
 }
 
 /** Vẽ ảnh (cắt vừa khung, giữ tỷ lệ) lên canvas. */

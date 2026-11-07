@@ -143,6 +143,98 @@ pub fn ics_occurrences<'a>(
         .collect()
 }
 
+/// Số mục xem trước tối đa trong hộp xác nhận xuất .ics (S10).
+pub const ICS_PREVIEW_MAX: usize = 5;
+
+/// Tóm tắt cho hộp xác nhận xuất .ics (S10, duyệt mã MA3N-24-08): số VEVENT, số người có tên trong tệp, và tối
+/// đa [`ICS_PREVIEW_MAX`] dòng xem trước đầu tiên dạng `DD/MM/YYYY — <tiêu đề>` (đúng thứ tự trong tệp).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct IcsSummary {
+    pub events: usize,
+    pub persons: usize,
+    pub preview: Vec<String>,
+    /// Ngày đầu và ngày cuối (gồm) của cửa sổ 10 năm.
+    pub from: Ymd,
+    pub to: Ymd,
+    /// Loại dữ liệu có trong tệp, theo thứ tự: `gio` (giỗ, tiên thường), `sinh_nhat`, `su_kien`.
+    pub kinds: Vec<&'static str>,
+    /// Câu riêng tư của hộp xác nhận (S10): "Tệp này chứa tên, ngày giỗ và sinh nhật của 3 người. Bất kỳ ai có
+    /// tệp đều đọc được." Rỗng khi không có mục nào.
+    pub privacy_text: String,
+}
+
+/// Tóm tắt tệp .ics mà [`generate`] sẽ sinh với cùng `opt`.
+pub fn summary(cal: &Cal, ds: &Dataset, opt: &IcsOptions) -> IcsSummary {
+    let occs = ics_occurrences(cal, ds, opt);
+    let mut persons: Vec<&str> = Vec::new();
+    for (o, _) in &occs {
+        if o.class.is_event() {
+            if let Some(e) = ds.events.iter().find(|e| e.id == o.entity_id) {
+                persons.extend(e.person_ids.iter().map(String::as_str));
+            }
+        } else {
+            persons.push(o.entity_id.as_str());
+        }
+    }
+    persons.sort_unstable();
+    persons.dedup();
+    let mut kinds: Vec<&'static str> = Vec::new();
+    if occs
+        .iter()
+        .any(|(o, _)| matches!(o.class, OccClass::Gio | OccClass::TienThuong))
+    {
+        kinds.push("gio");
+    }
+    if occs
+        .iter()
+        .any(|(o, _)| matches!(o.class, OccClass::SinhNhat | OccClass::SinhNhatAm))
+    {
+        kinds.push("sinh_nhat");
+    }
+    if occs.iter().any(|(o, _)| o.class.is_event()) {
+        kinds.push("su_kien");
+    }
+    let words: Vec<&str> = kinds
+        .iter()
+        .map(|k| match *k {
+            "gio" => "ngày giỗ",
+            "sinh_nhat" => "sinh nhật",
+            _ => "sự kiện",
+        })
+        .collect();
+    let what = match words.len() {
+        0 => String::new(),
+        1 => words[0].to_string(),
+        n => format!("{} và {}", words[..n - 1].join(", "), words[n - 1]),
+    };
+    let privacy_text = if occs.is_empty() {
+        String::new()
+    } else {
+        format!(
+            "Tệp này chứa tên, {what} của {} người. Bất kỳ ai có tệp đều đọc được.",
+            persons.len()
+        )
+    };
+    IcsSummary {
+        from: opt.today,
+        to: Ymd::from_jdn(ten_years_end(opt.today).jdn() - 1),
+        kinds,
+        privacy_text,
+        events: occs.len(),
+        persons: persons.len(),
+        preview: occs
+            .iter()
+            .take(ICS_PREVIEW_MAX)
+            .map(|(o, _)| {
+                format!(
+                    "{:02}/{:02}/{:04} — {}",
+                    o.date.d, o.date.m, o.date.y, o.headline
+                )
+            })
+            .collect(),
+    }
+}
+
 /// Sinh nội dung tệp .ics (CRLF, UTF-8).
 pub fn generate(cal: &Cal, ds: &Dataset, opt: &IcsOptions) -> String {
     let mut out = String::new();

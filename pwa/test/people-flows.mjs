@@ -328,7 +328,7 @@ export async function runPeople({ browser, BASE, ORIGIN, ROOT, SHOTS, check, met
     await page.click(".form-acts .primary");
     await page.waitForSelector("#person-name");
     const rev2 = await store(`async (s) => { const p = await s.person("${idA}"); return [p.rev, p.quan_he, p.photo_id !== null]; }`);
-    check(rev2[0] === 2 && rev2[1] === "ông nội (bên nội)" && rev2[2], `L12: sửa → rev = 2, giữ ảnh (${JSON.stringify(rev2)})`);
+    check(rev2[0] === 2 && rev2[1] === "Ông nội (bên nội)" && rev2[2], `L12: sửa → rev = 2, giữ ảnh; gõ "ông nội (bên nội)" → lưu "Ông nội (bên nội)" (YC-2026-07 viết hoa chữ đầu) (${JSON.stringify(rev2)})`);
 
     // ---------- L11: tưởng niệm ----------
     await page.click("#open-memorial");
@@ -612,7 +612,8 @@ export async function runPeople({ browser, BASE, ORIGIN, ROOT, SHOTS, check, met
     const SEN = { by: "SENTINEL-BAOTIN-7731", place: "SENTINEL-NOIMAT-7731", reason: "SENTINEL-LYDO-7731", note: "SENTINEL-GHICHU-7731" };
     await page.fill("#nf-by", SEN.by); await page.fill("#nf-place", SEN.place); await page.fill("#nf-reason", SEN.reason); await page.fill("#nf-note", SEN.note);
     await page.fill("#nf-date-d", "18"); await page.fill("#nf-date-m", "7"); await page.fill("#nf-date-y", "2024");
-    await page.setInputFiles("#nf-file", { name: "giay-bao-tu.jpg", mimeType: "image/jpeg", buffer: withExif });
+    // Tên tệp gốc cũng là chuỗi canh gác: chỉ được nằm trong bản ghi Attachment (R-PRIV-2, YC-2026-07).
+    await page.setInputFiles("#nf-file", { name: "SENTINEL-TENTEP-7731.jpg", mimeType: "image/jpeg", buffer: withExif });
     await page.waitForSelector(".cert-item canvas[data-drawn]");
     const cvLay = await layout();
     check(layoutOk(cvLay), `US-M-07: biểu mẫu cập nhật không tràn ở 360 px (${layoutTxt(cvLay)})`);
@@ -625,23 +626,24 @@ export async function runPeople({ browser, BASE, ORIGIN, ROOT, SHOTS, check, met
     await shot("convert-confirm-360", false);
     await page.click(".cv-dialog .dbtn.main");
     await page.waitForSelector("#person-name");
-    const recM = await store(`async (s) => { const p = await s.person("${idM}"); const n = p.death.notice; const ph = new Uint8Array(await s.photoBytes(n.certificate_photo_ids[0])); let i = 2, app1 = false; while (i + 4 < ph.length && ph[i] === 0xff && ph[i+1] !== 0xda) { if (ph[i+1] === 0xe1 || ph[i+1] === 0xed) app1 = true; i += 2 + ((ph[i+2] << 8) | ph[i+3]); } return { id: p.id, kind: p.kind, created: p.created_at, rev: p.rev, birth: p.birth && p.birth.input.year, sn: p.reminders.sinh_nhat, gio: !!p.reminders.gio, n, app1, evs: (await s.events()).filter((e) => e.person_ids.includes(p.id)).length }; }`);
+    const recM = await store(`async (s) => { const p = await s.person("${idM}"); const n = p.death.notice; const ph = new Uint8Array(await s.attachmentBytes(n.attachments[0].file_id)); const am = (await s.attachments())[0]; let i = 2, app1 = false; while (i + 4 < ph.length && ph[i] === 0xff && ph[i+1] !== 0xda) { if (ph[i+1] === 0xe1 || ph[i+1] === 0xed) app1 = true; i += 2 + ((ph[i+2] << 8) | ph[i+3]); } return { am, id: p.id, kind: p.kind, created: p.created_at, rev: p.rev, birth: p.birth && p.birth.input.year, sn: p.reminders.sinh_nhat, gio: !!p.reminders.gio, n, app1, evs: (await s.events()).filter((e) => e.person_ids.includes(p.id)).length }; }`);
     check(recM.id === idM && page.url().endsWith(`/nguoi/${idM}`) && recM.kind === "deceased" && recM.created === createdM && recM.rev === 2 && recM.birth === 1950 && recM.sn === null && recM.gio && recM.evs === 1,
       `US-M-07: CÙNG hồ sơ (id giữ nguyên, rev 2) chuyển sang đã mất; giữ ngày sinh và sự kiện; nhắc giỗ bật, không còn nhắc sinh nhật (${JSON.stringify({ kind: recM.kind, rev: recM.rev, evs: recM.evs })})`);
-    check(recM.n.reported_by === SEN.by && recM.n.place === SEN.place && recM.n.reason === SEN.reason && recM.n.note === SEN.note && recM.n.notice_date.day === 18 && recM.n.certificate_photo_ids.length === 1,
-      "01 §3.2a: lưu death.notice đủ trường, đúng tên trường");
-    check(recM.app1 === false, "S9: ảnh giấy báo tử đã mã hóa lại, không còn EXIF/GPS (APP1/APP13)");
+    check(recM.n.reported_by === SEN.by && recM.n.place === SEN.place && recM.n.reason === SEN.reason && recM.n.note === SEN.note && recM.n.notice_date.day === 18 && recM.n.attachments.length === 1 && recM.n.attachments[0].kind === "giay_chung_tu"
+      && recM.am.file_name === "SENTINEL-TENTEP-7731.jpg" && recM.am.stripped === true,
+      "01 §3.2a, §3.8a: lưu death.notice đủ trường (tệp đính kèm loại giấy chứng tử, tên gốc trong bản ghi Attachment)");
+    check(recM.app1 === false, "S9: ảnh đính kèm đã mã hóa lại, không còn EXIF/GPS (APP1/APP13)");
     // Tài liệu sao lưu có notice qua được kiểm tra; trỏ tới ảnh không có → V3; notice có chuỗi rỗng → V1.
     const vdoc = await page.evaluate(`(async () => { const S = await window.__lvhv.storage.loadStore(); const s = await S.openStore(); try {
       const doc = await s.snapshot({ version: "0.1.4", platform: "pwa" }, "2026-07-25T02:00:00Z");
       const r = []; const tryV = (d) => { try { S.validate.document(JSON.parse(JSON.stringify(d))); return "OK"; } catch (e) { return (e.code || "?") + " " + (e.path || ""); } };
       r.push(tryV(doc));
       const m = doc.persons.find((p) => p.id === "${idM}");
-      const bad1 = JSON.parse(JSON.stringify(doc)); bad1.persons.find((p) => p.id === "${idM}").death.notice.certificate_photo_ids = ["0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e6f"]; r.push(tryV(bad1));
+      const bad1 = JSON.parse(JSON.stringify(doc)); bad1.persons.find((p) => p.id === "${idM}").death.notice.attachments[0].file_id = "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e6f"; r.push(tryV(bad1));
       const bad2 = JSON.parse(JSON.stringify(doc)); bad2.persons.find((p) => p.id === "${idM}").death.notice.place = ""; r.push(tryV(bad2));
-      r.push(String(doc.photos.some((ph) => ph.id === m.death.notice.certificate_photo_ids[0])));
+      r.push(String((doc.attachments || []).some((a) => a.id === m.death.notice.attachments[0].file_id)));
       return r; } finally { s.close(); } })()`);
-    check(vdoc[0] === "OK" && vdoc[1].startsWith("V3") && vdoc[2].startsWith("V1") && vdoc[3] === "true", `01 §3.2a: tài liệu sao lưu có notice hợp lệ, ảnh giấy báo tử có trong photos; ảnh không tồn tại → V3; chuỗi rỗng → V1 (${vdoc.join(" | ")})`);
+    check(vdoc[0] === "OK" && vdoc[1].startsWith("V3") && vdoc[2].startsWith("V1") && vdoc[3] === "true", `01 §3.2a: tài liệu sao lưu có notice hợp lệ, tệp đính kèm có trong attachments; tệp không tồn tại → V3; chuỗi rỗng → V1 (${vdoc.join(" | ")})`);
     const nb = page.locator("#notice-box");
     check(await nb.count() === 1 && await page.locator("#notice-box[open]").count() === 0, "Trang hồ sơ: khối \"Thông tin báo tử\" thu gọn");
     await page.click("#notice-box > summary");
