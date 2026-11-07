@@ -21,6 +21,17 @@ BUDGET = 600 * 1024
 CANVAS = (360, 270)
 
 
+_SESSIONS = {}
+
+
+def _session(name):
+    from rembg import new_session
+
+    if name not in _SESSIONS:
+        _SESSIONS[name] = new_session(name)
+    return _SESSIONS[name]
+
+
 def cutout(ledger_entry, layer, session):
     from rembg import remove  # imported lazily: heavy
 
@@ -36,7 +47,17 @@ def cutout(ledger_entry, layer, session):
         r = r.point(lambda v: min(255, int(v * (1 + k))))
         b = b.point(lambda v: int(v * (1 - k)))
         src = Image.merge("RGB", (r, g, b))
-    rgba = remove(src, session=session, post_process_mask=True)
+    mode = layer.get("mask", "rembg")
+    if mode == "luma":
+        # Luminance key for bright objects on a black backdrop (lit candles): alpha from the photo's own brightness.
+        lo, hi = layer.get("luma", [0.05, 0.22])
+        lum = src.convert("L")
+        alpha = lum.point(lambda v: 0 if v / 255 <= lo else 255 if v / 255 >= hi else int(255 * (v / 255 - lo) / (hi - lo)))
+        rgba = src.convert("RGBA")
+        rgba.putalpha(alpha)
+    else:
+        sess = session if not layer.get("model") else _session(layer["model"])
+        rgba = remove(src, session=sess, post_process_mask=True)
     bbox = rgba.getchannel("A").point(lambda a: 255 if a > 16 else 0).getbbox()
     if bbox:
         rgba = rgba.crop(bbox)

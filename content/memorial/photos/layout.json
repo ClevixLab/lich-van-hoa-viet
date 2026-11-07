@@ -10,9 +10,14 @@
         0.39,
         1.0
       ],
-      "cx": 30,
-      "bottom": 165,
-      "width": 20,
+      "mask": "luma",
+      "luma": [
+        0.05,
+        0.22
+      ],
+      "cx": 32,
+      "bottom": 170,
+      "width": 22,
       "z": 1,
       "shadow": false
     },
@@ -20,14 +25,19 @@
       "id": "nen-phai",
       "photo": "nen-1",
       "crop": [
-        0.45,
+        0.44,
         0.18,
-        0.56,
-        0.75
+        0.57,
+        0.8
       ],
-      "cx": 330,
-      "bottom": 165,
-      "width": 20,
+      "mask": "luma",
+      "luma": [
+        0.05,
+        0.22
+      ],
+      "cx": 328,
+      "bottom": 170,
+      "width": 22,
       "z": 1,
       "shadow": false
     },
@@ -40,23 +50,24 @@
         0.99,
         0.88
       ],
-      "cx": 92,
-      "bottom": 165,
-      "width": 88,
+      "cx": 88,
+      "bottom": 160,
+      "width": 84,
       "z": 2
     },
     {
       "id": "bat-huong",
       "photo": "bat-huong-1",
       "crop": [
-        0.53,
-        0.22,
-        0.88,
-        0.97
+        0.5,
+        0.2,
+        0.92,
+        0.99
       ],
+      "model": "u2net",
       "cx": 180,
-      "bottom": 168,
-      "width": 78,
+      "bottom": 158,
+      "width": 84,
       "z": 3
     },
     {
@@ -68,9 +79,10 @@
         0.88,
         1.0
       ],
-      "cx": 268,
-      "bottom": 165,
-      "width": 88,
+      "model": "u2net",
+      "cx": 270,
+      "bottom": 160,
+      "width": 84,
       "z": 4
     },
     {
@@ -82,25 +94,25 @@
         0.69,
         0.99
       ],
-      "cx": 180,
-      "bottom": 236,
-      "width": 128,
+      "cx": 178,
+      "bottom": 240,
+      "width": 112,
       "z": 7
     },
     {
       "id": "dia-xoi",
       "photo": "dia-xoi-1",
-      "cx": 92,
-      "bottom": 246,
-      "width": 84,
+      "cx": 98,
+      "bottom": 248,
+      "width": 70,
       "z": 8
     },
     {
       "id": "bat-com",
       "photo": "bat-com-1",
-      "cx": 266,
-      "bottom": 246,
-      "width": 60,
+      "cx": 262,
+      "bottom": 250,
+      "width": 56,
       "z": 9
     },
     {
@@ -112,10 +124,25 @@
         0.48,
         0.94
       ],
-      "cx": 160,
+      "cx": 150,
       "bottom": 262,
-      "width": 40,
+      "width": 30,
       "z": 10
+    },
+    {
+      "id": "trung",
+      "photo": "trung-2",
+      "crop": [
+        0.33,
+        0.4,
+        0.62,
+        0.61
+      ],
+      "cx": 262,
+      "bottom": 226,
+      "width": 22,
+      "z": 11,
+      "shadow": false
     }
   ]
 }
