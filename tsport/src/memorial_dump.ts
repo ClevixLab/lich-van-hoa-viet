@@ -12,7 +12,9 @@ import {
   parseDateValue, ymd,
 } from "./memorial_model.ts";
 import { type OccClass, type Occurrence, type RemType, R3_CLASSES, keyText, occurrences, ruleOf, upcoming } from "./memorial_occ.ts";
-import { Mulberry32, type Reminder, Zone, fmtLocal, localMinutes, remindersFor, simulate, sortReminders } from "./memorial_remind.ts";
+import { Mulberry32, type Reminder, Zone, dueToday, fmtLocal, localMinutes, remindersFor, simulate, sortReminders } from "./memorial_remind.ts";
+import { icsSummary } from "./memorial_ics.ts";
+import { reminderTextNamed } from "./memorial_occ.ts";
 
 export function gioLine(out: string[], death: DateValue, a: Anniversary): void {
   out.push(
@@ -108,6 +110,19 @@ export function upcomingLines(cal: Cal, ds: Dataset, today: Ymd, out: string[]):
 }
 
 // ---- R10
+export const DUE_TODAY_HEADER = "today,rank,at_local,id,type,occ_date,class,entity_id,title\n";
+export function dueTodayLines(cal: Cal, ds: Dataset, today: Ymd, tz: Zone, out: string[]): void {
+  dueToday(cal, ds, today, tz).forEach((r, i) => {
+    const t = reminderTextNamed(cal, r.occ, r.rtype);
+    out.push(`${iso(today)},${i},${fmtLocal(r.at_local)},${r.id},${rtypeCode(r.rtype)},${iso(r.occ.date)},${r.occ.class},${r.occ.entity_id},"${t.title.replace(/"/g, '""')}"\n`);
+  });
+}
+export const ICS_SUMMARY_HEADER = "today,events,persons,from,to,kinds,privacy_text,preview\n";
+export function icsSummaryLine(cal: Cal, ds: Dataset, today: Ymd, out: string[]): void {
+  const s = icsSummary(cal, ds, { today, dtstamp: "", only_ids: null });
+  out.push(`${iso(today)},${s.events},${s.persons},${iso(s.from)},${iso(s.to)},${s.kinds.join(" ")},"${s.privacy_text}","${s.preview.join(" | ").replace(/"/g, '""')}"\n`);
+}
+
 export const R10A_HEADER = "birth,lunar_year,can_chi\n";
 export function r10aLine(cal: Cal, out: string[], d: Ymd): void {
   let b: BirthInfo;

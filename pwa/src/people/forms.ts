@@ -1,9 +1,9 @@
 // Biểu mẫu: thêm/sửa người đã mất (08 §3.4), người đang sống (08 §3.5), sự kiện (08 §3.7).
 import { append, clear, h } from "../dom";
-import { buildPerson, validate } from "../store/index";
-import { DANH_XUNG, M, RELATIONS_DECEASED, RELATIONS_LIVING, cal, clean, cpLen, displayName, lunarText, nowTs, snap, store, today, tuoiText, uuid, type JsonObj, type Ymd } from "./core";
+import { buildPerson, danhXungSuggestions, normalizePersonNames, quanHeSuggestions, validate } from "../store/index";
+import { M, cal, clean, cpLen, displayName, lunarText, nowTs, snap, store, today, tuoiText, uuid, type JsonObj, type Ymd } from "./core";
 import { drawPhoto, processPhoto, type Processed } from "./photo";
-import { deleteCertPhotos, noticeSection } from "./notice";
+import { noticeSection } from "./notice";
 import { backLink, confirmDialog, dateInput, pressGroup, ruleInput, solarLong, toast, type DateInput, type DateValueJ } from "./ui";
 
 export interface Nav { go(hash: string, replace?: boolean): void }
@@ -102,12 +102,22 @@ export async function renderPersonForm(root: HTMLElement, kindIn: "deceased" | "
   const sum = errSummary();
   let dirty = false;
 
-  const dl = h("datalist", { id: "pf-dx-list" }, ...DANH_XUNG.map((x) => h("option", { value: x })));
-  const fDx = textField("pf-dx", "Cách gọi (đứng trước tên)", (old?.danh_xung as string) ?? "", 40, { list: "pf-dx-list", hint: "ví dụ: ông, bà, bác, cô", what: "Cách gọi" });
+  // YC-2026-07: gợi ý cách gọi của lõi (theo người sống/mất, xếp theo giới tính); chữ đầu viết hoa khi lưu.
+  let gt: string | null = (old?.gioi_tinh as string | null | undefined) ?? null;
+  const dl = h("datalist", { id: "pf-dx-list" });
+  const fillDx = () => { clear(dl); for (const x of danhXungSuggestions(dead, gt)) dl.append(h("option", { value: x })); };
+  fillDx();
+  const fDx = textField("pf-dx", "Cách gọi (đứng trước tên)", (old?.danh_xung as string) ?? "", 40, { list: "pf-dx-list", hint: dead ? "ví dụ: Ông, Bà, Cụ, Bác" : "ví dụ: Anh, Chị, Cô, Chú", what: "Cách gọi" });
+  const gtGroup = h("fieldset", { class: "field radios", id: "pf-gt" }, h("legend", null, "Giới tính"),
+    ...([["nam", "Nam"], ["nu", "Nữ"], ["", "Không ghi"]] as const).map(([v, t]) => {
+      const r = h("input", { type: "radio", name: "pf-gt", id: `pf-gt-${v || "none"}`, value: v, checked: (gt ?? "") === v }) as HTMLInputElement;
+      r.addEventListener("change", () => { if (r.checked) { gt = v || null; fillDx(); } });
+      return h("label", { class: "check", for: `pf-gt-${v || "none"}` }, r, h("span", null, t));
+    }));
   const fTen = textField("pf-ten", "Họ và tên", (old?.ho_ten as string) ?? "", 120, { required: true, what: "Họ tên" });
   const fHieu = textField("pf-hieu", "Tên hiệu / pháp danh", (old?.ten_hieu as string) ?? "", 120, { what: "Tên hiệu" });
   const fQh = textField("pf-qh", "Quan hệ với bạn", (old?.quan_he as string) ?? "", 120, { list: "pf-qh-list", hint: dead ? "ví dụ: Ông nội, Bà ngoại, Bố" : "ví dụ: Con trai, Em gái", what: "Quan hệ" });
-  const qhList = h("datalist", { id: "pf-qh-list" }, ...(dead ? RELATIONS_DECEASED : RELATIONS_LIVING).map((x) => h("option", { value: x })));
+  const qhList = h("datalist", { id: "pf-qh-list" }, ...quanHeSuggestions(dead).map((x) => h("option", { value: x })));
   const fNote = textField("pf-note", "Ghi chú", (old?.ghi_chu as string) ?? "", 2000, { multiline: true });
 
   // ---- ngày mất ----
@@ -289,7 +299,7 @@ export async function renderPersonForm(root: HTMLElement, kindIn: "deceased" | "
     let newPhoto;
     if (photo.pending) { photoId = uuid(); newPhoto = { id: photoId, ...photo.pending }; }
     const base: JsonObj = {
-      id: pid, kind, danh_xung, ho_ten, ten_hieu, quan_he,
+      id: pid, kind, danh_xung, gioi_tinh: gt, ho_ten, ten_hieu, quan_he,
       birth: br.value ? { input: br.value as unknown as JsonObj, noi_sinh } : null,
       death: dead ? { input: dv as unknown as JsonObj, ...(nc?.notice ? { notice: nc.notice } : {}), ...(manual !== null ? { tuoi: { value: manual, label: manual < (nguong() ?? 60) ? "huong_duong" : "huong_tho", manual: true, approx: false } } : {}) } : null,
       noi_an_tang, photo_id: photoId,
@@ -305,12 +315,11 @@ export async function renderPersonForm(root: HTMLElement, kindIn: "deceased" | "
       try { ((base.death as JsonObj).tuoi as JsonObj).approx = M.deriveBirth(cal(), br.value as M.DateValue).lunar_year_approx; } catch { /* lỗi ngày sinh đã báo ở trên */ }
     }
     let p: JsonObj;
-    try { p = buildPerson(base); validate.person(p, "/person"); }
+    try { p = buildPerson(normalizePersonNames(base)); validate.person(p, "/person"); }
     catch (e) { sum.show([{ msg: `Chưa lưu được: ${(e as Error).message}`, focus: () => fTen.input.focus() }]); return; }
     try {
-      await s.putPerson(p, newPhoto, nc?.newPhotos ?? []);
-      if (photo.oldId && photo.oldId !== photoId) await deletePhotoIfUnused(photo.oldId);
-      await deleteCertPhotos(nc?.removed ?? []);
+      // Ảnh / tệp đính kèm bản cũ dùng mà bản mới bỏ: lớp lưu trữ tự xóa trong cùng giao dịch.
+      await s.putPerson(p, newPhoto, nc?.newAttachments ?? []);
     } catch (e) { sum.show([{ msg: `Chưa lưu được: ${(e as Error).message}. Dữ liệu đang nhập vẫn còn trên màn hình.`, focus: () => fTen.input.focus() }]); return; }
     dirty = false;
     toast("Đã lưu hồ sơ.");
@@ -323,7 +332,7 @@ export async function renderPersonForm(root: HTMLElement, kindIn: "deceased" | "
   append(form, [
     sum.el,
     h("fieldset", { class: "pfs" }, h("legend", null, dead ? "Người đã mất" : "Người thân"),
-      fDx.el, dl, fTen.el, dead ? fHieu.el : null, fQh.el, qhList, dead ? h("p", { class: "fine qh-note" }, "Trang tưởng niệm ghi quan hệ này phía trên tên, ví dụ “Ông nội”, “Mẹ”. Để trống thì chỉ ghi tên.") : null, fNote.el),
+      fDx.el, dl, gtGroup, fTen.el, dead ? fHieu.el : null, fQh.el, qhList, dead ? h("p", { class: "fine qh-note" }, "Trang tưởng niệm ghi quan hệ này phía trên tên, ví dụ “Ông nội”, “Mẹ”. Để trống thì chỉ ghi tên.") : null, fNote.el),
     death ? death.el : null,
     h("fieldset", { class: "pfs" }, h("legend", null, "Ngày sinh và nơi sinh"), birth.el, fNoiSinh.el, !dead ? febWrap : null, !dead ? snAmWrap : null, !dead ? snAmSameWrap : null),
     dead ? h("fieldset", { class: "pfs" }, h("legend", null, "Nơi an táng và ảnh"), fAnTang.el,
@@ -348,16 +357,6 @@ export async function renderPersonForm(root: HTMLElement, kindIn: "deceased" | "
   root.append(old ? backLink("‹ Về hồ sơ", `#/nguoi-than/nguoi/${old.id as string}`) : backLink(), h("div", { class: "pagehead" }, h1, old ? h("p", null, displayName(old)) : null), form);
   refresh();
   h1.focus();
-}
-
-async function deletePhotoIfUnused(photoId: string): Promise<void> {
-  const s = await store();
-  if ((await s.persons()).some((p) => validate.personPhotoRefs(p).includes(photoId))) return;
-  await new Promise<void>((ok, ko) => {
-    const tx = s.db.transaction("photos", "readwrite");
-    tx.objectStore("photos").delete(photoId);
-    tx.oncomplete = () => ok(); tx.onerror = () => ko(tx.error);
-  });
 }
 
 // ======================================================================================================

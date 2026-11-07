@@ -6,6 +6,7 @@ export * from "./memorial_gio.ts";
 export * from "./memorial_occ.ts";
 export * from "./memorial_remind.ts";
 export * from "./memorial_period.ts";
+export * from "./backup_rules.ts";
 export * from "./memorial_ics.ts";
 export * as dump from "./memorial_dump.ts";
 export { writeCompact, writePretty } from "./memorial_json.ts";

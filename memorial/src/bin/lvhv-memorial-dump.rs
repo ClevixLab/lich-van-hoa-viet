@@ -25,6 +25,8 @@ const USAGE: &str = "Cách dùng: lvhv-memorial-dump [--method hnd|precise|jpl] 
                                        (c) 10 000 cặp hạt 20261106, (d) 29/02 1900–3000
   r12 DATASET.json [--steps]           R12: mô phỏng 10/50/200 hồ sơ × 3 kịch bản (CSV)
   r13 DATASET.json [FROM TO]           R13: danh sách theo tuần/tháng/quý/năm × 3 bộ lọc (JSONL), mặc định 2026-01-01…2036-12-31
+  due-today DATASET.json FROM TO       thẻ nhắc hôm nay (02 §7.5) cho mỗi ngày FROM…TO (CSV, múi giờ +07:00)
+  ics-summary DATASET.json FROM TO     tóm tắt hộp xác nhận .ics cho mỗi ngày FROM…TO (CSV)
   ics DATASET.json TODAY DTSTAMP       tệp .ics (DTSTAMP dạng YYYYMMDDTHHMMSSZ)
   derive DATASET.json                  tính lại trường dẫn xuất (JSON thụt lề)";
 
@@ -260,6 +262,23 @@ fn run(args: &[String]) -> Result<(), String> {
                 _ => (Ymd::new(2026, 1, 1), Ymd::new(2036, 12, 31)),
             };
             lvhv_memorial::period::r13_lines(cal, &ds, f, t, &mut o.buf);
+        }
+        ["due-today", file, f, t] => {
+            let ds = load(file)?;
+            let tz = Zone::vietnam();
+            o.buf.push_str(DUE_TODAY_HEADER);
+            for j in parse_ymd(f)?.jdn()..=parse_ymd(t)?.jdn() {
+                due_today_lines(cal, &ds, Ymd::from_jdn(j), &tz, &mut o.buf);
+                o.flush_if()?;
+            }
+        }
+        ["ics-summary", file, f, t] => {
+            let ds = load(file)?;
+            o.buf.push_str(ICS_SUMMARY_HEADER);
+            for j in parse_ymd(f)?.jdn()..=parse_ymd(t)?.jdn() {
+                ics_summary_line(cal, &ds, Ymd::from_jdn(j), &mut o.buf);
+                o.flush_if()?;
+            }
         }
         ["ics", file, today, stamp] => {
             let ds = load(file)?;

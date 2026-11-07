@@ -68,12 +68,33 @@ bản rõ := "LVHVPT01" (8 byte ASCII)
           ‖ photo_count × ( 16 byte UUID ảnh (nhị phân) ‖ u32 len ‖ len byte ảnh )
 ```
 
-- Không nén (ảnh đã nén sẵn; tránh "bom giải nén"). Giới hạn: `json_len` ≤ 64 MiB, mỗi ảnh ≤ 1 MiB (01 §3.8),
-  tổng bản rõ ≤ **128 MiB**. Vượt giới hạn khi xuất → báo "Quá nhiều ảnh để sao lưu trong một tệp" (v0.2 mã hóa một
+(YC-2026-07, 2026-11-07) Danh sách khối chứa **ảnh rồi tệp đính kèm** (01 §3.8a): trước hết các `Photo` theo thứ
+tự `photos`, sau đó các `Attachment` theo thứ tự `attachments`. `photo_count` là tổng số khối. Tệp không có tệp đính
+kèm giữ nguyên từng byte như trước (khóa `attachments` của JSON chỉ có khi khác rỗng), nên vector 03 §2.5 không đổi.
+
+- Không nén (ảnh đã nén sẵn; tránh "bom giải nén"). Giới hạn: `json_len` ≤ 64 MiB, mỗi khối ≤ 10 MiB (ảnh ≤ 1 MiB
+  theo 01 §3.8, ảnh đính kèm ≤ 2 MiB, PDF ≤ 10 MiB theo 01 §3.8a; giới hạn từng loại kiểm theo bản ghi JSON), tối đa
+  20 000 khối, tổng bản rõ ≤ **128 MiB** (giữ nguyên). Vượt giới hạn khi xuất → báo "Quá nhiều ảnh để sao lưu trong một tệp" (v0.2 mã hóa một
   lần trong bộ nhớ; mã hóa theo luồng để dành cho v0.3, rủi ro R-BAK-2).
-- Mỗi ảnh phải có bản ghi `Photo` cùng `id` trong JSON và `sha256` khớp; thừa hoặc thiếu → từ chối toàn bộ.
+- Mỗi ảnh phải có bản ghi `Photo` cùng `id` trong JSON và `sha256` khớp; thừa hoặc thiếu → từ chối toàn bộ. Cùng
+  quy tắc cho tệp đính kèm (bản ghi `Attachment`, `sha256` và `bytes` khớp, PDF bắt đầu bằng `%PDF-`); khối ảnh
+  đứng sau một khối tệp đính kèm → từ chối.
 - Ảnh nhập từ tệp sao lưu **được giải mã và mã hóa lại** qua đúng quy trình thêm ảnh (01 §3.8) trước khi lưu, để
   ảnh do người khác tạo không đưa siêu dữ liệu hay dữ liệu dị dạng vào kho.
+- (04 Bổ sung B6, 2026-11-07 — thay biện pháp ở dòng trên: **không** mã hóa lại khi nhập, vì sẽ đổi byte và `sha256`,
+  trái R6 (a)/(d).) Lõi kiểm **chặt** từng khối trước khi ghi bất cứ thứ gì (`lvhv_store::media` ≡
+  `pwa/src/store/media.ts`, cùng mã lỗi; bộ tệp độc hại và mã kỳ vọng ở `schema/test-vectors/media/`): chữ ký khớp
+  `mime`; JPEG/WebP đọc kích thước từ phần đầu, không giải mã, phải bằng bản ghi (`Photo`) và ≤ 2048 px; JPEG không có
+  APP1/APP13, WebP không có khối hay cờ EXIF/XMP; PDF bắt đầu `%PDF-`, có `%%EOF` trong 1024 byte cuối, ≤ 10 MiB. Sai bất
+  kỳ khối nào → từ chối **toàn bộ** tệp, thông báo chung. Cùng bộ kiểm ở `add_photo`, `add_attachment` (lỗi `Input` có
+  câu cụ thể) và trong chuyển đổi lược đồ (lỗi → chỉ đọc).
+- **Đang chờ quyết định (2026-11-07):** với **ảnh chân dung** (`Photo`) khi nhập, bộ kiểm chưa bật. 20 "ảnh" của bộ R6
+  đã khóa (`dataset-r6.json`, tệp salt/nonce cố định) là byte tổng hợp `FF D8 FF E0 … FF D9`, không có đoạn SOF, 10 ảnh
+  còn khai `image/webp`; bật kiểm sẽ làm chính vector R6 không nhập được (R6 (a)/(d), lật bit). Không sửa vector đã
+  khóa; đã báo điều phối viên. Tệp đính kèm (01 §3.8a) được kiểm đầy đủ khi nhập (gồm X21: byte PDF khai `image/jpeg`).
+- Định dạng khối của tệp đính kèm (khối ảnh rồi khối tệp đính kèm, mục trên) là định dạng **chuẩn** cho mọi bản
+  cài đặt (rà soát BM2-03); vector `supplement-yc05` (một ảnh và một PDF đính kèm) và `scripts/check-store.sh` kiểm Rust ↔
+  PWA đọc được tệp của nhau.
 
 ### 2.4 Quy trình
 
@@ -86,8 +107,9 @@ export(password):
   hdr := header(…, len(pt))
   ct  := XChaCha20Poly1305.encrypt(key, nonce, pt, aad = hdr)
   zeroize(key, pt)
+  trả byte tệp                                    # lõi: export_backup — KHÔNG đổi last_backup_at
   ghi tệp qua hộp thoại lưu của hệ điều hành / tải về (không ghi tệp tạm bản rõ)
-  settings.last_backup_at := now
+  chỉ khi ghi xong: mark_backup_saved(now)        # settings.last_backup_at := now (xem dưới)
 
 import(file, password):
   kiểm tra §2.2
@@ -97,6 +119,18 @@ import(file, password):
   unpack → kiểm tra 01 §6.3 → xem trước → Thay toàn bộ / Gộp → một giao dịch
 ```
 
+- **Tạo byte và ghi nhận "đã sao lưu" là hai bước** (duyệt mã native MA3N-23-01). `export_backup` chỉ tạo byte
+  tệp và nhớ thời điểm tạo (`meta.last_export_at`). Ứng dụng gọi `mark_backup_saved(now)` **một lần**, chỉ khi hệ
+  điều hành báo ghi tệp xong. Khi đó `settings.last_backup_at := now`, và `backup_pending_since` chỉ bị xóa nếu nó
+  không muộn hơn lần tạo tệp (thay đổi xảy ra giữa lúc tạo tệp và lúc lưu chưa có trong tệp, nên vẫn chờ sao lưu).
+  Hủy hộp "Lưu" hoặc ghi lỗi thì **không** gọi, nên nhắc sao lưu vẫn còn. Gọi khi chưa tạo tệp nào (hoặc gọi lần thứ
+  hai cho cùng một tệp) → lỗi đầu vào. Byte tệp không đổi: vectơ R6 giữ nguyên.
+- Mật khẩu: ứng dụng dùng `backup_password_error(password, confirm)` của lõi (tsport `backupPasswordError`).
+  Hàm trả `null` nếu hợp lệ, "Mật khẩu cần ít nhất 8 ký tự" nếu dưới 8 điểm mã sau NFC, và "Hai lần nhập mật khẩu
+  chưa giống nhau" nếu ô nhập lại có giá trị và khác sau NFC. Ô mật khẩu khi khôi phục gọi với `confirm = null`.
+- Trước khi đọc cả tệp, ứng dụng native gọi `backup_header_check(72 byte đầu, kích thước tệp)`. Hàm kiểm §2.2,
+  kể cả `plaintext_len` khớp kích thước, nên tệp quá lớn hay không phải tệp sao lưu bị từ chối mà không phải đọc
+  hết vào bộ nhớ.
 - Không phân biệt "sai mật khẩu" với "tệp bị sửa" (AEAD không cho biết, và không nên đoán).
 - Bản rõ chỉ ở trong bộ nhớ; không ghi tệp tạm, không đưa vào bộ nhớ đệm của Service Worker.
 - Không giới hạn số lần thử trong ứng dụng (kẻ tấn công ngoại tuyến cũng không bị giới hạn); sức chống dò mật khẩu
@@ -261,8 +295,10 @@ mục Security), đọc 2026-11-06; §4.2 cho phần Rust.
   vào kho `meta` (`persist`); giao diện đợt 3 đọc `persistResult()` để hiện cảnh báo 01 §4.1.
 - Hook nhắc sao lưu: `backupReminderDue(now)` = có thay đổi chưa sao lưu (`meta.backup_pending_since`, ghi ở thay
   đổi đầu tiên sau lần xuất gần nhất) và `now − backup_pending_since ≥ backup_nag_days` ngày; `backup_nag_days = 0`
-  tắt. Xuất thành công đặt `settings.last_backup_at` và xóa `backup_pending_since`. Cùng quy tắc ở Rust
-  (`Store::backup_reminder_due`).
+  tắt. `exportBackup` chỉ tạo byte và ghi `meta.last_export_at`. Sau khi tải tệp, giao diện gọi
+  `markBackupSaved(now)`: đặt `settings.last_backup_at`, xóa `backup_pending_since` nếu không có thay đổi nào sau
+  lúc tạo tệp, và xóa `last_export_at` (§2.4). Cùng quy tắc ở Rust (`Store::backup_reminder_due`,
+  `Store::mark_backup_saved`).
 
 ### B1.4 Những điểm đặc tả chưa nói rõ — cách đã cài (cả hai bản như nhau)
 

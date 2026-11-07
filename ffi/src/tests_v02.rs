@@ -688,8 +688,25 @@ fn add_cert_photo(s: &LvhvStore) -> String {
         "/../docs/v0.2/schema/test-vectors/photo-0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09.jpg"
     ))
     .unwrap();
-    s.add_photo(id.clone(), "image/jpeg".into(), 64, 64, bytes)
+    // Ảnh mẫu là JPEG sạch 768×1024 (04 B6: kích thước khai phải đúng).
+    s.add_photo(id.clone(), "image/jpeg".into(), 768, 1024, bytes)
         .unwrap();
+    id
+}
+
+/// Tên tệp gốc của tệp đính kèm — chỉ hiện trên trang hồ sơ, không bao giờ ra thông báo/.ics/danh sách.
+const SECRET_FILE: &str = "ZZTENTEP7Q.pdf";
+
+/// Thêm một tệp đính kèm PDF (YC-2026-07) với tên gốc bí mật; trả id.
+fn add_cert_attachment(s: &LvhvStore) -> String {
+    let id = new_uuid().unwrap();
+    s.add_attachment(
+        id.clone(),
+        "application/pdf".into(),
+        Some(SECRET_FILE.into()),
+        b"%PDF-1.4\n%%EOF\n".to_vec(),
+    )
+    .unwrap();
     id
 }
 
@@ -699,7 +716,7 @@ fn secret_notice(cert: &str) -> String {
         "place": SECRET[1],
         "reason": SECRET[2],
         "notice_date": {"calendar":"solar","precision":"day","year":SECRET_DATE.0,"month":SECRET_DATE.1,"day":SECRET_DATE.2,"leap":false},
-        "certificate_photo_ids": [cert],
+        "attachments": [{"id": new_uuid().unwrap(), "kind": "giay_chung_tu", "file_id": cert}],
         "note": format!("{}\ndòng hai", SECRET[3]),
     })
     .to_string()
@@ -728,7 +745,7 @@ fn mark_deceased_same_record_and_b4() {
         .unwrap()
         .iter()
         .any(|x| x["class"] == "su_kien_duong_lap"));
-    let cert = add_cert_photo(&s);
+    let cert = add_cert_attachment(&s);
     let p = v(&s
         .mark_deceased_json(
             cid.clone(),
@@ -769,10 +786,10 @@ fn mark_deceased_same_record_and_b4() {
             sd(2026, 1, 1),
         )
         .is_err());
-    // Xóa hồ sơ → xóa ảnh giấy báo tử.
+    // Xóa hồ sơ → xóa tệp đính kèm báo tử.
     s.delete_person(cid).unwrap();
     assert!(matches!(
-        s.photo_bytes(cert),
+        s.attachment_bytes(cert),
         Err(LvhvDataError::NotFound(_))
     ));
     let _ = std::fs::remove_dir_all(dir);
@@ -783,7 +800,7 @@ fn mark_deceased_same_record_and_b4() {
 #[test]
 fn notice_never_leaks() {
     let (s, dir) = tmp_store();
-    let cert = add_cert_photo(&s);
+    let cert = add_cert_attachment(&s);
     let mut a = person_a();
     a["death"]["notice"] = v(&secret_notice(&cert));
     let a = v(&s.save_person_json(a.to_string()).unwrap());
@@ -846,7 +863,14 @@ fn notice_never_leaks() {
         outs.push(("ics".into(), f.content.replace("\r\n ", "")));
     }
     let mut needles: Vec<String> = SECRET.iter().map(|x| x.to_string()).collect();
-    needles.extend([cert.clone(), date_iso, date_ics, "dòng hai".into()]);
+    needles.extend([
+        cert.clone(),
+        date_iso,
+        date_ics,
+        "dòng hai".into(),
+        SECRET_FILE.into(),
+        "ZZTENTEP7Q".into(),
+    ]);
     for (what, text) in &outs {
         for n in &needles {
             assert!(!text.contains(n.as_str()), "{what} chứa {n}");
@@ -870,9 +894,10 @@ fn notice_never_leaks() {
     .unwrap();
     assert_eq!(t.persons_json().unwrap(), s.persons_json().unwrap());
     assert_eq!(
-        t.photo_bytes(cert.clone()).unwrap(),
-        s.photo_bytes(cert).unwrap()
+        t.attachment_bytes(cert.clone()).unwrap(),
+        s.attachment_bytes(cert).unwrap()
     );
+    assert!(t.dataset_json().unwrap().contains(SECRET_FILE));
     let _ = std::fs::remove_dir_all(dir);
     let _ = std::fs::remove_dir_all(dir2);
 }
@@ -881,7 +906,7 @@ fn notice_never_leaks() {
 #[test]
 fn notice_validation() {
     let (s, dir) = tmp_store();
-    let cert = add_cert_photo(&s);
+    let cert = add_cert_attachment(&s);
     let base = v(&secret_notice(&cert));
     let save = |n: Value| {
         let mut a = person_a();
@@ -905,11 +930,75 @@ fn notice_validation() {
     assert!(save(bad("note", long(2001))).is_err());
     assert!(save(bad("reason", json!("dòng\nhai"))).is_err()); // chỉ note được xuống dòng
     assert!(save(bad("place", json!("   "))).is_ok()); // rỗng sau khi cắt → null
-    assert!(save(bad("certificate_photo_ids", json!([new_uuid().unwrap()]))).is_err()); // V3
-    let five: Vec<String> = (0..5).map(|_| add_cert_photo(&s)).collect();
-    assert!(save(bad("certificate_photo_ids", json!(five[..4]))).is_ok());
-    assert!(save(bad("certificate_photo_ids", json!(five))).is_err());
-    assert!(save(bad("certificate_photo_ids", json!([cert, cert]))).is_err());
+    let att =
+        |file: &str, kind: &str| json!({"id": new_uuid().unwrap(), "kind": kind, "file_id": file});
+    assert!(save(bad(
+        "attachments",
+        json!([att(&new_uuid().unwrap(), "khac")])
+    ))
+    .is_err()); // V3
+    let seven: Vec<Value> = (0..7)
+        .map(|_| att(&add_cert_attachment(&s), "tin_bao_tu"))
+        .collect();
+    assert!(save(bad("attachments", json!(seven[..6]))).is_ok());
+    assert!(save(bad("attachments", json!(seven))).is_err()); // > 6
+    assert!(save(bad(
+        "attachments",
+        json!([att(&cert, "khac"), att(&cert, "khac")])
+    ))
+    .is_err());
+    assert!(save(bad("attachments", json!([att(&cert, "giay")]))).is_err());
+    // BM2-02: khóa cũ không còn bị từ chối mà được chuyển (certificate_photo_ids_migrated_on_save); ở đây có CẢ hai
+    // khóa (X22) nên dị dạng.
+    assert!(save(bad("certificate_photo_ids", json!([]))).is_err());
+    // Tệp đính kèm: PDF phải bắt đầu bằng %PDF-, ảnh ≤ 2 MB, PDF ≤ 10 MB.
+    let id = new_uuid().unwrap();
+    assert!(s
+        .add_attachment(
+            id.clone(),
+            "application/pdf".into(),
+            None,
+            b"GIF89a".to_vec()
+        )
+        .is_err());
+    assert!(s
+        .add_attachment(
+            id.clone(),
+            "image/jpeg".into(),
+            None,
+            vec![0; 2 * 1024 * 1024 + 1]
+        )
+        .is_err());
+    let webp = std::fs::read(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../docs/v0.2/schema/test-vectors/media/webp-ok-16x16.webp"
+    ))
+    .unwrap();
+    // 04 B6: 100 byte không phải WebP → từ chối.
+    assert!(s
+        .add_attachment(id.clone(), "image/webp".into(), None, vec![1; 100])
+        .is_err());
+    let m = v(&s
+        .add_attachment(
+            id.clone(),
+            "image/webp".into(),
+            Some("ảnh.webp".into()),
+            webp.clone(),
+        )
+        .unwrap());
+    assert_eq!(
+        (m["stripped"].clone(), m["bytes"].clone()),
+        (json!(true), json!(webp.len()))
+    );
+    s.delete_attachment(id.clone()).unwrap();
+    assert!(matches!(
+        s.delete_attachment(id),
+        Err(LvhvDataError::NotFound(_))
+    ));
+    assert!(matches!(
+        s.delete_attachment(cert.clone()),
+        Err(LvhvDataError::Invalid(_))
+    )); // còn dùng
     assert!(save(bad(
         "notice_date",
         json!({"calendar":"lunar","precision":"day","year":2025,"month":6,"day":15,"leap":false})
@@ -917,5 +1006,435 @@ fn notice_validation() {
     .is_err());
     assert!(save(bad("extra", json!(1))).is_err());
     // Người đang sống không có `death`, nên không có báo tử.
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+// ---------------------------------------------------------------- core2 (duyệt mã native)
+
+/// MA3N-23-01: tạo byte sao lưu không ghi nhận "đã sao lưu"; chỉ `mark_backup_saved` mới ghi.
+#[test]
+fn export_does_not_mark_backup_saved() {
+    let (s, dir) = tmp_store();
+    s.save_person_json(person_a().to_string()).unwrap();
+    assert!(matches!(
+        s.mark_backup_saved(unix_vn(2026, 7, 1, 9, 0)),
+        Err(LvhvDataError::Invalid(_))
+    ));
+    let _file = s
+        .export_backup("mật khẩu đúng".into(), "0.2.0".into(), "ios".into())
+        .unwrap();
+    assert_eq!(
+        v(&s.settings_json().unwrap())["last_backup_at"],
+        Value::Null
+    );
+    s.mark_backup_saved(unix_vn(2026, 7, 1, 9, 0)).unwrap();
+    assert_eq!(
+        v(&s.settings_json().unwrap())["last_backup_at"],
+        "2026-07-01T02:00:00Z"
+    );
+    assert!(!s.backup_reminder_due().unwrap());
+    assert!(s.mark_backup_saved(unix_vn(2026, 7, 1, 9, 0)).is_err());
+    assert!(s.mark_backup_saved(i64::MAX).is_err());
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+/// MA3N-24-08: xóa người cùng sự kiện chỉ của người đó, một giao dịch.
+#[test]
+fn delete_person_and_orphan_events_works() {
+    let (s, dir) = tmp_store();
+    let mut c = v(EXAMPLE)["persons"][2].clone();
+    c["id"] = json!("");
+    let c = v(&s.save_person_json(c.to_string()).unwrap());
+    let cid = c["id"].as_str().unwrap().to_owned();
+    let mut d = v(EXAMPLE)["persons"][2].clone();
+    d["id"] = json!("");
+    d["ho_ten"] = json!("Lê Văn D");
+    let d = v(&s.save_person_json(d.to_string()).unwrap());
+    let did = d["id"].as_str().unwrap().to_owned();
+    let mk = |pids: Value| {
+        let mut e = v(EXAMPLE)["events"][0].clone();
+        e["id"] = json!("");
+        e["reminder"]["id"] = json!(new_uuid().unwrap());
+        e["person_ids"] = pids;
+        v(&s.save_event_json(e.to_string()).unwrap())["id"]
+            .as_str()
+            .unwrap()
+            .to_owned()
+    };
+    let only_c = mk(json!([cid]));
+    let shared = mk(json!([cid, did]));
+    let nobody = mk(json!([]));
+    let removed = s.delete_person_and_orphan_events(cid).unwrap();
+    assert_eq!(removed, vec![only_c]);
+    let ids: Vec<String> = v(&s.events_json().unwrap())
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|e| e["id"].as_str().unwrap().to_owned())
+        .collect();
+    assert!(ids.contains(&shared) && ids.contains(&nobody) && ids.len() == 2);
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+/// 02 §7.5: thẻ nhắc hôm nay — cùng kết quả với lõi (`due_today`), tiêu đề có tên, sắp theo giờ.
+#[test]
+fn due_today_matches_core() {
+    let r = v(&due_today_json(EXAMPLE.into(), sd(2026, 7, 25), vn()).unwrap());
+    let a = r.as_array().unwrap();
+    assert_eq!(a.len(), 1);
+    assert_eq!(a[0]["fire_local"], "2026-07-25T07:00");
+    assert_eq!(a[0]["title"], "Còn 3 ngày: Giỗ đầu Ông Nguyễn Văn A");
+    assert_eq!(a[0]["occ"]["name"], "Ông Nguyễn Văn A");
+    let ds = lvhv_memorial::model::parse_dataset(R3).unwrap();
+    let c = lvhv_memorial::Cal::get(lvhv_core::DEFAULT_METHOD);
+    for day in [sd(2026, 7, 25), sd(2026, 7, 28), sd(2027, 1, 1)] {
+        let got = v(&due_today_json(R3.into(), day, vn()).unwrap());
+        let want = lvhv_memorial::remind::due_today(
+            c,
+            &ds,
+            lvhv_memorial::model::Ymd::new(day.y, day.m as u32, day.d as u32),
+            &lvhv_memorial::remind::Zone::vietnam(),
+        );
+        let ids: Vec<&str> = got
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|x| x["id"].as_str().unwrap())
+            .collect();
+        assert_eq!(ids, want.iter().map(|r| r.id.as_str()).collect::<Vec<_>>());
+        check_out("due_today_json", &got.to_string());
+    }
+}
+
+#[test]
+fn ics_summary_and_export_preview() {
+    let s = ics_summary(EXAMPLE.into(), sd(2026, 7, 1), None).unwrap();
+    let f = ics_export(
+        EXAMPLE.into(),
+        sd(2026, 7, 1),
+        unix_vn(2026, 7, 1, 0, 0),
+        None,
+    )
+    .unwrap();
+    assert_eq!(f.summary, s);
+    assert_eq!((s.events, s.persons), (f.events, f.persons));
+    assert_eq!((s.from, s.to), (sd(2026, 7, 1), sd(2036, 6, 30)));
+    assert_eq!(s.preview.len(), 5);
+    assert!(
+        s.preview[0].starts_with("28/07/2026 — Giỗ đầu Ông Nguyễn Văn A"),
+        "{:?}",
+        s.preview
+    );
+    assert!(s.privacy_text.starts_with("Tệp này chứa tên, ngày giỗ"));
+    assert!(s.privacy_text.contains(&format!("của {} người", s.persons)));
+    let none = ics_summary(EXAMPLE.into(), sd(2026, 7, 1), Some(vec![])).unwrap();
+    assert_eq!((none.events, none.privacy_text.as_str()), (0, ""));
+}
+
+#[test]
+fn password_rules_leap_month_header_check() {
+    // Cùng ca với tsport/test/memorial_unit.mjs (backupPasswordError).
+    let nfd = "Ma\u{0323}\u{0302}t kha\u{0302}\u{0309}u"; // "Mật khẩu" dạng NFD, 8 điểm mã sau NFC
+    let cases: [(&str, Option<&str>, Option<&str>); 6] = [
+        ("1234567", None, Some("Mật khẩu cần ít nhất 8 ký tự")),
+        ("12345678", None, None),
+        ("😀😀😀😀", None, Some("Mật khẩu cần ít nhất 8 ký tự")),
+        (nfd, Some("Mật khẩu"), None),
+        (
+            "mật khẩu đúng",
+            Some("mật khẩu sai"),
+            Some("Hai lần nhập mật khẩu chưa giống nhau"),
+        ),
+        ("mật khẩu đúng", Some("mật khẩu đúng"), None),
+    ];
+    for (pw, c, want) in cases {
+        assert_eq!(
+            backup_password_error(pw.into(), c.map(str::to_owned)).as_deref(),
+            want,
+            "{pw}"
+        );
+    }
+    assert_eq!(lunar_leap_month(2025).unwrap(), Some(6));
+    assert_eq!(lunar_leap_month(2026).unwrap(), None);
+    assert_eq!(lunar_leap_month(2028).unwrap(), Some(5));
+    assert!(lunar_leap_month(3001).is_err());
+    let (s, dir) = tmp_store();
+    let f = s
+        .export_backup("mật khẩu đúng".into(), "0.2.0".into(), "ios".into())
+        .unwrap();
+    assert!(backup_header_check(f[..72].to_vec(), f.len() as u64).is_ok());
+    assert!(backup_header_check(f[..72].to_vec(), f.len() as u64 + 1).is_err());
+    assert!(backup_header_check(f[..40].to_vec(), f.len() as u64).is_err());
+    assert!(backup_header_check(vec![0u8; 72], 4 << 30).is_err());
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+/// Duyệt thiết kế TKN-A-08: tiêu đề sự kiện kèm tên người — trong .ics và thông báo khi bật hiện tên; ẩn tên
+/// (O-9, mặc định) vẫn là câu chung không tên.
+#[test]
+fn event_titles_name_the_people() {
+    let want = "Kỷ niệm 11 năm ngày cưới: Ngày cưới anh chị C · Chị Lê Thị C";
+    let f = ics_export(
+        EXAMPLE.into(),
+        sd(2026, 7, 1),
+        unix_vn(2026, 7, 1, 0, 0),
+        None,
+    )
+    .unwrap();
+    let unfolded = f.content.replace("\r\n ", "");
+    assert!(
+        unfolded.contains(&format!("SUMMARY:{want}\r\n")),
+        "{unfolded}"
+    );
+    let now = unix_vn(2026, 12, 10, 0, 0);
+    let ev = |show: bool| -> Vec<Value> {
+        v(&reminders_json(EXAMPLE.into(), now, vn(), 60, show).unwrap())
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|r| {
+                r["id"]
+                    .as_str()
+                    .unwrap()
+                    .contains("0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e22")
+            })
+            .cloned()
+            .collect()
+    };
+    let named = ev(true);
+    assert_eq!(named[0]["title"], format!("Còn 1 ngày: {want}"));
+    let hidden = ev(false);
+    assert_eq!(hidden.len(), named.len());
+    assert!(hidden
+        .iter()
+        .all(|r| r["title"] == "Sắp đến sự kiện" && !r.to_string().contains("Lê Thị C")));
+    // "Sắp tới": headline có tên (như .ics).
+    let up = v(&upcoming_json(EXAMPLE.into(), sd(2026, 12, 1), 30).unwrap());
+    let w = up
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|o| o["class"] == "su_kien_duong_lap")
+        .unwrap();
+    assert_eq!(w["headline"], want);
+    assert_eq!(
+        w["headline_plain"],
+        "Kỷ niệm 11 năm ngày cưới: Ngày cưới anh chị C"
+    );
+    // Sự kiện chưa gắn ai → không có " · ".
+    let mut ds = v(EXAMPLE);
+    ds["events"][0]["person_ids"] = json!([]);
+    let f = ics_export(
+        ds.to_string(),
+        sd(2026, 7, 1),
+        unix_vn(2026, 7, 1, 0, 0),
+        None,
+    )
+    .unwrap();
+    assert!(f
+        .content
+        .replace("\r\n ", "")
+        .contains("SUMMARY:Kỷ niệm 11 năm ngày cưới: Ngày cưới anh chị C\r\n"));
+}
+
+/// Ảnh không còn dùng (yêu cầu từ ứng dụng Apple): đổi/bỏ ảnh trong `save_person_json` xóa ảnh cũ nếu không hồ sơ
+/// nào khác dùng; `delete_photo` xóa ảnh chưa gắn hồ sơ nào.
+#[test]
+fn orphan_photos_are_removed() {
+    let (s, dir) = tmp_store();
+    let photo_ids = |s: &LvhvStore| -> Vec<String> {
+        let mut v: Vec<String> = v(&s.dataset_json().unwrap())["photos"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|p| p["id"].as_str().unwrap().to_owned())
+            .collect();
+        v.sort();
+        v
+    };
+    let a = add_cert_photo(&s);
+    let mut c = v(EXAMPLE)["persons"][2].clone();
+    c["id"] = json!("");
+    c["photo_id"] = json!(a);
+    let c = v(&s.save_person_json(c.to_string()).unwrap());
+    // Hồ sơ thứ hai dùng chung ảnh A.
+    let mut d = v(EXAMPLE)["persons"][2].clone();
+    d["id"] = json!("");
+    d["ho_ten"] = json!("Lê Văn D");
+    d["photo_id"] = json!(a);
+    let d = v(&s.save_person_json(d.to_string()).unwrap());
+    // C đổi sang ảnh B: A còn D dùng → giữ.
+    let b = add_cert_photo(&s);
+    let mut c2 = c.clone();
+    c2["photo_id"] = json!(b);
+    let c2 = v(&s.save_person_json(c2.to_string()).unwrap());
+    let mut want = vec![a.clone(), b.clone()];
+    want.sort();
+    assert_eq!(photo_ids(&s), want);
+    // D bỏ ảnh: A không còn ai dùng → xóa (bản ghi và tệp).
+    let mut d2 = d.clone();
+    d2["photo_id"] = Value::Null;
+    s.save_person_json(d2.to_string()).unwrap();
+    assert_eq!(photo_ids(&s), vec![b.clone()]);
+    assert!(matches!(
+        s.photo_bytes(a.clone()),
+        Err(LvhvDataError::NotFound(_))
+    ));
+    assert!(!dir.join("photos").join(format!("{a}.img")).exists());
+    assert!(dir.join("photos").join(format!("{b}.img")).exists());
+    // Lưu lại không đổi ảnh → giữ ảnh.
+    s.save_person_json(c2.to_string()).unwrap();
+    assert_eq!(photo_ids(&s), vec![b.clone()]);
+    // delete_photo: ảnh đang dùng → Invalid; ảnh chưa gắn → xóa; không có → NotFound.
+    assert!(matches!(
+        s.delete_photo(b.clone()),
+        Err(LvhvDataError::Invalid(_))
+    ));
+    let x = add_cert_photo(&s);
+    s.delete_photo(x.clone()).unwrap();
+    assert_eq!(photo_ids(&s), vec![b.clone()]);
+    assert!(matches!(s.delete_photo(x), Err(LvhvDataError::NotFound(_))));
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+/// YC-2026-07: viết hoa chữ đầu cách gọi / quan hệ khi lưu, giới tính, gợi ý dùng chung.
+#[test]
+fn names_gender_and_suggestions() {
+    let (s, dir) = tmp_store();
+    let mut a = person_a();
+    a["danh_xung"] = json!("ông");
+    a["quan_he"] = json!("o\u{0302}ng nội bên bố"); // NFD
+    a["gioi_tinh"] = json!("nam");
+    let a = v(&s.save_person_json(a.to_string()).unwrap());
+    assert_eq!(a["danh_xung"], "Ông");
+    assert_eq!(a["quan_he"], "Ông nội bên bố");
+    assert_eq!(a["gioi_tinh"], "nam");
+    let mut b = a.clone();
+    b["gioi_tinh"] = Value::Null;
+    b["danh_xung"] = json!("bà Cô Tổ họ");
+    let b = v(&s.save_person_json(b.to_string()).unwrap());
+    assert!(b.get("gioi_tinh").is_none(), "null ≡ thiếu khóa");
+    assert_eq!(b["danh_xung"], "Bà Cô Tổ họ");
+    let mut c = b.clone();
+    c["gioi_tinh"] = json!("khac");
+    assert!(s.save_person_json(c.to_string()).is_err());
+    assert_eq!(display_capitalize("bé đỏ".into()), "Bé đỏ");
+    let dead = danh_xung_suggestions(true, None);
+    let living = danh_xung_suggestions(false, None);
+    assert_eq!((dead.len(), living.len()), (22, 17));
+    for x in ["Cụ", "Kỵ", "Ông Tổ họ", "Bà Cô Tổ họ", "Bé đỏ"] {
+        assert!(
+            dead.iter().any(|d| d == x) && !living.iter().any(|d| d == x),
+            "{x}"
+        );
+    }
+    assert_eq!(danh_xung_suggestions(false, Some("nam".into()))[0], "Ông");
+    assert_eq!(danh_xung_suggestions(false, Some("nu".into()))[0], "Bà");
+    assert_eq!(danh_xung_suggestions(true, Some("x".into())), dead);
+    assert!(quan_he_suggestions(true).contains(&"Kỵ ông".to_string()));
+    assert!(!quan_he_suggestions(false).contains(&"Kỵ ông".to_string()));
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+/// 04 B5 / R14: trạng thái chuyển đổi qua FFI — kho của bản dựng 0.2 trước YC-2026-07 (bộ mẫu đóng băng) chuyển
+/// được; kho hỏng → chỉ đọc, ghi báo lỗi, vẫn xuất được sao lưu.
+#[test]
+fn migration_status_via_ffi() {
+    fn copy_dir(from: &std::path::Path, to: &std::path::Path) {
+        std::fs::create_dir_all(to).unwrap();
+        for e in std::fs::read_dir(from).unwrap().flatten() {
+            let t = to.join(e.file_name());
+            if e.file_type().unwrap().is_dir() {
+                copy_dir(&e.path(), &t);
+            } else {
+                std::fs::copy(e.path(), t).unwrap();
+            }
+        }
+    }
+    let fix = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../docs/v0.2/schema/test-vectors/released/0.2-dev-before-attachments/store");
+    let (fresh, d0) = tmp_store();
+    assert_eq!(fresh.migration_status().state, "ok");
+    let dir = std::env::temp_dir().join(format!("lvhv-ffi-mig-{}", new_uuid().unwrap()));
+    copy_dir(&fix, &dir);
+    let s = LvhvStore::open(dir.to_string_lossy().into_owned()).unwrap();
+    let st = s.migration_status();
+    assert_eq!(
+        (st.state.as_str(), st.from_version, st.to_version),
+        ("migrated", 1, 2)
+    );
+    assert!(st.backup_path.is_some() && st.message.is_none());
+    let p = v(&s
+        .person_json("0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e02".into())
+        .unwrap());
+    assert_eq!(
+        p["death"]["notice"]["attachments"]
+            .as_array()
+            .unwrap()
+            .len(),
+        2
+    );
+    // Kho hỏng: chỉ đọc.
+    let bad = std::env::temp_dir().join(format!("lvhv-ffi-mig-{}", new_uuid().unwrap()));
+    copy_dir(&fix, &bad);
+    {
+        // Sửa thẳng byte trong tệp SQLite (cùng độ dài): "Quê nhà" → "Quê nh  " (khoảng trắng cuối → V1 sau chuyển đổi).
+        let f = bad.join("lvhv.sqlite");
+        let mut b = std::fs::read(&f).unwrap();
+        let (from, to) = ("\"Quê nhà\"".as_bytes(), "\"Quê nh  \"".as_bytes());
+        assert_eq!(from.len(), to.len());
+        let i = b.windows(from.len()).position(|w| w == from).unwrap();
+        b[i..i + to.len()].copy_from_slice(to);
+        std::fs::write(&f, b).unwrap();
+    }
+    let r = LvhvStore::open(bad.to_string_lossy().into_owned()).unwrap();
+    let st = r.migration_status();
+    assert_eq!(st.state, "read_only");
+    assert!(st.message.as_deref().unwrap().contains("chỉ đọc"));
+    let pj = r
+        .person_json("0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e01".into())
+        .unwrap();
+    assert!(matches!(
+        r.save_person_json(pj),
+        Err(LvhvDataError::Invalid(_))
+    ));
+    assert!(r
+        .export_backup("mật khẩu đúng".into(), "0.2.0".into(), "android".into())
+        .is_ok());
+    for d in [d0, dir, bad] {
+        let _ = std::fs::remove_dir_all(d);
+    }
+}
+
+/// BM2-02: ứng dụng native còn gửi `death.notice.certificate_photo_ids` (bản trước #28) → lưu được, ảnh giấy báo tử
+/// thành tệp đính kèm loại giấy chứng tử (cùng byte), bản gốc trong `legacy`; id treo → V3 (M09).
+#[test]
+fn certificate_photo_ids_migrated_on_save() {
+    let (s, dir) = tmp_store();
+    let cert = add_cert_photo(&s);
+    let bytes = s.photo_bytes(cert.clone()).unwrap();
+    let mut a = person_a();
+    a["death"]["notice"] = json!({
+        "reported_by": null, "place": null, "reason": null, "notice_date": null,
+        "certificate_photo_ids": [cert], "note": null,
+    });
+    let p = v(&s.save_person_json(a.to_string()).unwrap());
+    let n = &p["death"]["notice"];
+    assert!(n.get("certificate_photo_ids").is_none());
+    assert_eq!(n["attachments"][0]["kind"], "giay_chung_tu");
+    assert_eq!(n["attachments"][0]["file_id"], cert.as_str());
+    assert_eq!(s.attachment_bytes(cert.clone()).unwrap(), bytes);
+    assert!(matches!(
+        s.photo_bytes(cert.clone()),
+        Err(LvhvDataError::NotFound(_))
+    ));
+    assert_eq!(p["legacy"]["certificate_photo_ids"], json!([cert]));
+    let mut b = person_a();
+    b["id"] = json!(new_uuid().unwrap());
+    b["death"]["notice"] = json!({
+        "reported_by": null, "place": null, "reason": null, "notice_date": null,
+        "certificate_photo_ids": [new_uuid().unwrap()], "note": null,
+    });
+    assert!(s.save_person_json(b.to_string()).is_err());
     let _ = std::fs::remove_dir_all(dir);
 }

@@ -99,8 +99,11 @@ pub struct Occurrence {
     pub sort_name: String,
     /// Tên hiển thị (danh xưng + họ tên) hoặc tiêu đề sự kiện.
     pub display: String,
-    /// Tiêu đề chính có tên (dùng cho SUMMARY .ics và thông báo khi bật hiện tên).
+    /// Tiêu đề chính có tên (dùng cho SUMMARY .ics và thông báo khi bật hiện tên). Sự kiện: tiêu đề + " · " +
+    /// tên hiển thị của những người gắn với sự kiện, cách nhau ", " (duyệt thiết kế TKN-A-08).
     pub headline: String,
+    /// Như `headline` nhưng sự kiện không kèm tên người (để giao diện tự ghép tên riêng). Với hồ sơ: = `headline`.
+    pub headline_plain: String,
     /// `rev` của bản ghi nguồn.
     pub rev: i64,
 }
@@ -135,6 +138,7 @@ fn person_occ(
         gio_label,
         sort_name: p.ho_ten.clone(),
         display,
+        headline_plain: headline.clone(),
         headline,
         rev: p.rev,
     }
@@ -170,6 +174,18 @@ fn event_occ(
         Some(k) if k >= 1 => format!("{title} (kỷ niệm {k} năm)"),
         _ => title.clone(),
     };
+    let names: Vec<String> = ev
+        .person_ids
+        .iter()
+        .filter_map(|id| ds.person(id))
+        .map(|p| p.display_name())
+        .collect();
+    let headline_plain = headline;
+    let headline = if names.is_empty() {
+        headline_plain.clone()
+    } else {
+        format!("{headline_plain} · {}", names.join(", "))
+    };
     Occurrence {
         class,
         entity_id: ev.id.clone(),
@@ -180,6 +196,7 @@ fn event_occ(
         sort_name: title.clone(),
         display: title,
         headline,
+        headline_plain,
         rev: ev.rev,
     }
 }
@@ -365,6 +382,7 @@ pub fn tien_thuong_of(g: &Occurrence) -> Occurrence {
     t.class = OccClass::TienThuong;
     t.date = Ymd::from_jdn(g.date.jdn() - 1);
     t.headline = format!("Tiên thường — {}", g.headline);
+    t.headline_plain = t.headline.clone();
     t
 }
 

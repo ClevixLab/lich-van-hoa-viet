@@ -37,31 +37,21 @@ export async function openIcsDialog(): Promise<void> {
   const sn = await snap();
   const t = today();
   const opt: M.IcsOptions = { today: t, dtstamp: nowTs().replace(/[-:]/g, ""), only_ids: null };
-  const occ = M.icsOccurrences(cal(), sn.ds, opt);
-  if (!occ.length) {
+  // Tóm tắt của lõi (MA3N-24-08; cùng bản với Rust ics::summary): số mục, số người, loại dữ liệu, xem trước.
+  const sum = M.icsSummary(cal(), sn.ds, opt);
+  if (!sum.events) {
     await confirmDialog({ title: "Xuất tệp lịch", body: [h("p", null, "Chưa có hồ sơ hay sự kiện nào bật nhắc, nên chưa có gì để xuất.")], ok: "Đã hiểu", cancel: "Đóng" });
     return;
   }
-  const people = new Set<string>();
-  for (const [o] of occ) {
-    if (o.class.startsWith("su_kien")) { const e = sn.events.find((x) => x.id === o.entity_id); for (const pid of (e?.person_ids as string[]) ?? []) people.add(pid); }
-    else people.add(o.entity_id);
-  }
-  const end = M.ymdFromJdn(M.ymdJdn(M.tenYearsEnd(t)) - 1);
-  const preview = occ.slice(0, 5).map(([o]) => h("li", null, `${dmy(o.date)} — ${itemTitle(sn, o)}`));
-  // TK-11: câu riêng tư nói đúng loại dữ liệu có trong tệp.
-  const kinds: string[] = [];
-  if (occ.some(([o]) => o.class === "gio" || o.class === "tien_thuong")) kinds.push("ngày giỗ");
-  if (occ.some(([o]) => o.class === "sinh_nhat" || o.class === "sinh_nhat_am")) kinds.push("sinh nhật");
-  if (occ.some(([o]) => o.class.startsWith("su_kien"))) kinds.push("sự kiện");
-  const what = kinds.length > 1 ? `${kinds.slice(0, -1).join(", ")} và ${kinds[kinds.length - 1]}` : kinds[0];
+  // Xem trước: PWA ghi thêm người gắn với sự kiện (itemTitle), nên lấy 5 mục đầu từ cùng danh sách của lõi.
+  const preview = M.icsOccurrences(cal(), sn.ds, opt).slice(0, sum.preview.length).map(([o]) => h("li", null, `${dmy(o.date)} — ${itemTitle(sn, o)}`));
   const ok = await confirmDialog({
     title: "Xuất tệp lịch", ok: "Tải tệp .ics", cls: "ics-dialog",
     body: [
-      h("p", { class: "pd-privacy" }, `Tệp này chứa tên, ${what} của ${people.size} người. Bất kỳ ai có tệp đều đọc được.`),
-      h("p", null, `Gồm ${occ.length} ngày trong 10 năm tới (từ ${dmy(t)} đến ${dmy(end)}), mỗi ngày có lời nhắc như đã đặt.`),
+      h("p", { class: "pd-privacy" }, sum.privacy_text),
+      h("p", null, `Gồm ${sum.events} ngày trong 10 năm tới (từ ${dmy(sum.from)} đến ${dmy(sum.to)}), mỗi ngày có lời nhắc như đã đặt.`),
       h("p", { class: "flabel" }, "Xem trước:"),
-      h("ul", { class: "dots pd-preview" }, ...preview, occ.length > 5 ? h("li", null, `… và ${occ.length - 5} ngày khác`) : null),
+      h("ul", { class: "dots pd-preview" }, ...preview, sum.events > sum.preview.length ? h("li", null, `… và ${sum.events - sum.preview.length} ngày khác`) : null),
       h("p", { class: "fine" }, "Mở tệp bằng ứng dụng Lịch của điện thoại hoặc máy tính để nhập. Một số ứng dụng lịch dùng lời nhắc mặc định của chúng thay cho lời nhắc trong tệp."),
     ],
     onOk: () => { download(M.fileName(t), M.generateIcs(cal(), sn.ds, opt), "text/calendar;charset=utf-8"); },
@@ -112,12 +102,17 @@ export async function renderBackup(root: HTMLElement, rerender: () => void): Pro
       onOk: async () => {
         const a = pw1.value, b = pw2.value;
         mark(pw1, e1, null); mark(pw2, e2, null);
-        if ([...a.normalize("NFC")].length < 8) { mark(pw1, e1, "Mật khẩu cần ít nhất 8 ký tự"); pw1.focus(); return false; }
-        if (a.normalize("NFC") !== b.normalize("NFC")) { mark(pw2, e2, "Hai lần nhập mật khẩu chưa giống nhau"); pw2.focus(); return false; }
+        // Quy tắc mật khẩu của lõi (MA3N-24-08), cùng bản với Rust lvhv_backup::password_error.
+        const e1m = M.backupPasswordError(a, null);
+        if (e1m) { mark(pw1, e1, e1m); pw1.focus(); return false; }
+        const e2m = M.backupPasswordError(a, b);
+        if (e2m) { mark(pw2, e2, e2m); pw2.focus(); return false; }
         prog.hidden = false; progTxt.hidden = false;
         const bytes = await s.exportBackup(a, { version: APP_VERSION, platform: "pwa" }, (x) => { prog.value = x; });
         pw1.value = ""; pw2.value = ""; // MA3-15-08: không giữ mật khẩu trong ô sau khi xuất
         download(`LichVanHoaViet-saoluu-${iso(today())}.lvhv`, bytes, "application/octet-stream");
+        // MA3N-23-01: chỉ ghi nhận "đã sao lưu" sau khi đã giao tệp cho trình duyệt tải về.
+        await s.markBackupSaved(nowTs());
         return true;
       },
     });

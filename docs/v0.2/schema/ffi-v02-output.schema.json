@@ -8,6 +8,11 @@
     "upcoming_json": { "type": "array", "items": { "$ref": "#/$defs/UpcomingItem" } },
     "events_in_period_json": { "$ref": "#/$defs/Period" },
     "reminders_json": { "type": "array", "items": { "$ref": "#/$defs/Reminder" } },
+    "due_today_json": {
+      "description": "Thẻ nhắc hôm nay (02 §7.5): phần tử như Reminder, title/body có tên, occ luôn là Occ đầy đủ.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/Reminder" }
+    },
     "reschedule_json": { "$ref": "#/$defs/ReschedulePlan" },
     "android_alarm_step_json": { "$ref": "#/$defs/AndroidStep" },
     "person_summary_json": { "$ref": "#/$defs/PersonSummary" },
@@ -43,10 +48,11 @@
         "key": { "type": "string" },
         "n": { "type": ["integer", "null"] },
         "label": { "type": ["string", "null"], "enum": ["gio", "gio_dau", "gio_het", null] },
-        "headline": { "type": "string" },
+        "headline": { "type": "string", "description": "Tiêu đề có tên; sự kiện: tiêu đề · tên người (TKN-A-08)" },
+        "headline_plain": { "type": "string", "description": "Như headline, sự kiện không kèm tên người" },
         "date_line": { "type": "string" }
       },
-      "required": ["date", "lunar", "class", "class_text", "entity_id", "person_ids", "name", "key", "n", "label", "headline", "date_line"],
+      "required": ["date", "lunar", "class", "class_text", "entity_id", "person_ids", "name", "key", "n", "label", "headline", "headline_plain", "date_line"],
       "additionalProperties": false
     },
     "OccHidden": {
@@ -74,12 +80,13 @@
         "key": { "type": "string" },
         "n": { "type": ["integer", "null"] },
         "label": { "type": ["string", "null"], "enum": ["gio", "gio_dau", "gio_het", null] },
-        "headline": { "type": "string" },
+        "headline": { "type": "string", "description": "Tiêu đề có tên; sự kiện: tiêu đề · tên người (TKN-A-08)" },
+        "headline_plain": { "type": "string", "description": "Như headline, sự kiện không kèm tên người" },
         "date_line": { "type": "string" },
         "days": { "type": "integer" },
         "days_text": { "type": "string" }
       },
-      "required": ["date", "lunar", "class", "class_text", "entity_id", "person_ids", "name", "key", "n", "label", "headline", "date_line", "days", "days_text"],
+      "required": ["date", "lunar", "class", "class_text", "entity_id", "person_ids", "name", "key", "n", "label", "headline", "headline_plain", "date_line", "days", "days_text"],
       "additionalProperties": false
     },
     "Period": {
