@@ -353,3 +353,38 @@ xong trước khi nhấn Esc thì Esc không chạm hộp nào. Đây là lỗi 
   `upgrade.mjs` ca (b) (bản dựng chính) tự nạp mã lưu trữ vào trang để đo.
 - Tên tùy chọn `forceMigrationFailure` trong mã lưu trữ của lõi (`store/db.ts`, dùng cho `store-tool`). Ứng dụng
   luôn truyền `{}` nên trang không chạm tới được.
+
+## L. Thẻ "Giới thiệu" làm ứng dụng Android thoát (Android, 2026-11-07)
+
+**Hiện tượng.** Chạm thẻ "Giới thiệu" ở thanh điều hướng đáy làm ứng dụng Android thoát ngay ("Lịch và Văn hóa Việt đã
+dừng"). Phát hiện khi viết kiểm thử giao diện cho trang Giới thiệu mới (PR #78). Trước đó không kiểm thử nào mở trang
+này, và bộ ảnh chụp v0.1 không có ảnh trang này trên Android.
+
+**Nguyên nhân gốc.**
+- `AboutScreen.kt` vẽ biểu tượng ứng dụng bằng `painterResource(R.mipmap.ic_launcher)`.
+- `ic_launcher` chỉ có bản `mipmap-anydpi-v26/ic_launcher.xml`, là một `<adaptive-icon>` (XML).
+- `painterResource` của Compose chỉ vẽ được VectorDrawable và ảnh điểm (PNG, JPG, WEBP). Với loại khác nó ném
+  `IllegalArgumentException: Only VectorDrawables and rasterized asset types are supported ex. PNG, JPG, WEBP` ngay khi
+  dựng trang.
+- Ứng dụng có `minSdk 26`, nên trên **mọi** máy được hỗ trợ (Android 8.0 / API 26 trở lên), tài nguyên được chọn đều là
+  tệp adaptive-icon này. Lỗi không phụ thuộc phiên bản Android, không phụ thuộc R8 hay bản debug/release.
+- Dòng mã có từ commit đầu `2ddb4ec` (v0.1), nên mọi bản Android đã phát hành đều có lỗi: v0.1.1, v0.1.2, v0.1.3,
+  **v0.1.4** (`d9650c7`, `AboutScreen.kt:62`). Lỗi vẫn còn trên `main` tới trước bản sửa này.
+
+**Cách sửa.** Lấy `Drawable` của hệ thống (`ContextCompat.getDrawable`, hệ thống tự dựng adaptive-icon), đổi thành ảnh
+điểm (`toBitmap(216, 216)`), rồi vẽ bằng `Image(ImageBitmap)`. Bản sửa không đổi tài nguyên biểu tượng.
+
+**Kiểm thử chống tái diễn.**
+- `ui/people/AboutScreenTest` (Robolectric, ứng dụng thật `MainActivity`) mở thẻ "Giới thiệu" và kiểm nội dung.
+  - Trước khi sửa: LỖI. Run CI của PR #78 trên `d73a8db`, job `ui` 128446528120, ra đúng ngoại lệ trên tại
+    `AboutScreen.kt:92`. Đây là cùng dòng mã như v0.1.4.
+  - Sau khi sửa: ĐẠT.
+- Job `upgrade` (trình giả lập API 34, `ci/upgrade-test.sh`, ca "Thẻ Giới thiệu không sập") cài APK rồi chạm thẻ
+  "Giới thiệu" qua `uiautomator`, sau đó tìm `FATAL EXCEPTION` trong logcat.
+  - Với APK dựng từ v0.1.4: ghi kết quả để đối chiếu, không làm đỏ CI.
+  - Với bản mới: phải `OK`.
+- Chỉ đo trên trình giả lập API 34. Các bản Android khác suy ra từ nguyên nhân gốc: tài nguyên duy nhất là
+  `anydpi-v26`, `minSdk 26`.
+
+**Người dùng bản 0.1.x.** Mọi trang khác dùng bình thường; dữ liệu không bị ảnh hưởng (lỗi xảy ra lúc vẽ, không ghi gì).
+Thẻ Giới thiệu dùng lại được sau khi cập nhật lên bản có bản sửa.

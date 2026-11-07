@@ -163,6 +163,36 @@ echo "tệp trong files/attachments: $N_ATT"
 [ "${N_ATT:-0}" = "0" ] || fail "chỉ đọc: còn $N_ATT tệp đính kèm mồ côi sau chuyển đổi lỗi"
 end
 
+# docs/05 §L: mở thẻ "Giới thiệu" trên ứng dụng thật. Bản 0.1.4 đã phát hành (d9650c7) sập vì painterResource không vẽ
+# được biểu tượng adaptive-icon — ghi lại để đối chiếu (không làm đỏ CI); bản mới KHÔNG được sập.
+about_check() {
+  adb uninstall "$PKG" >/dev/null 2>&1 || true
+  adb install "$1" >/dev/null || { echo "INSTALL-FAIL"; return; }
+  adb logcat -c
+  adb shell am start -W -n "$MAIN" >/dev/null 2>&1
+  sleep 6
+  adb shell uiautomator dump /sdcard/ui.xml >/dev/null 2>&1
+  local b
+  b="$(adb shell cat /sdcard/ui.xml | tr '>' '\n' | grep -E '(text|content-desc)="Giới thiệu"' | head -1 \
+    | sed -n 's/.*bounds="\[\([0-9]*\),\([0-9]*\)\]\[\([0-9]*\),\([0-9]*\)\]".*/\1 \2 \3 \4/p')"
+  if [ -z "$b" ]; then echo "NO-TAB"; return; fi
+  set -- $b
+  adb shell input tap $(( ($1 + $3) / 2 )) $(( ($2 + $4) / 2 ))
+  sleep 5
+  if adb logcat -d -s AndroidRuntime:E | grep -q "FATAL EXCEPTION"; then
+    adb logcat -d -s AndroidRuntime:E | grep -m3 -E "Exception|at .*AboutScreen" >&2
+    echo "CRASH"
+  else
+    echo "OK"
+  fi
+}
+say "Thẻ Giới thiệu không sập (docs/05 §L)"
+OLD014="$(for a in "$@"; do case "$a" in *v0.1.4*) echo "$a";; esac; done | head -1)"
+if [ -n "$OLD014" ]; then echo "bản 0.1.4 đã phát hành: $(about_check "$OLD014") (kỳ vọng CRASH — lỗi đã phát hành)"; fi
+R="$(about_check "$NEW")"; echo "bản mới: $R"
+[ "$R" = "OK" ] || fail "thẻ Giới thiệu của bản mới: $R"
+end
+
 adb logcat -d -s LvhvR14:I LvhvNhac:W AndroidRuntime:E | tail -50
 if [ "$FAILS" -gt 0 ]; then echo "R14: KHÔNG ĐẠT ($FAILS lỗi)"; exit 1; fi
 echo "R14 (Android): ĐẠT — mọi ca"
