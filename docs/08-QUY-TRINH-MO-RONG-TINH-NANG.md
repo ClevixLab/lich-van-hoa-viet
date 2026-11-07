@@ -97,6 +97,6 @@ nhánh riêng; thêm kiểm thử tái hiện lỗi **trước** khi sửa; ản
 
 ## 10. Danh sách kiểm tra phát hành
 
-CI xanh trên cả bốn nền tảng; cổng tương ứng đã ký; ảnh chụp đã xem; số phiên bản và nhật ký thay đổi; dữ liệu cũ và
+CI xanh trên cả bốn nền tảng; cổng tương ứng đã ký; **R14 nâng cấp tại chỗ ĐẠT trên mọi nền tảng phát hành (không mất dữ liệu của khách hàng)**; lưu bộ dữ liệu mẫu đóng băng của bản này vào `test-vectors/released/`; ảnh chụp đã xem; số phiên bản và nhật ký thay đổi; dữ liệu cũ và
 tệp sao lưu cũ vẫn mở được; dung lượng tải và bộ nhớ trong ngưỡng; ghi chú phát hành bằng lời thường; đường lùi (bản
 trước vẫn tải được).
