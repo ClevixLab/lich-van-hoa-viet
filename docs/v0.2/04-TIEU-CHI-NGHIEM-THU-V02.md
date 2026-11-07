@@ -277,3 +277,32 @@ giữ nguyên; tập lần xuất hiện được định nghĩa lại như sau 
    đó bị gỡ ở lần lập lịch kế tiếp (02 §7.3–7.5).
 5. **Phạm vi chạy lại:** R3, R4, R11, R12, R13 (bên kiểm định độc lập tự cài lại từ mục 1–3); kiểm thử giao diện
    các nền tảng.
+
+## Bổ sung B5 — nâng cấp không mất dữ liệu (YC-2026-08, KHÓA 2026-11-07, trước khi viết mã)
+
+Nguyên văn chủ dự án (07/11/2026, 10:48): "phần mềm phải đảm bảo khi nâng cấp không làm mất dữ liệu đã có của khách
+hàng và updated vào version mới trên máy tính, hoặc điện thoại của khách hàng nhé".
+
+Nguyên tắc (bổ sung cho 01 §7):
+1. Mọi bản phát hành mới phải mở được dữ liệu của **mọi bản đã phát hành trước** trên cùng nền tảng, tự chuyển sang
+   lược đồ mới, và không mất, không đổi nghĩa bất kỳ trường nào.
+2. Không có phép chuyển đổi xóa dữ liệu. Trường bị bỏ hay đổi tên phải được chuyển sang trường mới. Nếu không chuyển
+   được thì giữ nguyên trong một khóa `legacy` thay vì xóa.
+3. Trước khi chuyển đổi, ứng dụng tự giữ một bản sao dữ liệu cũ trên máy (01 §7). Nếu chuyển đổi lỗi, ứng dụng quay
+   về dữ liệu cũ, mở ở chế độ chỉ đọc và hướng dẫn xuất sao lưu. Không bao giờ xóa.
+4. Cập nhật ứng dụng (bản web thay service worker; Android cài đè; iPhone/Mac cập nhật; Windows cài đè bằng MSI mới)
+   không được xóa dữ liệu. Gỡ cài đặt trên Windows không tự xóa thư mục dữ liệu.
+5. Tệp sao lưu tạo từ mọi bản đã phát hành trước đều phải nhập được vào bản mới.
+6. Từ bản 0.2.0, mỗi bản phát hành lưu một **bộ dữ liệu mẫu đóng băng** của chính nó trong
+   `test-vectors/released/<phiên bản>/` (cơ sở dữ liệu hoặc kho của từng nền tảng, kèm tệp sao lưu). Các bộ này không
+   bao giờ được sửa.
+
+### R14 — Nâng cấp tại chỗ giữ nguyên dữ liệu
+
+| Mục | Nội dung |
+|---|---|
+| Mệnh đề | Với mỗi nền tảng: cài bản cũ, tạo dữ liệu, cài bản mới đè lên. Sau khi mở bản mới, mọi hồ sơ, sự kiện, ảnh, tệp đính kèm, cài đặt và lịch nhắc đều còn nguyên và đã chuyển sang lược đồ mới |
+| Bản cũ phải thử | (a) 0.1.4, bản đang phát hành: cài đặt giao diện (cỡ chữ, sáng/tối) và trạng thái "Để sau" phải giữ nguyên. (b) Từ 0.2.0 trở đi: mọi bản đã phát hành có bộ mẫu ở `test-vectors/released/`. (c) Trước khi phát hành 0.2.0: bộ mẫu tạo bằng bản dựng 0.2 trước thay đổi lược đồ gần nhất (ví dụ `certificate_photo_ids` → `attachments`) |
+| Phương pháp | Bản web: trình duyệt tự động nạp bản cũ, ghi dữ liệu vào IndexedDB, thay bằng bản mới qua service worker như người dùng thật. Android: trình giả lập trên CI, `adb install` bản cũ, tạo dữ liệu, `adb install -r` bản mới. Windows: trên máy CI, cài MSI cũ, tạo dữ liệu, cài MSI mới (nâng cấp lớn), rồi gỡ cài đặt và kiểm tra thư mục dữ liệu còn nguyên. iPhone/Mac: trình giả lập, cài đè bản mới. Mọi nền tảng: so dữ liệu sau nâng cấp với dữ liệu kỳ vọng do hàm chuyển đổi thuần (01 §7) sinh ra; thử thêm một ca chuyển đổi lỗi và kiểm tra bản sao dữ liệu cũ còn nguyên |
+| Ngưỡng | 0 bản ghi mất; 0 trường khác với kỳ vọng; ca lỗi không mất dữ liệu; lịch nhắc được đặt lại sau nâng cấp |
+| Kết luận | Theo từng nền tảng: ĐẠT / KHÔNG ĐẠT / CHƯA ĐỦ BẰNG CHỨNG. **Chặn phát hành** nếu KHÔNG ĐẠT |
