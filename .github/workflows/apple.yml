@@ -190,3 +190,48 @@ jobs:
           name: apple-logs
           path: apps/apple/build/*.log
           retention-days: 14
+
+  # R14 (04 Bổ sung B5): cài bản cũ, tạo dữ liệu, cài đè bản mới trên iPhone mô phỏng; dữ liệu phải còn nguyên.
+  upgrade:
+    runs-on: macos-15
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Chọn Xcode 16
+        run: |
+          X=$(find /Applications -maxdepth 1 -name 'Xcode_16*.app' | sort -V | tail -1)
+          sudo xcode-select -s "$X/Contents/Developer"
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-ios,aarch64-apple-ios-sim,x86_64-apple-ios,aarch64-apple-darwin,x86_64-apple-darwin
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: apple
+      - name: Cài XcodeGen ${{ env.XCODEGEN_VERSION }}
+        run: |
+          curl -fsSL -o "$RUNNER_TEMP/xcodegen.zip" \
+            "https://github.com/yonaskolb/XcodeGen/releases/download/${XCODEGEN_VERSION}/xcodegen.zip"
+          unzip -q "$RUNNER_TEMP/xcodegen.zip" -d "$RUNNER_TEMP/xcodegen"
+          echo "$RUNNER_TEMP/xcodegen/xcodegen/bin" >> "$GITHUB_PATH"
+      - name: Dự phòng — brew install xcodegen
+        run: command -v xcodegen || brew install xcodegen
+      - name: Dựng XCFramework (dùng chung cho bản cũ và bản mới — lõi không đổi giữa các bản thử)
+        env:
+          LVHV_BUILD_NUMBER: ${{ github.run_number }}
+        run: |
+          export LVHV_BUILD_DATE="$(date -u +%Y-%m-%d)"
+          apps/apple/build-xcframework.sh
+          cd apps/apple && xcodegen generate
+      - name: R14 — nâng cấp tại chỗ (0.1 → mới, 0.2-dev → mới)
+        run: bash apps/apple/ci/upgrade.sh
+      - name: Ghi ảnh nâng cấp vào nhánh PR (apps/apple/screenshots/upgrade/)
+        if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+          RUN_NO: ${{ github.run_number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          SUBDIR: upgrade
+          RESULT: ${{ runner.temp }}/r14/upgrade.xcresult
+        run: SHOTS="$RUNNER_TEMP/shots-upgrade" bash apps/apple/ci/commit_shots.sh

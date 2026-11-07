@@ -73,6 +73,8 @@ struct PeopleView: View {
                     }
                 } else if !m.opened {
                     PBody("Đang mở sổ người thân…")
+                } else if DemoSeed.isDiag {
+                    UpgradeDiagView()
                 } else {
                     switch section {
                     case .upcoming: UpcomingSection(section: $section)
@@ -455,3 +457,9 @@ struct ProfilesSection: View {
         return "Sinh năm \(b["input"]["year"].int.map(String.init) ?? "?")"
     }
 }
+
+#if !DEBUG
+extension DemoSeed { static let isDiag = false }
+enum DemoSeed {}
+struct UpgradeDiagView: View { var body: some View { EmptyView() } }
+#endif

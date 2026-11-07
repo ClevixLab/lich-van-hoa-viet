@@ -5,11 +5,15 @@
 import CoreGraphics
 import Foundation
 import ImageIO
+import SwiftUI
 import UniformTypeIdentifiers
+import UserNotifications
 
 @MainActor
 enum DemoSeed {
     static var ids: [String: String] = [:]
+    /// Màn hình kiểm tra sau nâng cấp (R14, chỉ bản Debug).
+    static var isDiag: Bool { UserDefaults.standard.string(forKey: "lvhvScreen") == "diag" }
 
     static func resetIfRequested() {
         let d = UserDefaults.standard
@@ -154,6 +158,71 @@ enum DemoSeed {
         case "settings": return (.upcoming, [.settings])
         default: return (.upcoming, [])
         }
+    }
+}
+
+/// R14 — kiểm tra dữ liệu sau khi cài đè bản mới lên bản cũ (chỉ bản Debug, dùng trong CI `apple` job `upgrade`).
+/// So kho hiện tại với bản chép kho cũ (`LichVanHoaViet-before`, CI chép trước khi cài đè), đếm hồ sơ/sự kiện/ảnh,
+/// đọc lại từng ảnh (kiểm sha256 ở lõi), đếm thông báo đang chờ sau khi lập lịch lại.
+struct UpgradeDiagView: View {
+    @ObservedObject private var m = PeopleModel.shared
+    @State private var report = "đang kiểm…"
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            PHeading("Kiểm tra sau nâng cấp (R14)")
+            Text(report).font(.system(.body, design: .monospaced)).foregroundStyle(C.ink)
+                .accessibilityIdentifier("diag.report")
+            Button("Cho phép thông báo và lập lịch lại") {
+                Task {
+                    await m.scheduler.requestPermission(store: m.store)
+                    report = await compute()
+                }
+            }
+            .buttonStyle(SecondaryButtonStyle())
+            .accessibilityIdentifier("diag.allow")
+            Button("Kiểm lại") { Task { report = await compute() } }
+                .buttonStyle(SecondaryButtonStyle())
+                .accessibilityIdentifier("diag.refresh")
+        }
+        .task { report = await compute() }
+    }
+
+    private func normalized(_ ds: String) -> JV? {
+        guard var j = JV.parse(ds) else { return nil }
+        j = j.removing("exported_at").removing("app")
+        return j
+    }
+
+    func compute() async -> String {
+        guard let st = m.store else { return "migration=fail error=\(m.openError ?? "?")" }
+        var lines: [String] = ["migration=ok"]
+        let ds = (try? st.datasetJson()) ?? ""
+        let cur = normalized(ds)
+        lines.append("persons=\(m.persons.count)")
+        lines.append("events=\(m.events.count)")
+        var ids: [String] = []
+        for p in m.persons {
+            if let id = p["photo_id"].str { ids.append(id) }
+            for c in p["death"]["notice"]["certificate_photo_ids"].array { if let id = c.str { ids.append(id) } }
+        }
+        let readable = ids.filter { (try? st.photoBytes(id: $0)) != nil }.count
+        lines.append("photos=\(ids.count) photos_ok=\(readable)")
+        lines.append("notices=\(m.persons.filter { $0["death"]["notice"].isObject }.count)")
+        let beforeDir = PeoplePaths.storeDir().deletingLastPathComponent().appendingPathComponent("LichVanHoaViet-before")
+        if FileManager.default.fileExists(atPath: beforeDir.path),
+           let old = try? LvhvStore.open(dir: beforeDir.path), let ods = try? old.datasetJson() {
+            lines.append("same_as_before=\(normalized(ods) == cur ? 1 : 0)")
+        } else {
+            lines.append("same_as_before=na")
+        }
+        let s = await UNUserNotificationCenter.current().notificationSettings()
+        lines.append("auth=\(s.authorizationStatus.rawValue)")
+        let pending = await UNUserNotificationCenter.current().pendingNotificationRequests()
+        lines.append("pending=\(pending.filter { $0.identifier.hasPrefix("lvhv:") }.count)")
+        let ui = UserDefaults.standard
+        lines.append("theme=\(ui.integer(forKey: "theme")) size=\(ui.integer(forKey: "size"))")
+        return lines.joined(separator: "\n")
     }
 }
 #endif
