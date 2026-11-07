@@ -390,7 +390,19 @@ pub fn init_app_identity() {
     toast_os::init();
 }
 
+/// Chế độ chụp màn hình / đo bộ nhớ: dữ liệu mẫu không được đặt thành thông báo thật trên máy.
+static DEMO: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+pub fn set_demo_mode() {
+    DEMO.store(true, std::sync::atomic::Ordering::Relaxed);
+}
+
 pub fn toast_state() -> ToastState {
+    if DEMO.load(std::sync::atomic::Ordering::Relaxed) {
+        return ToastState::Unavailable(
+            "Chế độ chụp màn hình với dữ liệu mẫu: không đặt thông báo thật trên máy này.".into(),
+        );
+    }
     #[cfg(windows)]
     {
         toast_os::state()

@@ -709,6 +709,7 @@ fn main() -> Result<(), slint::PlatformError> {
         let dir = std::env::temp_dir().join(format!("lvhv-demo-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::env::set_var("LVHV_DATA_DIR", &dir);
+        platform::set_demo_mode();
     }
     let ui = AppWindow::new()?;
     let st = setup(&ui);
