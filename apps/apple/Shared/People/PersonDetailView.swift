@@ -10,7 +10,7 @@ struct PersonDetailView: View {
     @State private var deleteEvent: JV?
     @State private var error: String?
     @State private var noticeOpen = PersonDetailView.expandDefault
-    @State private var preview: URL?
+    @State private var viewing: AttOpen?
 
     private static var expandDefault: Bool {
         #if DEBUG
@@ -32,8 +32,7 @@ struct PersonDetailView: View {
                 .pageWidth()
             }
         }
-        .quickLookPreview($preview)
-        .onChange(of: preview) { u in if u == nil { AttachmentTemp.clear() } }
+        .attachmentViewer($viewing)
         .navigationTitle("Hồ sơ")
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
@@ -200,7 +199,7 @@ struct PersonDetailView: View {
                         let atts = NoticeDraft(n).attachments
                         if !atts.isEmpty {
                             Text("Tệp đính kèm").ps(15).foregroundStyle(C.ink2)
-                            ForEach(atts) { a in
+                            ForEach(Array(atts.enumerated()), id: \.element.id) { i, a in
                                 HStack(alignment: .top, spacing: 12) {
                                     AttachmentThumb(att: a, size: CGSize(width: 96, height: 120))
                                     VStack(alignment: .leading, spacing: 4) {
@@ -212,6 +211,7 @@ struct PersonDetailView: View {
                                             PFine("Tệp PDF được lưu nguyên bản")
                                         }
                                         Button("Xem") { open(a) }.buttonStyle(SecondaryButtonStyle())
+                                            .accessibilityIdentifier("person.att.view.\(i)")
                                     }
                                 }
                             }
@@ -272,10 +272,10 @@ struct PersonDetailView: View {
         }
     }
 
-    /// Quick Look trên bản chép tạm có tên chung, xóa khi đóng (RA-SOAT-BAO-MAT-V02 §5.3).
+    /// Ảnh xem ngay trong ứng dụng; PDF hỏi lại rồi mới mở Quick Look (BM3-03, S10).
     private func open(_ a: AttDraft) {
         guard let f = a.fileId, let data = m.attachmentData(f) else { return }
-        preview = try? AttachmentTemp.write(data, pdf: m.attachmentsMeta[f]?["mime"].str == "application/pdf")
+        viewing = AttOpen(data: data, pdf: m.attachmentsMeta[f]?["mime"].str == "application/pdf")
     }
 
     private func deleteCard(_ name: String) -> some View {

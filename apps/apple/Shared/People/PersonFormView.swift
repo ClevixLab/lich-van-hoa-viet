@@ -55,7 +55,7 @@ struct NoticeEditor: View {
     let today: CivilDate
     @State private var fileError: String?
     @State private var pickingPdf = false
-    @State private var preview: URL?
+    @State private var viewing: AttOpen?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -96,8 +96,7 @@ struct NoticeEditor: View {
         .fileImporter(isPresented: $pickingPdf, allowedContentTypes: [.pdf]) { r in
             if case .success(let u) = r { Task { await addPdf(u) } }
         }
-        .quickLookPreview($preview)
-        .onChange(of: preview) { u in if u == nil { AttachmentTemp.clear() } }
+        .attachmentViewer($viewing)
     }
 
     /// PDF: kiểm cỡ (≤ 10 MB) **trước** khi đọc, rồi chữ ký `%PDF-`; lưu nguyên byte (RA-SOAT §5.3, B6).
@@ -123,7 +122,108 @@ struct NoticeEditor: View {
         let data = a.new?.data ?? a.fileId.flatMap { m.attachmentData($0) }
         let pdf = a.new?.isPdf ?? (a.fileId.flatMap { m.attachmentsMeta[$0]?["mime"].str } == "application/pdf")
         guard let data else { return }
-        preview = try? AttachmentTemp.write(data, pdf: pdf)
+        viewing = AttOpen(data: data, pdf: pdf)
+    }
+}
+
+// MARK: - Xem tệp đính kèm (BM3-03, S10)
+
+/// Yêu cầu xem một tệp đính kèm.
+struct AttOpen: Identifiable, Equatable {
+    let id = UUID()
+    let data: Data
+    let pdf: Bool
+    static func == (a: AttOpen, b: AttOpen) -> Bool { a.id == b.id }
+}
+
+private struct AttImage: Identifiable {
+    let id = UUID()
+    let img: CGImage
+}
+
+/// Ảnh: xem ngay trong ứng dụng (không có nút Chia sẻ, không ghi tệp tạm). PDF: hộp hỏi lại, "Hủy" là nút mặc định, nói rõ
+/// tệp sẽ mở trong trình xem có nút Chia sẻ; chỉ khi bấm "Mở tệp" mới ghi bản chép tạm tên chung và mở Quick Look (§5.3).
+struct AttachmentViewer: ViewModifier {
+    @Binding var request: AttOpen?
+    @State private var image: AttImage?
+    @State private var pdfData: Data?
+    @State private var confirmPdf = false
+    @State private var preview: URL?
+
+    func body(content: Content) -> some View {
+        content
+            .onChange(of: request) { r in
+                guard let r else { return }
+                request = nil
+                if r.pdf {
+                    pdfData = r.data
+                    confirmPdf = true
+                } else if let img = PhotoProcessor.cgImage(r.data) {
+                    image = AttImage(img: img)
+                }
+            }
+            .alert("Mở tệp PDF?", isPresented: $confirmPdf) {
+                Button("Hủy", role: .cancel) { pdfData = nil }
+                    .keyboardShortcut(.defaultAction)
+                    .accessibilityIdentifier("att.pdf.cancel")
+                Button("Mở tệp") {
+                    if let d = pdfData { preview = try? AttachmentTemp.write(d, pdf: true) }
+                    pdfData = nil
+                }
+                .accessibilityIdentifier("att.pdf.open")
+            } message: {
+                Text("Tệp sẽ mở trong trình xem của hệ thống. Trình xem đó có nút Chia sẻ, có thể gửi tệp ra ngoài ứng dụng (tin nhắn, thư, lưu vào Tệp). Chỉ mở khi bạn đang ở nơi riêng tư.")
+            }
+            .quickLookPreview($preview)
+            .onChange(of: preview) { u in if u == nil { AttachmentTemp.clear() } }
+            .sheet(item: $image) { AttachmentImageView(image: $0.img) }
+    }
+}
+
+extension View {
+    func attachmentViewer(_ request: Binding<AttOpen?>) -> some View { modifier(AttachmentViewer(request: request)) }
+}
+
+/// Trang xem ảnh đính kèm trong ứng dụng: chụm hai ngón để phóng to, chạm hai lần để về cỡ vừa.
+struct AttachmentImageView: View {
+    let image: CGImage
+    @Environment(\.dismiss) private var dismiss
+    @State private var scale: CGFloat = 1
+    @State private var base: CGFloat = 1
+
+    var body: some View {
+        NavigationStack {
+            GeometryReader { g in
+                ScrollView([.horizontal, .vertical], showsIndicators: false) {
+                    Image(decorative: image, scale: 1)
+                        .resizable()
+                        .interpolation(.high)
+                        .scaledToFit()
+                        .frame(width: g.size.width * scale, height: g.size.height * scale)
+                        .accessibilityLabel("Ảnh tệp đính kèm")
+                }
+                .gesture(MagnificationGesture()
+                    .onChanged { v in scale = min(max(base * v, 1), 5) }
+                    .onEnded { _ in base = scale })
+                .onTapGesture(count: 2) { scale = 1; base = 1 }
+            }
+            .background(C.wall)
+            .accessibilityIdentifier("att.image")
+            .navigationTitle("Tệp đính kèm")
+            #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Đóng") { dismiss() }.accessibilityIdentifier("att.image.close")
+                }
+            }
+        }
+        .tint(C.redInk)
+        .privacyCover()
+        #if os(macOS)
+        .frame(minWidth: 520, minHeight: 600)
+        #endif
     }
 }
 
@@ -151,6 +251,7 @@ struct AttachmentRow: View {
                          idPrefix: "notice.att.kind")
             HStack(spacing: 10) {
                 Button("Xem", action: onView).buttonStyle(SecondaryButtonStyle())
+                    .accessibilityIdentifier("notice.att.view")
                 Button("Bỏ", action: onRemove).buttonStyle(SecondaryButtonStyle(destructive: true))
             }
         }

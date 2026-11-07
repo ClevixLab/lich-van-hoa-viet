@@ -165,9 +165,9 @@ final class PhotoCache {
     }
 }
 
-/// Tệp tạm để xem tệp đính kèm bằng Quick Look (RA-SOAT-BAO-MAT-V02 §5.3): thư mục `tmp/att/` của hộp cát, tên chung
-/// (`TepDinhKem.pdf` / `.jpg`), không lộ tên người hay tên gốc; xóa khi đóng xem trước và khi mở ứng dụng.
-/// TODO(core2): nối vào khối "Tệp đính kèm" khi lõi có `attachments` (YC-2026-07, PR #28).
+/// Tệp tạm để xem tệp PDF đính kèm bằng Quick Look sau khi người dùng xác nhận (RA-SOAT-BAO-MAT-V02 §5.3, BM3-03):
+/// thư mục `tmp/att/` của hộp cát, tên chung (`TepDinhKem.pdf`), không lộ tên người hay tên gốc; xóa khi đóng xem trước
+/// và khi mở ứng dụng. Ảnh đính kèm không đi qua đây — xem ngay trong ứng dụng.
 enum AttachmentTemp {
     static var dir: URL { FileManager.default.temporaryDirectory.appendingPathComponent("att", isDirectory: true) }
 

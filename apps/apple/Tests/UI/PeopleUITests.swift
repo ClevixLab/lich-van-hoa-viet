@@ -124,6 +124,45 @@ final class PeopleUITests: XCTestCase {
         }
     }
 
+    /// BM3-03 (S10): ảnh đính kèm xem ngay trong ứng dụng (không có Chia sẻ); PDF phải qua hộp hỏi lại với "Hủy" mặc định —
+    /// bấm Hủy thì không mở gì, bấm "Mở tệp" mới mở trình xem của hệ thống. Chụp ở sáng, tối, chữ rất lớn.
+    func testAttachmentViewing() {
+        for (v, dark, big) in [("light", false, false), ("dark", true, false), ("large", false, true)] {
+            let app = launch(screen: "person-notice", dark: dark, big: big, extra: ["-lvhvExpand", "1"])
+            let img = app.buttons["person.att.view.0"].firstMatch
+            XCTAssertTrue(img.waitForExistence(timeout: 10))
+            tapScrolling(app, img)
+            XCTAssertTrue(app.descendants(matching: .any)["att.image"].firstMatch.waitForExistence(timeout: 5),
+                          "ảnh đính kèm phải mở ngay trong ứng dụng")
+            XCTAssertFalse(app.buttons["Share"].exists || app.buttons["Chia sẻ"].exists, "trang xem ảnh không có nút Chia sẻ")
+            snap("att-image-\(v)")
+            app.buttons["att.image.close"].firstMatch.tap()
+
+            let pdf = app.buttons["person.att.view.1"].firstMatch
+            tapScrolling(app, pdf)
+            let alert = app.alerts.firstMatch
+            XCTAssertTrue(alert.waitForExistence(timeout: 5), "PDF phải hỏi lại trước khi mở Quick Look")
+            XCTAssertTrue(alert.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "Chia sẻ")).firstMatch.exists)
+            snap("att-pdf-confirm-\(v)")
+            alert.buttons["Hủy"].tap()
+            var w = 0
+            while alert.exists && w < 25 { Thread.sleep(forTimeInterval: 0.2); w += 1 }
+            XCTAssertFalse(alert.exists)
+            Thread.sleep(forTimeInterval: 1.5)
+            XCTAssertTrue(pdf.isHittable, "bấm Hủy thì không mở trình xem")
+
+            if v == "light" {
+                tapScrolling(app, pdf)
+                XCTAssertTrue(alert.waitForExistence(timeout: 5))
+                alert.buttons["Mở tệp"].tap()
+                Thread.sleep(forTimeInterval: 2.5)
+                XCTAssertFalse(pdf.isHittable, "bấm Mở tệp thì trình xem của hệ thống phủ lên")
+                snap("att-pdf-open-\(v)")
+            }
+            app.terminate()
+        }
+    }
+
     // MARK: Luồng
 
     /// L1: thêm người đã mất theo ngày dương → thấy "15/6 nhuận" → lưu → trang hồ sơ.
