@@ -7,6 +7,8 @@
 #   - save-person: viết hoa khi lưu (danh_xung, quan_he), gioi_tinh null → bỏ khóa
 #   - suggestions, display-capitalize
 #   - check-media: mọi ca của media/manifest.json (B6)
+#   - --now: dọn `legacy` + bản sao trước chuyển đổi sau 7 ngày (mở 3 lần trên cùng một kho; TS qua --state)
+#   - export + inspect-export: tệp xuất không có `legacy`; Rust và TS đọc được tệp của nhau
 # Cần: cargo, node ≥ 20, python3, pwa/node_modules (npm ci). Không sửa tệp nào trong kho mã (làm trên bản sao tạm).
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -76,6 +78,23 @@ done
 run rs-disp 0 "$BIN" display-capitalize "bà cô tổ họ"
 run rs-usage 2 "$BIN" suggestions dead
 media rs "$BIN"
+# 7 ngày (01 §7): T0 chuyển đổi; T0+1 ngày còn legacy/bản sao; xuất lúc đó không có legacy; T0+8 ngày đã dọn.
+T0=1793000000; T1=$((T0 + 86400)); T8=$((T0 + 8 * 86400))
+cp -r "$FIX/store" "$WORK/rs-c"
+run rs-now0 0 "$BIN" open "$WORK/rs-c" --now "$T0"
+run rs-now1 0 "$BIN" open "$WORK/rs-c" --now "$T1"
+run rs-export 0 "$BIN" export "$WORK/rs-c" "$PW" "$WORK/rs-export.lvhv" --now "$T1"
+run rs-now8 0 "$BIN" open "$WORK/rs-c" --now "$T8"
+run rs-export8 0 "$BIN" export "$WORK/rs-c" "$PW" "$WORK/rs-export8.lvhv" --now "$T8"
+run rs-export-fresh 0 "$BIN" export "$WORK/rs-new" "$PW" "$WORK/rs-export-fresh.lvhv"
+run rs-export-wrongpw 1 "$BIN" export "$WORK/rs-new" "ngắn" "$WORK/x.lvhv"
+python3 - "$WORK/person-in.json" "$WORK/person-fixed.json" <<'EOF'
+import json, sys
+p = json.load(open(sys.argv[1], encoding="utf-8")); p["id"] = "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5eaa"
+json.dump(p, open(sys.argv[2], "w", encoding="utf-8"), ensure_ascii=False)
+EOF
+run rs-save-a 0 "$BIN" save-person "$WORK/rs-p" "$WORK/person-fixed.json"
+run rs-save-b 0 "$BIN" save-person "$WORK/rs-p" "$WORK/person-fixed.json"
 
 echo "[store-tool] TypeScript/PWA"
 run ts-open 0 "${TS[@]}" open "$FIX"
@@ -96,6 +115,26 @@ done
 run ts-disp 0 "${TS[@]}" display-capitalize "bà cô tổ họ"
 run ts-usage 2 "${TS[@]}" suggestions dead
 media ts "${TS[@]}"
+ST="$WORK/ts-state.json"
+run ts-now0 0 "${TS[@]}" open "$FIX" --now "$T0" --state "$ST"
+run ts-now1 0 "${TS[@]}" open - --now "$T1" --state "$ST"
+run ts-export 0 "${TS[@]}" export - "$PW" "$WORK/ts-export.lvhv" --now "$T1" --state "$ST"
+run ts-now8 0 "${TS[@]}" open - --now "$T8" --state "$ST"
+run ts-export8 0 "${TS[@]}" export - "$PW" "$WORK/ts-export8.lvhv" --now "$T8" --state "$ST"
+run ts-export-wrongpw 1 "${TS[@]}" export - "ngắn" "$WORK/x.lvhv"
+run ts-save-a 0 "${TS[@]}" save-person - "$WORK/person-fixed.json" --state "$WORK/ts-p.json"
+run ts-save-b 0 "${TS[@]}" save-person - "$WORK/person-fixed.json" --state "$WORK/ts-p.json"
+run ts-export-fresh 0 "${TS[@]}" export - "$PW" "$WORK/ts-export-fresh.lvhv" --state "$WORK/ts-p.json"
+run ts-usage-state 2 "${TS[@]}" suggestions living --state "$ST"
+# inspect-export: mỗi bản đọc tệp của chính nó và của bản kia, cùng tệp mẫu đã commit.
+for side in rs ts; do
+  if [ "$side" = rs ]; then CMD=("$BIN"); else CMD=("${TS[@]}"); fi
+  for f in rs-export rs-export8 rs-export-fresh ts-export ts-export8 ts-export-fresh; do
+    run "$side-inspect-$f" 0 "${CMD[@]}" inspect-export "$WORK/$f.lvhv" "$PW"
+  done
+  run "$side-inspect-example" 0 "${CMD[@]}" inspect-export "$TV/example-v1.lvhv" "$PW"
+  run "$side-inspect-wrongpw" 1 "${CMD[@]}" inspect-export "$TV/example-v1.lvhv" "sai mật khẩu 1"
+done
 
 echo "[store-tool] kiểm kết quả"
 python3 - "$WORK" "$TV" <<'EOF'
@@ -153,7 +192,55 @@ for side in ("rs", "ts"):
     bad = [f"{c['file']}/{c['kind']}: {J(f'{side}-media-{i}')['verdict']} != {c['expect']}" for i, c in enumerate(mc) if J(f"{side}-media-{i}")["verdict"] != c["expect"]]
     ok(not bad, f"{side} check-media: {len(mc) - len(bad)}/{len(mc)} ca media/manifest.json" + (f" — {bad}" if bad else ""))
 
+# --now, export, inspect-export
+def legacy(d, p=""):
+    out = []
+    if isinstance(d, dict):
+        for k, v in d.items():
+            if k == "legacy": out.append(f"{p}/{k}")
+            out += legacy(v, f"{p}/{k}")
+    elif isinstance(d, list):
+        for i, v in enumerate(d): out += legacy(v, f"{p}/{i}")
+    return out
+for side in ("rs", "ts"):
+    n0, n1, n8 = J(f"{side}-now0"), J(f"{side}-now1"), J(f"{side}-now8")
+    ok(n0["migration_status"]["state"] == "migrated" and legacy(n0["store"]["document"]), f"{side} --now T0: chuyển đổi, có legacy")
+    ok(n1["migration_status"]["state"] == "ok" and legacy(n1["store"]["document"]) == legacy(n0["store"]["document"]), f"{side} --now T0+1 ngày: mở lại cùng kho, legacy còn nguyên")
+    ok(not legacy(n8["store"]["document"]), f"{side} --now T0+8 ngày: legacy đã dọn")
+    strip_leg = lambda d: json.loads(json.dumps(d), object_hook=lambda o: {k: v for k, v in o.items() if k != "legacy"})
+    ok(strip_leg(n1["store"]["document"]) == n8["store"]["document"], f"{side} dọn sau 7 ngày chỉ bỏ legacy, không đổi gì khác")
+    if side == "rs":
+        ok("lvhv.sqlite.pre-v2.bak" in n1["files_after"] and "lvhv.sqlite.pre-v2.bak" not in n8["files_after"],
+           "rs bản sao trước chuyển đổi còn ở T0+1 ngày, đã xóa ở T0+8 ngày")
+    else:
+        ok(n1["source"] == n8["source"] == "state", "ts --state: các lần mở sau dùng lại cùng kho")
+    for f in ("export", "export8", "export-fresh"):
+        ok(J(f"{side}-{f}")["ok"], f"{side} {f}")
+    ok(J(f"{side}-export-wrongpw")["stage"] == "export_backup", f"{side} export mật khẩu ngắn → từ chối")
+    a, b = J(f"{side}-save-a")["saved"], J(f"{side}-save-b")["saved"]
+    ok(a["rev"] == 1 and b["rev"] == 2 and a["created_at"] == b["created_at"], f"{side} save-person hai lần trên cùng kho: rev 1 → 2")
+    for f in ("rs-export", "rs-export8", "rs-export-fresh", "ts-export", "ts-export8", "ts-export-fresh"):
+        i = J(f"{side}-inspect-{f}")
+        ok(i["legacy_paths"] == [] and not legacy(i["document"]) and i["json_is_canonical"], f"{side} inspect-export {f}: không có legacy, JSON chuẩn")
+    ie = J(f"{side}-inspect-example")
+    ok(ie["document"] == ex_doc and ie["file_sha256"] == ex_m["example"]["sha256"], f"{side} inspect-export example-v1.lvhv = example-v1.json")
+    ok(J(f"{side}-inspect-wrongpw")["stage"] == "decrypt", f"{side} inspect-export sai mật khẩu → từ chối")
+    ex1 = J(f"{side}-inspect-{side}-export")["document"]
+    ok(strip(ex1) == {k: v for k, v in strip_leg(n1["store"]["document"]).items()}, f"{side} tệp xuất = kho (bỏ legacy, app, exported_at)")
+
 # Rust ≡ TypeScript
+for f in ("rs-export", "rs-export8", "rs-export-fresh", "ts-export", "ts-export8", "ts-export-fresh", "example"):
+    a, b = J(f"rs-inspect-{f}"), J(f"ts-inspect-{f}")
+    ok(a == b, f"Rust ≡ TS: inspect-export {f} (cùng bản rõ, cùng khối)")
+for f in ("export", "export8"):
+    a, b = J(f"rs-inspect-rs-{f}"), J(f"rs-inspect-ts-{f}")
+    ok(strip(a["document"]) == strip(b["document"]) and a["blobs"] == b["blobs"], f"Rust ≡ TS: {f} (tài liệu xuất trừ app/exported_at, khối)")
+for n in ("now0", "now1", "now8"):
+    a, b = J(f"rs-{n}")["store"], J(f"ts-{n}")["store"]
+    ok(a["document"] == b["document"] and a["state_sha256"] == b["state_sha256"], f"Rust ≡ TS: open --now {n}")
+ok(J("ts-now1")["migration_status"]["state"] == J("rs-now1")["migration_status"]["state"], "Rust ≡ TS: trạng thái mở lại")
+a, b = J("rs-save-b")["saved"], J("ts-save-b")["saved"]
+ok({k: v for k, v in a.items() if k not in ("created_at", "updated_at")} == {k: v for k, v in b.items() if k not in ("created_at", "updated_at")}, "Rust ≡ TS: save-person lần 2")
 for n in ("sugg-deceased", "sugg-living", "sugg-deceased-nam", "sugg-deceased-nu", "sugg-living-nam", "sugg-living-nu", "disp"):
     ok(J(f"rs-{n}") == J(f"ts-{n}"), f"Rust ≡ TS: {n}")
 for n in ("open", "import-old", "import-ex", "import-notice"):

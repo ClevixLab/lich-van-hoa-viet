@@ -7,11 +7,14 @@ quả ra dạng JSON để so với kỳ vọng mà không phải đọc mã ngu
 - (ii) nhập tệp sao lưu tùy ý, in toàn bộ kho sau khi nhập;
 - (iii) gọi lưu hồ sơ và danh sách gợi ý cách gọi, quan hệ.
 
+Bản sau thêm `--now` (giả lập đồng hồ để kiểm việc dọn sau 7 ngày), kho TS giữ được giữa các lần chạy (`--state`),
+`export` và `inspect-export` (kiểm tệp sao lưu xuất ra không mang `legacy`).
+
 Có hai bản, cùng lệnh, cùng dạng kết quả:
 
 | Bản | Tệp | Gọi |
 |---|---|---|
-| Rust (lõi, như ứng dụng Android/Apple/Windows) | `ffi/src/bin/lvhv-store-tool.rs` | `lvhv_store` (mở/chuyển đổi kho, nhập, ảnh chụp kho) và `lvhv_ffi::LvhvStore::save_person_json` (đúng đường lưu hồ sơ của ứng dụng) |
+| Rust (lõi, như ứng dụng Android/Apple/Windows) | `ffi/src/bin/lvhv-store-tool.rs` | `lvhv_store` (mở/chuyển đổi kho, nhập, xuất, ảnh chụp kho), `lvhv_backup::import` (giải mã cho `inspect-export`) và `lvhv_ffi::LvhvStore::save_person_json` (đúng đường lưu hồ sơ của ứng dụng) |
 | TypeScript (PWA) | `pwa/test/tools/lvhv-store-tool.mjs` | API công khai của `pwa/src/store/index.ts`, IndexedDB giả lập (`fake-indexeddb`) |
 
 Bản Rust nằm trong crate `lvhv-ffi`, không nằm trong `lvhv-store`. Lý do: phần lưu hồ sơ của ứng dụng nằm ở
@@ -60,7 +63,21 @@ Phần `store` (lệnh `open` và `import`) gồm:
 
 ## 3. Lệnh
 
-### 3.1 `open <thư-mục> [--force-migration-failure]`
+### 3.0 Kho TS giữ giữa các lần chạy: `--state <tệp>`
+
+Bản Rust có thư mục kho trên đĩa, nên chạy nhiều lệnh liên tiếp trên cùng một kho là việc tự nhiên. Kho IndexedDB của
+bản TS chỉ sống trong tiến trình. Tùy chọn chung `--state <tệp>` (cho `open`, `import`, `save-person`, `export`):
+- tệp đã có: kho được dựng lại từ tệp, thay cho `<thư-mục>` (kết quả có `"source": "state"`);
+- tệp chưa có: kho lấy từ `<thư-mục>` như bình thường (`fixture_v1` hoặc `fresh`);
+- sau lệnh: toàn bộ IndexedDB được ghi lại vào tệp ở dạng JSON chuẩn: tên, phiên bản, từng kho đối tượng (`keyPath`,
+  chỉ mục, mọi bản ghi theo khóa); Blob ghi là `{"$blob": {"type", "base64"}}`.
+
+```
+node pwa/test/tools/lvhv-store-tool.mjs open docs/v0.2/schema/test-vectors/released/0.2-dev-before-attachments --state /tmp/kho-ts.json
+node pwa/test/tools/lvhv-store-tool.mjs open - --state /tmp/kho-ts.json      # mở lại cùng kho: state = "ok"
+```
+
+### 3.1 `open <thư-mục> [--force-migration-failure] [--now <unix_s>]`
 
 Rust: mở (hoặc tạo) kho SQLite trong `<thư-mục>`. Kho phiên bản cũ được **chuyển đổi tại chỗ**, nên phải chép bộ
 mẫu ra chỗ khác trước khi mở. Không bao giờ mở thẳng thư mục trong `test-vectors/released/`.
@@ -94,6 +111,20 @@ bằng `openStore` của bản này. Thư mục không có `store-snapshot.json`
 mục. Ở TS, `--force-migration-failure` gọi `openStore(factory, { forceMigrationFailure: true })`: giao dịch nâng cấp
 quay lui, và kho được mở lại ở chế độ chỉ đọc. `to_version` của TS là phiên bản IndexedDB (3), không phải 2.
 
+`--now <unix_s>` đặt "bây giờ" khi mở kho (giây Unix): Rust `OpenOptions { now_unix: Some(unix_s) }`, TS
+`openStore(factory, { now })` với `now` là thời điểm RFC 3339 tương ứng. Thời điểm này được ghi làm lúc chuyển đổi xong,
+và dùng để quyết định việc dọn sau 7 ngày (01 §7, BM2-06/07): xóa `Person.legacy` và bản sao `.pre-v2.bak`. Không cần
+sửa CSDL để giả lập. Ví dụ, trên cùng một kho:
+
+```
+T0=1793000000
+target/debug/lvhv-store-tool open /tmp/kho --now $T0                     # chuyển đổi; còn legacy, còn .pre-v2.bak
+target/debug/lvhv-store-tool open /tmp/kho --now $((T0 + 86400))         # 1 ngày sau: chưa dọn
+target/debug/lvhv-store-tool open /tmp/kho --now $((T0 + 8 * 86400))     # 8 ngày sau: đã dọn
+```
+
+Bản TS chạy cùng chuỗi lệnh với `--state` (mục 3.0). Kết quả in thêm `now_unix`.
+
 ### 3.2 `import <tệp-sao-lưu> <mật-khẩu> [--merge|--replace] [--into <thư-mục>]`
 
 Giải mã và kiểm tra tệp (`open_backup`), rồi ghi vào kho (`apply_import`). Mặc định là `--merge`, như ứng dụng
@@ -120,7 +151,8 @@ hoa chữ đầu `danh_xung` và `quan_he` (YC-2026-07), bỏ khóa `gioi_tinh: 
 in **bản đã lưu** (`saved`) đọc lại từ kho. `-` thay cho tên tệp: đọc JSON từ stdin.
 - Rust gọi `LvhvStore::save_person_json` trên kho ở `<thư-mục>`, kho được tạo nếu chưa có.
 - TS làm như `src/people/forms.ts`: `buildPerson(normalizePersonNames(…))`, rồi `validate.person`, rồi `putPerson`.
-  Ở TS, `<thư-mục>` là thư mục bộ mẫu, hoặc `-` cho kho trống.
+  Ở TS, `<thư-mục>` là thư mục bộ mẫu, hoặc `-` cho kho trống; thêm `--state` để lưu nhiều lần trên cùng kho
+  (`rev` tăng 1 → 2, `created_at` giữ nguyên).
 
 ```
 target/debug/lvhv-store-tool save-person /tmp/kho-moi nguoi.json
@@ -142,6 +174,30 @@ Kiểm byte một ảnh hoặc tệp đính kèm như khi nhập (01 §3.8a, B�
 `metadata`, `dimensions_mismatch`, `too_large`, `pdf_no_eof`). Với ảnh, `width height` là kích thước khai trong bản
 ghi; thiếu thì là 0 0.
 
+### 3.7 `export <thư-mục> <mật-khẩu> <tệp-ra> [--now <unix_s>]`
+
+Xuất tệp sao lưu bằng đường xuất thật của ứng dụng rồi ghi ra `<tệp-ra>`. In `bytes`, `sha256` của tệp và trạng thái
+chuyển đổi.
+- Rust: `Store::open_with` (với `--now` như `open`), rồi `Store::export_backup`. Đây chính là hàm mà
+  `LvhvStore::export_backup` của lớp FFI gọi. `app` = `{version: "0.2.0", platform: "android"}`.
+- TS: `openStore`, rồi `Store.exportBackup`, như nút "Xuất sao lưu" của PWA. `app.platform` = `"pwa"`. Dùng được với
+  `--state`.
+
+Mật khẩu ngắn hơn 8 ký tự: `ok: false`, `stage = "export_backup"`. Như ứng dụng, lệnh này ghi lại thời điểm tạo tệp
+(`last_export_at`) nhưng không đánh dấu "đã sao lưu".
+
+### 3.8 `inspect-export <tệp-sao-lưu> <mật-khẩu>`
+
+Chỉ giải mã (Rust `lvhv_backup::import`, TS `backup-crypto.importBackup`) và in **bản rõ** đúng như trong tệp. Không
+kiểm tra nội dung, không chuyển đổi, không ghi vào kho nào. In ra:
+- `document`: tài liệu JSON của bản rõ;
+- `json_is_canonical`: chuỗi JSON trong tệp có đúng là JSON chuẩn không;
+- `json_sha256`, `file_sha256`;
+- `blobs`: danh sách khối theo thứ tự trong tệp (`id`, `bytes`, `sha256`);
+- `legacy_paths`: mọi đường dẫn có khóa `legacy` ở bất kỳ mức nào. Phải là `[]` với tệp do `export` tạo ra (01 §7).
+
+Sai mật khẩu hoặc tệp hỏng: `ok: false`, `stage = "decrypt"`.
+
 ## 4. Kiểm trên CI
 
 `scripts/check-store-tool.sh` (job `store` của `.github/workflows/ci.yml`) chạy mọi lệnh của cả hai bản trên vector
@@ -151,8 +207,14 @@ trong `docs/v0.2/schema/test-vectors/`:
 - nhập `backup.lvhv` cũ, `example-v1.lvhv`, `supplement-yc05/notice-v1.lvhv`, một tệp sai mật khẩu và 21 tệp
   `corrupt/` (TS: 4 tệp);
 - `save-person`, `suggestions`, `display-capitalize`;
-- `check-media` cho mọi ca của `media/manifest.json`.
+- `check-media` cho mọi ca của `media/manifest.json`;
+- `--now`: mở cùng một kho ba lần (T0, T0 + 1 ngày, T0 + 8 ngày). Kiểm `legacy` và bản sao còn ở lần hai, đã dọn ở
+  lần ba, và việc dọn chỉ bỏ `legacy`. TS chạy qua `--state`;
+- `save-person` hai lần trên cùng kho (`rev` 1 → 2);
+- `export` ở T0 + 1 ngày (khi kho còn `legacy`), ở T0 + 8 ngày và từ kho mới; mật khẩu ngắn bị từ chối;
+- `inspect-export` trên mọi tệp xuất của cả hai bản và trên `example-v1.lvhv`: không có `legacy`, JSON chuẩn, tệp xuất
+  khớp kho (bỏ `legacy`, `app`, `exported_at`). Mỗi bản đọc tệp của bản kia, và hai bản cho cùng bản rõ, cùng khối.
 
 Script kiểm kết quả với các tệp kỳ vọng đã commit, rồi so bản Rust với bản TS: tài liệu kho, byte ảnh và tệp đính
-kèm, gợi ý, hồ sơ đã lưu (trừ id và thời điểm). Chạy tại chỗ: `scripts/check-store-tool.sh`, cần `cargo`, `node` ≥
+kèm, gợi ý, hồ sơ đã lưu (trừ id và thời điểm), kho ở từng mốc `--now`, tài liệu xuất (trừ `app`, `exported_at`). Chạy tại chỗ: `scripts/check-store-tool.sh`, cần `cargo`, `node` ≥
 20, `python3` và `pwa/node_modules`.
