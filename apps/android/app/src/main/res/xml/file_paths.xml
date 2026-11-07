@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Chỉ thư mục tạm cache/ics/ (tệp .ics để chia sẻ). Không lộ thư mục dữ liệu, ảnh hay cơ sở dữ liệu. -->
+<paths>
+    <cache-path name="ics" path="ics/" />
+</paths>
