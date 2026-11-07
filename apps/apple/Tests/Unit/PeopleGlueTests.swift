@@ -193,7 +193,9 @@ final class PeopleGlueTests: XCTestCase {
         let o1 = await s.reschedule(store: st, reason: .save, now: now, zone: vn)
         XCTAssertGreaterThan(o1.added, 0)
         XCTAssertTrue(fake.store.keys.allSatisfy { $0.hasPrefix("lvhv:") })
-        XCTAssertTrue(fake.store.values.allSatisfy { $0.title == "Sắp đến ngày giỗ" && $0.body.isEmpty }, "O-9: không có tên")
+        let real = { fake.store.values.filter { $0.id != "lvhv:sentinel" } }
+        XCTAssertFalse(real().isEmpty)
+        XCTAssertTrue(real().allSatisfy { $0.title == "Sắp đến ngày giỗ" && $0.body.isEmpty }, "O-9: không có tên — \(real().map(\.title))")
         XCTAssertNotNil(ReminderScheduler.components(fake.adds[0].fire_local)?.hour)
 
         let o2 = await s.reschedule(store: st, reason: .appOpen, now: now, zone: vn)
@@ -204,7 +206,7 @@ final class PeopleGlueTests: XCTestCase {
         try st.setLockScreenNames(show: true)
         let o3 = await s.reschedule(store: st, reason: .settings, now: now, zone: vn)
         XCTAssertGreaterThan(o3.replaced, 0)
-        XCTAssertTrue(fake.store.values.allSatisfy { $0.title.contains("Nguyễn Văn A") })
+        XCTAssertTrue(real().allSatisfy { $0.title.contains("Nguyễn Văn A") }, "\(real().map(\.title))")
     }
 
     @MainActor
