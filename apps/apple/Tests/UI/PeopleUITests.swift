@@ -163,6 +163,24 @@ final class PeopleUITests: XCTestCase {
         }
     }
 
+    /// DV23-01, DV23-03: tấm khôi phục có hai hàng chọn to theo chữ; khi đang khôi phục, nút Hủy bị khóa.
+    func testRestoreSheetLocksCancelWhileRunning() {
+        let app = launch(screen: "restore", extra: ["-lvhvSlowRestore", "1"])
+        XCTAssertTrue(app.otherElements["restore.sheet"].firstMatch.waitForExistence(timeout: 40))
+        let merge = app.buttons["restore.merge"].firstMatch
+        let replace = app.buttons["restore.replace"].firstMatch
+        XCTAssertTrue(merge.exists && replace.exists)
+        XCTAssertTrue(merge.isSelected, "mặc định là Gộp")
+        XCTAssertFalse(replace.isSelected)
+        let cancel = app.buttons["restore.cancel"].firstMatch
+        XCTAssertTrue(cancel.isEnabled)
+        app.navigationBars.buttons["Khôi phục"].firstMatch.tap()
+        Thread.sleep(forTimeInterval: 0.8)
+        XCTAssertFalse(cancel.isEnabled, "đang khôi phục thì không đóng được tấm")
+        snap("restore-running-light")
+        app.terminate()
+    }
+
     // MARK: Luồng
 
     /// L1: thêm người đã mất theo ngày dương → thấy "15/6 nhuận" → lưu → trang hồ sơ.
