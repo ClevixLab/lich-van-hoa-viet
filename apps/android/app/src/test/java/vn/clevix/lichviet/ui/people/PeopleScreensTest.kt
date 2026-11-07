@@ -603,7 +603,7 @@ class PeopleScreensTest {
                             // Đo theo từng dòng (bề rộng nét chữ, đáy dòng cuối) — bề rộng đoạn (paragraph) có thể là bề rộng
                             // tối đa của ràng buộc chứ không phải bề rộng chữ.
                             t.didOverflowHeight || t.multiParagraph.didExceedMaxLines ||
-                                (t.didOverflowWidth && (0 until t.lineCount).any { t.getLineRight(it) - t.size.width > 1f }),
+                                (t.didOverflowWidth && (0 until t.lineCount).any { t.getLineRight(it) - t.getLineLeft(it) - t.size.width > 1f }),
                         )
                     }
                 }
