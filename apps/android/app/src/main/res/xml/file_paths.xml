@@ -7,4 +7,6 @@
 <paths>
     <cache-path name="ics" path="ics/" />
     <cache-path name="att" path="att/" />
+    <!-- YC-2026-10: ảnh chụp mâm lễ bằng ứng dụng máy ảnh (cache/capture/mam.jpg, xóa ngay sau khi xử lý). -->
+    <cache-path name="capture" path="capture/" />
 </paths>

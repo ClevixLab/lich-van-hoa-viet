@@ -195,6 +195,8 @@ private fun InfoTable(p: Person, sum: vn.clevix.lichviet.people.Summary) {
     if (!p.deceased && sum.tuoiDuong != null) InfoLine("Tuổi", "${sum.tuoiDuong}" + (sum.tuoiAm?.let { " (tuổi âm $it)" } ?: ""))
     b?.s("noi_sinh")?.takeIf { it.isNotBlank() }?.let { InfoLine("Nơi sinh", it) }
     if (p.deceased && p.noiAnTang.isNotBlank()) InfoLine("Nơi an táng", p.noiAnTang)
+    // 08 §16.2: "Ảnh mâm lễ: Đã có" / "Ảnh mâm lễ: Chưa có".
+    if (p.deceased) InfoLine("Ảnh mâm lễ", if (p.memorial?.sn("tray_photo_id") != null) "Đã có" else "Chưa có")
     if (p.ghiChu.isNotBlank()) InfoLine("Ghi chú", p.ghiChu)
 }
 

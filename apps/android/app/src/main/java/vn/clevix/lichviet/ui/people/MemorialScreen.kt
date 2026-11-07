@@ -46,6 +46,9 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.foundation.layout.aspectRatio
+import vn.clevix.lichviet.people.TrayPack
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
@@ -136,11 +139,29 @@ fun MemorialScreen(x: PeopleCtx, id: String) {
             Stele(p.quanHe, p.hoTen, p.displayName, p.tenHieu, yearsLine(p), sum?.tuoiMatText)
             Altar(incense = incense, catholic = catholic, animate = lit && !x.reducedMotion)
 
+            // Ảnh mâm lễ (08 §16.1, ADR-V02-01): ảnh gia đình → ảnh Clevix đã duyệt cùng kiểu mâm → không có mâm.
+            val ctx = LocalContext.current
+            val familyId = p.memorial?.sn("tray_photo_id")
+            val familyBytes = remember(familyId) { familyId?.let { x.repo.photo(it) } }
+            val clevix = remember(familyBytes, p.memorial?.sn("tray_style")) {
+                if (familyBytes != null) null else TrayPack.forStyle(ctx, p.memorial?.sn("tray_style"))
+            }
+            val trayImg = rememberPhoto(familyBytes ?: clevix?.bytes)
+            if (trayImg != null) {
+                TrayPhoto(trayImg, if (familyBytes != null) "Ảnh mâm lễ của gia đình" else "Ảnh mâm lễ")
+                if (familyBytes == null) clevix?.credit?.let { Text(it, color = INK_SOFT, style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.Center) }
+            }
+
             p.memorial?.sn("loi_tuong_niem")?.takeIf { it.isNotBlank() }?.let {
                 Text(
                     "“$it”", color = INK_SOFT, style = MaterialTheme.typography.bodyLarge, fontStyle = FontStyle.Italic,
                     textAlign = TextAlign.Center, modifier = Modifier.widthIn(max = 480.dp),
                 )
+            }
+            if (familyBytes == null && !x.readOnly) {
+                TextButton(onClick = { x.nav.go(PRoute.EditPerson(p.id, tray = true)) }) {
+                    Text("Thêm ảnh mâm lễ của gia đình", color = GOLD_DIM, style = MaterialTheme.typography.bodyMedium)
+                }
             }
         }
     }
@@ -198,6 +219,18 @@ private fun Stele(quanHe: String, hoTen: String, displayName: String, tenHieu: S
             age?.let { Text(it, color = GOLD, fontFamily = Serif, fontSize = 17.sp, textAlign = TextAlign.Center) }
         }
     }
+}
+
+/** Ảnh mâm lễ dưới bàn thờ: rộng tối đa 480 dp, khung 4:3 cắt giữa, bo 12 dp, viền mảnh vàng đồng (08 §16.1). */
+@Composable
+private fun TrayPhoto(img: androidx.compose.ui.graphics.ImageBitmap, label: String) {
+    androidx.compose.foundation.Image(
+        img, contentDescription = label, contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+        modifier = Modifier.widthIn(max = 480.dp).fillMaxWidth().aspectRatio(4f / 3f)
+            .clip(androidx.compose.foundation.shape.RoundedCornerShape(12.dp))
+            .border(1.dp, BRASS, androidx.compose.foundation.shape.RoundedCornerShape(12.dp))
+            .testTag("tray-photo"),
+    )
 }
 
 /** Nhãn trợ năng của hàng bàn thờ (08 §16.1) — kiểm thử dựa vào đây để khẳng định không có mâm. */

@@ -50,7 +50,8 @@ sealed interface PRoute {
     data object Settings : PRoute
     data class PersonPage(val id: String) : PRoute
     data class AddPerson(val deceased: Boolean) : PRoute
-    data class EditPerson(val id: String) : PRoute
+    /** [tray]: mở từ "Thêm ảnh mâm lễ của gia đình" → cuộn tới mục ảnh mâm lễ (08 §16.1). */
+    data class EditPerson(val id: String, val tray: Boolean = false) : PRoute
     data class EventEdit(val personId: String, val eventId: String?) : PRoute
     data class MarkDeceased(val id: String) : PRoute
     data class Memorial(val id: String) : PRoute
@@ -152,7 +153,7 @@ fun PeopleModule(
                 PRoute.Settings -> Page { ReadOnlyBanner(ctx); SettingsScreen(ctx) }
                 is PRoute.PersonPage -> Page { ReadOnlyBanner(ctx); PersonScreen(ctx, r.id) }
                 is PRoute.AddPerson -> Page { if (ctx.readOnly) ReadOnlyForm(ctx) else PersonForm(ctx, null, r.deceased) }
-                is PRoute.EditPerson -> Page { if (ctx.readOnly) ReadOnlyForm(ctx) else PersonForm(ctx, r.id, null) }
+                is PRoute.EditPerson -> Page { if (ctx.readOnly) ReadOnlyForm(ctx) else PersonForm(ctx, r.id, null, focusTray = r.tray) }
                 is PRoute.EventEdit -> Page { if (ctx.readOnly) ReadOnlyForm(ctx) else EventForm(ctx, r.personId, r.eventId) }
                 is PRoute.MarkDeceased -> Page { if (ctx.readOnly) ReadOnlyForm(ctx) else MarkDeceasedForm(ctx, r.id) }
                 is PRoute.Memorial -> MemorialScreen(ctx, r.id)
