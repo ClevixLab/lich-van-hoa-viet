@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ClevixLab/lich-van-hoa-viet/content/memorial/trays/manifest.schema.json",
+  "title": "Gói ảnh mâm lễ của Clevix (YC-2026-10, 08 §16.3, 04 R15 (b))",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["pack_version", "items"],
+  "properties": {
+    "pack_version": { "const": 1 },
+    "items": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/item" }
+    }
+  },
+  "$defs": {
+    "item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "tray_style", "file", "mime", "width", "height", "sha256", "nguon", "giay_phep", "tac_gia",
+                   "ghi_cong", "duyet_boi", "ngay_duyet", "trang_thai"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,63}$" },
+        "tray_style": { "enum": ["truyen_thong", "phat_giao", "cong_giao"] },
+        "file": {
+          "type": "string",
+          "description": "Đường dẫn tương đối so với thư mục content/memorial/trays/; chỉ chữ thường không dấu, số, '-', '/', '.'",
+          "pattern": "^[a-z0-9][a-z0-9/_-]*\\.(jpg|jpeg|webp)$"
+        },
+        "mime": { "enum": ["image/jpeg", "image/webp"] },
+        "width": { "type": "integer", "minimum": 1, "maximum": 4096 },
+        "height": { "type": "integer", "minimum": 1, "maximum": 4096 },
+        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "nguon": { "type": "string", "minLength": 1, "description": "Ảnh tự chụp của ai, hoặc URL trang ảnh nguồn" },
+        "giay_phep": { "type": "string", "minLength": 1, "description": "Ví dụ: 'Clevix LLC — ảnh tự chụp, có giấy đồng ý', 'CC0', 'CC BY 4.0', 'CC BY-SA 4.0'" },
+        "tac_gia": { "type": "string", "minLength": 1 },
+        "ghi_cong": { "type": ["string", "null"], "description": "Dòng ghi công hiện trong ứng dụng; bắt buộc (không null) với CC BY / CC BY-SA" },
+        "duyet_boi": { "type": "string", "minLength": 1 },
+        "ngay_duyet": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+        "trang_thai": { "enum": ["duyet", "cho"] }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "giay_phep": { "pattern": "[Cc][Cc][ -][Bb][Yy]" } } },
+          "then": { "properties": { "ghi_cong": { "type": "string", "minLength": 1 } } }
+        }
+      ]
+    }
+  }
+}

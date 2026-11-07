@@ -1,0 +1,21 @@
+{
+  "pack_version": 1,
+  "items": [
+    {
+      "id": "a",
+      "tray_style": "truyen_thong",
+      "file": "a.jpg",
+      "mime": "image/jpeg",
+      "width": 32,
+      "height": 24,
+      "sha256": "1e9702008bb19e7857f47d1e4ddd1b1f2413b8e24bd41de3da4e06c04b5e9a90",
+      "nguon": "ca kiểm tự động (ảnh một màu)",
+      "giay_phep": "Clevix LLC — dữ liệu kiểm thử",
+      "tac_gia": "Clevix Lab",
+      "ghi_cong": null,
+      "duyet_boi": "ca kiểm",
+      "ngay_duyet": "2026-11-07",
+      "trang_thai": "duyet"
+    }
+  ]
+}
