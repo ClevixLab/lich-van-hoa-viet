@@ -49,8 +49,9 @@ struct PersonDetailView: View {
                 ViewThatFits(in: .horizontal) {
                     HStack(alignment: .top, spacing: 14) {
                         VStack(spacing: 14) { next(p, deceased: deceased); info(p, deceased: deceased); notice(p) }
+                            .frame(minWidth: 380, idealWidth: 420, maxWidth: .infinity)
                         VStack(spacing: 14) { eventsCard(p, deceased: deceased); remindCard(p, deceased: deceased); deleteCard(name) }
-                            .frame(width: 340)
+                            .frame(width: 300)
                     }
                     .frame(minWidth: 740)
                     VStack(spacing: 14) {
@@ -120,13 +121,14 @@ struct PersonDetailView: View {
                 NavigationLink(value: PRoute.memorial(id)) { Text("Tưởng niệm") }
                     .buttonStyle(PrimaryButtonStyle()).accessibilityIdentifier("person.memorial")
             }
-            NavigationLink(value: PRoute.edit(id)) { Text("Sửa") }
-                .buttonStyle(SecondaryButtonStyle()).accessibilityIdentifier("person.edit")
-                .disabled(m.readOnly)
-            if !deceased {
-                NavigationLink(value: PRoute.markDeceased(id)) { Text("Cập nhật: đã mất") }
-                    .buttonStyle(SecondaryButtonStyle()).accessibilityIdentifier("person.markDeceased")
-                    .disabled(m.readOnly)
+            // Chế độ chỉ đọc: ẩn mọi việc ghi (08 §12l TKN3-P-01).
+            if !m.readOnly {
+                NavigationLink(value: PRoute.edit(id)) { Text("Sửa") }
+                    .buttonStyle(SecondaryButtonStyle()).accessibilityIdentifier("person.edit")
+                if !deceased {
+                    NavigationLink(value: PRoute.markDeceased(id)) { Text("Cập nhật: đã mất") }
+                        .buttonStyle(SecondaryButtonStyle()).accessibilityIdentifier("person.markDeceased")
+                }
             }
         }
     }
@@ -233,19 +235,24 @@ struct PersonDetailView: View {
             HStack {
                 PHeading("Sự kiện")
                 Spacer()
-                NavigationLink(value: PRoute.event(id, nil)) { Text("+ Thêm sự kiện") }
-                    .buttonStyle(SecondaryButtonStyle()).accessibilityIdentifier("person.addEvent")
-                    .disabled(m.readOnly)
+                if !m.readOnly {
+                    NavigationLink(value: PRoute.event(id, nil)) { Text("+ Thêm sự kiện") }
+                        .buttonStyle(SecondaryButtonStyle()).accessibilityIdentifier("person.addEvent")
+                }
             }
             if evs.isEmpty { PBody("Chưa có sự kiện nào.") }
             ForEach(evs, id: \.self) { e in
                 VStack(alignment: .leading, spacing: 6) {
                     Text("\(m.eventTitle(e)) · \(PFmt.dateValue(e["date"])) · \(e["recurring"].isTrue ? "hằng năm" : "một lần")")
                         .ps(16).foregroundStyle(C.ink).fixedSize(horizontal: false, vertical: true)
-                    HStack(spacing: 10) {
-                        NavigationLink(value: PRoute.event(id, e["id"].string)) { Text("Sửa") }
-                            .buttonStyle(SecondaryButtonStyle())
-                        Button("Xóa") { deleteEvent = e }.buttonStyle(SecondaryButtonStyle(destructive: true))
+                    if !m.readOnly {
+                        HStack(spacing: 10) {
+                            NavigationLink(value: PRoute.event(id, e["id"].string)) { Text("Sửa") }
+                                .buttonStyle(SecondaryButtonStyle())
+                                .accessibilityIdentifier("person.event.edit")
+                            Button("Xóa") { deleteEvent = e }.buttonStyle(SecondaryButtonStyle(destructive: true))
+                                .accessibilityIdentifier("person.event.delete")
+                        }
                     }
                 }
             }
@@ -279,13 +286,15 @@ struct PersonDetailView: View {
         viewing = AttOpen(data: data, pdf: m.attachmentsMeta[f]?["mime"].str == "application/pdf")
     }
 
+    @ViewBuilder
     private func deleteCard(_ name: String) -> some View {
-        HStack {
-            Button("Xóa hồ sơ") { confirmDelete = true }
-                .buttonStyle(SecondaryButtonStyle(destructive: true))
-                .disabled(m.readOnly)
-                .accessibilityIdentifier("person.delete")
-            Spacer()
+        if !m.readOnly {
+            HStack {
+                Button("Xóa hồ sơ") { confirmDelete = true }
+                    .buttonStyle(SecondaryButtonStyle(destructive: true))
+                    .accessibilityIdentifier("person.delete")
+                Spacer()
+            }
         }
     }
 }

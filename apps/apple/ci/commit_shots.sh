@@ -18,6 +18,11 @@ for f in "$SHOTS"/*.png; do
   W=$(sips -g pixelWidth "$f" | awk '/pixelWidth/{print $2}')
   if [ "$W" -gt 1100 ]; then sips --resampleWidth $(( W / 2 > 750 ? W / 2 : 750 )) "$f" >/dev/null; fi
 done
+# DV23-07: checkout không giữ thông tin xác thực; chỉ bước này nhận mã thông báo (GH_TOKEN) để lấy và đẩy nhánh.
+if [ -n "${GH_TOKEN:-}" ]; then
+  AUTH=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 | tr -d '\n')
+  git config http.https://github.com/.extraheader "AUTHORIZATION: basic $AUTH"
+fi
 git config user.name "github-actions[bot]"
 git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 WT="$RUNNER_TEMP/wt-shots-${SUBDIR:-main}"

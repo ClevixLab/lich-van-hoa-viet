@@ -1002,7 +1002,21 @@ tối `-dark`, chữ rất lớn Accessibility L `-large`; bố cục iPad `ipad
 `mark_backup_saved`; trạng thái chuyển đổi `migration_status`.
 Từ core3 (#38) ứng dụng Apple không phải đổi mã gọi: lõi tự cắt khoảng trắng khi lưu, kiểm ảnh khi nhập sao lưu,
 giữ bản chép CSDL nguyên byte trước chuyển đổi (`pre-v2.bak`) và tự dọn khóa `legacy` cùng bản chép sau 7 ngày, không để
-tệp đính kèm mồ côi khi chuyển đổi hỏng. Băng chỉ đọc nói bằng lời của ứng dụng; câu của lõi hiện bên dưới ở dòng "Chi tiết".
+tệp đính kèm mồ côi khi chuyển đổi hỏng.
+
+**Sau vòng duyệt sửa PR #23 (`docs/reviews/DUYET-VONG-SUA-PR23.md`):**
+
+| Mã | Cách làm trên Apple |
+|---|---|
+| DV23-01 | Tấm khôi phục: nút "Hủy" bị khóa (cùng nút "Khôi phục" và vuốt đóng) khi đang khôi phục. Kiểm thử `testRestoreSheetLocksCancelWhileRunning` |
+| DV23-02 | Khung chỉ đọc dùng câu chuẩn TKN3-X-03 ("mở lại ứng dụng" thay cho "tải lại trang"), nút "Đi tới Sao lưu"; câu của lõi chỉ ở mục "Chi tiết kỹ thuật" đóng sẵn. TKN3-P-01: ẩn (không chỉ làm mờ) "+ Thêm", Sửa, Xóa hồ sơ, Cập nhật: đã mất, "+ Thêm sự kiện", Sửa/Xóa sự kiện, khối Khôi phục, Nhắc sao lưu, các công tắc và "Lưu mặc định" của Cài đặt nhắc; mở thẳng biểu mẫu ghi → câu "Đang ở chế độ chỉ đọc nên chưa thêm hay sửa được…". Kiểm thử trong `testFailedMigrationIsReadOnly` (job `upgrade`) |
+| DV23-03 | "Cách nhập" của tấm khôi phục: hai hàng chọn to theo cỡ chữ, chữ xuống dòng đầy đủ, hàng đang chọn có viền và nền đỏ nhạt (thay cho bánh xe chọn) |
+| DV23-04 | Rời tiền cảnh khi đang xem PDF → đóng trình xem của hệ thống (tệp tạm bị xóa theo), lớp che của ứng dụng phủ lại. Bản chép tạm `tmp/att/` có lớp bảo vệ `.complete`. Ảnh bộ chuyển ứng dụng khi đang mở PDF cần thử trên iPhone thật |
+| DV23-05 | Hồ sơ một người và danh sách Hồ sơ hai cột trên iPad dọc (bề rộng lý tưởng của cột được ghim để vừa 820 pt) |
+| DV23-06 | Mọi ô ngày dùng "Nhập theo dương lịch / Nhập theo âm lịch" (TKN3-X-02) |
+| DV23-07 | `apple.yml`: mặc định `contents: read`; job `build`, `upgrade` mới xin `contents: write`; checkout `persist-credentials: false`, mã thông báo chỉ đưa cho bước ghi ảnh. Kiểm thử chạy lại ca hỏng một lần (`-retry-tests-on-failure -test-iterations 2`) |
+| DV23-08 | Bước kiểm bản Release: không có chuỗi chỉ có trong mã `#if DEBUG` (màn hình kiểm tra R14, dữ liệu mẫu); đối chứng trên bản Debug |
+| DV23-09 | Tệp rỗng hoặc quá lớn: "Tệp này không phải tệp sao lưu của ứng dụng hoặc quá lớn" (không còn "Sai mật khẩu…") |
 
 ### 12i. YC-2026-07 (01 §3.1, §3.2a, §3.8a; PR #29) và ghi chú đa nền tảng — PR #30, trên nền PR #28 (core2)
 
