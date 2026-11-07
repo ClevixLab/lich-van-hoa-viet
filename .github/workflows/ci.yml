@@ -121,6 +121,22 @@ jobs:
           npm audit --omit=dev --audit-level=low
           node -e 'const p=require("./package.json");for(const [k,v] of Object.entries({...p.dependencies,...p.devDependencies}))if(!/^\d+\.\d+\.\d+$/.test(v)){console.error(`::error::${k} không ghim chính xác: ${v}`);process.exit(1)}'
 
+  tray-pack:
+    name: Gói ảnh mâm lễ (04 B8 / R15 (b))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: R15 (b) — ca kiểm của kịch bản kiểm gói (content/memorial/trays/test/)
+        run: python3 scripts/check-tray-pack.py --self-test
+      - name: R15 (b) — kiểm gói thật, ghi danh sách ảnh đã duyệt cho các nền tảng
+        run: python3 scripts/check-tray-pack.py --out build/tray-pack.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tray-pack
+          path: build/tray-pack.json
+          retention-days: 30
+
   store:
     name: Lưu trữ + sao lưu (R6, vector 03 §2.5, Rust ↔ PWA)
     runs-on: ubuntu-24.04

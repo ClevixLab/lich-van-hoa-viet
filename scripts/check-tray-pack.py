@@ -291,6 +291,7 @@ def main(argv=None):
     out = {"pack_version": 1, "approved": approved}
     text = json.dumps(out, ensure_ascii=False, indent=2) + "\n"
     if a.out:
+        Path(a.out).parent.mkdir(parents=True, exist_ok=True)
         Path(a.out).write_text(text, encoding="utf-8")
     sys.stdout.write(text)
     print(f"ĐẠT: {len(approved)} ảnh đã duyệt" + (" — gói rỗng, không hiện mâm (R15 (a))" if not approved else ""),

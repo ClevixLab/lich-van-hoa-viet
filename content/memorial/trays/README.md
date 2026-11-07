@@ -82,7 +82,9 @@ python3 scripts/check-tray-pack.py
 python3 scripts/check-tray-pack.py --self-test
 ```
 
-Kịch bản in danh sách ảnh đã duyệt. Bản dựng **thất bại** nếu một ảnh đã duyệt thiếu tệp, sai `sha256`, không phải
+CI (job `tray-pack` trong `.github/workflows/ci.yml`) chạy cả hai lệnh và lưu danh sách ảnh đã duyệt ở `build/tray-pack.json`
+(tạo phẩm `tray-pack`); các nền tảng chỉ nhúng tệp có trong danh sách đó, không bao giờ nhúng `test/`. Kịch bản in danh
+sách ảnh đã duyệt. Bản dựng **thất bại** nếu một ảnh đã duyệt thiếu tệp, sai `sha256`, không phải
 JPEG/WebP, còn siêu dữ liệu, có dữ liệu thừa, sai kích thước, hoặc quá giới hạn dung lượng. Ảnh mới chỉ đến tay người
 dùng khi có bản cập nhật ứng dụng; ứng dụng không tải ảnh qua mạng.
 
