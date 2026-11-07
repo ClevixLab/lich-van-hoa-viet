@@ -136,9 +136,29 @@ jobs:
           grep -q 'dataExtractionRules' "$RUNNER_TEMP/manifest.txt" || { echo "::error::Thiếu dataExtractionRules (S5)"; exit 1; }
           # BM2-18: SelfCheckActivity (R14, exported, chỉ ở src/debug) không bao giờ có trong APK release.
           if grep -q 'SelfCheck' "$RUNNER_TEMP/manifest.txt"; then echo "::error::APK release có SelfCheckActivity (chỉ được ở debug)"; exit 1; fi
-          # Chỉ MainActivity được exported (LAUNCHER); receiver/provider đều exported=false.
-          N_EXP=$(grep -c 'android:exported(0x01010010)=true' "$RUNNER_TEMP/manifest.txt" || true)
-          [ "$N_EXP" = "1" ] || { echo "::error::Số thành phần exported=true là $N_EXP (chỉ được 1: MainActivity)"; grep -n -B8 'exported(0x01010010)=true' "$RUNNER_TEMP/manifest.txt"; exit 1; }
+          # Thành phần exported: chỉ MainActivity (LAUNCHER), hoặc thành phần thư viện được bảo vệ bằng quyền hệ thống
+          # (androidx.profileinstaller.ProfileInstallReceiver: android.permission.DUMP — chỉ adb/hệ thống gửi được).
+          python3 - "$RUNNER_TEMP/manifest.txt" <<'PY'
+          import re, sys
+          comps, cur = [], None
+          for line in open(sys.argv[1], encoding="utf-8"):
+              m = re.match(r"\s*E: (activity|activity-alias|receiver|service|provider) ", line)
+              if m:
+                  cur = {"kind": m.group(1)}; comps.append(cur); continue
+              if re.match(r"\s*E: ", line) and cur is not None and re.match(r"\s*E: (intent-filter|action|category|data|meta-data)", line) is None:
+                  cur = None
+              if cur is None: continue
+              for key in ("name", "permission", "exported"):
+                  m = re.search(r":%s\(0x[0-9a-f]+\)=(?:\"([^\"]*)\"|(\S+))" % key, line)
+                  if m and key not in cur: cur[key] = m.group(1) or m.group(2)
+          ok_perm = {"android.permission.DUMP"}
+          bad = [c for c in comps if c.get("exported") == "true"
+                 and c.get("name") != "vn.clevix.lichviet.MainActivity" and c.get("permission") not in ok_perm]
+          for c in comps:
+              if c.get("exported") == "true": print("exported:", c)
+          if bad:
+              print("::error::Thành phần exported không được phép:", bad); sys.exit(1)
+          PY
 
       - name: Quét lỗ hổng phụ thuộc Gradle (S11, BM2-09) — osv-scanner trên tệp khóa
         working-directory: apps/android
