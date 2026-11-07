@@ -257,6 +257,18 @@ export global People {
     in-out property <bool> m-has-photo;
     in-out property <image> m-photo;
     in-out property <bool> m-incense: true;
+    in-out property <bool> m-catholic: false;
+    // YC-2026-10 (08 §16): ảnh mâm lễ. m-tray-kind: 0 không có mâm, 1 ảnh của gia đình, 2 ảnh Clevix đã duyệt.
+    in-out property <int> m-tray-kind;
+    in-out property <image> m-tray-img;
+    in-out property <string> m-tray-credit;
+    // Biểu mẫu: 0 chưa có, 1 đang xử lý, 2 có ảnh.
+    in-out property <int> f-tray-state;
+    in-out property <image> f-tray-img;
+    in-out property <string> e-tray;
+    callback pick-tray();
+    callback drop-tray();
+    callback add-tray-from-memorial();
     in-out property <bool> m-smoke: true;
 
     // Hộp thoại: "" | xac-nhan | ics | tao-sao-luu | khoi-phuc | thay-toan-bo | bo-thay-doi
@@ -1171,7 +1183,8 @@ component PersonPage inherits PPage {
 component FormButtons inherits HorizontalLayout {
     alignment: end; spacing: 10px; padding-top: 4px;
     Btn { text: "Hủy"; kind: "outline"; clicked => { People.cancel-form(); } }
-    Btn { text: "Lưu"; kind: "primary"; clicked => { People.save-form(); } }
+    // 08 §16.2: không lưu khi ảnh mâm lễ đang xử lý.
+    Btn { text: "Lưu"; kind: "primary"; enabled: People.f-tray-state != 1; clicked => { People.save-form(); } }
 }
 
 component NoticeBlock inherits Group {
@@ -1357,6 +1370,29 @@ component PersonFormPage inherits PPage {
             T { text: "Giỗ hết (giỗ lần cuối của thời gian để tang) vào"; size: 15; font-weight: 600; color: Theme.ink2; }
             Choice { items: ["Năm thứ 2 sau năm mất", "Năm thứ 3 sau năm mất"]; current: People.f-gio-het - 2; group: "Giỗ hết"; picked(i) => { People.f-gio-het = i + 2; People.form-changed(); } }
             Field { label: "Lời tưởng niệm"; text <=> People.f-loi; multiline: true; edited => { People.form-changed(); } }
+            // 08 §16.2: ảnh mâm lễ ngày giỗ, ngay sau "Lời tưởng niệm".
+            VerticalLayout {
+                spacing: 6px;
+                T { text: "Ảnh mâm lễ ngày giỗ"; size: 15; font-weight: 600; color: Theme.ink2; }
+                if People.f-tray-state == 0: T { text: "Chưa có ảnh. Ngày giỗ chỉ hiện bát hương và nến."; size: 15; }
+                if People.f-tray-state == 1: T { text: "Đang xử lý ảnh…"; size: 15; color: Theme.ink2; accessible-role: AccessibleRole.text; accessible-label: "Đang xử lý ảnh…"; }
+                if People.f-tray-state == 2: HorizontalLayout {
+                    alignment: start;
+                    Rectangle {
+                        width: 120px; height: 90px; border-radius: 6px; clip: true; border-width: 1px; border-color: Theme.rule;
+                        accessible-role: AccessibleRole.text; accessible-label: "Ảnh mâm lễ đã chọn";
+                        Image { width: parent.width; height: parent.height; source: People.f-tray-img; image-fit: cover; }
+                    }
+                }
+                HorizontalLayout {
+                    alignment: start; spacing: 8px;
+                    if People.f-tray-state == 0: Btn { text: "Chọn ảnh mâm lễ…"; kind: "outline"; clicked => { People.pick-tray(); } }
+                    if People.f-tray-state == 2: Btn { text: "Đổi ảnh"; kind: "outline"; accessible-label: "Đổi ảnh mâm lễ"; clicked => { People.pick-tray(); } }
+                    if People.f-tray-state == 2: Btn { text: "Bỏ ảnh"; accessible-label: "Bỏ ảnh mâm lễ"; clicked => { People.drop-tray(); } }
+                }
+                if People.e-tray != "": T { text: People.e-tray; size: 15; color: Theme.red-ink; font-weight: 600; accessible-role: AccessibleRole.text; accessible-label: People.e-tray; }
+                T { text: "Ảnh chỉ lưu trên máy này và trong tệp sao lưu mã hóa. Ứng dụng tự bỏ thông tin vị trí và máy chụp trong ảnh."; size: 14; color: Theme.ink3; }
+            }
             NumBox { label: "Mất trước tuổi này thì ghi “hưởng dương” (mất sớm) thay cho “hưởng thọ”"; text <=> People.f-nguong; w: 96px; edited => { People.form-changed(); } }
             if People.e-nguong != "": T { text: People.e-nguong; size: 15; color: Theme.red-ink; font-weight: 600; }
         }
@@ -1502,7 +1538,8 @@ component MemorialPage inherits Rectangle {
                             }
                         }
                     }
-                    // Hương và bàn thờ
+                    // Bàn thờ dưới bia (YC-2026-10, 08 §16.1): không vẽ mâm quả hay lọ hoa nữa. Không theo Công giáo:
+                    // nến · bát hương ba nén (có khói) · nến. Công giáo: nến · hoa · nến, không hương.
                     HorizontalLayout {
                         alignment: center;
                         Rectangle {
@@ -1510,7 +1547,7 @@ component MemorialPage inherits Rectangle {
                             // Khói: ba vệt mờ dịch lên (hoạt ảnh của Slint, dừng khi tắt; không chạy nền).
                             // Phần tử khói chỉ tồn tại khi đang thắp: tắt khói là hủy phần tử, hoạt ảnh dừng hẳn (R8).
                             if smoke: Rectangle {
-                                x: 74px; y: 0px; width: 60px; height: 90px;
+                                x: 180px; y: 0px; width: 60px; height: 90px;
                                 for i in 3: Rectangle {
                                     property <float> ph: 0;
                                     init => { self.ph = 1; }
@@ -1524,7 +1561,7 @@ component MemorialPage inherits Rectangle {
                             }
                             // Khói tĩnh: một vệt mảnh, mờ ngay trên mỗi nén hương.
                             if !smoke && People.m-incense: Rectangle {
-                                x: 74px; y: 0px; width: 60px; height: 90px;
+                                x: 180px; y: 0px; width: 60px; height: 90px;
                                 for i in 3: Rectangle {
                                     x: 13px + i * 14px; y: 50px; width: 2px; height: 26px; border-radius: 1px;
                                     background: #d9cfc8; opacity: 0.35;
@@ -1532,41 +1569,67 @@ component MemorialPage inherits Rectangle {
                             }
                             // Ba nén hương cắm trong bát hương
                             if People.m-incense: Rectangle {
-                                x: 84px; y: 80px; width: 40px; height: 64px;
+                                x: 190px; y: 80px; width: 40px; height: 64px;
                                 for i in 3: Rectangle {
                                     x: 4px + i * 14px; y: 0px; width: 3px; height: 58px; background: #b04a2a;
                                     Rectangle { y: -3px; x: -1px; width: 5px; height: 6px; border-radius: 3px; background: #ff9a3c; }
                                 }
                             }
                             if People.m-incense: Rectangle {
-                                x: 64px; y: 132px; width: 80px; height: 44px;
+                                x: 170px; y: 132px; width: 80px; height: 44px;
                                 border-bottom-left-radius: 30px; border-bottom-right-radius: 30px; border-top-left-radius: 6px; border-top-right-radius: 6px;
                                 background: @linear-gradient(180deg, #c99a45 0%, #8a5e1c 100%);
                                 accessible-role: AccessibleRole.text; accessible-label: "Bát hương với ba nén hương";
                             }
-                            // Hai cây nến
-                            for c in [{ x: 18px }, { x: 386px }]: Rectangle {
+                            // Công giáo: một bó hoa trắng giữa hai nến (không hương).
+                            if People.m-catholic: Rectangle {
+                                x: 170px; y: 92px; width: 80px; height: 84px;
+                                accessible-role: AccessibleRole.text; accessible-label: "Hoa";
+                                for f in [{ x: 14px, y: 10px }, { x: 34px, y: 0px }, { x: 54px, y: 10px }, { x: 24px, y: 26px }, { x: 44px, y: 26px }]: Rectangle {
+                                    x: f.x - 4px; y: f.y; width: 20px; height: 20px; border-radius: 10px; background: #f3efe6;
+                                    Rectangle { x: 7px; y: 7px; width: 6px; height: 6px; border-radius: 3px; background: #e3b45c; }
+                                }
+                                for st in 3: Rectangle { x: 28px + st * 10px; y: 40px; width: 2px; height: 26px; background: #5e7d3a; }
+                                Rectangle { x: 22px; y: 62px; width: 36px; height: 22px; border-radius: 4px; background: @linear-gradient(180deg, #c99a45 0%, #8a5e1c 100%); }
+                            }
+                            // Hai cây nến hai bên.
+                            for c in [{ x: 120px }, { x: 284px }]: Rectangle {
                                 x: c.x; y: 112px; width: 16px; height: 64px;
+                                accessible-role: AccessibleRole.text; accessible-label: "Nến";
                                 Rectangle { y: 12px; width: 16px; height: 52px; border-radius: 3px; background: @linear-gradient(90deg, #a3121a 0%, #c4161c 55%, #8f1416 100%); }
                                 Rectangle { x: 4px; y: 0px; width: 8px; height: 13px; border-radius: 4px; background: #ffb347; }
                             }
-                            // Mâm ngũ quả
-                            Rectangle {
-                                x: 230px; y: 108px; width: 130px; height: 68px;
-                                accessible-role: AccessibleRole.text; accessible-label: "Mâm ngũ quả";
-                                Rectangle { x: 18px; y: 30px; width: 30px; height: 30px; border-radius: 15px; background: #d9822b; }
-                                Rectangle { x: 50px; y: 22px; width: 32px; height: 34px; border-radius: 16px; background: #c43d2c; }
-                                Rectangle { x: 82px; y: 30px; width: 30px; height: 30px; border-radius: 15px; background: #7aa43a; }
-                                Rectangle { x: 36px; y: 8px; width: 26px; height: 26px; border-radius: 13px; background: #e6b93a; }
-                                Rectangle { x: 64px; y: 6px; width: 26px; height: 26px; border-radius: 13px; background: #8e4b9b; }
-                                Rectangle { x: 6px; y: 56px; width: 118px; height: 10px; border-radius: 5px; background: #b8893a; }
-                            }
                             // Mặt bàn thờ
-                            Rectangle { x: 0px; y: 176px; width: 420px; height: 14px; border-radius: 3px; background: @linear-gradient(180deg, #7a4a26 0%, #5a3418 100%); }
-                            Rectangle { x: 20px; y: 190px; width: 380px; height: 20px; background: #4a2a14; }
+                            Rectangle { x: 60px; y: 176px; width: 300px; height: 14px; border-radius: 3px; background: @linear-gradient(180deg, #7a4a26 0%, #5a3418 100%); }
+                            Rectangle { x: 80px; y: 190px; width: 260px; height: 20px; background: #4a2a14; }
                         }
                     }
+                    // 08 §16.1: ảnh mâm lễ nằm dưới hàng bàn thờ — rộng tối đa 480 px, khung 4:3 cắt giữa, bo 12 px, viền
+                    // vàng đồng mảnh. Không có ảnh → không có mâm.
+                    if People.m-tray-kind != 0: HorizontalLayout {
+                        alignment: center;
+                        Rectangle {
+                            width: 480px; height: 360px;
+                            border-radius: 12px; clip: true; border-width: 1px; border-color: #b8893a;
+                            accessible-role: AccessibleRole.text;
+                            accessible-label: People.m-tray-kind == 1 ? "Ảnh mâm lễ của gia đình" : "Ảnh mâm lễ";
+                            Image { width: parent.width; height: parent.height; source: People.m-tray-img; image-fit: cover; }
+                        }
+                    }
+                    if People.m-tray-credit != "": Text { text: People.m-tray-credit; color: #b9a48a; font-family: Theme.sans; font-size: 13px * Theme.scale; horizontal-alignment: center; wrap: word-wrap; }
                     if People.m-loi != "": Text { text: "“" + People.m-loi + "”"; color: #e8dccb; font-family: Theme.serif; font-italic: true; font-size: 17px * Theme.scale; horizontal-alignment: center; wrap: word-wrap; }
+                    // Chưa có ảnh của gia đình → nút chữ nhỏ mở biểu mẫu tới mục ảnh mâm lễ.
+                    if People.m-tray-kind != 1 && !People.read-only: HorizontalLayout {
+                        alignment: center;
+                        Rectangle {
+                            min-height: 40px; min-width: tl.preferred-width + 8px;
+                            accessible-role: button; accessible-label: "Thêm ảnh mâm lễ của gia đình";
+                            accessible-action-default => { People.add-tray-from-memorial(); }
+                            tl := Text { text: "Thêm ảnh mâm lễ của gia đình"; color: #e8c67a; font-family: Theme.sans; font-size: 14px * Theme.scale; vertical-alignment: center; }
+                            Rectangle { y: parent.height - 8px; height: 1px; background: #8a6a3a; }
+                            TouchArea { clicked => { People.add-tray-from-memorial(); } mouse-cursor: pointer; }
+                        }
+                    }
                 }
             }
         }

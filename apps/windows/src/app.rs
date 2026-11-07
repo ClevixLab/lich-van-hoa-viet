@@ -20,6 +20,7 @@ mod photo;
 mod platform;
 mod shots;
 mod toasts;
+mod trays;
 #[cfg(test)]
 mod ui_tests;
 #[cfg(test)]

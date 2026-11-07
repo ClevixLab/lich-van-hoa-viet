@@ -71,6 +71,9 @@ lvhv-store = { path = "../../store" }
 [build-dependencies]
 slint-build = "=1.8.0"
 winresource = "=0.1.19"
+# Gói ảnh mâm lễ (08 §16.3): đọc manifest và kiểm sha256 lúc dựng.
+serde_json = "1.0.145"
+sha2 = "=0.11.1"
 
 [package.metadata.wix]
 upgrade-guid = "6B1D2C5E-7A0F-4C8B-9E3D-2F4A6B8C1D01"
