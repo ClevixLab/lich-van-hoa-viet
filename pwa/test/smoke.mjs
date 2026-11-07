@@ -9,6 +9,7 @@ import { createServer } from "node:http";
 import { readFileSync, existsSync, statSync, mkdirSync, mkdtempSync, rmSync, writeFileSync, readdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { gzipSync } from "node:zlib";
+import { createHash } from "node:crypto";
 import { dirname, extname, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright-core";
@@ -482,9 +483,42 @@ const LAZY = JSON.parse(readFileSync(join(DIST, "lazy-manifest.json"), "utf8"));
   const { runEscGate } = await import("./people-flows.mjs");
   try { await runEscGate({ browser, BASE, check }); }
   catch (e) { console.log(e.message); check(false, `MA3-15-03: kiểm thử dừng giữa chừng (${e.message.split("\n")[0]})`); }
+  // YC-2026-10 (08 §16.4 (1)–(4)): ảnh mâm lễ của gia đình — kiểm byte ảnh trong kho nên chạy trên bản dựng kiểm thử.
+  const { runTrayFlow } = await import("./people-flows.mjs");
+  try { await runTrayFlow({ browser, BASE, SHOTS, check }); }
+  catch (e) { console.log(e.message); check(false, `YC-2026-10: kiểm thử ảnh mâm lễ dừng giữa chừng (${e.message.split("\n")[0]})`); }
   serveDir = DIST;
   rmSync(TMP_T, { recursive: true, force: true });
   rmSync(DIST_T + ".gen", { recursive: true, force: true });
+}
+
+// ---------- 1g. YC-2026-10 §16.3 / §16.4 (5): gói ảnh mâm lễ của Clevix ----------
+{
+  // Gói thật đang rỗng → bản dựng chính không nhúng ảnh nào.
+  check(!existsSync(join(DIST, "trays")), "gói ảnh mâm lễ rỗng → dist/ không có thư mục trays/ (không hiện mâm)");
+  // Gói thử: MỘT ảnh đã duyệt (ảnh của bộ ca kiểm 04-dat, ghi CC BY để có dòng ghi công) → dựng vào thư mục tạm.
+  // Cần kịch bản kiểm gói và ảnh ca kiểm của vai nội dung (PR #48); chưa có trong kho → bỏ qua, ghi rõ.
+  const HAS_CONTENT = existsSync(join(ROOT, "..", "scripts/check-tray-pack.py")) && existsSync(join(ROOT, "..", "content/memorial/trays/test/04-dat/a.jpg"));
+  if (!HAS_CONTENT) console.log("  --   §16.4 (5): BỎ QUA — chưa có gói nội dung (scripts/check-tray-pack.py, content/memorial/trays/, PR #48)");
+  if (HAS_CONTENT) {
+  const TMP_P = mkdtempSync(join(tmpdir(), "lvhv-tray-"));
+  const src = readFileSync(join(ROOT, "..", "content/memorial/trays/test/04-dat/a.jpg"));
+  writeFileSync(join(TMP_P, "a.jpg"), src);
+  const item = { id: "thu-a", tray_style: "truyen_thong", file: "a.jpg", mime: "image/jpeg", width: 32, height: 24, sha256: createHash("sha256").update(src).digest("hex"),
+    nguon: "Bộ ca kiểm 04-dat", giay_phep: "CC BY 4.0", tac_gia: "Clevix Lab Thử", ghi_cong: "Clevix Lab Thử", duyet_boi: "kiểm thử", ngay_duyet: "2026-11-07", trang_thai: "duyet" };
+  writeFileSync(join(TMP_P, "manifest.json"), JSON.stringify({ pack_version: 1, items: [item, { ...item, id: "thu-cho", trang_thai: "cho" }] }));
+  const DIST_P = join(TMP_P, "dist");
+  execFileSync(process.execPath, [join(ROOT, "build.mjs")], { cwd: ROOT, env: { ...process.env, LVHV_TRAY_MANIFEST: join(TMP_P, "manifest.json"), LVHV_OUT_DIR: DIST_P }, stdio: "ignore" });
+  const sw = readFileSync(join(DIST_P, "sw.js"), "utf8");
+  check(existsSync(join(DIST_P, "trays", "thu-a.jpg")) && readFileSync(join(DIST_P, "trays", "thu-a.jpg")).equals(src) && !existsSync(join(DIST_P, "trays", "thu-cho.jpg")) && sw.includes("./trays/thu-a.jpg"),
+    "gói thử: chỉ ảnh đã duyệt được nhúng (đúng byte), nằm trong precache để dùng ngoại tuyến; ảnh \"cho\" bị bỏ");
+  serveDir = DIST_P;
+  const { runTrayPack } = await import("./people-flows.mjs");
+  try { await runTrayPack({ browser, BASE, SHOTS, check }); }
+  catch (e) { console.log(e.message); check(false, `§16.4 (5): kiểm thử dừng giữa chừng (${e.message.split("\n")[0]})`); }
+  serveDir = DIST;
+  rmSync(TMP_P, { recursive: true, force: true });
+  }
 }
 
 // ---------- 1f. MA3C-30-03: hộp "Lưu tệp" của hệ điều hành — bản dựng chính ----------
