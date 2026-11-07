@@ -25,7 +25,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.core.graphics.drawable.toBitmap
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.SpanStyle
@@ -89,7 +90,14 @@ fun AboutScreen(openRules: () -> Unit) {
     val fromPlay = remember { Updates.installedFromPlay(ctx) }
     Page {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Image(painterResource(R.mipmap.ic_launcher), contentDescription = null, modifier = Modifier.size(72.dp))
+            // ic_launcher là adaptive-icon (XML, chỉ có mipmap-anydpi-v26): painterResource không vẽ được loại này (ném
+            // IllegalArgumentException), nên dựng thành ảnh bitmap từ Drawable của hệ thống.
+            val icon = remember {
+                androidx.core.content.ContextCompat.getDrawable(ctx, R.mipmap.ic_launcher)?.let { d ->
+                    d.toBitmap(216, 216).asImageBitmap()
+                }
+            }
+            if (icon != null) Image(icon, contentDescription = null, modifier = Modifier.size(72.dp))
             Spacer(Modifier.width(14.dp))
             Column {
                 Text("Lịch và Văn hóa Việt", style = MaterialTheme.typography.headlineMedium, color = c.ink, modifier = Modifier.semantics { heading() })
