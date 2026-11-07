@@ -101,9 +101,11 @@
         </Feature>
 
         <!-- Giao dien bo cai (BM2-22, MA3N-25-09): Welcome -> Verify -> Progress -> Exit, khong co trang giay phep. Trang
-             ket thuc (cai dat va go bo khi chay lai .msi) ghi ro du lieu ca nhan duoc GIU va nam o dau. Bang MSI dung ma
-             trang 1252 nen cau viet khong dau, nhu ten san pham; cau co dau day du nam o trang Gioi thieu cua ung dung.
-             Go tu Cai dat Windows (giao dien co ban) khong hien hop thoai nay - xem docs/04-BUILD-NATIVE.md. -->
+             ket thuc ghi ro du lieu ca nhan duoc GIU va nam o dau - CHI KHI CAI MOI hoac nang cap: ExitDialog cua WixUI
+             chi hien WIXUI_EXITDIALOGOPTIONALTEXT voi dieu kien "NOT Installed", nen khi go (chay lai .msi -> Remove, hay
+             tu Cai dat Windows) cau nay KHONG hien (DV25-01). Khi go, nguoi dung biet du lieu duoc giu qua trang Gioi
+             thieu va Nguoi than > Sao luu > "Du lieu tren may nay". Bang MSI dung ma trang 1252 nen cau viet khong dau,
+             nhu ten san pham. Xem docs/04-BUILD-NATIVE.md. -->
         <UI Id='LvhvUI'>
             <TextStyle Id='WixUI_Font_Normal' FaceName='Tahoma' Size='8'/>
             <TextStyle Id='WixUI_Font_Bigger' FaceName='Tahoma' Size='12'/>
