@@ -2977,38 +2977,44 @@ fn open_backup_file(ui: &AppWindow, ps: &mut PState) {
                 Err(e) => p.set_restore_error(ss(e)),
                 Ok(b) => {
                     p.set_restore_error(ss(""));
-                    let pv = b.preview();
-                    let date = local_date_of_rfc3339(&pv.exported_at)
-                        .map(|d| d.dmy())
-                        .unwrap_or_default();
-                    let platform = match pv.platform.as_str() {
-                        "pwa" => "ứng dụng web",
-                        "android" => "Android",
-                        "ios" => "iPhone/iPad",
-                        "macos" => "máy Mac",
-                        "windows" => "Windows",
-                        o => o,
-                    }
-                    .to_string();
-                    ps.backup = Some(b);
-                    p.set_restore_mode(0);
-                    open_dialog(
-                        ui,
-                        ps,
-                        "khoi-phuc",
-                        "Khôi phục dữ liệu",
-                        vec![format!(
-                            "Tệp xuất ngày {date} từ {platform}: {} người, {} sự kiện, {} ảnh.",
-                            pv.persons, pv.events, pv.photos
-                        )],
-                        "Khôi phục",
-                        "Hủy",
-                        false,
-                        DlgAction::Restore,
-                    );
+                    show_restore_preview(ui, ps, b);
                 }
             }
         },
+    );
+}
+
+/// Hộp xem trước khôi phục (03 §2.4, 08 §3.8 C) cho một tệp đã giải mã và kiểm tra.
+pub fn show_restore_preview(ui: &AppWindow, ps: &mut PState, b: std::sync::Arc<lvhv_ffi::VerifiedBackup>) {
+    let p = People::get(ui);
+    let pv = b.preview();
+    let date = local_date_of_rfc3339(&pv.exported_at)
+        .map(|d| d.dmy())
+        .unwrap_or_default();
+    let platform = match pv.platform.as_str() {
+        "pwa" => "ứng dụng web",
+        "android" => "Android",
+        "ios" => "iPhone/iPad",
+        "macos" => "máy Mac",
+        "windows" => "Windows",
+        o => o,
+    }
+    .to_string();
+    ps.backup = Some(b);
+    p.set_restore_mode(0);
+    open_dialog(
+        ui,
+        ps,
+        "khoi-phuc",
+        "Khôi phục dữ liệu",
+        vec![format!(
+            "Tệp xuất ngày {date} từ {platform}: {} người, {} sự kiện, {} ảnh.",
+            pv.persons, pv.events, pv.photos
+        )],
+        "Khôi phục",
+        "Hủy",
+        false,
+        DlgAction::Restore,
     );
 }
 

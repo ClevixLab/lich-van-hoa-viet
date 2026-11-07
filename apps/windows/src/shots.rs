@@ -13,6 +13,7 @@ use serde_json::{json, Value};
 use slint::{ComponentHandle, Timer, TimerMode};
 
 use crate::people::{self, local_today, PState};
+use crate::toasts;
 use crate::ui::*;
 use crate::{State, D};
 
@@ -255,6 +256,34 @@ fn steps(ui: &AppWindow, st: Rc<RefCell<State>>) -> Vec<Step> {
             people::reschedule(Some(ui), &mut p);
         })));
     }
+    for (name, r, enabled) in [
+        ("nt-02b-thong-bao-dat-duoc", toasts::SyncResult::Scheduled { pending: 12, added: 12, removed: 0, confirmed: true }, true),
+        ("nt-02c-thong-bao-ban-zip", toasts::SyncResult::Scheduled { pending: 12, added: 12, removed: 0, confirmed: false }, true),
+        ("nt-02d-thong-bao-tat-trong-windows", toasts::SyncResult::Disabled { reason: "Thông báo của ứng dụng đang tắt trong Cài đặt Windows (Hệ thống › Thông báo).".into(), cleared: Ok(()) }, true),
+        ("nt-02e-loi-nhac-dang-tat", toasts::SyncResult::Scheduled { pending: 0, added: 0, removed: 0, confirmed: true }, false),
+    ] {
+        let ps = ps.clone();
+        screens.push((name, Rc::new(move |ui: &AppWindow| {
+            people::go(ui, &mut ps.borrow_mut(), "sap-toi");
+            let (ok, text) = people::notif_status(&r, enabled);
+            let p = People::get(ui);
+            p.set_notif_ok(ok);
+            p.set_notif_status(text.into());
+            p.set_rem_enabled(enabled);
+            p.set_scroll_frac(0.0);
+        })));
+    }
+    screens.push(("nt-02f-to-lich-the-nhac", Rc::new(|ui: &AppWindow| ui.set_tab(0))));
+    {
+        let ps = ps.clone();
+        screens.push(("nt-02g-mac-dinh-nhac-mo", Rc::new(move |ui: &AppWindow| {
+            ui.set_tab(4);
+            people::go(ui, &mut ps.borrow_mut(), "sap-toi");
+            let p = People::get(ui);
+            p.set_defaults_open(true);
+            p.set_scroll_frac(1.0);
+        })));
+    }
     for (name, kind, filter) in [("nt-03-theo-ky-thang", 1, 0), ("nt-04-theo-ky-quy", 2, 0), ("nt-05-theo-ky-nam-da-mat", 3, 1), ("nt-06-theo-ky-tuan", 0, 2)] {
         let ps = ps.clone();
         screens.push((name, Rc::new(move |ui: &AppWindow| {
@@ -310,13 +339,25 @@ fn steps(ui: &AppWindow, st: Rc<RefCell<State>>) -> Vec<Step> {
         p.invoke_form_changed();
     })));
     screens.push(("nt-11b-them-da-mat-ket-qua", Rc::new(|ui: &AppWindow| People::get(ui).set_scroll_frac(0.3))));
+    screens.push(("nt-11c-tu-nhap-tuoi", Rc::new(|ui: &AppWindow| {
+        let p = People::get(ui);
+        p.set_bd_d("1".into());
+        p.set_bd_m("5".into());
+        p.set_bd_y("1940".into());
+        p.set_f_tuoi_manual(true);
+        p.set_f_tuoi("85".into());
+        p.invoke_form_changed();
+        p.set_scroll_frac(0.42);
+    })));
     screens.push(("nt-12-them-da-mat-loi", Rc::new(|ui: &AppWindow| {
         let p = People::get(ui);
+        p.set_f_tuoi_manual(false);
         p.set_scroll_frac(0.0);
         p.set_f_ho_ten("".into());
         p.set_dd_m("5".into());
         p.invoke_save_form();
     })));
+    screens.push(("nt-12b-them-da-mat-loi-ngay", Rc::new(|ui: &AppWindow| People::get(ui).set_scroll_frac(0.22))));
     screens.push(("_nt-13-chuan-bi", Rc::new(|ui: &AppWindow| {
         let p = People::get(ui);
         p.set_dlg("".into());
@@ -395,15 +436,40 @@ fn steps(ui: &AppWindow, st: Rc<RefCell<State>>) -> Vec<Step> {
             p.set_m_smoke(false);
         })));
     }
+    screens.push(("nt-21b-tuong-niem-khoi-dang-chay", Rc::new(|ui: &AppWindow| People::get(ui).set_m_smoke(true))));
+    {
+        let ps = ps.clone();
+        screens.push(("nt-20b-hop-khoi-phuc", Rc::new(move |ui: &AppWindow| {
+            let p = People::get(ui);
+            p.invoke_go("sao-luu".into());
+            let mut g = ps.borrow_mut();
+            let store = g.store.clone().unwrap();
+            let bytes = store.export_backup("mật khẩu mẫu 2026".into(), crate::update::VERSION.into(), "windows".into()).unwrap();
+            let b = lvhv_ffi::open_backup(bytes, "mật khẩu mẫu 2026".into()).unwrap();
+            people::show_restore_preview(ui, &mut g, b);
+        })));
+    }
+    screens.push(("nt-20c-hop-thay-toan-bo", Rc::new(|ui: &AppWindow| {
+        let p = People::get(ui);
+        p.set_restore_mode(1);
+        p.invoke_dlg_confirm();
+    })));
     {
         let ids = ids.clone();
         screens.push(("nt-22-tuong-niem-gio-hom-nay", Rc::new(move |ui: &AppWindow| {
             let p = People::get(ui);
             p.invoke_go("sap-toi".into());
+            p.invoke_dlg_dismiss();
             p.invoke_open_memorial(ids.borrow().1.as_str().into());
             p.set_m_smoke(false);
         })));
     }
+    let big: [&str; 13] = [
+        "nt-02-sap-toi", "nt-03-theo-ky-thang", "nt-05-theo-ky-nam-da-mat", "nt-07-ho-so", "nt-08-nguoi-da-mat",
+        "nt-11b-them-da-mat-ket-qua", "nt-12-them-da-mat-loi", "nt-13b-them-dang-song-nhac", "nt-15-cap-nhat-xac-nhan",
+        "nt-19-hop-xuat-ics", "nt-20-hop-tao-sao-luu", "nt-21-tuong-niem", "nt-02f-to-lich-the-nhac",
+    ];
+    let again: Vec<(&str, Act)> = screens.iter().filter(|(n, _)| *n != "nt-01-trong").cloned().collect();
     for (name, act) in screens {
         // Bước có tên bắt đầu bằng "_": chỉ chuẩn bị, không chụp (để trang kịp dàn trước khi cuộn).
         if name.starts_with('_') {
@@ -416,6 +482,19 @@ fn steps(ui: &AppWindow, st: Rc<RefCell<State>>) -> Vec<Step> {
             a1(ui);
         })));
         v.push((format!("{name}-toi"), Box::new(move |ui: &AppWindow| theme(ui, true))));
+    }
+    v.push(("_a3-co-chu-rat-lon".to_string(), Box::new(|ui: &AppWindow| {
+        theme(ui, false);
+        Theme::get(ui).set_scale(1.32);
+        ui.set_size(3);
+        ui.set_tab(4);
+    })));
+    for (name, act) in again {
+        if big.contains(&name) {
+            v.push((format!("a3-{name}-sang"), Box::new(move |ui: &AppWindow| act(ui))));
+        } else {
+            v.push((format!("_a3-{name}"), Box::new(move |ui: &AppWindow| act(ui))));
+        }
     }
     let _ = ui;
     v

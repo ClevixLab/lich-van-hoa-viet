@@ -616,7 +616,7 @@ component AboutPage inherits Page {
             S { text: "Quyền riêng tư"; size: 19; }
             Para { text: "Ứng dụng không thu thập dữ liệu, không có tài khoản, không quảng cáo và không gửi thông tin đi đâu. Mọi tính toán diễn ra ngay trên máy của bạn."; }
             Para { text: "Ứng dụng không dùng mạng và hoạt động hoàn toàn khi không có mạng. Cỡ chữ và giao diện sáng tối trở về mặc định mỗi lần mở. Ứng dụng ghi một tệp nhỏ chứa ngày bạn bấm \"Để sau\" ở thẻ nhắc cập nhật (trong thư mục %LOCALAPPDATA%\\Clevix)."; }
-            Para { text: "Sổ Người thân (hồ sơ, ngày giỗ, sinh nhật, ảnh, thông tin báo tử) chỉ lưu trên máy này, trong thư mục %LOCALAPPDATA%\\ClevixLab\\LichVanHoaViet. Không có tài khoản, không gửi đi đâu. Muốn chuyển sang máy khác, hãy tạo tệp sao lưu có mật khẩu ở mục Người thân › Sao lưu."; }
+            Para { text: "Sổ Người thân (hồ sơ, ngày giỗ, sinh nhật, ảnh, thông tin báo tử) chỉ lưu trên máy này, trong thư mục %LOCALAPPDATA%\\ClevixLab\\LichVanHoaViet. Không có tài khoản, không gửi đi đâu. Muốn chuyển sang máy khác, hãy tạo tệp sao lưu có mật khẩu ở mục Người thân › Sao lưu. Gỡ ứng dụng không tự xóa sổ này; muốn xóa hẳn, hãy xóa thư mục trên sau khi gỡ (thông báo đã đặt sẽ hết khi tới giờ hoặc khi tắt thông báo của ứng dụng trong Cài đặt Windows)."; }
             Para { text: "Năm sinh nhập ở mục Chọn ngày tốt chỉ dùng trong lúc tính, không được lưu lại."; }
         } }
         Panel { VerticalLayout { padding: 18px; spacing: 8px;
@@ -723,7 +723,8 @@ export component AppWindow inherits Window {
     in-out property <int> size: 1;
     in-out property <int> theme-mode: 0; // 0 = theo máy, 1 = sáng, 2 = tối
     // Thanh mục xuống hàng riêng khi chữ lớn hoặc cửa sổ hẹp (TKN-W-01).
-    out property <bool> two-rows: Theme.scale > 1.01 || root.width < 1150px;
+    // Đo bề rộng thật của thanh mục (theo phông và cỡ chữ đang dùng) bằng một bản ẩn, không đoán bằng ngưỡng cố định.
+    out property <bool> two-rows: Theme.scale > 1.01 || measure-nav.preferred-width + measure-title.preferred-width + 300px > root.width;
     callback pick-tab(int);
     pick-tab(id) => { root.tab = id; if (id == 3) { Data.about-rules = false; } if (id == 4) { Data.open-people(); } }
     // Màu nền theo máy lúc mở ứng dụng (đọc một lần trước khi người dùng đổi giao diện).
@@ -748,6 +749,8 @@ export component AppWindow inherits Window {
             reject
         }
 
+        measure-nav := NavTabs { visible: false; x: 0; y: 0; height: 0; tab: -1; }
+        measure-title := S { visible: false; x: 0; y: 0; height: 0; text: "Lịch và Văn hóa Việt"; size: 18; wrap: no-wrap; }
         VerticalLayout {
             // Thanh trên. Ở cỡ chữ A+/A++ hoặc khi cửa sổ hẹp, thanh mục xuống hàng riêng dưới tên ứng dụng (TKN-W-01,
             // như PWA 08 §12b); rất hẹp thì chỉ còn biểu tượng (nhãn trợ năng vẫn đủ chữ).
@@ -757,7 +760,7 @@ export component AppWindow inherits Window {
                 HorizontalLayout {
                     spacing: 10px;
                     VerticalLayout { alignment: center; Image { source: @image-url("../assets/icon.svg"); width: 30px; height: 30px; } }
-                    S { text: root.two-rows || root.width >= 1100px ? "Lịch và Văn hóa Việt" : "Lịch Việt"; size: 18; vertical-alignment: center; wrap: no-wrap; }
+                    S { text: "Lịch và Văn hóa Việt"; size: 18; vertical-alignment: center; wrap: no-wrap; }
                 }
                 Rectangle { horizontal-stretch: 1; }
                 if !root.two-rows: NavTabs { tab: root.tab; picked(id) => { root.pick-tab(id); } }
@@ -795,14 +798,15 @@ export component AppWindow inherits Window {
             if root.two-rows: HorizontalLayout {
                 padding-left: 12px; padding-right: 12px; padding-bottom: 8px;
                 alignment: center;
-                NavTabs { tab: root.tab; compact: root.width < 780px * Theme.scale; picked(id) => { root.pick-tab(id); } }
+                NavTabs { tab: root.tab; compact: measure-nav.preferred-width + 24px > root.width; picked(id) => { root.pick-tab(id); } }
             }
             // Thẻ nhắc hôm nay trên Tờ lịch (08 §5.5, L7): một thẻ + dòng gộp các lời nhắc khác.
+            // Thẳng cột với tờ lịch (rộng 560 px; ở màn rộng bảng tháng chiếm 400 px bên phải) — như TK-31 (b) của PWA.
             if root.tab == 0 && People.sheet-has-card: HorizontalLayout {
-                padding-left: 16px; padding-right: 16px; padding-bottom: 6px;
+                padding-left: 16px; padding-right: root.width >= 1000px ? 400px : 16px; padding-bottom: 6px;
                 alignment: center;
                 Rectangle {
-                    max-width: 560px; horizontal-stretch: 1;
+                    width: min(560px, root.width - (root.width >= 1000px ? 416px : 32px));
                     background: Theme.paper; border-radius: 14px; border-width: 1px; border-color: Theme.outline;
                     accessible-role: text; accessible-label: People.sheet-card.title + ". " + People.sheet-card.sub;
                     Rectangle { x: 0; width: 5px; height: parent.height; background: Theme.red; border-top-left-radius: 14px; border-bottom-left-radius: 14px; }

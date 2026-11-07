@@ -168,14 +168,18 @@ trong `lvhv-memorial`, `lvhv-store`, `lvhv-backup`. Giao diện chỉ hiển th�
   (giới hạn 64, thông báo nhắc mở ứng dụng) rồi gỡ/thêm/thay đúng theo kế hoạch. Thông báo đã đặt do Windows giữ và
   hiện kể cả khi ứng dụng đã đóng; **không** có tiến trình nền. Mặc định thông báo không ghi tên (O-9); tùy chọn
   "Hiện tên người trong thông báo" lưu theo máy (`lock_screen_names`), không vào sao lưu.
+- **Bấm vào thông báo** mở đúng hồ sơ: thông báo kích hoạt URI `lichviet:nguoi/<id>?…` (chỉ UUID; id và nội dung của
+  lõi cũng nằm trong URI để đối chiếu khi xoay vòng — MA3N-25-01); bộ cài đăng ký giao thức `lichviet` trong
+  `HKCU\Software\Classes`. Ứng dụng đang mở thì Windows mở thêm một cửa sổ ở đúng hồ sơ.
+- **Múi giờ:** độ lệch hiện tại + các lần chuyển giờ mùa hè trong 401 ngày tới (`GetTimeZoneInformationForYear`), như
+  Android/Apple (MA3N-25-05).
+- **Việc nặng** (Argon2id khi tạo/mở sao lưu, khôi phục, giải mã ảnh) chạy ở luồng phụ; ảnh > 25 MB bị từ chối trước khi
+  đọc tệp (MA3N-25-06, -07).
 - **Giới hạn đã biết:**
-  - bản `.zip` chạy không cài không có lối tắt mang AUMID → Windows có thể từ chối thông báo; giao diện ghi rõ và
-    lời nhắc vẫn có trong "Sắp tới" + tệp .ics;
-  - chỉ dùng độ lệch giờ hiện tại của máy (`GetTimeZoneInformation`), không truyền các lần chuyển giờ mùa hè cho lõi
-    — với múi giờ có giờ mùa hè, lời nhắc nằm sau lần đổi giờ có thể lệch 1 giờ tới khi ứng dụng được mở lại
-    (Việt Nam không có giờ mùa hè);
-  - bấm vào thông báo chưa mở đúng hồ sơ (cần bộ kích hoạt COM; để đợt sau);
-  - mã hóa sao lưu (Argon2id 64 MiB) chạy trên luồng giao diện, cửa sổ đứng 1–2 giây;
+  - bản `.zip` chạy không cài không có lối tắt mang AUMID → Windows có thể không hiện thông báo dù đặt được; giao diện ghi
+    "Windows chưa xác nhận…" và khuyên cài `.msi`;
+  - gỡ ứng dụng không xóa sổ Người thân (`%LOCALAPPDATA%\ClevixLab\LichVanHoaViet`) và không gỡ thông báo đang chờ — trang
+    Giới thiệu ghi rõ cách xóa;
   - R5 Windows (máy thật, khởi động lại) **chưa thử** — cần chủ dự án thử trên Windows 11 (04 R5).
 - **Kiểm thử:** `src/ui_tests_people.rs` bấm qua mọi luồng: L2 (ngày âm, tháng nhuận, các lỗi), nhắc (mốc, giờ 24
   giờ, tiên thường), ảnh, L11 tưởng niệm (dừng/thắp lại khói), L12 sửa (`rev`), L3 người đang sống + sinh nhật âm

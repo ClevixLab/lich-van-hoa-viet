@@ -53,6 +53,20 @@
                             <RemoveFolder Id='RemoveAppFolder' On='uninstall'/>
                             <RemoveFolder Id='RemoveProgramsFolder' Directory='ProgramsFolder' On='uninstall'/>
                         </Component>
+                        <!-- Giao thức lichviet: — bấm vào thông báo, Windows chạy LichViet.exe "lichviet:nguoi/<id>?…" và ứng dụng mở
+                             đúng hồ sơ (src/toasts.rs). URI chỉ có UUID, không có tên hay ngày. -->
+                        <Component Id='ProtocolHandler' Guid='6B1D2C5E-7A0F-4C8B-9E3D-2F4A6B8C1D13' Win64='$(var.Win64)'>
+                            <RegistryKey Root='HKCU' Key='Software\Classes\lichviet'>
+                                <RegistryValue Type='string' Value='URL:Lich Viet' KeyPath='yes'/>
+                                <RegistryValue Name='URL Protocol' Type='string' Value=''/>
+                                <RegistryKey Key='DefaultIcon'>
+                                    <RegistryValue Type='string' Value='[APPLICATIONFOLDER]LichViet.exe,0'/>
+                                </RegistryKey>
+                                <RegistryKey Key='shell\open\command'>
+                                    <RegistryValue Type='string' Value='"[APPLICATIONFOLDER]LichViet.exe" "%1"'/>
+                                </RegistryKey>
+                            </RegistryKey>
+                        </Component>
                         <Component Id='FontLicense' Guid='6B1D2C5E-7A0F-4C8B-9E3D-2F4A6B8C1D11' Win64='$(var.Win64)'>
                             <File Id='OflTxt' Name='OFL.txt' DiskId='1' Source='ui\fonts\OFL.txt'/>
                             <RegistryValue Root='HKCU' Key='Software\Clevix\LichVanHoaViet' Name='ofl' Type='integer' Value='1' KeyPath='yes'/>
@@ -76,6 +90,7 @@
             <ComponentRef Id='MainExe'/>
             <ComponentRef Id='FontLicense'/>
             <ComponentRef Id='StartMenuShortcut'/>
+            <ComponentRef Id='ProtocolHandler'/>
         </Feature>
 
         <Icon Id='ProductICO' SourceFile='assets\icon.ico'/>

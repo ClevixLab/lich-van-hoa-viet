@@ -366,3 +366,30 @@ fn all_clickables_work() {
     });
     assert_eq!(st.borrow().date, d0.add(1).unwrap(), "phím → sang ngày sau");
 }
+
+/// TKN-W-01: ở mọi cỡ chữ (A, A+, A++ và 1,16) và bề rộng 1180 px / 900 px / tối thiểu 560 px, nút cỡ chữ, nút sáng/tối và
+/// mọi mục của thanh mục nằm trọn trong cửa sổ.
+#[test]
+fn top_bar_fits_at_every_text_size() {
+    i_slint_backend_testing::init_no_event_loop();
+    let ui = AppWindow::new().unwrap();
+    let _st = crate::setup(&ui);
+    ui.show().unwrap();
+    for width in [1180., 900., 560.] {
+        ui.window().set_size(slint::LogicalSize::new(width, 900.));
+        for scale in [1.0f32, 1.15, 1.16, 1.32] {
+            Theme::get(&ui).set_scale(scale);
+            for label in ["Cỡ chữ rất lớn", "Tờ lịch", "Người thân", "Giới thiệu"] {
+                let e = by_label(&ui, label);
+                let right = e.absolute_position().x + e.size().width;
+                assert!(
+                    e.absolute_position().x >= 0. && right <= width + 0.5,
+                    "{label} tràn ở {width} px, scale {scale}: cạnh phải {right}"
+                );
+            }
+            let t = by_label_prefix(&ui, "Giao diện theo máy");
+            let right = t.absolute_position().x + t.size().width;
+            assert!(right <= width + 0.5, "nút sáng/tối tràn ở {width} px, scale {scale}: {right}");
+        }
+    }
+}

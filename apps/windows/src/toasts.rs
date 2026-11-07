@@ -10,6 +10,8 @@
 //!   (MA3N-25-02); Windows tắt thông báo của ứng dụng thì gỡ hết (MA3N-25-03).
 //! - Lớp hệ điều hành là trait [`Toasts`]; kiểm thử dùng [`FakeToasts`] trong bộ nhớ (MA3N-25-08).
 
+#![cfg_attr(not(windows), allow(dead_code))]
+
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -626,5 +628,107 @@ mod tests {
         assert_eq!(short_id("lvhv:sentinel").len(), 12);
         assert!(include_str!("../wix/main.wxs")
             .contains(&format!("Key='System.AppUserModel.ID' Value='{}'", crate::platform::AUMID)));
+    }
+
+    fn store(tag: &str) -> (std::sync::Arc<LvhvStore>, std::path::PathBuf) {
+        let day0 = crate::D { y: 2026, m: 11, d: 7 };
+        crate::platform::set_fake_now(Some((day0.jdn() - 2_440_588) * 86_400 + 2 * 3600));
+        crate::platform::set_fake_offset(Some(420));
+        let dir = std::env::temp_dir().join(format!("lvhv-toasts-{tag}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let s = LvhvStore::open(dir.to_string_lossy().into_owned()).unwrap();
+        crate::shots::seed_store(&s);
+        (s, dir)
+    }
+
+    fn now() -> i64 {
+        crate::platform::now_unix()
+    }
+
+    fn vn() -> DeviceZone {
+        DeviceZone { offset_min: 420, transitions: vec![] }
+    }
+
+    /// MA3N-25-01/-08: đặt lịch hai lần liền → lần hai không gỡ/thêm/thay gì, ở cả ẩn tên (dòng phụ rỗng) và hiện tên,
+    /// kể cả khi "Windows" chuẩn hóa phần tử rỗng thành <text/>.
+    #[test]
+    fn sync_twice_is_stable() {
+        let (s, dir) = store("on-dinh");
+        for (names, normalize) in [(false, false), (false, true), (true, false)] {
+            s.set_lock_screen_names(names).unwrap();
+            let f = FakeToasts::default();
+            f.0.borrow_mut().normalize_empty = normalize;
+            let r1 = sync(&f, &s, now(), vn());
+            let SyncResult::Scheduled { pending, added, .. } = r1 else { panic!("{r1:?}") };
+            assert!(added > 0 && pending == added, "{r1:?}");
+            if !names {
+                assert!(f.xml().iter().any(|x| x.matches("<text").count() == 1), "dòng phụ rỗng → một <text>");
+            }
+            let (adds, removes) = (f.0.borrow().adds, f.0.borrow().removes);
+            let r2 = sync(&f, &s, now(), vn());
+            assert_eq!(r2, SyncResult::Scheduled { pending, added: 0, removed: 0, confirmed: true }, "names={names} normalize={normalize}");
+            assert_eq!((f.0.borrow().adds, f.0.borrow().removes), (adds, removes));
+            // Đổi tùy chọn hiện tên → nội dung khác → thay toàn bộ (không nhân đôi).
+            s.set_lock_screen_names(!names).unwrap();
+            let r3 = sync(&f, &s, now(), vn());
+            let SyncResult::Scheduled { pending: p3, .. } = r3 else { panic!("{r3:?}") };
+            assert_eq!(p3, pending, "không nhân đôi khi đổi nội dung");
+            s.set_lock_screen_names(names).unwrap();
+        }
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    /// Cập nhật đã mất → lời nhắc sinh nhật của người đó bị gỡ (B4); bấm thông báo mở đúng hồ sơ.
+    #[test]
+    fn mark_deceased_removes_birthday_toasts() {
+        let (s, dir) = store("da-mat");
+        let f = FakeToasts::default();
+        sync(&f, &s, now(), vn());
+        let persons: Value = serde_json::from_str(&s.persons_json().unwrap()).unwrap();
+        let c = persons.as_array().unwrap().iter().find(|p| p["kind"] == "living").unwrap().clone();
+        let rule = c["reminders"]["sinh_nhat"]["id"].as_str().unwrap().to_string();
+        let has_rule = |f: &FakeToasts| f.contents().iter().any(|(id, _)| id.contains(&rule));
+        assert!(has_rule(&f), "có thông báo sinh nhật trước khi cập nhật");
+        // Bấm thông báo sinh nhật → URI mở hồ sơ của người đó.
+        let x = f.xml().into_iter().find(|x| parse_toast_xml(x).is_some_and(|(id, _)| id.contains(&rule))).unwrap();
+        let i = x.find("launch=\"").unwrap() + 8;
+        let uri = xml_unescape(&x[i..i + x[i..].find('"').unwrap()]);
+        assert_eq!(parse_launch(&uri).unwrap().person.as_deref(), c["id"].as_str());
+        let today = crate::people::local_today();
+        s.mark_deceased_json(
+            c["id"].as_str().unwrap().into(),
+            json!({"calendar":"solar","precision":"day","year":today.y,"month":today.m,"day":1,"leap":false}).to_string(),
+            None,
+            today.solar(),
+        )
+        .unwrap();
+        let r = sync(&f, &s, now(), vn());
+        assert!(matches!(r, SyncResult::Scheduled { removed, .. } if removed > 0), "{r:?}");
+        assert!(!has_rule(&f), "B4: thông báo sinh nhật đã gỡ");
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    /// MA3N-25-02/-03: đọc danh sách chờ lỗi → không thêm gì; Windows tắt thông báo → gỡ hết; thông báo hỏng → gỡ.
+    #[test]
+    fn read_failure_disabled_and_garbage() {
+        let (s, dir) = store("loi");
+        let f = FakeToasts::default();
+        sync(&f, &s, now(), vn());
+        let n = f.0.borrow().items.len();
+        f.0.borrow_mut().fail_pending = true;
+        assert!(matches!(sync(&f, &s, now(), vn()), SyncResult::ReadFailed(_)));
+        assert_eq!(f.0.borrow().items.len(), n, "không đặt trùng");
+        f.0.borrow_mut().fail_pending = false;
+        f.0.borrow_mut().items.push(("<toast><visual><binding template='ToastGeneric'><text>cũ</text></binding></visual></toast>".into(), 2_000_000_000));
+        let r = sync(&f, &s, now(), vn());
+        assert!(matches!(r, SyncResult::Scheduled { pending, .. } if pending == n), "thông báo hỏng bị gỡ: {r:?}");
+        f.0.borrow_mut().state = Some(ToastState::Unknown("0x80070490".into()));
+        assert!(matches!(sync(&f, &s, now(), vn()), SyncResult::Scheduled { confirmed: false, .. }));
+        let (ok, text) = crate::people::notif_status(&sync(&f, &s, now(), vn()), true);
+        assert!(!ok && !text.contains("đang bật"), "MA3N-25-04: {text}");
+        f.0.borrow_mut().state = Some(ToastState::Disabled("tắt".into()));
+        assert!(matches!(sync(&f, &s, now(), vn()), SyncResult::Disabled { cleared: Ok(()), .. }));
+        assert!(f.0.borrow().items.is_empty(), "tắt thông báo → gỡ hết");
+        let _ = std::fs::remove_dir_all(dir);
     }
 }
