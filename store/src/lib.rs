@@ -1781,6 +1781,7 @@ fn check_refs_person(tx: &rusqlite::Transaction<'_>, p: &Value) -> Result<()> {
             }));
         }
     }
+    let tray = validate::tray_photo_ref(p);
     for pid in validate::person_photo_refs(p) {
         let pid = pid.as_str();
         let n: i64 = tx.query_row(
@@ -1789,10 +1790,37 @@ fn check_refs_person(tx: &rusqlite::Transaction<'_>, p: &Value) -> Result<()> {
             |r| r.get(0),
         )?;
         if n == 0 {
+            let is_tray = tray == Some(pid) && p["photo_id"].as_str() != Some(pid);
             return Err(StoreError::Invalid(ValidationError {
                 code: "V3",
-                path: "/person/photo_id".into(),
-                msg: "ảnh không tồn tại".into(),
+                path: if is_tray {
+                    "/person/memorial/tray_photo_id".into()
+                } else {
+                    "/person/photo_id".into()
+                },
+                msg: if is_tray {
+                    "ảnh mâm lễ không tồn tại".into()
+                } else {
+                    "ảnh không tồn tại".into()
+                },
+            }));
+        }
+    }
+    // YC-2026-10: ảnh mâm lễ chỉ thuộc một người.
+    if tray.is_some() || p["photo_id"].is_string() {
+        let others: Vec<Value> = {
+            let mut st = tx.prepare("SELECT json FROM person WHERE id <> ?1")?;
+            let rows: Vec<String> = st
+                .query_map(params![p["id"].as_str()], |r| r.get(0))?
+                .collect::<core::result::Result<_, _>>()?;
+            rows.iter().map(|r| parse_col(r)).collect::<Result<_>>()?
+        };
+        let refs: Vec<&Value> = others.iter().collect();
+        if let Some(f) = validate::tray_photo_shared(p, &refs) {
+            return Err(StoreError::Invalid(ValidationError {
+                code: "V3",
+                path: format!("/person/{f}"),
+                msg: "ảnh mâm lễ dùng chung với hồ sơ khác".into(),
             }));
         }
     }
@@ -1952,15 +1980,16 @@ pub fn merge_docs(local: &Value, incoming: &Value) -> Value {
     for (id, x) in by_id(&incoming["photos"]) {
         photos.entry(id).or_insert(x);
     }
-    let used: std::collections::HashSet<&str> = persons
+    // Ảnh chân dung và ảnh mâm lễ (YC-2026-10) mà hồ sơ sau gộp còn dùng.
+    let used: std::collections::HashSet<String> = persons
         .iter()
-        .filter_map(|p| p["photo_id"].as_str())
+        .flat_map(validate::person_photo_refs)
         .collect();
     let local_photo_ids: std::collections::HashSet<String> =
         by_id(&local["photos"]).into_keys().collect();
     let photos: Vec<Value> = photos
         .into_iter()
-        .filter(|(id, _)| used.contains(id.as_str()) || local_photo_ids.contains(id))
+        .filter(|(id, _)| used.contains(id) || local_photo_ids.contains(id))
         .map(|(_, v)| v)
         .collect();
     // Tệp đính kèm: như ảnh — giữ của máy, thêm tệp mới mà hồ sơ sau gộp còn dùng.

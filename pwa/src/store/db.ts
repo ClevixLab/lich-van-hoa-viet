@@ -421,6 +421,9 @@ export class Store {
     }
     const all = await this.persons();
     const first = all.length === 0;
+    // YC-2026-10: ảnh mâm lễ chỉ thuộc một người (như Rust check_refs_person).
+    const shared = V.trayPhotoShared(p, all);
+    if (shared !== null) throw new StoreError("invalid", `V3 /person/${shared}: ảnh mâm lễ dùng chung với hồ sơ khác`);
     // Ảnh bản cũ dùng mà bản mới bỏ, không hồ sơ nào khác dùng → xóa cùng giao dịch (như Rust put_person).
     const old = all.find((x) => x.id === p.id);
     const keep = new Set([...V.personPhotoRefs(p), ...all.filter((x) => x.id !== p.id).flatMap((x) => V.personPhotoRefs(x))]);
@@ -433,10 +436,12 @@ export class Store {
     for (const r of recs) tx.objectStore("photos").put(r);
     for (const r of attRecs) tx.objectStore("attachments").put(r);
     const fresh = new Set(recs.map((r) => r.id));
+    const trayId = V.trayPhotoRef(p);
     for (const pid of V.personPhotoRefs(p)) {
       if (fresh.has(pid)) continue;
       const r = tx.objectStore("photos").getKey(pid);
-      r.onsuccess = () => { if (r.result === undefined) { tx.abort(); } };
+      const isTray = pid === trayId && p.photo_id !== pid;
+      r.onsuccess = () => { if (r.result === undefined) { if (isTray) missing = "V3 /person/memorial/tray_photo_id: ảnh mâm lễ không tồn tại"; tx.abort(); } };
     }
     const freshAtt = new Set(attRecs.map((r) => r.id));
     V.personAttachmentRefs(p).forEach((aid, j) => {

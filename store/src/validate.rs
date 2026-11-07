@@ -530,13 +530,46 @@ pub fn death_notice(v: &Value, path: &str) -> R {
     Ok(())
 }
 
-/// Mọi id ảnh (`Photo`) mà một `Person` tham chiếu: `photo_id`.
+/// Mọi id ảnh (`Photo`) mà một `Person` tham chiếu: `photo_id`, `memorial.tray_photo_id` (YC-2026-10).
 pub fn person_photo_refs(p: &Value) -> Vec<String> {
     p["photo_id"]
         .as_str()
-        .map(str::to_owned)
         .into_iter()
+        .chain(tray_photo_ref(p))
+        .map(str::to_owned)
         .collect()
+}
+
+/// `memorial.tray_photo_id` của một `Person` (YC-2026-10), nếu có.
+pub fn tray_photo_ref(p: &Value) -> Option<&str> {
+    p["memorial"]["tray_photo_id"].as_str()
+}
+
+/// YC-2026-10 (01 "Ghi chú YC-2026-10"): ảnh mâm lễ chỉ thuộc **một** người — id của nó không được là `photo_id` hay
+/// `tray_photo_id` của hồ sơ khác, cũng không là `photo_id` của chính hồ sơ đó. `persons` là mọi hồ sơ (cả `p` nếu
+/// có, so theo `id`). Trả đường dẫn tương đối của trường vi phạm trong `p`.
+pub fn tray_photo_shared(p: &Value, persons: &[&Value]) -> Option<&'static str> {
+    let me = p["id"].as_str();
+    let tray = tray_photo_ref(p);
+    if tray.is_some() && tray == p["photo_id"].as_str() {
+        return Some("memorial/tray_photo_id");
+    }
+    for q in persons {
+        if q["id"].as_str() == me {
+            continue;
+        }
+        if let Some(t) = tray {
+            if q["photo_id"].as_str() == Some(t) || tray_photo_ref(q) == Some(t) {
+                return Some("memorial/tray_photo_id");
+            }
+        }
+        if let (Some(ph), Some(qt)) = (p["photo_id"].as_str(), tray_photo_ref(q)) {
+            if ph == qt {
+                return Some("photo_id");
+            }
+        }
+    }
+    None
 }
 
 /// Mọi id tệp đính kèm (`Attachment`) mà một `Person` tham chiếu: `death.notice.attachments[].file_id`.
@@ -634,18 +667,25 @@ fn death_info(v: &Value, path: &str) -> R {
 }
 
 fn memorial(v: &Value, path: &str) -> R {
-    let o = obj(
-        v,
-        path,
-        &[
-            "tray_style",
-            "incense",
-            "bia_tieu_de",
-            "loi_tuong_niem",
-            "gio_het_nam",
-            "huong_duong_duoi",
-        ],
-    )?;
+    // `tray_photo_id` (YC-2026-10, 01 §3.7) là khóa tùy chọn: thiếu ≡ `null` (tài liệu và vector cũ vẫn hợp lệ).
+    let has_tray = v
+        .as_object()
+        .is_some_and(|o| o.contains_key("tray_photo_id"));
+    let mut keys = vec![
+        "tray_style",
+        "incense",
+        "bia_tieu_de",
+        "loi_tuong_niem",
+        "gio_het_nam",
+        "huong_duong_duoi",
+    ];
+    if has_tray {
+        keys.push("tray_photo_id");
+    }
+    let o = obj(v, path, &keys)?;
+    if has_tray && !o["tray_photo_id"].is_null() {
+        uuid(&o["tray_photo_id"], &p(path, "tray_photo_id"))?;
+    }
     let style = enum_str(
         &o["tray_style"],
         &p(path, "tray_style"),
@@ -1039,6 +1079,7 @@ pub fn document(v: &Value) -> R {
         }
     }
     // V3
+    let all: Vec<&Value> = persons.iter().collect();
     for (i, x) in persons.iter().enumerate() {
         if let Some(pid) = x["photo_id"].as_str() {
             if !photo_ids.contains(pid) {
@@ -1048,6 +1089,22 @@ pub fn document(v: &Value) -> R {
                     "ảnh không tồn tại",
                 ));
             }
+        }
+        if let Some(pid) = tray_photo_ref(x) {
+            if !photo_ids.contains(pid) {
+                return Err(err(
+                    "V3",
+                    &format!("/persons/{i}/memorial/tray_photo_id"),
+                    "ảnh mâm lễ không tồn tại",
+                ));
+            }
+        }
+        if let Some(f) = tray_photo_shared(x, &all) {
+            return Err(err(
+                "V3",
+                &format!("/persons/{i}/{f}"),
+                "ảnh mâm lễ dùng chung với hồ sơ khác",
+            ));
         }
         for (j, c) in x["death"]["notice"]["attachments"]
             .as_array()

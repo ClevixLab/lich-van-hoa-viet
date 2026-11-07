@@ -1,7 +1,7 @@
 // Gộp tài liệu sao lưu (docs/v0.2/01 §6.3) — bản TypeScript của `merge_docs` (store/src/lib.rs). Hàm thuần;
 // kết quả còn phải qua validate.document. Mảng kết quả sắp theo `id` (như BTreeMap của bản Rust).
 import type { Json, JsonObj } from "./json";
-import { nameKey, personAttachmentRefs } from "./validate";
+import { nameKey, personAttachmentRefs, personPhotoRefs } from "./validate";
 
 const rows = (v: Json): JsonObj[] => (Array.isArray(v) ? (v as JsonObj[]) : []);
 const byId = (v: Json) => new Map(rows(v).map((x) => [x.id as string, x] as const));
@@ -43,7 +43,8 @@ export function mergeDocs(local: JsonObj, incoming: JsonObj): JsonObj {
   const photos = byId(local.photos);
   const localPhotoIds = new Set(photos.keys());
   for (const [id, x] of byId(incoming.photos)) if (!photos.has(id)) photos.set(id, x);
-  const used = new Set(persons.map((p) => p.photo_id).filter((x): x is string => typeof x === "string"));
+  // Ảnh chân dung và ảnh mâm lễ (YC-2026-10) mà hồ sơ sau gộp còn dùng — như Rust merge_docs.
+  const used = new Set(persons.flatMap((p) => personPhotoRefs(p)));
   for (const id of [...photos.keys()]) if (!used.has(id) && !localPhotoIds.has(id)) photos.delete(id);
   // Tệp đính kèm (YC-2026-07): như ảnh; khóa `attachments` chỉ có khi khác rỗng (như Rust merge_docs).
   const atts = byId(local.attachments);
