@@ -220,6 +220,7 @@ fn cmd_open(a: &[String]) -> Out {
         &dir,
         OpenOptions {
             force_migration_failure: force,
+            ..Default::default()
         },
     ) {
         Ok(s) => s,
