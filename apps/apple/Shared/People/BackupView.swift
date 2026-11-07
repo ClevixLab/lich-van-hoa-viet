@@ -55,6 +55,8 @@ struct BackupSection: View {
                     .disabled(m.persons.isEmpty)
                     .accessibilityIdentifier("backup.export")
             }
+            // Chế độ chỉ đọc: ẩn khối Khôi phục và Nhắc sao lưu (08 §12l TKN3-P-01); vẫn tạo được tệp sao lưu và .ics.
+            if !m.readOnly {
             PCard {
                 PHeading("Khôi phục từ tệp sao lưu")
                 Button("Chọn tệp sao lưu…") { importing = true }
@@ -84,6 +86,7 @@ struct BackupSection: View {
                 }
                 .pickerStyle(.menu)
                 PFine("Nhắc sao lưu khi có thay đổi chưa sao lưu sau số ngày đã chọn.")
+            }
             }
         }
         .sheet(isPresented: $icsOpen) {
@@ -166,8 +169,11 @@ struct BackupSection: View {
                 let scoped = url.startAccessingSecurityScopedResource()
                 defer { if scoped { url.stopAccessingSecurityScopedResource() } }
                 let size = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
-                guard size > 0, size <= limit, let h = try? FileHandle(forReadingFrom: url) else {
-                    return .failure(UIMessage(text: "Sai mật khẩu hoặc tệp bị hỏng"))
+                guard size > 0, size <= limit else {
+                    return .failure(UIMessage(text: "Tệp này không phải tệp sao lưu của ứng dụng hoặc quá lớn"))
+                }
+                guard let h = try? FileHandle(forReadingFrom: url) else {
+                    return .failure(UIMessage(text: "Không đọc được tệp này"))
                 }
                 let head = (try? h.read(upToCount: 72)) ?? Data()
                 try? h.close()
@@ -389,6 +395,9 @@ struct RestoreSheet: View {
     private func run(_ r: Bool) {
         busy = true
         Task {
+            #if DEBUG
+            if UserDefaults.standard.bool(forKey: "lvhvSlowRestore") { try? await Task.sleep(nanoseconds: 4_000_000_000) }
+            #endif
             await onApply(r)
             busy = false
         }
@@ -411,14 +420,15 @@ struct RestoreSheet: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
                     PBody("Tệp xuất ngày \(exported) từ \(platformName): \(preview.persons) người, \(preview.events) sự kiện, \(preview.photos) ảnh.")
-                    Text("Cách nhập:").ps(15, .semibold).foregroundStyle(C.ink)
-                    Picker("Cách nhập", selection: $replace) {
-                        Text("Gộp vào dữ liệu đang có (khuyên dùng) — giữ bản mới hơn của từng hồ sơ").tag(false)
-                        Text("Thay toàn bộ — xóa dữ liệu đang có trên máy rồi dùng dữ liệu trong tệp").tag(true)
-                    }
-                    .pickerStyle(.inline)
-                    .labelsHidden()
-                    .disabled(busy)
+                    Text("Cách nhập:").ps(15, .semibold).foregroundStyle(C.ink).accessibilityAddTraits(.isHeader)
+                    // Hai hàng chọn to theo cỡ chữ, chữ xuống dòng đầy đủ (DV23-03).
+                    RadioRow(title: "Gộp vào dữ liệu đang có (khuyên dùng)",
+                             detail: "Giữ bản mới hơn của từng hồ sơ.", on: !replace, id: "restore.merge") { replace = false }
+                        .disabled(busy)
+                    RadioRow(title: "Thay toàn bộ",
+                             detail: "Xóa dữ liệu đang có trên máy rồi dùng dữ liệu trong tệp.", on: replace,
+                             id: "restore.replace") { replace = true }
+                        .disabled(busy)
                     if busy {
                         HStack(spacing: 10) {
                             ProgressView()
@@ -438,7 +448,10 @@ struct RestoreSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             #endif
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Hủy") { dismiss() } }
+                // Đang khôi phục thì không cho đóng tấm (DV23-01): tác vụ vẫn chạy tới cùng.
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Hủy") { dismiss() }.disabled(busy).accessibilityIdentifier("restore.cancel")
+                }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Khôi phục") { if replace { confirmReplace = true } else { run(false) } }
                         .disabled(busy)
@@ -468,6 +481,16 @@ struct PeopleSettingsView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
                 Text("Cài đặt nhắc").serif(28, .semibold).foregroundStyle(C.ink).accessibilityAddTraits(.isHeader)
+                if m.readOnly {
+                    // 08 §12l TKN3-P-01: chế độ chỉ đọc không đổi được cài đặt; không hiện công tắc rồi tự bật lại.
+                    PCard {
+                        PBody("Đang ở chế độ chỉ đọc nên chưa đổi được cài đặt nhắc. Lời nhắc đã đặt trước đó vẫn giữ nguyên.")
+                        Divider()
+                        permissionRow
+                    }
+                    .accessibilityIdentifier("settings.readOnly")
+                }
+                if !m.readOnly {
                 PCard {
                     Toggle("Bật lời nhắc", isOn: Binding(
                         get: { m.settings["reminders_enabled"].bool ?? true },
@@ -485,7 +508,9 @@ struct PeopleSettingsView: View {
                         .accessibilityIdentifier("settings.showNames")
                     PFine("Khi tắt (mặc định), thông báo chỉ ghi “Sắp đến ngày giỗ”, “Sắp đến sinh nhật” hoặc “Sắp đến sự kiện”, không có tên. Tùy chọn này chỉ lưu trên máy này, không đi vào tệp sao lưu.")
                 }
+                }
                 lockScreenPreview
+                if !m.readOnly {
                 PCard {
                     RuleEditor(rule: $defaults, title: "Mặc định cho hồ sơ mới", errors: defaults.validate(prefix: "d"),
                                prefix: "d", showToggle: false)
@@ -495,6 +520,7 @@ struct PeopleSettingsView: View {
                             .disabled(!defaults.validate(prefix: "d").isEmpty)
                         if savedDefaults { Text("Đã lưu.").ps(15).foregroundStyle(C.green) }
                     }
+                }
                 }
                 PFine("Ứng dụng nhắc bằng thông báo của máy, kể cả khi đang đóng. iPhone và iPad chỉ giữ tối đa 64 thông báo chờ; khi có nhiều hơn, ứng dụng đặt một thông báo nhắc bạn mở ứng dụng để đặt tiếp.")
             }
@@ -594,5 +620,41 @@ extension View {
         #else
         self.autocorrectionDisabled(true)
         #endif
+    }
+}
+
+/// Hàng chọn một trong nhiều (tròn đặc khi chọn), chữ to theo cỡ chữ và xuống dòng (DV23-03).
+struct RadioRow: View {
+    let title: String
+    var detail: String?
+    let on: Bool
+    var id: String
+    var action: () -> Void
+    @Environment(\.isEnabled) private var enabled
+
+    var body: some View {
+        Button(action: action) {
+            HStack(alignment: .firstTextBaseline, spacing: 12) {
+                Image(systemName: on ? "largecircle.fill.circle" : "circle")
+                    .font(.title3)
+                    .foregroundStyle(on ? C.redInk : C.ink2)
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title).ps(17, .semibold).foregroundStyle(C.ink).fixedSize(horizontal: false, vertical: true)
+                    if let detail { Text(detail).ps(15).foregroundStyle(C.ink2).fixedSize(horizontal: false, vertical: true) }
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(on ? C.redTint : C.paper, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(on ? C.redInk : C.fieldBorder, lineWidth: on ? 2 : 1))
+            .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .opacity(enabled ? 1 : 0.5)
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(on ? [.isButton, .isSelected] : .isButton)
+        .accessibilityIdentifier(id)
     }
 }

@@ -175,7 +175,12 @@ enum AttachmentTemp {
         clear()
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         let u = dir.appendingPathComponent(pdf ? "TepDinhKem.pdf" : "TepDinhKem.jpg")
+        #if os(iOS)
+        try data.write(to: u, options: [.atomic, .completeFileProtection])
+        try? FileManager.default.setAttributes([.protectionKey: FileProtectionType.complete], ofItemAtPath: dir.path)
+        #else
         try data.write(to: u, options: [.atomic])
+        #endif
         return u
     }
 

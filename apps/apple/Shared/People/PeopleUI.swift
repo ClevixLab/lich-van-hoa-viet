@@ -262,7 +262,7 @@ struct DateInputView: View {
     var idPrefix = "date"
 
     private var calChoices: (String, String) {
-        purpose == .death ? ("Nhập theo dương lịch", "Nhập theo âm lịch") : ("Dương lịch", "Âm lịch")
+        ("Nhập theo dương lịch", "Nhập theo âm lịch")
     }
 
     var body: some View {
