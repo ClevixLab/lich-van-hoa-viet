@@ -70,6 +70,35 @@ fn demo_certificate() -> Vec<u8> {
     out
 }
 
+/// Ảnh mâm lễ mẫu (vẽ bằng mã, ảnh chụp thật chưa có): mặt bàn nâu, mâm vàng, vài đĩa màu. Chỉ dùng cho ảnh chụp
+/// màn hình của biểu mẫu và trang tưởng niệm khi có ảnh gia đình (08 §16.4 ca 2).
+fn demo_tray() -> Vec<u8> {
+    let (w, h) = (1200u32, 900u32);
+    let img = image::RgbImage::from_fn(w, h, |x, y| {
+        let (cx, cy) = (x as f32 - 600.0, y as f32 - 520.0);
+        let tray = (cx * cx) / (520.0 * 520.0) + (cy * cy) / (260.0 * 260.0) < 1.0;
+        let dish = |dx: f32, dy: f32, r: f32| (cx - dx).powi(2) + (cy - dy).powi(2) < r * r;
+        if dish(-220.0, -40.0, 110.0) {
+            image::Rgb([236, 230, 214])
+        } else if dish(60.0, -70.0, 120.0) {
+            image::Rgb([214, 150, 60])
+        } else if dish(300.0, 10.0, 100.0) {
+            image::Rgb([190, 60, 40])
+        } else if tray {
+            image::Rgb([196, 150, 70])
+        } else if y > 420 {
+            image::Rgb([92, 52, 26])
+        } else {
+            image::Rgb([60, 44, 38])
+        }
+    });
+    let mut out = Vec::new();
+    image::codecs::jpeg::JpegEncoder::new_with_quality(&mut out, 88)
+        .encode_image(&img)
+        .unwrap();
+    out
+}
+
 /// Gieo dữ liệu mẫu vào kho tạm. Trả id của (người đã mất có ảnh + báo tử, người đã mất có giỗ hôm nay, người
 /// đang sống).
 pub fn seed_demo(ps: &mut PState) -> (String, String, String) {
@@ -492,6 +521,12 @@ fn steps(ui: &AppWindow, st: Rc<RefCell<State>>) -> Vec<Step> {
             p.set_m_smoke(false);
         })));
     }
+    // YC-2026-10 (08 §16.4 ca 4): bàn thờ Công giáo — nến · hoa · nến, không hương (chỉ đổi cách vẽ, không đổi dữ liệu).
+    screens.push(("nt-22b-tuong-niem-cong-giao", Rc::new(|ui: &AppWindow| {
+        let p = People::get(ui);
+        p.set_m_incense(false);
+        p.set_m_catholic(true);
+    })));
     let big: [&str; 13] = [
         "nt-02-sap-toi", "nt-03-theo-ky-thang", "nt-05-theo-ky-nam-da-mat", "nt-07-ho-so", "nt-08-nguoi-da-mat",
         "nt-11b-them-da-mat-ket-qua", "nt-12-them-da-mat-loi", "nt-13b-them-dang-song-nhac", "nt-15-cap-nhat-xac-nhan",
@@ -523,6 +558,42 @@ fn steps(ui: &AppWindow, st: Rc<RefCell<State>>) -> Vec<Step> {
         } else {
             v.push((format!("_a3-{name}"), Box::new(move |ui: &AppWindow| act(ui))));
         }
+    }
+    // YC-2026-10 (08 §16.4 ca 2): ông An có ảnh mâm lễ của gia đình → ảnh dưới bàn thờ; biểu mẫu có ảnh thu nhỏ.
+    // Sau lượt A++ để các ảnh khác giữ "không có mâm".
+    {
+        let ps = st.borrow().people.clone();
+        let a = ids.clone();
+        v.push(("_nt-25-chuan-bi".to_string(), Box::new(move |ui: &AppWindow| {
+            theme(ui, false);
+            Theme::get(ui).set_scale(1.0);
+            ui.set_size(1);
+            ui.set_tab(4);
+            let g = ps.borrow();
+            if let Some(store) = g.store.clone() {
+                let e = crate::photo::reencode_with(&demo_tray(), people::TRAY_SIDE, crate::photo::MAX_STORED).unwrap();
+                let tid = lvhv_ffi::new_uuid().unwrap();
+                store.add_photo(tid.clone(), "image/jpeg".into(), e.width, e.height, e.bytes).unwrap();
+                let mut pv: Value = serde_json::from_str(&store.person_json(a.borrow().0.clone()).unwrap()).unwrap();
+                pv["memorial"]["tray_photo_id"] = Value::from(tid);
+                store.save_person_json(pv.to_string()).unwrap();
+            }
+            drop(g);
+            let p = People::get(ui);
+            p.invoke_go("ho-so".into());
+            p.invoke_open_memorial(a.borrow().0.as_str().into());
+            p.set_m_smoke(false);
+        })));
+        v.push(("nt-25-tuong-niem-anh-mam-sang".to_string(), Box::new(|ui: &AppWindow| People::get(ui).set_scroll_frac(1.0))));
+        v.push(("nt-25-tuong-niem-anh-mam-toi".to_string(), Box::new(|ui: &AppWindow| theme(ui, true))));
+        v.push(("_nt-25b-chuan-bi".to_string(), Box::new(|ui: &AppWindow| {
+            theme(ui, false);
+            // Đường của người dùng: nút "Thêm ảnh mâm lễ của gia đình" / biểu mẫu sửa, nhóm Tưởng niệm mở.
+            People::get(ui).invoke_add_tray_from_memorial();
+        })));
+        v.push(("nt-25b-sua-anh-mam-sang".to_string(), Box::new(|_: &AppWindow| {})));
+        v.push(("nt-25b-sua-anh-mam-toi".to_string(), Box::new(|ui: &AppWindow| theme(ui, true))));
+        v.push(("_nt-25c-ve".to_string(), Box::new(|ui: &AppWindow| People::get(ui).invoke_cancel_form())));
     }
     // R14: khung báo chỉ xem khi chuyển đổi lược đồ lỗi (câu lấy từ people::store_open_banner). Bước cuối vì nó bỏ kho.
     {

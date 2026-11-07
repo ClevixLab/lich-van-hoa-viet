@@ -80,7 +80,11 @@ pub fn main() -> i32 {
             let _ = std::fs::remove_dir_all(&dir);
             platform::set_data_dir_override(Some(dir));
             platform::set_demo_mode();
-            let m = if mode == "--chup-man-hinh" { UiMode::Shots(arg1) } else { UiMode::Memory };
+            let m = if mode == "--chup-man-hinh" {
+                UiMode::Ci(Box::new(move |ui, st| shots::start(ui, st, arg1)))
+            } else {
+                UiMode::Ci(Box::new(shots::memory_mode))
+            };
             match crate::run_ui(m, vec![]) {
                 Ok(()) => 0,
                 Err(e) => {

@@ -82,6 +82,10 @@ jobs:
           if ($c -ne $v) { Write-Host "::error::apps/windows/Cargo.toml version=$c khác VERSION=$v"; exit 1 }
           if ($v -notmatch '^\d+\.\d+\.\d+$') { Write-Host "::error::VERSION phải có dạng X.Y.Z"; exit 1 }
           Write-Host "Phiên bản $v"
+      # YC-2026-10 (08 §16.3, 04 R15 (b)): gói ảnh mâm lễ nhúng lúc dựng phải đạt kiểm đầy đủ (siêu dữ liệu, cỡ tệp,
+      # kích thước) trước khi build.rs nhúng; build.rs tự kiểm thêm tệp, sha256 và chữ ký.
+      - name: Kiểm gói ảnh mâm lễ trước khi nhúng
+        run: python scripts/check-tray-pack.py
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: x86_64-pc-windows-msvc
@@ -121,6 +125,7 @@ jobs:
       # (SLINT_SCALE_FACTOR=2). Ảnh đính kèm trong artifact "windows-screens" và được commit vào nhánh của PR
       # (apps/windows/screenshots/) ở bước cuối.
       - name: Chụp màn hình (1× và 2×, sáng và tối)
+        id: shots
         working-directory: apps/windows
         run: |
           $out = Join-Path $env:RUNNER_TEMP 'screens'
@@ -134,7 +139,7 @@ jobs:
           Add-Type -AssemblyName System.Drawing
           $shots = Get-ChildItem $out -Filter *.png -ErrorAction SilentlyContinue
           $shots | ForEach-Object { $i = [System.Drawing.Image]::FromFile($_.FullName); "{0}  {1}x{2}  {3:N0} byte" -f $_.Name, $i.Width, $i.Height, $_.Length; $i.Dispose() }
-          if ($shots.Count -lt 208) { Write-Host "::error::Chỉ có $($shots.Count)/208 ảnh"; exit 1 }
+          if ($shots.Count -lt 220) { Write-Host "::error::Chỉ có $($shots.Count)/220 ảnh"; exit 1 }
           $small = $shots | Where-Object { $_.Length -lt 20000 }
           if ($small) { Write-Host "::error::Ảnh quá nhỏ (có thể trống): $($small.Name -join ', ')"; exit 1 }
 
@@ -368,7 +373,8 @@ jobs:
           $exe = Join-Path $d 'LichViet.exe'
           $bytes = [IO.File]::ReadAllBytes($exe)
           $text = [Text.Encoding]::UTF8.GetString($bytes)
-          $flags = '--chup-man-hinh','--do-bo-nho','--kiem-thong-bao','--tao-du-lieu-mau','--kiem-nang-cap','--kiem-mau-dong-bang','--kiem-chi-doc'
+          # Cờ CI và tên bước chụp màn hình (P62-10: mã chụp, gồm hình mâm vẽ bằng mã, không được vào bản phát hành).
+          $flags = '--chup-man-hinh','--do-bo-nho','--kiem-thong-bao','--tao-du-lieu-mau','--kiem-nang-cap','--kiem-mau-dong-bang','--kiem-chi-doc','nt-25-tuong-niem-anh-mam','nt-25b-sua-anh-mam'
           $found = $flags | Where-Object { $text.Contains($_) }
           if ($found) { Write-Host "::error::LichViet.exe phát hành còn chuỗi cờ: $($found -join ', ')"; exit 1 }
           $ci = [Text.Encoding]::UTF8.GetString([IO.File]::ReadAllBytes((Resolve-Path target\release\lvhv-ci-check.exe).Path))
@@ -400,9 +406,11 @@ jobs:
       # Tải tạo phẩm bị chặn trong môi trường duyệt, nên ảnh chụp (và số đo bộ nhớ, kết quả thử thông báo) được
       # commit vào chính nhánh của PR (apps/windows/screenshots/). Chỉ với PR từ nhánh trong kho; commit có
       # "[skip ci]" để không chạy lại. CHỈ nhánh của nhóm Windows (tên nhánh có "windows"): không bao giờ đẩy commit lên
-      # nhánh PR của nhóm khác (PWA, Apple, Android, lõi).
+      # nhánh PR của nhóm khác (PWA, Apple, Android, lõi). Chỉ khi chính bước chụp màn hình ĐẠT (P62-01; run 339 bị hủy
+      # giữa chừng từng commit một bộ ảnh thiếu, xóa 70 tệp) — vẫn commit khi các bước sau (.msi, R14) lỗi. Chỉ chép đè
+      # tệp vừa tạo, không bao giờ xóa tệp trên nhánh.
       - name: Commit ảnh chụp vào nhánh của PR
-        if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && contains(github.head_ref, 'windows')
+        if: ${{ !cancelled() && steps.shots.outcome == 'success' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && contains(github.head_ref, 'windows') }}
         continue-on-error: true
         env:
           HEAD_REF: ${{ github.head_ref }}
@@ -413,13 +421,13 @@ jobs:
           git fetch --depth=1 origin "$env:HEAD_REF"
           git worktree add --detach $wt FETCH_HEAD
           $dst = Join-Path $wt 'apps\windows\screenshots'
-          if (Test-Path $dst) { Remove-Item $dst -Recurse -Force }
           New-Item -ItemType Directory -Force $dst | Out-Null
           Copy-Item (Join-Path $env:RUNNER_TEMP 'screens\*.png') $dst
           if (Test-Path (Join-Path $env:RUNNER_TEMP 'mem.txt')) { Copy-Item (Join-Path $env:RUNNER_TEMP 'mem.txt') (Join-Path $dst 'bo-nho.txt') }
           if (Test-Path (Join-Path $env:RUNNER_TEMP 'toast.txt')) { Copy-Item (Join-Path $env:RUNNER_TEMP 'toast.txt') (Join-Path $dst 'thong-bao.txt') }
           if (Test-Path (Join-Path $env:RUNNER_TEMP 'nang-cap.txt')) { Copy-Item (Join-Path $env:RUNNER_TEMP 'nang-cap.txt') (Join-Path $dst 'nang-cap.txt') }
-          git -C $wt add -A apps/windows/screenshots
+          # Chỉ thêm/sửa, không xóa (P62-01): ảnh của bước không còn tạo phải được bỏ bằng tay.
+          git -C $wt add apps/windows/screenshots
           git -C $wt diff --cached --quiet
           if ($LASTEXITCODE -eq 0) { Write-Host "Ảnh không đổi"; exit 0 }
           git -C $wt commit -q -m "Ảnh chụp Windows từ CI (run ${{ github.run_number }}) [skip ci]"
