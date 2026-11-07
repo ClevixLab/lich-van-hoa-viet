@@ -1,180 +1,212 @@
 # Báo cáo kiểm định độc lập v0.2 — Bổ sung B5 / R14 (mức lõi) và quy tắc dữ liệu YC-2026-07
 
 Ngày lập: 2026-11-07. Người lập: bên không tham gia xây dựng đặc tả (kiểm định độc lập, phòng sạch).
-Nhánh: `oracle-v02-b5` (từ `origin/main` 6ee647b). Đối tượng kiểm: PR #28, nhánh `v0.2-w3-core2`, head
-`5535a49` (chưa gộp).
+Nhánh: `oracle-v02-b5` (từ `origin/main` 6ee647b). Đối tượng kiểm: PR #28, nhánh `v0.2-w3-core2`, chưa gộp.
+- Lần 1: head `5535a49`. Có tệp đính kèm, **chưa** có chuyển đổi.
+- Lần 2: head `8a2ed41`. Có chuyển đổi 1→2 và bộ mẫu đóng băng. **Kết luận dưới đây là của lần 2.**
 
-Căn cứ đặc tả (đọc trên `main` 6ee647b, **trước** khi viết kỳ vọng): `docs/v0.2/01` §1, §3.1, §3.2a, §3.8, §3.8a,
-§6, §7; `03` §2 và Bổ sung B1; `04` R6 và Bổ sung B5 / R14; `07` (YC-2026-07, YC-2026-08). Tài liệu của PR #28
-(01 §3.8a "Cách cài", 03 §2.3, lược đồ `backup-v1.schema.json`) chỉ được đọc **sau** commit kỳ vọng `d14f452`.
-Không đọc mã nguồn `memorial/`, `store/`, `backup/`, `core/`, `tsport/`, `ffi/`, `pwa/`, `apps/`. Các tệp dữ liệu
-dưới `test-vectors/` chỉ được đọc như dữ liệu. Công cụ của bên xây dựng chỉ được dựng và chạy như hộp đen.
+Căn cứ đặc tả, đọc trên `main` 6ee647b **trước** khi viết kỳ vọng:
+- `docs/v0.2/01` §1, §3.1, §3.2a, §3.8, §3.8a, §6, §7;
+- `03` §2 và Bổ sung B1;
+- `04` R6 và Bổ sung B5 / R14;
+- `07` (YC-2026-07, YC-2026-08).
 
-## 1. Kết luận
+Tài liệu của PR #28 (01 §3.8a "Cách cài", 01 §7.1, 03 §2.3, lược đồ, `test-vectors/released/README.md`) chỉ được đọc
+**sau** commit kỳ vọng `d14f452`.
+
+Không đọc mã nguồn của `memorial/`, `store/`, `backup/`, `core/`, `tsport/`, `ffi/`, `pwa/`, `apps/`. Tệp
+`make_dev_fixture.rs.txt` của bộ mẫu là mã, nên cũng không đọc; chỉ kiểm sha256 của nó. Các tệp dưới `test-vectors/`
+chỉ được đọc như dữ liệu. Công cụ của bên xây dựng chỉ được dựng và chạy như hộp đen.
+
+## 1. Kết luận (lần 2, `8a2ed41`)
 
 | Phần | Kết luận | Số liệu |
 |---|---|---|
-| **R14 mức lõi — chuyển đổi tệp/kho cũ (`certificate_photo_ids` → `attachments`, `gioi_tinh` thiếu → `null`)** | **KHÔNG ĐẠT tại 5535a49** | 4/4 tệp dạng cũ có ảnh giấy chứng tử (M01, M02, M03, M05) bị **từ chối** (`V1`, "thiếu trường \"attachments\""). Không ghi gì, nên không mất bản ghi nào trong kho, nhưng dữ liệu bản 0.2 trước thay đổi lược đồ **không mở được** ở bản mới (trái B5 mục 1, 5; R14 (c)). Ở head này chưa có hàm chuyển đổi: B5 khóa lúc 10:48 (+07), sau commit 5535a49 (10:33 +07) |
-| R14 mức lõi — tệp cũ không có thông tin báo tử | ĐẠT | M04 (chính `example-v1`), M07: nhập được, trạng thái kho **giống từng byte** với kỳ vọng (băm trạng thái khớp), 0 bản ghi mất, 0 trường khác |
-| R14 mức lõi — từ chối phiên bản mới hơn | **ĐẠT** | `schema_version` 3 và 99 → `NewerSchema(3)`, `NewerSchema(99)`; không đọc một phần. `file_version` = 2 nằm trong vectơ R6 đã khóa |
-| R14 mức lõi — vectơ R6 đã khóa vẫn giống từng byte | **ĐẠT** | Dựng 5535a49, sinh lại bằng `gen_test_vectors`: 27/27 tệp của bộ R6 (`example-v1.*`, `dataset-r6.json`, `manifest.json`, `merge-cases.json`, `validation-cases.json`, ảnh mẫu, 21 tệp `corrupt/`) giống từng byte bản trên `main` |
-| R14 mức lõi — khóa lạ giữ trong `legacy` | CHƯA RÕ (đã đăng ký trước, A-M7) | M06 bị từ chối cả tệp (`V1`, "trường lạ"). Không bỏ lặng lẽ, nhưng cũng không giữ. Đặc tả có hai quy tắc trái nhau ở đây (B5 mục 2 và 01 §6.3) |
-| R14 — nâng cấp tại chỗ trên từng nền tảng | NGOÀI PHẠM VI | Do các job CI của nền tảng chạy (bản web, Android, Windows, Apple) |
-| **YC-2026-07 — `gioi_tinh`** | **ĐẠT** | 4/4 giá trị sai bị từ chối `V1` (`"Nam"`, `"khac"`, `""`, `"nữ"`). Thiếu khóa và `null` được nhận. Kho ghi `null` bằng cách **bỏ khóa** (băm trạng thái khớp biến thể "bỏ `gioi_tinh: null`") |
-| **YC-2026-07 — tệp đính kèm** (≤ 6, `kind`, `mime`, `%PDF-`, giới hạn cỡ, `sha256`, `bytes`, trùng id, thiếu tệp) | **KHÔNG ĐẠT (1 sai lệch)** | 21/22 tệp không hợp lệ bị từ chối đúng lớp. Có 1 tệp bị **nhận nhầm**: X21, bản ghi khai `image/jpeg` nhưng byte là một tệp PDF. 5/5 tệp hợp lệ, kể cả hai ca đúng biên (PDF 10 485 760 byte, ảnh 2 097 152 byte, đúng 6 tệp), được nhận với trạng thái kho giống từng byte |
-| YC-2026-07 — viết hoa `danh_xung`/`quan_he` khi **nhập** (không được áp dụng) | **ĐẠT** | M07: `"ông"`, `"bà cô tổ họ"`, `"BÀ cố"`, `"cụ"` (người sống), `"lê thị c"` giữ nguyên từng byte |
-| YC-2026-07 — viết hoa khi **lưu** | CHƯA ĐỦ BẰNG CHỨNG | Hàm lưu từ giao diện (`save_person_json`) chỉ có qua FFI, không có công cụ hộp đen nào gọi được. Kỳ vọng 28 ca đã khóa ở `oracle/v02/out/b5_expected.json` (`names_on_save`) |
-| YC-2026-07 — danh sách gợi ý (người mất 22 mục / người sống 17 mục) | CHƯA ĐỦ BẰNG CHỨNG | Không có hàm hộp đen hay vectơ dữ liệu nào lộ danh sách. Kỳ vọng đã khóa ở `b5_expected.json` (`goi_y`) |
+| **R14 mức lõi — toàn phần** | **CHƯA ĐỦ BẰNG CHỨNG** | Đường **nhập tệp sao lưu cũ** ĐẠT (hai dòng dưới). Đường **chuyển kho SQLite tại chỗ** (`user_version` 1 → 2, bản sao `.pre-v2.bak`, ca lỗi → chỉ đọc) không có công cụ hộp đen nào gọi được, nên bên kiểm định chưa chạy được |
+| R14 lõi — nhập tệp cũ có ảnh giấy chứng tử (`certificate_photo_ids` → `attachments`, `gioi_tinh` thiếu → `null`) | **ĐẠT** | 5/5 tệp cũ hợp lệ (M01–M05) được nhận. Băm trạng thái kho sau khi nhập **trùng từng byte** với kết quả của hàm chuyển đổi tham chiếu, cộng phần `Person.legacy` mà PR mô tả ở 01 §7.1 (mục 3). Tức là 0 bản ghi mất và 0 trường khác. Có M03, ca ảnh giấy chứng tử trùng ảnh chân dung: ảnh chân dung vẫn còn, tệp đính kèm lấy id thay thế |
+| R14 lõi — bộ mẫu đóng băng `released/0.2-dev-before-attachments` | **ĐẠT** | 6/6 tệp khớp sha256 trong `manifest.json`; kho SQLite có `user_version` = 1. Chạy chuyển đổi **tham chiếu** trên `backup.lvhv` của bộ mẫu, so với `released/expected/…json` của bên xây dựng: **0 trường khác** (so không phụ thuộc id, tách `legacy`); 0 chuỗi nào của tệp cũ bị mất |
+| R14 lõi — tệp cũ không có thông tin báo tử | ĐẠT | M04 (chính `example-v1`) và M07: băm trùng tệp gốc |
+| R14 lõi — từ chối phiên bản mới hơn | **ĐẠT** | `schema_version` 3 và 99 → `NewerSchema(3)`, `NewerSchema(99)`. `file_version` = 2 có trong vectơ R6 đã khóa |
+| R14 lõi — vectơ R6 đã khóa | **ĐẠT** | Dựng `8a2ed41`, sinh lại bằng `gen_test_vectors`: **28/28** tệp của bộ R6 giống từng byte bản trên `main` (`example-v1.*`, `dataset-r6.json`, `manifest.json`, `merge-cases.json`, `validation-cases.json`, ảnh mẫu, 21 tệp `corrupt/`) |
+| R14 lõi — khóa lạ giữ trong `legacy` | CHƯA RÕ (đăng ký trước, A-M7) | M06 bị từ chối cả tệp (`V1` "trường lạ"). Không bỏ lặng lẽ, nhưng cũng không giữ |
+| R14 — nâng cấp tại chỗ trên từng nền tảng | NGOÀI PHẠM VI | Do các job CI nền tảng chạy |
+| **YC-2026-07 — `gioi_tinh`** | **ĐẠT** | 4/4 giá trị sai bị từ chối `V1`; thiếu khóa và `null` được nhận. Kho ghi `null` bằng cách bỏ khóa |
+| **YC-2026-07 — tệp đính kèm** | **KHÔNG ĐẠT** | 21/22 tệp v2 không hợp lệ bị từ chối đúng lớp. 5/5 tệp hợp lệ (PDF đúng 10 485 760 B, ảnh đúng 2 097 152 B, đúng 6 tệp) được nhận, băm trùng. **X21** (khai `image/jpeg`, byte là PDF) bị **nhận nhầm** (mục 5.1). Cùng với X22 và M09 (mục 5.2, 5.3) |
+| YC-2026-07 — không viết hoa khi **nhập** | **ĐẠT** | M07: `"ông"`, `"bà cô tổ họ"`, `"BÀ cố"`, `"cụ"` (người sống), `"lê thị c"` giữ nguyên từng byte |
+| YC-2026-07 — viết hoa khi **lưu** / khi hiển thị | CHƯA ĐỦ BẰNG CHỨNG | `save_person_json` và `display_capitalize` chỉ có qua FFI, không có công cụ hộp đen. 28 ca kỳ vọng đã khóa ở `oracle/v02/out/b5_expected.json` (`names_on_save`) |
+| YC-2026-07 — danh sách gợi ý (người mất 22 / người sống 17) | CHƯA ĐỦ BẰNG CHỨNG | Không có đường hộp đen nào lộ danh sách. Kỳ vọng ở `b5_expected.json` (`goi_y`). Ở mức tài liệu, danh sách trong 01 §3.1 của PR giống hệt `main` |
 
-Trạng thái chung: **R14 mức lõi KHÔNG ĐẠT tại 5535a49.** Theo R14, kết quả này chặn phát hành cho đến khi PR #28 có
-chuyển đổi và chạy lại đạt. Cách chạy lại ở mục 7.
+R14 mức lõi chưa có KHÔNG ĐẠT nào: mọi phép thử chạy được trên đường nhập sao lưu đều đạt. Chỉ còn đường chuyển kho
+SQLite tại chỗ chưa có bằng chứng hộp đen. YC-2026-07 có một sai lệch thật (X21) và hai chỗ hành vi khác kỳ vọng đã
+đăng ký (mục 5).
 
 ## 2. Trình tự làm việc (để kiểm được tính đăng ký trước)
 
 | Giờ (+07) | Commit (`oracle-v02-b5`) | Việc |
 |---|---|---|
-| 11:02 | — | Đọc đặc tả trên `main` 6ee647b. Kiểm bộ đọc/ghi `.lvhv` độc lập (`lvhvfile.py`): giải mã `example-v1.lvhv` và `supplement-yc05/notice-v1.lvhv` của `main`, mã hóa lại với cùng salt/nonce ra **giống từng byte** |
-| 11:11 | **`d14f452`** | Commit tham chiếu (`b5_ref.py`: chuyển đổi 1→2, bộ kiểm tra, quy tắc viết hoa, danh sách gợi ý, 15 giả định A-\*), 48 tệp thử (`b5_fixtures.py`, `fixtures/`) và kết quả kỳ vọng (`out/b5_expected.json`, `out/b5_expected/`). Đẩy lên trước khi đọc tài liệu PR #28 hay chạy công cụ của nó |
-| 11:12–11:20 | — | Đọc tài liệu PR #28 (01 §3.8a "Cách cài", 03 §2.3, lược đồ). Dựng 5535a49 dưới thư mục nháp. Chạy `--help` cho các ví dụ của `lvhv-store`, sau đó chạy hộp đen |
-| 11:21 | **`7f38eb3`** | Bộ chuyển dạng **sau đối chiếu** (`b5_adapt.py`), băm trạng thái độc lập (`b5_statehash.py`), so sánh (`b5_compare.py`, `b5_cmp_docs.py`), kết quả `out/b5_cmp_5535a49-*.json` |
+| 11:02 | — | Đọc đặc tả trên `main` 6ee647b. Kiểm bộ đọc/ghi `.lvhv` độc lập (`lvhvfile.py`): giải mã `example-v1.lvhv` và `supplement-yc05/notice-v1.lvhv`, mã hóa lại với cùng salt/nonce ra giống từng byte |
+| 11:11 | **`d14f452`** | Tham chiếu (`b5_ref.py`: chuyển đổi 1→2, bộ kiểm tra, quy tắc viết hoa, danh sách gợi ý, 15 giả định A-\*), 48 tệp thử (`b5_fixtures.py`, `fixtures/`) và kết quả kỳ vọng (`out/b5_expected.json`, `out/b5_expected/`). Đẩy lên **trước** khi đọc tài liệu PR #28 và trước khi chạy công cụ của nó |
+| 11:12–11:21 | **`7f38eb3`** | Lần 1 (`5535a49`). Bộ chuyển dạng sau đối chiếu (`b5_adapt.py`), băm trạng thái độc lập (`b5_statehash.py`), so sánh (`b5_compare.py`, `b5_cmp_docs.py`) |
+| 11:2x | `30a79f7` | Báo cáo lần 1. Mở PR #33 |
+| 11:31–11:34 | **`8ac9824`** | Lần 2 (`8a2ed41`). Đối chiếu bộ mẫu đóng băng (`b5_cmp_released.py`). Thêm vào `b5_compare.py` ứng viên "biểu diễn của PR" (`builder_repr`), viết **sau** khi đọc 01 §7.1 của PR |
 
 Kỳ vọng (`b5_expected.json`, `b5_expected/*.json`) **không bị sửa** sau `d14f452`. Bốn tệp lớn (G04, G05, X02, X03;
-10–11 MB) được sinh tất định lúc chạy (`b5_fixtures.py --big DIR`), không commit. `sha256` của chúng ghi trong
-`fixtures/manifest.json` ở `d14f452`.
+10–11 MB) được sinh tất định lúc chạy (`b5_fixtures.py --big DIR`). `sha256` của chúng ghi trong `fixtures/manifest.json`.
 
 ## 3. Phương pháp hộp đen
 
-- **Đường vào.** Ở 5535a49, `lvhv-store` không có công cụ dòng lệnh nào nhận một tệp sao lưu tùy ý. `cross_platform
-  --help` in ra "dùng: cross_platform write|check". Lệnh `check` báo thiếu `r6-from-pwa.lvhv` (đường dẫn lấy từ
-  thông báo lỗi của chính nó). Bên kiểm định đặt lần lượt từng tệp thử vào chỗ đó rồi chạy `check`. Lệnh này mở tệp
-  bằng mật khẩu mẫu của 03 §2.5, nhập vào kho SQLite trống, rồi so băm trạng thái với bộ R6.
-  - Tệp bị từ chối: chương trình in lỗi kèm mã lớp và đường dẫn, ví dụ `Invalid(ValidationError { code: "V1", path,
-    msg })`, `NewerSchema(n)` hoặc `Backup(MalformedPlaintext)`.
+- **Đường vào.** `lvhv-store` không có công cụ dòng lệnh nào nhận một tệp sao lưu tùy ý, ở cả hai head. Hai ví dụ
+  có sẵn là `cross_platform` ("dùng: cross_platform write|check") và `r2_full`.
+  - `check` báo thiếu `pwa/test/store/out/r6-from-pwa.lvhv`. Đường dẫn này lấy từ thông báo lỗi của chính chương
+    trình.
+  - Bên kiểm định đặt từng tệp thử vào chỗ đó rồi chạy `check`. Chương trình mở tệp bằng mật khẩu mẫu của 03 §2.5,
+    nhập vào kho SQLite trống, rồi so với bộ R6.
+  - Tệp bị từ chối: chương trình in lỗi kèm mã lớp và đường dẫn (`Invalid(ValidationError { code, path, msg })`,
+    `NewerSchema(n)`, `Backup(MalformedPlaintext)`).
   - Tệp được nhận: chương trình in `left:` là băm trạng thái kho sau khi nhập.
-- **Băm trạng thái độc lập.** `b5_statehash.py` cài lại theo 03 B1.4 mục 10. Với tệp đính kèm, đặc tả trên `main`
-  chưa nói gì. Biến thể "sha256 của ảnh theo `id`, rồi của tệp đính kèm theo `id`" được chọn vì tái tạo đúng
-  `state_sha256` công bố trong vectơ `supplement-yc05/manifest.json` của PR (`ac8a9dce…`), và tái tạo đúng `left` của
-  G01 (`c369a8e3…`). Hai băm bằng nhau nghĩa là JSON chuẩn toàn kho và byte của mọi ảnh/tệp đều giống, tức 0 bản
-  ghi mất và 0 trường khác.
-- **Chuyển dạng sau đối chiếu** (`b5_adapt.py`, không sửa kỳ vọng). PR #28 giữ `schema_version` = 1 cho lược đồ mới
-  và chỉ ghi khóa gốc `attachments` khi mảng khác rỗng (01 §3.8a trên PR). Tham chiếu của bên kiểm định đặt
-  `schema_version` = 2 (A-V1). Để so các quy tắc của trường mới, các tệp v2 được hạ về 1 và bỏ `attachments` rỗng.
-  Các khối nhị phân được xếp ảnh trước, tệp đính kèm sau (03 §2.3 trên PR). Bố cục khối trùng với giả định A-C1.
-  Chạy không chuyển dạng: `out/b5_cmp_5535a49-raw.json`. Ở lượt đó, mọi tệp v2 bị từ chối `NewerSchema(2)`.
+- **Băm trạng thái độc lập.** `b5_statehash.py` cài lại theo 03 B1.4 mục 10. Đặc tả trên `main` chưa nói phần tệp
+  đính kèm được băm thế nào. Biến thể "sha256 ảnh theo `id`, rồi sha256 tệp đính kèm theo `id`" được chọn vì tái tạo
+  đúng `state_sha256` công bố của `supplement-yc05` (`ac8a9dce…`) và đúng `left` của G01 (`c369a8e3…`). Hai băm bằng
+  nhau nghĩa là JSON chuẩn toàn kho và byte của mọi ảnh/tệp đều giống, tức 0 bản ghi mất và 0 trường khác.
+- **Chuyển dạng sau đối chiếu** (`b5_adapt.py`, không sửa kỳ vọng). PR giữ `schema_version` = 1 cho tài liệu sao lưu.
+  Phiên bản kho được tăng riêng (`STORE_VERSION` = 2; IndexedDB 3), theo 01 §7.1 của PR. Vì vậy:
+  - tệp v2 của bên kiểm định được hạ `schema_version` về 1 và bỏ `attachments` rỗng;
+  - khối nhị phân xếp ảnh trước, tệp đính kèm sau (khớp giả định A-C1).
+  - Lượt không chuyển dạng: `out/b5_cmp_8a2ed41-raw.json`. Ở lượt đó, mọi tệp v2 bị `NewerSchema(2)`, đúng như cách
+    PR đánh số phiên bản.
+- **Ứng viên biểu diễn của PR cho tệp cũ** (`builder_repr`). Ứng viên = kết quả `migrate_1_to_2` tham chiếu (không
+  đổi), cộng các phần mà 01 §7.1 của PR quy định thêm:
+  - `Person.legacy = {certificate_photo_ids, certificate_photos}`;
+  - ảnh chung với ảnh chân dung → tệp đính kèm mang id thay thế (`alt_id`). Giá trị đọc từ
+    `released/expected/…json` của PR cho đúng ảnh `…5e09`;
+  - `schema_version` giữ 1.
+  - Các phần này chỉ **thêm** (`legacy`) hoặc đổi **id**, mà A-M1/A-M7 đã đăng ký là được phép. Không trường dữ liệu
+    nào của kỳ vọng bị sửa.
 
-## 4. Kết quả từng tệp thử (lượt đã chuyển dạng, `out/b5_cmp_5535a49-adapted.json`)
+## 4. Kết quả từng tệp thử (lần 2, `out/b5_cmp_8a2ed41-adapted.json` và `-raw.json`)
 
-Tổng: 38 KHỚP, 4 sai lệch "từ chối tệp phải nhận", 2 sai lệch "nhận tệp phải từ chối", 4 ghi nhận (ca đã đăng ký là
-chưa rõ).
+Lượt đã chuyển dạng: 39 KHỚP, 5 "nhận tệp phải từ chối", 4 ghi nhận. Trong 5 ca "nhận nhầm", N04 là sản phẩm của bộ
+chuyển dạng (mục 5.5), không tính là sai lệch.
 
-| Nhóm | Tệp | Kỳ vọng | Lõi 5535a49 | Đánh giá |
+| Nhóm | Tệp | Kỳ vọng | Lõi `8a2ed41` | Đánh giá |
 |---|---|---|---|---|
-| Tệp cũ có ảnh giấy chứng tử | M01 (3 ảnh, 2 hồ sơ), M02 (4 ảnh), M03 (ảnh giấy chứng tử trùng ảnh chân dung), M05 (`notice` rỗng) | nhận, chuyển sang `attachments` | từ chối `V1` "thiếu trường attachments" | **SAI LỆCH** (mục 5.1) |
-| Tệp cũ không có thông tin báo tử | M04, M07 | nhận, giữ nguyên | nhận, băm khớp | KHỚP |
-| Tệp cũ NFD | M08 | chưa rõ (A-N2) | nhận, **giữ nguyên NFD** (băm khớp tệp gốc) | ghi nhận |
-| Khóa lạ | M06 | nhận + `legacy`, hoặc chưa rõ | từ chối `V1` "trường lạ \"ghi_chu_ban_cu\"" | ghi nhận: không bỏ lặng lẽ |
-| Tham chiếu ảnh thiếu (cũ) | M09 | từ chối `V3` | từ chối `V1` (cả dạng cũ bị từ chối trước) | khớp ở mức nhận/từ chối, khác lớp chi tiết |
-| Phiên bản mới hơn | N01 (3), N02 (99) | `NEWER` | `NewerSchema(3)`, `NewerSchema(99)` | KHỚP |
-| Phiên bản | N03 (`schema_version` 1 nhưng có trường mới) | từ chối (A-V1) | nhận | **SAI LỆCH theo A-V1** (mục 5.3) |
-| Phiên bản | N04 (2 + khóa cũ), N05 (0) | từ chối | từ chối `V1` | KHỚP |
-| Hợp lệ v2 | G01 (ảnh + PDF, ba `kind`, nam/nữ/null), G02 (đúng 6 tệp), G03 (thiếu `gioi_tinh`), G04 (PDF 10 485 760 B), G05 (ảnh 2 097 152 B) | nhận | nhận, băm trạng thái khớp | KHỚP (5/5) |
-| PDF sai đầu | X01 `%PDX-`, X01b BOM trước `%PDF-`, X01c `%pdf-` | từ chối | `ATTACHMENT` "PDF không hợp lệ" | KHỚP |
-| Cỡ | X02 PDF 10 485 761 B | từ chối | `Backup(MalformedPlaintext)` (giới hạn khối 10 MiB của vùng chứa) | KHỚP |
-| Cỡ | X03 ảnh 2 097 153 B | từ chối | `V1` "ngoài khoảng 1–2097152" | KHỚP (A-L1 đúng: 2 MB = 2 097 152) |
-| Trùng id | X04 (cùng hồ sơ), X04b (hai hồ sơ), X05 (hai bản ghi `Attachment` cùng `id`) | từ chối | `V1` "id trùng" / "tệp trùng" | KHỚP |
-| Tham chiếu | X06 (`file_id` không tồn tại) | `V3` | `V3` "tệp đính kèm không tồn tại" | KHỚP |
-| Thiếu/thừa byte | X07 (thiếu), X19 (khối thừa) | từ chối | `ATTACHMENT` "thiếu tệp đính kèm" / `PHOTO` "ảnh thừa" | KHỚP |
-| Số lượng | X08 (7 tệp) | từ chối | `V1` "quá 6 tệp" | KHỚP |
-| Enum | X09 `kind` sai, X10 `image/png` | từ chối | `V1` | KHỚP |
-| Toàn vẹn | X11 `sha256` sai, X12 `bytes` sai | từ chối | `ATTACHMENT` "sha256/bytes không khớp" | KHỚP |
-| `stripped` | X13 PDF `true`, X14 ảnh `false` | từ chối | `V1` | KHỚP |
-| `gioi_tinh` | X15–X17b | từ chối | `V1` | KHỚP (4/4) |
-| `file_name` | X18 (121 điểm mã), X23 (ký tự điều khiển) | từ chối | `V1` | KHỚP |
-| Kiểu nội dung | X20 (`application/pdf`, byte JPEG) | từ chối | `ATTACHMENT` "PDF không hợp lệ" | KHỚP |
-| Kiểu nội dung | **X21** (`image/jpeg`, byte là PDF) | từ chối | **nhận** | **SAI LỆCH** (mục 5.2) |
-| Khóa cũ trong dạng mới | X22 | từ chối | `V1` "trường lạ certificate_photo_ids" | KHỚP |
-| Chưa rõ | U01 (hai hồ sơ chung một tệp), U02 (tệp không ai trỏ tới) | chưa rõ (A-U1) | nhận | ghi nhận |
+| Tệp cũ có ảnh giấy chứng tử | M01 (3 ảnh, 2 hồ sơ), M02 (4 ảnh), M03 (trùng ảnh chân dung) | nhận, chuyển | nhận, băm trùng ứng viên `legacy` | KHỚP |
+| | M05 (`notice` rỗng, danh sách ảnh rỗng) | nhận, chuyển | nhận, băm trùng ứng viên có `legacy` cả khi danh sách rỗng | KHỚP |
+| Tệp cũ không có thông tin báo tử | M04, M07 | nhận, giữ nguyên | nhận, băm trùng tệp gốc | KHỚP |
+| NFD | M08 | chưa rõ (A-N2) | nhận, giữ nguyên NFD | ghi nhận |
+| Khóa lạ | M06 | `legacy` hoặc chưa rõ | từ chối `V1` "trường lạ" | ghi nhận |
+| Tệp cũ có id ảnh không tồn tại | **M09** | từ chối `V3` | **nhận**; id treo được giữ trong `legacy.certificate_photo_ids`, không có tệp đính kèm (băm trùng ứng viên đó) | **SAI LỆCH so với đăng ký trước** (mục 5.3) |
+| Phiên bản mới hơn | N01 (3), N02 (99) | `NEWER` | `NewerSchema` | KHỚP |
+| Phiên bản | N03 (1 + trường mới) | từ chối (A-V1) | nhận | khác đánh số phiên bản (mục 5.4) |
+| | N05 (0) | từ chối | `V1` "phải là 1" | KHỚP |
+| Hợp lệ v2 | G01–G05 (gồm đúng biên 10 MiB, 2 MiB, 6 tệp) | nhận | nhận, băm trùng | KHỚP 5/5 |
+| PDF sai đầu | X01, X01b (BOM), X01c (`%pdf-`) | từ chối | `ATTACHMENT` "PDF không hợp lệ" | KHỚP |
+| Cỡ | X02 (PDF 10 485 761 B), X03 (ảnh 2 097 153 B) | từ chối | `MalformedPlaintext` / `V1` "ngoài khoảng 1–2097152" | KHỚP |
+| Trùng id | X04, X04b, X05 | từ chối | `V1` "id trùng" / "tệp trùng" | KHỚP |
+| Tham chiếu, byte | X06 (`V3`), X07 (thiếu byte), X19 (khối thừa) | từ chối | `V3` / `ATTACHMENT` / `PHOTO` | KHỚP |
+| Số lượng, enum, toàn vẹn, `stripped`, `file_name` | X08–X14, X18, X20, X23 | từ chối | `V1` / `ATTACHMENT` | KHỚP |
+| `gioi_tinh` | X15–X17b | từ chối | `V1` | KHỚP 4/4 |
+| Kiểu nội dung | **X21** (`image/jpeg`, byte PDF) | từ chối | **nhận** | **SAI LỆCH** (mục 5.1) |
+| Trộn hai dạng | **X22** (có `attachments` và cả `certificate_photo_ids: []`) | từ chối | **nhận**; trạng thái sau nhập **không trùng** ứng viên nào trong 19 ứng viên đã thử | **SAI LỆCH** (mục 5.2) |
+| Chưa rõ | U01 (hai hồ sơ dùng chung một tệp), U02 (tệp không ai trỏ tới) | chưa rõ (A-U1) | nhận | ghi nhận. Chuyển đổi của PR cũng cố ý tạo tệp dùng chung |
 
-Cột "Lõi" là lỗi do lõi in ra, nguyên văn. Mọi tệp bị từ chối đều không làm đổi kho (chương trình dừng trước khi ghi).
+So với lần 1 (`5535a49`): M01, M02, M03, M05 chuyển từ "từ chối" sang KHỚP. M09 và X22 chuyển từ "từ chối" sang
+"nhận". X21 không đổi.
 
-## 5. Danh sách sai lệch
+## 5. Danh sách sai lệch (lần 2)
 
-1. **Không có chuyển đổi cho dữ liệu dạng cũ (M01, M02, M03, M05).** Ở lượt không chuyển dạng, tệp v1 có
-   `death.notice.certificate_photo_ids` bị từ chối toàn bộ. Lỗi là `V1` "thiếu trường \"attachments\"" tại
-   `/persons/0/death/notice`. Vectơ dạng cũ duy nhất trong kho (`supplement-yc05/notice-v1.*`) đã bị **ghi đè** sang
-   dạng mới trong PR. Vì vậy không còn bộ mẫu đóng băng "trước thay đổi lược đồ" mà R14 (c) cần; bộ cũ chỉ còn trong
-   lịch sử git ở `main`. Đây là lý do chính của KHÔNG ĐẠT. Cách sửa thuộc bên xây dựng. Phép thử lại có sẵn:
-   M01–M05 kèm kỳ vọng chuyển đổi.
-2. **X21: ảnh đính kèm khai `image/jpeg` nhưng byte là PDF vẫn được lõi nhận.** Kỳ vọng đăng ký trước (bộ kiểm tra
-   kiểm đầu tệp cho cả ảnh) là từ chối.
-   - Lời giải thích có thể có: 01 §3.8a trên PR giao việc giải mã và mã hóa lại ảnh cho nền tảng, còn 03 §2.3 nói ảnh
-     nhập từ sao lưu được giải mã và mã hóa lại. Nếu mọi nền tảng làm đúng như vậy trước khi ghi, byte PDF sẽ bị chặn ở
-     đó.
-   - Ở mức lõi, sai lệch vẫn được ghi. Bên kiểm định không kiểm được bước của nền tảng (ngoài phạm vi).
-3. **N03 và việc không tăng `schema_version`.** 01 §7 yêu cầu đổi trường thì tăng `schema_version`. PR giữ 1 và ghi
-   rõ đây là "ngoại lệ có chủ ý" vì v0.2 chưa phát hành.
-   - Hệ quả có thể kiểm: tệp `schema_version` 1 có thể ở hai dạng. Lõi không có cách nào phân biệt hai dạng để chuyển
-     đổi, ngoài cách nhìn hình dạng tài liệu.
-   - Tệp v2 của bên kiểm định bị coi là "mới hơn" (`NewerSchema(2)`). Nếu một bản sau dùng 2 cho lần đổi tiếp theo,
-     tệp do bộ tham chiếu này sinh ra sẽ mang nghĩa khác.
-   - Quyết định thuộc chủ dự án. Sai lệch này không làm mất dữ liệu.
-4. **M09: khác lớp lỗi chi tiết.** Kỳ vọng `V3`, thực tế `V1`, vì cả dạng cũ đều bị từ chối trước khi xét tham
-   chiếu. Ở mức nhận/từ chối thì khớp. Lớp chi tiết sẽ kiểm được khi có chuyển đổi.
+1. **X21: ảnh đính kèm khai `image/jpeg` nhưng byte là PDF vẫn được lõi nhận.** Kỳ vọng đăng ký trước là từ chối (bộ
+   kiểm tra kiểm đầu tệp cả với ảnh).
+   - Có thể bên xây dựng cho rằng không cần kiểm ở lõi: 01 §3.8a của PR giao việc giải mã và mã hóa lại ảnh cho nền
+     tảng, và 03 §2.3 nói ảnh nhập từ sao lưu được giải mã và mã hóa lại.
+   - Ở mức lõi, sai lệch vẫn được ghi. Bước của nền tảng nằm ngoài phạm vi.
+2. **X22: tài liệu trộn hai dạng được nhận, không biết lõi đã ghi gì.**
+   - Đầu vào: một hồ sơ vừa có `notice.attachments` (3 tệp) vừa có `certificate_photo_ids: []`.
+   - Bên kiểm định đã thử 19 ứng viên trạng thái: giữ/bỏ `attachments`, có/không `legacy` ở hồ sơ hoặc ở `notice`, có
+     tỉa tệp không ai dùng hay không. Không ứng viên nào trùng băm.
+   - Vì vậy không loại được khả năng các tệp đính kèm sẵn có bị ghi đè. Không bản dựng nào sinh ra dạng này, nên tác
+     động chỉ đến từ tệp do người khác cố ý tạo. Muốn biết chắc, cần một công cụ in được kho sau khi nhập.
+3. **M09: tệp cũ có `certificate_photo_ids` trỏ tới ảnh không tồn tại được nhận.** Lõi giữ id treo trong `legacy`,
+   không tạo tệp đính kèm (01 §7.1 của PR: "kể cả id không có ảnh"). Đăng ký trước là từ chối `V3`, vì tệp này đã vi
+   phạm V3 ngay trong lược đồ cũ. Cách của PR không mất dữ liệu, nhưng nhận một tệp mà bản cũ lẽ ra đã từ chối. Chủ dự
+   án cần quyết định cách nào đúng.
+4. **Không tăng `schema_version` của tài liệu sao lưu (N03).** 01 §7 trên `main` yêu cầu tăng. PR giữ 1, tăng phiên
+   bản kho riêng, và nêu lý do: để băm R6 đã khóa không đổi.
+   - Hệ quả: hai dạng tài liệu cùng mang số 1, chỉ phân biệt được bằng hình dạng.
+   - Tệp v2 của bên kiểm định bị coi là "mới hơn". Nếu bản sau dùng số 2, tệp v2 của tham chiếu này sẽ mang nghĩa khác.
+   - Không mất dữ liệu. Quyết định thuộc chủ dự án.
+5. **N04 (không tính).** Sau khi chuyển dạng, N04 chỉ còn là một tệp dạng cũ (`schema_version` 1 + `certificate_photo_ids`),
+   giống M01, và được chuyển đổi đúng. Ở lượt không chuyển dạng, N04 bị `NewerSchema(2)`. Không phải sai lệch.
 
-Ghi nhận (không tính sai lệch, đã đăng ký trước là chưa rõ):
-- M06: khóa lạ làm cả tệp bị từ chối, không có `legacy`.
-- M08: chuỗi NFD trong tệp nhập được giữ nguyên NFD. 01 §1 ("chuẩn hóa NFC trước khi lưu") và "không áp dụng khi
-  nhập" chưa được hòa giải.
-- U01, U02: được nhận.
-- Lược đồ của PR đòi `file_name` khác rỗng (`minLength 1`, `\S`). Như vậy là chặt hơn 01 §3.8a ("chuỗi ≤ 120 \|
-  null"), và không có tệp thử nào cho ca này.
-- PR thêm thứ tự gợi ý theo giới tính ("từ hợp giới tính đứng trước"). 01 §3.1 không có quy tắc này.
-- PR đặt viết hoa ở bước lưu từ giao diện (FFI), không đặt ở lớp ghi thấp. 01 §3.1 trên `main` ghi "lớp lưu trữ chuẩn
-  hóa… khi lưu". Hai câu cần thống nhất.
+Bên kiểm định tự phát hiện một điểm không nhất quán trong tham chiếu của mình, ghi lại, không sửa sau đối chiếu:
+- Bộ kiểm tra (`b5_ref.validate`) coi id phần tử đính kèm trùng **giữa hai hồ sơ** là `DUP` (X04b).
+- Nhưng hàm chuyển đổi của chính tham chiếu đặt id phần tử = id ảnh. Nếu một ảnh giấy chứng tử dùng cho hai hồ sơ, như
+  bộ mẫu đóng băng của PR, kết quả chuyển đổi sẽ bị chính bộ kiểm tra từ chối.
+- Bộ mẫu của PR cho thấy lõi chấp nhận id trùng giữa hai hồ sơ.
+- X04b vẫn bị lõi từ chối, nhưng vì lý do khác ("tệp trùng" trong **cùng** hồ sơ). Phép thử "trùng id giữa hai hồ sơ"
+  nên được coi là CHƯA RÕ.
 
-## 6. Giả định đã đăng ký trước (tóm tắt; nguyên văn trong `oracle/v02/b5/b5_ref.py`, `GIA_DINH`)
+Ghi nhận khác (không tính sai lệch):
+- M06: khóa lạ làm cả tệp bị từ chối, không có `legacy` cho khóa lạ.
+- M08: NFD giữ nguyên khi nhập.
+- Lược đồ PR đòi `file_name` khác rỗng. Như vậy là chặt hơn 01 §3.8a, và không có tệp thử nào cho ca này.
+- PR thêm thứ tự gợi ý theo giới tính. 01 §3.1 không có quy tắc này.
+- PR viết hoa cả khi hiển thị (`display_capitalize`). Đây là phần mới của 01 §3.1 trên PR; trên `main` không có.
+- Nguồn gốc bộ mẫu đóng băng: tài liệu của PR ghi là do mã ở commit 7338f04 tạo ra. Bên kiểm định chỉ kiểm được sha256
+  và `user_version` = 1, chưa dựng lại từ 7338f04.
+- Lần 1 ghi là vectơ dạng cũ đã bị ghi đè. Ở lần 2, việc này đã được khắc phục: dạng cũ có trong `released/`.
+
+## 6. Giả định đã đăng ký trước (nguyên văn trong `oracle/v02/b5/b5_ref.py`, `GIA_DINH`)
 
 | Mã | Nội dung | Sau đối chiếu |
 |---|---|---|
-| A-V1 | Đổi lược đồ thì tăng `schema_version` 1 → 2 | PR không tăng (mục 5.3) |
-| A-L1 | 2 MB = 2 097 152 B; 10 MB = 10 485 760 B; đúng biên là hợp lệ | Khớp |
-| A-R1, A-C1 | `attachments` là mảng gốc; byte đi chung danh sách khối với ảnh | Khớp (PR: ảnh trước, tệp đính kèm sau) |
-| A-M1…A-M4 | Mỗi id ảnh giấy chứng tử thành một phần tử `{kind: giay_chung_tu}`, giữ thứ tự. Id tự do nhưng phải là UUID v4 duy nhất. `Photo` chuyển thành `Attachment`, ảnh chân dung chung vẫn còn | Chưa kiểm được (chưa có chuyển đổi) |
-| A-M5 | `gioi_tinh` thiếu = `null` | Khớp; lõi ghi bằng cách bỏ khóa |
-| A-M6, A-N2 | Chuyển đổi và nhập không viết hoa | Khớp ở phía nhập (M07) |
-| A-M7 | Khóa lạ vào `legacy`; từ chối cả tệp → chưa rõ | Lõi từ chối (M06) |
-| A-N1 | Viết hoa đúng điểm mã đầu sau khi cắt khoảng trắng và NFC | Chưa kiểm được |
-| A-U1 | Tệp dùng chung, tệp không ai trỏ tới → chưa rõ | Lõi nhận |
+| A-V1 | Đổi lược đồ thì tăng `schema_version` 1 → 2 | PR giữ 1, tăng phiên bản kho riêng (mục 5.4) |
+| A-L1 | 2 MB = 2 097 152 B, 10 MB = 10 485 760 B, đúng biên là hợp lệ | Khớp |
+| A-R1, A-C1 | `attachments` là mảng gốc; byte đi chung danh sách khối với ảnh | Khớp |
+| A-M1 | Mỗi id ảnh → một phần tử `giay_chung_tu`, giữ thứ tự; id tự do | Khớp. Id phần tử = id ảnh, như tham chiếu |
+| A-M2 | `Photo` → `Attachment` cùng byte; `width`/`height` được phép bỏ | Khớp. PR còn giữ bản ghi `Photo` gốc trong `legacy` |
+| A-M3, A-M4 | Ảnh chân dung chung vẫn còn; ảnh chỉ là giấy chứng tử thì chuyển hẳn | Khớp |
+| A-M5 | `gioi_tinh` thiếu = `null` | Khớp |
+| A-M6, A-N2 | Chuyển đổi/nhập không viết hoa | Khớp |
+| A-M7 | Khóa lạ → `legacy`; từ chối cả tệp → chưa rõ | Lõi từ chối |
+| A-N1 | Viết hoa điểm mã đầu sau khi cắt khoảng trắng và NFC | Chưa kiểm được |
+| A-U1 | Tệp dùng chung, tệp không ai trỏ tới → chưa rõ | Lõi nhận; chuyển đổi của PR cố ý dùng chung |
 
-## 7. Chạy lại khi PR #28 có chuyển đổi
+## 7. Chạy lại
 
 ```
-python3 -I oracle/v02/b5/b5_fixtures.py --big <nháp>/b5big        # sinh lại, so sha256 với fixtures/manifest.json
-python3 -I oracle/v02/b5/b5_adapt.py <nháp>/adapted <nháp>/b5big  # chỉ khi PR vẫn giữ schema_version 1
+python3 -I oracle/v02/b5/b5_fixtures.py --big <nháp>/b5big
+python3 -I oracle/v02/b5/b5_adapt.py <nháp>/adapted <nháp>/b5big
 git archive <head> | tar -x -C <nháp>/build
 (cd <nháp>/build && cargo build --release --locked -p lvhv-store --examples)
 python3 -I oracle/v02/b5/b5_compare.py <nháp>/build <nháp>/adapted <head>-adapted
 python3 -I oracle/v02/b5/b5_compare.py <nháp>/build oracle/v02/b5/fixtures <head>-raw
+python3 -I oracle/v02/b5/b5_cmp_released.py <nháp>/build <head>
 ```
 
-Với M01–M05, `b5_compare.py` thử cả băm của kỳ vọng chuyển đổi (A-M1 với id giữ nguyên) lẫn băm của tệp gốc. Nếu bên
-xây dựng sinh id mới cho phần tử `attachments`, băm sẽ khác dù dữ liệu không mất. Khi đó cần một công cụ hộp đen in
-được kho đã chuyển đổi, để so từng trường không phụ thuộc id (`b5_ref.norm_for_compare`).
+Để đóng các mục CHƯA ĐỦ BẰNG CHỨNG, cần một công cụ hộp đen của lõi (ví dụ một ví dụ `cargo` có tham số) làm được ba
+việc:
+- (i) mở một thư mục kho SQLite rồi in tài liệu kho và `migration_status()`;
+- (ii) nhập một tệp sao lưu tùy ý rồi in tài liệu kho, không chỉ in băm;
+- (iii) gọi `save_person_json`, `danh_xung_suggestions` và `quan_he_suggestions` với dữ liệu vào cho trước.
 
 ## 8. Ngoài phạm vi và chưa làm
 
-- Nâng cấp tại chỗ trên từng nền tảng (bản web thay service worker; `adb install -r`; MSI; Apple), ca chuyển đổi lỗi
-  có bản sao dữ liệu cũ, lịch nhắc đặt lại sau nâng cấp: do các job CI nền tảng chạy.
-- Chuyển đổi kho SQLite tại chỗ ở mức lõi (01 §7: mở kho `schema_version` thấp hơn): không có công cụ hộp đen, và PR
-  không đổi `schema_version` nên chưa có đường chuyển đổi để kiểm.
-- Viết hoa khi lưu, danh sách gợi ý: chưa có đường hộp đen (mục 1).
-- Bản TypeScript/PWA (`pwa/src/store`): không chạy trong lượt này.
+- Nâng cấp tại chỗ trên từng nền tảng (bản web thay service worker; `adb install -r`; MSI; Apple), lịch nhắc đặt lại
+  sau nâng cấp: do các job CI nền tảng chạy.
+- Chuyển kho SQLite tại chỗ ở mức lõi, gồm bản sao `.pre-v2.bak`, ca lỗi → chỉ đọc, từ chối kho mới hơn: chưa có đường
+  hộp đen (mục 7). Kiểm thử `store/tests/released.rs` của bên xây dựng không được đọc và không được tính là bằng chứng
+  độc lập.
+- Viết hoa khi lưu/hiển thị, danh sách gợi ý: chưa có đường hộp đen.
+- Bản TypeScript/PWA: không chạy.
+- Nguồn gốc bộ mẫu đóng băng (dựng lại từ 7338f04): chưa làm.
 
 ## 9. Tệp
 
-- Tham chiếu: `oracle/v02/b5/b5_ref.py`, `lvhvfile.py` (đọc/ghi `.lvhv` độc lập), `b5_statehash.py`.
+- Tham chiếu: `oracle/v02/b5/b5_ref.py`, `lvhvfile.py`, `b5_statehash.py`.
 - Tệp thử và kỳ vọng: `oracle/v02/b5/b5_fixtures.py`, `oracle/v02/b5/fixtures/`, `oracle/v02/out/b5_expected.json`,
   `oracle/v02/out/b5_expected/`.
-- Đối chiếu: `oracle/v02/b5/b5_adapt.py`, `b5_compare.py`, `b5_cmp_docs.py`, `b5_probe_check.sh`;
-  `oracle/v02/out/b5_cmp_5535a49-adapted.json`, `b5_cmp_5535a49-raw.json`, `b5_cmp_docs_5535a49.json`,
-  `b5_probe_raw_5535a49.tsv`.
+- Đối chiếu: `oracle/v02/b5/b5_adapt.py`, `b5_compare.py`, `b5_cmp_docs.py`, `b5_cmp_released.py`,
+  `b5_probe_check.sh`.
+- Kết quả: `oracle/v02/out/b5_cmp_8a2ed41-{adapted,raw}.json`, `b5_cmp_released_8a2ed41.json`; lần 1:
+  `b5_cmp_5535a49-{adapted,raw}.json`, `b5_cmp_docs_5535a49.json`, `b5_probe_raw_5535a49.tsv`.
