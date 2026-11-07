@@ -36,8 +36,15 @@
             InstallPrivileges='limited'
             SummaryCodepage='1252'/>
 
+        <!-- Nâng cấp lớn (R14, 04 Bổ sung B5): gỡ bản cũ rồi cài bản mới; cùng số phiên bản cũng tính là nâng cấp
+             (AllowSameVersionUpgrades) để không bao giờ có hai bản cài song song.
+             DỮ LIỆU KHÔNG THUỘC BỘ CÀI: sổ Người thân ở %LOCALAPPDATA%\ClevixLab\LichVanHoaViet và tệp "Để sau" ở
+             %LOCALAPPDATA%\Clevix\LichVanHoaViet do ứng dụng tự tạo, không có thành phần MSI nào trỏ tới, nên cài đè,
+             nâng cấp hay gỡ cài đặt đều không xóa. Không dùng RemoveFile/RemoveFolderEx/util:RemoveFolderEx ngoài thư
+             mục chương trình. CI kiểm điều này ở bước R14 của windows.yml. -->
         <MajorUpgrade
             Schedule='afterInstallInitialize'
+            AllowSameVersionUpgrades='yes'
             DowngradeErrorMessage='Da co phien ban moi hon. Hay go phien ban do truoc.'/>
 
         <Media Id='1' Cabinet='media1.cab' EmbedCab='yes' DiskPrompt='CD-ROM #1'/>
@@ -53,6 +60,20 @@
                             <RemoveFolder Id='RemoveAppFolder' On='uninstall'/>
                             <RemoveFolder Id='RemoveProgramsFolder' Directory='ProgramsFolder' On='uninstall'/>
                         </Component>
+                        <!-- Giao thức lichviet: — bấm vào thông báo, Windows chạy LichViet.exe "lichviet:nguoi/<id>?…" và ứng dụng mở
+                             đúng hồ sơ (src/toasts.rs). URI chỉ có UUID và băm nội dung, không có tên hay ngày (BM2-15). -->
+                        <Component Id='ProtocolHandler' Guid='6B1D2C5E-7A0F-4C8B-9E3D-2F4A6B8C1D13' Win64='$(var.Win64)'>
+                            <RegistryKey Root='HKCU' Key='Software\Classes\lichviet'>
+                                <RegistryValue Type='string' Value='URL:Lich Viet' KeyPath='yes'/>
+                                <RegistryValue Name='URL Protocol' Type='string' Value=''/>
+                                <RegistryKey Key='DefaultIcon'>
+                                    <RegistryValue Type='string' Value='[APPLICATIONFOLDER]LichViet.exe,0'/>
+                                </RegistryKey>
+                                <RegistryKey Key='shell\open\command'>
+                                    <RegistryValue Type='string' Value='"[APPLICATIONFOLDER]LichViet.exe" "%1"'/>
+                                </RegistryKey>
+                            </RegistryKey>
+                        </Component>
                         <Component Id='FontLicense' Guid='6B1D2C5E-7A0F-4C8B-9E3D-2F4A6B8C1D11' Win64='$(var.Win64)'>
                             <File Id='OflTxt' Name='OFL.txt' DiskId='1' Source='ui\fonts\OFL.txt'/>
                             <RegistryValue Root='HKCU' Key='Software\Clevix\LichVanHoaViet' Name='ofl' Type='integer' Value='1' KeyPath='yes'/>
@@ -62,7 +83,11 @@
             </Directory>
             <Directory Id='ProgramMenuFolder'>
                 <Component Id='StartMenuShortcut' Guid='6B1D2C5E-7A0F-4C8B-9E3D-2F4A6B8C1D12'>
-                    <Shortcut Id='AppShortcut' Name='Lich va Van hoa Viet' Target='[APPLICATIONFOLDER]LichViet.exe' WorkingDirectory='APPLICATIONFOLDER' Icon='ProductICO'/>
+                    <!-- AppUserModelID trên lối tắt: ứng dụng chưa đóng gói (MSI, không MSIX) cần định danh này để Windows
+                         nhận thông báo đặt lịch (02 §7.5, R-WIN-1). Phải trùng platform::AUMID trong src/platform.rs. -->
+                    <Shortcut Id='AppShortcut' Name='Lich va Van hoa Viet' Target='[APPLICATIONFOLDER]LichViet.exe' WorkingDirectory='APPLICATIONFOLDER' Icon='ProductICO'>
+                        <ShortcutProperty Key='System.AppUserModel.ID' Value='ClevixLab.LichVanHoaViet'/>
+                    </Shortcut>
                     <RegistryValue Root='HKCU' Key='Software\Clevix\LichVanHoaViet' Name='shortcut' Type='integer' Value='1' KeyPath='yes'/>
                 </Component>
             </Directory>
@@ -72,7 +97,39 @@
             <ComponentRef Id='MainExe'/>
             <ComponentRef Id='FontLicense'/>
             <ComponentRef Id='StartMenuShortcut'/>
+            <ComponentRef Id='ProtocolHandler'/>
         </Feature>
+
+        <!-- Giao dien bo cai (BM2-22, MA3N-25-09): Welcome -> Verify -> Progress -> Exit, khong co trang giay phep. Trang
+             ket thuc (cai dat va go bo khi chay lai .msi) ghi ro du lieu ca nhan duoc GIU va nam o dau. Bang MSI dung ma
+             trang 1252 nen cau viet khong dau, nhu ten san pham; cau co dau day du nam o trang Gioi thieu cua ung dung.
+             Go tu Cai dat Windows (giao dien co ban) khong hien hop thoai nay - xem docs/04-BUILD-NATIVE.md. -->
+        <UI Id='LvhvUI'>
+            <TextStyle Id='WixUI_Font_Normal' FaceName='Tahoma' Size='8'/>
+            <TextStyle Id='WixUI_Font_Bigger' FaceName='Tahoma' Size='12'/>
+            <TextStyle Id='WixUI_Font_Title' FaceName='Tahoma' Size='9' Bold='yes'/>
+            <Property Id='DefaultUIFont' Value='WixUI_Font_Normal'/>
+            <Property Id='WixUI_Mode' Value='Minimal'/>
+            <DialogRef Id='ErrorDlg'/>
+            <DialogRef Id='FatalError'/>
+            <DialogRef Id='FilesInUse'/>
+            <DialogRef Id='MsiRMFilesInUse'/>
+            <DialogRef Id='PrepareDlg'/>
+            <DialogRef Id='ProgressDlg'/>
+            <DialogRef Id='ResumeDlg'/>
+            <DialogRef Id='UserExit'/>
+            <DialogRef Id='WelcomeDlg'/>
+            <Publish Dialog='WelcomeDlg' Control='Next' Event='NewDialog' Value='VerifyReadyDlg'>1</Publish>
+            <Publish Dialog='VerifyReadyDlg' Control='Back' Event='NewDialog' Value='WelcomeDlg' Order='1'>NOT Installed</Publish>
+            <Publish Dialog='VerifyReadyDlg' Control='Back' Event='NewDialog' Value='MaintenanceTypeDlg' Order='2'>Installed</Publish>
+            <Publish Dialog='MaintenanceWelcomeDlg' Control='Next' Event='NewDialog' Value='MaintenanceTypeDlg'>1</Publish>
+            <Publish Dialog='MaintenanceTypeDlg' Control='RepairButton' Event='NewDialog' Value='VerifyReadyDlg'>1</Publish>
+            <Publish Dialog='MaintenanceTypeDlg' Control='RemoveButton' Event='NewDialog' Value='VerifyReadyDlg'>1</Publish>
+            <Publish Dialog='MaintenanceTypeDlg' Control='Back' Event='NewDialog' Value='MaintenanceWelcomeDlg'>1</Publish>
+            <Publish Dialog='ExitDialog' Control='Finish' Event='EndDialog' Value='Return' Order='999'>1</Publish>
+        </UI>
+        <UIRef Id='WixUI_Common'/>
+        <Property Id='WIXUI_EXITDIALOGOPTIONALTEXT' Value='Du lieu ca nhan (so Nguoi than: ho so, anh, tep dinh kem, thong tin bao tu) nam o %LOCALAPPDATA%\ClevixLab\LichVanHoaViet. Cai lai, nang cap hay go bo ung dung deu GIU NGUYEN thu muc nay. Muon xoa han du lieu: sau khi go, hay xoa thu muc do (nen tao tep sao luu truoc).'/>
 
         <Icon Id='ProductICO' SourceFile='assets\icon.ico'/>
         <Property Id='ARPPRODUCTICON' Value='ProductICO'/>

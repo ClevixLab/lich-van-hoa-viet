@@ -155,3 +155,57 @@ Phần lõi của ứng dụng (lược đồ, V3, dọn ảnh, gộp, sao lưu,
 bản đã định; mọi kiểm thử chạy lại đều ĐẠT. Chặn duy nhất nằm ở công cụ kiểm định: `scenario tray_photo` xóa đệ quy
 thư mục được đưa vào. Sau khi sửa MA10-01 có thể gộp; MA10-02 và MA10-03 cần điều phối viên quyết (sửa mã hay bổ sung
 đặc tả) trước khi bên kiểm định chạy R15 (c)(d) (T28), nếu không R15 (c) phần kích thước sẽ là CHƯA ĐỦ BẰNG CHỨNG.
+
+## Vòng 2 — 2026-11-07: kiểm lại trên `375d6d6`
+
+Đầu nhánh được duyệt: `375d6d6` (`v0.2-yc10-core`; đã gộp `main` ở `b7c2b81`, gồm Bổ sung 01-YC10-a #53 và phiếu này
+#52). Phần sửa: `git diff b7c2b81..375d6d6`. Căn cứ thêm: 01 "Bổ sung 01-YC10-a"; báo cáo kiểm định
+`docs/reports/BAO-CAO-KIEM-DINH-V02-R15.md` (PR #54, đo trên `eafa96e`), mục F1–F3.
+
+### V2.0 Đã chạy
+
+| Việc | Kết quả |
+|---|---|
+| `cargo test --locked -p lvhv-store`, `-p lvhv-ffi` | Mọi bài ĐẠT (`tray.rs` 9/9) |
+| `cross_platform write` → `node pwa/test/store/run.mjs --quick` → `cross_platform check` | **ĐẠT**; `state_hash` khớp |
+| `node tsport/test/memorial_unit.mjs` (sau `npm run build`) | 60 đạt, 0 lỗi (gồm ca mới của MA10-07) |
+| `scenario tray_photo` Rust (debug) và TS | Hai bản **giống từng byte** và bằng `tray-photo/expected-scenario.json` mới |
+| Sinh lại vector (`gen_test_vectors`, `gen_notice_vector`) | Không khác bản đã commit (03 §2.5, `merge-cases.json`, R6v2 không đổi) |
+| Chạy lại các ca thử của vòng 1 (mã thử tạm, đã xóa) trên **cả hai** bản | Kết quả ở V2.1 |
+| CI trên `375d6d6` | Mọi việc `success` (Rust fmt/clippy/test, Lưu trữ + sao lưu, L7, memorial Rust ≡ TS, cargo-deny, gói ảnh mâm lễ, `ui`, `upgrade`, `screenshots`, `build`) |
+
+### V2.1 Kiểm lại từng phát hiện
+
+| Mã | Mức | Kết quả | Bằng chứng |
+|---|---|---|---|
+| MA10-01 | chặn | **ĐÃ SỬA** | `lvhv-store-tool.rs:983-994`, `:1241-1254`: tạo thư mục con mới `lvhv-tray-<16 hex>` bằng `create_dir` (không trùng thứ có sẵn), chỉ xóa thư mục đó; chỉ `remove_dir` (khi rỗng) thư mục người dùng nếu chính công cụ tạo; `fresh()` không xóa nữa. `import` không `--into` dùng cùng cách. Đã thử lại: thư mục có sẵn `keep/file.txt` → thoát 0, sau khi chạy chỉ còn `keep/` và `keep/file.txt`. CI kiểm ca này (`check-store-tool.sh`) |
+| MA10-02 / F1 | nên sửa | **ĐÃ SỬA** | Theo Bổ sung 01-YC10-a: `check_refs_person` (`lib.rs:1800-1815`), `validate::document` (`validate.rs:1137-1143`), `putPerson` (`db.ts:447`), `validate.ts` `document`. Đã thử: ảnh 2000×1000 → hai bản `V1 /person/memorial/tray_photo_id: ảnh mâm lễ có cạnh dài quá 1600 px`; tệp nhập 1601 px → `V1 /persons/0/memorial/tray_photo_id` (kịch bản `tray_too_large`) |
+| MA10-03 | nên sửa | **ĐÃ SỬA** | `merge_docs` (`lib.rs:2022`, `:2036`), `mergeDocs` (`merge.ts:48`, `:53`) chỉ giữ ảnh / tệp đính kèm mà hồ sơ sau gộp còn dùng; tệp bị dọn sau giao dịch (`apply_import`). Đã thử lại ca máy A `T0` / máy B `T1`: hai bản 0 mồ côi, tệp `T0` không còn. Kịch bản `merge_replaces_local_tray`. Xem thêm V2.2 MA10-11 |
+| MA10-04 | góp ý | **ĐÃ SỬA** | Cùng thứ tự ở ba nơi (ảnh treo → cỡ ảnh mâm lễ → dùng chung → tệp đính kèm treo). Ca `photo_id = tray_photo_id = X` (không có) → hai bản `V3 /person/photo_id: ảnh không tồn tại` (kịch bản `g_rules.double_dangling`) |
+| MA10-05 | góp ý | **ĐÃ SỬA** | `TRAY_IS_PORTRAIT` "ảnh mâm lễ không được trùng ảnh chân dung" (`validate.rs:556`, `validate.ts`); đã thử, hai bản đúng câu này |
+| MA10-06 / F2 | góp ý | **ĐÃ SỬA** | `upsert_person` bỏ khóa `null` ở mọi đường ghi (`lib.rs:1851-1862`, `validate::without_null_tray` `validate.rs:577`); TS `normNotice` (`db.ts:35-43`). Đã thử: gọi thẳng `Store::put_person` / `putPerson` với `null` → khóa không còn. Tệp nhập ghi rõ `null` → nhập được, kho và tệp xuất lại không có khóa (kịch bản `explicit_null`) |
+| MA10-07 | góp ý | **ĐÃ SỬA** | `tsport/test/memorial_unit.mjs`: .ics (toàn bộ và chọn người), `icsSummary`, `upcoming`, `dueToday`, `notificationText` không chứa id ảnh mâm lễ; chạy ĐẠT |
+| MA10-08 | góp ý | **CHƯA SỬA** | `lib.rs:1819` vẫn đọc mọi hồ sơ ở mỗi lần lưu. Chấp nhận cho v0.2 (dữ liệu nhỏ); không chặn |
+| MA10-09 | góp ý | **ĐÃ SỬA một phần** | 10 §3.11 ghi rõ bản Rust đọc vector từ cây mã đã dựng nó và `orphan_files` của TS đo khác Rust. Các `unwrap()` trong kịch bản còn (thoát 101 thay vì JSON) — chấp nhận, công cụ kiểm định |
+| MA10-10 | góp ý | **ĐÃ SỬA** | Thêm: ảnh mâm lễ WebP (`f_cleanup.webp`), gộp làm hai hồ sơ dùng chung ảnh mâm lễ → từ chối, kho không đổi (`merge_shared_tray`), lỗi kép (`double_dangling`). Ca "đổi ảnh mâm lễ sang ảnh chân dung cũ trong cùng lần lưu" chưa có — không cần thêm, đã bị V3 / dọn ảnh bao |
+| F2 (kiểm định) | — | **ĐÃ SỬA** | Như MA10-06 |
+| F3 (kiểm định) | — | **ĐÃ SỬA** | `save-person` bị từ chối → `stage = "save_person"` ở cả hai bản (`lvhv-store-tool.rs:461`, `lvhv-store-tool.mjs:287`); 10 §3.3 ghi tên chung; CI so hai bản. Bên kiểm định cần chạy lại g2 để đổi kết luận (G) của mình |
+
+### V2.2 Phát hiện mới
+
+#### MA10-11 — góp ý — Gộp nay xóa cả ảnh vừa thêm mà chưa gắn hồ sơ
+
+Theo đúng câu chữ Bổ sung 01-YC10-a ("ảnh trên máy mà không hồ sơ nào trong kết quả gộp còn trỏ tới bị xóa"), ảnh đã
+`add_photo` / `addPhoto` nhưng biểu mẫu chưa lưu cũng bị xóa khi Gộp (`lib.rs:2022`, `merge.ts:48`). Nếu người dùng mở
+biểu mẫu, chọn ảnh, rồi nhập sao lưu (Gộp) ở cửa sổ / thẻ khác, lần lưu biểu mẫu sau đó báo `V3 … ảnh không tồn tại`.
+Không mất dữ liệu đã lưu và đúng đặc tả đã bổ sung; chỉ cần giao diện (T23–T26) chặn nhập sao lưu khi đang có ảnh chờ
+gắn, hoặc thêm lại ảnh khi gặp lỗi này. Không chặn.
+
+Không có phát hiện chặn mới.
+
+### V2.3 Kết luận vòng 2
+
+**GỘP ĐƯỢC** — 0 chặn. MA10-01..07 và MA10-10 đã sửa; MA10-09 sửa một phần (chấp nhận); MA10-08 chưa sửa (góp ý,
+chấp nhận); F2, F3 của báo cáo kiểm định đã sửa; một góp ý mới (MA10-11) chuyển cho giao diện. Mọi kiểm thử chạy lại đều
+ĐẠT, Rust ≡ TS từng byte trên kịch bản `tray_photo`, vector đã khóa không đổi. Bên kiểm định cần đo lại R15 (c)(d)(g) trên
+`375d6d6` để cập nhật kết luận của mình (F1 nay là ca từ chối; g2 không còn khác biệt `stage`).

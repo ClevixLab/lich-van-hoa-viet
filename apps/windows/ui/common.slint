@@ -1,0 +1,244 @@
+// Thành phần dùng chung của giao diện (tách từ app.slint để mô-đun "Người thân" dùng lại).
+import { Palette } from "std-widgets.slint";
+
+export struct Gio { chi: string, range: string }
+export struct Cell { day: int, lunar: string, key: bool, sunday: bool, today: bool, selected: bool, blank: bool, label: string }
+export struct GoodRow { y: int, m: int, d: int, day: string, mon: string, l1: string, l2: string, l3: string, reasons: string, score: string, sunday: bool }
+export struct Block { kind: string, text: string }
+export struct ChipRow { items: [string] }
+
+export struct Sheet {
+    month-title: string, year: string, weekday: string, day: string, sunday: bool, is-today: bool,
+    lunar-day: string, lunar-key: bool, lunar-month: string, month-len: string,
+    cc-year: string, cc-month: string, cc-day: string, tiet: string,
+    than-kind: string, than-name: string, hoang-dao: bool, truc: string, rating: string, rating-level: int,
+    nen: [string], ky: [string], sao-tot: [ChipRow], sao-xau: [ChipRow], score: string,
+    tu: string, nap-am: string, hour-ty: string, xung: string,
+    cadao: [string], cadao-type: string, has-cadao: bool,
+}
+
+export global Theme {
+    in-out property <bool> dark: false;
+    in-out property <float> scale: 1.0;
+    out property <color> wall: dark ? #141011 : #e8e3e1;
+    out property <color> paper: dark ? #211a1b : #fdfcfa;
+    out property <color> paper2: dark ? #2a2223 : #f6f2ee;
+    out property <color> rule: dark ? #3a3031 : #e4dbd5;
+    // Viền ô nhập, nút viền, ô chọn: ≥ 3:1 trên paper/paper2 ở cả sáng và tối (TKN-W-07, WCAG 1.4.11).
+    out property <color> outline: dark ? #8a7c79 : #857875;
+    out property <color> ink: dark ? #f1e9e6 : #231a1a;
+    out property <color> ink2: dark ? #cdbfbb : #5e5150;
+    out property <color> ink3: dark ? #a99a96 : #7a6b69;
+    out property <color> red: dark ? #ff6b63 : #c4161c;
+    out property <color> red-deep: dark ? #7a1214 : #8f1416;
+    out property <color> red-ink: dark ? #ff8a83 : #b3151b;
+    out property <color> red-tint: dark ? #3a1d1e : #fbeceb;
+    out property <color> gold: dark ? #e3b45c : #8a5e0c;
+    out property <color> gold-tint: dark ? #352a18 : #f8efdc;
+    out property <color> green: dark ? #7fd1a2 : #1f6b45;
+    out property <color> green-tint: dark ? #1b2e24 : #e7f2ec;
+    out property <color> band-ink: dark ? #fff1ec : #fff8f4;
+    out property <string> serif: "LVHV Serif";
+    out property <string> sans: "LVHV Sans";
+}
+
+// Chữ thường (sans). `size` là cỡ ở mức chữ "A"; A+ và A++ nhân thêm Theme.scale.
+export component T inherits Text {
+    in property <float> size: 15;
+    color: Theme.ink;
+    font-family: Theme.sans;
+    font-size: size * Theme.scale * 1px;
+    wrap: word-wrap;
+}
+
+// Chữ tiêu đề (serif).
+export component S inherits Text {
+    in property <float> size: 18;
+    color: Theme.ink;
+    font-family: Theme.serif;
+    font-size: size * Theme.scale * 1px;
+    font-weight: 600;
+}
+
+export component Icon inherits Image {
+    in property <color> tint: Theme.ink;
+    colorize: tint;
+    width: 20px;
+    height: 20px;
+}
+
+// Logo Clevix (PNG trong suốt). Chọn ảnh đúng số điểm ảnh thật theo tỉ lệ màn hình (1×, 1,25×, 1,5×,
+// 2×, 2,5×, 3×) để logo luôn sắc nét, giống srcset 1x/2x/3x của bản web.
+export component ClevixLogo inherits Image {
+    in property <bool> small: false; // false: cao 44 px (chân trang); true: cao 24 px (dòng "Clevix Lab")
+    property <float> dpr: 1px / 1phx;
+    height: small ? 24px : 44px;
+    width: self.height * 329 / 216;
+    accessible-role: text;
+    accessible-label: "Logo Clevix";
+    source: small
+        ? (dpr < 1.13 ? @image-url("../assets/clevix-logo-h24.png") : dpr < 1.38 ? @image-url("../assets/clevix-logo-h30.png") : dpr < 1.7 ? @image-url("../assets/clevix-logo-h36.png") : dpr < 2.3 ? @image-url("../assets/clevix-logo-h48.png") : dpr < 2.8 ? @image-url("../assets/clevix-logo-h60.png") : @image-url("../assets/clevix-logo-h72.png"))
+        : (dpr < 1.13 ? @image-url("../assets/clevix-logo-h44.png") : dpr < 1.38 ? @image-url("../assets/clevix-logo-h55.png") : dpr < 1.7 ? @image-url("../assets/clevix-logo-h66.png") : dpr < 2.3 ? @image-url("../assets/clevix-logo-h88.png") : dpr < 2.8 ? @image-url("../assets/clevix-logo-h110.png") : @image-url("../assets/clevix-logo-h132.png"));
+}
+
+export component Card inherits Rectangle {
+    background: Theme.paper;
+    border-radius: 16px;
+    drop-shadow-blur: 6px;
+    drop-shadow-offset-y: 1px;
+    drop-shadow-color: #0000001a;
+}
+
+// Nút chữ: "primary" (nền đỏ), "ghost" (nền nhạt), "outline" (viền), "choice" (ô chọn việc).
+export component Btn inherits Rectangle {
+    in property <string> text;
+    in property <string> kind: "ghost";
+    in property <bool> active: false;
+    in property <bool> enabled: true;
+    in property <float> size: 15;
+    in property <bool> nowrap: true;
+    callback clicked;
+    property <bool> filled: kind == "primary" || active;
+    min-height: 44px;
+    min-width: nowrap ? lbl.preferred-width + 32px : 0px;
+    border-radius: kind == "primary" ? 22px : 10px;
+    background: !enabled ? Theme.paper2
+        : kind == "danger" ? (ta.has-hover ? Theme.red-tint : Theme.paper)
+        : filled ? (ta.has-hover ? Theme.red : Theme.red-deep)
+        : kind == "outline" || kind == "choice" ? (ta.has-hover ? Theme.paper2 : Theme.paper)
+        : (ta.has-hover ? Theme.rule : Theme.paper2);
+    border-width: kind == "danger" ? 1.5px : (kind == "outline" || kind == "choice") && !filled ? 1px : 0px;
+    border-color: kind == "danger" ? Theme.red-ink : Theme.outline;
+    accessible-role: button;
+    accessible-label: text;
+    accessible-checked: active;
+    accessible-action-default => { if (enabled) { root.clicked(); } }
+    HorizontalLayout {
+        padding-left: 14px; padding-right: 14px; padding-top: 6px; padding-bottom: 6px;
+        lbl := T {
+            text: root.text; size: root.size;
+            color: !root.enabled ? Theme.ink3 : root.kind == "danger" ? Theme.red-ink : root.filled ? #ffffff : Theme.ink;
+            font-weight: 600;
+            horizontal-alignment: center; vertical-alignment: center;
+            wrap: root.nowrap ? no-wrap : word-wrap;
+        }
+    }
+    ta := TouchArea { enabled: root.enabled; clicked => { root.clicked(); } mouse-cursor: root.enabled ? pointer : default; }
+}
+
+// Liên kết dạng chữ đỏ gạch chân (giống .linkbtn của bản web).
+export component LinkBtn inherits Rectangle {
+    in property <string> text;
+    in property <float> size: 15;
+    callback clicked;
+    min-height: 36px;
+    accessible-role: button;
+    accessible-label: text;
+    accessible-action-default => { root.clicked(); }
+    HorizontalLayout {
+        alignment: start;
+        VerticalLayout {
+            alignment: center; spacing: 1px;
+            lt := T { text: root.text; size: root.size; color: ta.has-hover ? Theme.red : Theme.red-ink; font-weight: 700; wrap: no-wrap; }
+            Rectangle { height: 1.5px; background: lt.color; }
+        }
+    }
+    ta := TouchArea { clicked => { root.clicked(); } mouse-cursor: pointer; }
+}
+
+export component RoundBtn inherits Rectangle {
+    in property <image> icon;
+    in property <string> label;
+    in property <bool> enabled: true;
+    in property <length> d: 44px;
+    callback clicked;
+    width: d; height: d;
+    border-radius: self.width / 2;
+    background: ta.has-hover && enabled ? Theme.paper2 : Theme.paper;
+    border-width: 1px; border-color: Theme.outline;
+    opacity: enabled ? 1 : 0.4;
+    accessible-role: button;
+    accessible-label: label;
+    accessible-action-default => { if (enabled) { root.clicked(); } }
+    Icon { source: root.icon; tint: Theme.ink; width: 20px; height: 20px; }
+    ta := TouchArea { enabled: root.enabled; clicked => { root.clicked(); } mouse-cursor: pointer; }
+}
+
+export component LabelBox inherits Rectangle {
+    in property <string> k;
+    in property <string> v;
+    in property <color> bg: Theme.paper2;
+    in property <color> kc: Theme.ink3;
+    in property <color> fg: Theme.ink;
+    background: bg;
+    border-radius: 10px;
+    accessible-role: text;
+    accessible-label: k + ": " + v;
+    VerticalLayout {
+        padding: 8px; padding-left: 10px; padding-right: 10px; spacing: 1px; alignment: center;
+        T { text: k; color: kc; size: 13; font-weight: 600; horizontal-alignment: center; }
+        T { text: v; color: fg; size: 16; font-weight: 700; horizontal-alignment: center; }
+    }
+}
+
+export component Bullets inherits VerticalLayout {
+    in property <string> title;
+    in property <color> accent;
+    in property <[string]> items;
+    in property <string> what;
+    in-out property <bool> open: false;
+    spacing: 0px;
+    alignment: start;
+    Rectangle { height: 3px; background: accent; }
+    S { text: title; color: accent; size: 19; accessible-role: text; accessible-label: title; }
+    Rectangle { height: 6px; }
+    if items.length == 0: T { text: "Không có ghi nhận"; color: Theme.ink3; size: 15; }
+    for it[i] in items: VerticalLayout {
+        if root.open || i < 4: VerticalLayout {
+            if i > 0: Rectangle { height: 1px; background: Theme.rule; }
+            HorizontalLayout { padding-top: 5px; padding-bottom: 5px; T { text: it; size: 15; } }
+        }
+    }
+    if items.length > 4: LinkBtn {
+        text: root.open ? "Thu gọn" : "Xem thêm " + (root.items.length - 4) + " việc";
+        accessible-label: root.open ? "Thu gọn " + root.what : "Xem thêm " + root.what;
+        clicked => { root.open = !root.open; }
+    }
+}
+
+export component Chip inherits Rectangle {
+    in property <string> text;
+    in property <color> bg;
+    in property <color> fg;
+    background: bg;
+    border-radius: 14px;
+    height: ct.preferred-height + 8px;
+    min-width: ct.preferred-width + 22px;
+    ct := T { text: root.text; color: root.fg; size: 14; font-weight: 600; wrap: no-wrap; }
+}
+
+// Slint 1.8 chưa có FlowLayout: Rust chia sẵn các sao thành từng hàng (ChipRow).
+export component Chips inherits VerticalLayout {
+    in property <[ChipRow]> rows;
+    in property <color> bg;
+    in property <color> fg;
+    spacing: 6px;
+    if rows.length == 0: T { text: "Không có"; color: Theme.ink3; }
+    for r in rows: HorizontalLayout {
+        alignment: start; spacing: 6px;
+        for it in r.items: Chip { text: it; bg: root.bg; fg: root.fg; }
+    }
+}
+
+export component Fact inherits Rectangle {
+    in property <string> k;
+    in property <string> v;
+    accessible-role: text;
+    accessible-label: k + ": " + v;
+    VerticalLayout {
+        spacing: 1px;
+        alignment: start;
+        T { text: root.k; color: Theme.ink3; size: 13; font-weight: 600; }
+        T { text: root.v; size: 16; font-weight: 600; }
+    }
+}

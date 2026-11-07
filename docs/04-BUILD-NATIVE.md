@@ -136,9 +136,10 @@ bản 0.1.2 dùng FemtoVG (OpenGL) — chữ mảnh, nhòe ở tỉ lệ màn h�
 thống mặc định (không khai báo phông sans).
 
 **Kiểm thử giao diện và chụp màn hình.** `cargo test` chạy cả `src/ui_tests.rs` (backend kiểm thử của
-Slint, bấm chuột giả lập vào từng nút). `LichViet.exe --chup-man-hinh <thư mục>` mở lần lượt 11 màn hình,
-chụp bằng renderer của ứng dụng rồi thoát; `windows.yml` chạy bước này và đính kèm ảnh (artifact
-`windows-screens`). Trên Linux: `xvfb-run target/release/LichViet --chup-man-hinh /tmp/anh`, thêm
+Slint, bấm chuột giả lập vào từng nút). Chế độ chụp màn hình nằm trong tệp chạy riêng của CI
+`lvhv-ci-check.exe` (xem dưới), không có trong `LichViet.exe`: `lvhv-ci-check --chup-man-hinh <thư mục>` mở lần lượt
+các màn hình, chụp bằng renderer của ứng dụng rồi thoát; `windows.yml` chạy bước này và đính kèm ảnh (artifact
+`windows-screens`). Trên Linux: `xvfb-run target/release/lvhv-ci-check --chup-man-hinh /tmp/anh`, thêm
 `SLINT_SCALE_FACTOR=2` để chụp ở 2×.
 
 Vì sao Slint mà không dùng WebView2: một tệp `.exe` duy nhất (~12 MB, đo trên Linux), không phụ thuộc
@@ -146,6 +147,84 @@ WebView2 runtime, khởi động nhanh, đọc màn hình (UI Automation) qua Ac
 (mục 8): ~52 MB với renderer phần mềm, ~170 MB với femtovg/OpenGL qua llvmpipe (Mesa phần mềm — trên máy
 có GPU thật thường thấp hơn). Một vỏ WebView2 (wry/Tauri) thường tốn 80–150 MB vì có thêm tiến trình
 Edge. Chưa đo trên Windows thật: `windows.yml` in số đo Working Set vào `mem.txt`.
+
+#### 3.4a Mô-đun "Người thân" trên Windows (v0.2 đợt 3, T8)
+
+Đặc tả chung: `docs/v0.2/08-DAC-TA-GIAO-DIEN-NGUOI-THAN.md`. Mã: `apps/windows/ui/people.slint` (giao diện),
+`src/people.rs` (nối giao diện với lõi), `src/platform.rs` (thư mục dữ liệu, múi giờ, hộp chọn tệp, thông báo),
+`src/photo.rs` (ảnh). Ứng dụng gọi thẳng hàm Rust của `lvhv-ffi` (phần `v02.rs`, cũng là lớp mà Android/Apple dùng
+qua UniFFI) — mọi tính toán (ngày giỗ, nhắc, xoay vòng 64, danh sách theo kỳ, .ics, sao lưu, kiểm dữ liệu) nằm
+trong `lvhv-memorial`, `lvhv-store`, `lvhv-backup`. Giao diện chỉ hiển thị và kiểm độ dài/ô trống.
+
+- **Dữ liệu:** `%LOCALAPPDATA%\ClevixLab\LichVanHoaViet\` (`lvhv.sqlite`, `photos\`). Không tài khoản, không mạng.
+  Kho chỉ được tạo khi người dùng mở mục Người thân lần đầu; khi đã có kho, ứng dụng mở kho lúc khởi động để đặt
+  lại thông báo. Tệp nhỏ `ui-restored-from.txt` ghi ngày của bản sao lưu vừa "Thay toàn bộ" (TK-16, §12h).
+- **Ảnh (S9):** ảnh chân dung và ảnh giấy báo tử được giải mã, xoay theo EXIF, thu cạnh dài ≤ 1024 px rồi **mã hóa
+  lại JPEG** (`image` 0.24.9, đã có trong cây phụ thuộc của Slint) — byte lưu không còn APP1/APP13 (kiểm thử
+  `photo::tests`, `ui_tests_people`).
+- **Thông báo đặt lịch (02 §7.5, R-WIN-1):** `ScheduledToastNotification` (WinRT) với AppUserModelID
+  `ClevixLab.LichVanHoaViet`. Bộ cài `.msi` tạo lối tắt Start Menu mang thuộc tính `System.AppUserModel.ID`
+  (`wix/main.wxs`); ứng dụng gọi `SetCurrentProcessExplicitAppUserModelID` lúc mở. Mỗi lần mở ứng dụng, lưu dữ
+  liệu, đổi cài đặt hay khôi phục, ứng dụng đọc danh sách chờ của Windows, gọi `LvhvStore::reschedule_json` của lõi
+  (giới hạn 64, thông báo nhắc mở ứng dụng) rồi gỡ/thêm/thay đúng theo kế hoạch. Thông báo đã đặt do Windows giữ và
+  hiện kể cả khi ứng dụng đã đóng; **không** có tiến trình nền. Mặc định thông báo không ghi tên (O-9); tùy chọn
+  "Hiện tên người trong thông báo" lưu theo máy (`lock_screen_names`), không vào sao lưu.
+- **Bấm vào thông báo** mở đúng hồ sơ: thông báo kích hoạt URI `lichviet:nguoi/<id>?…` (chỉ UUID; id và nội dung của
+  lõi cũng nằm trong URI để đối chiếu khi xoay vòng — MA3N-25-01); bộ cài đăng ký giao thức `lichviet` trong
+  `HKCU\Software\Classes`. Ứng dụng đang mở thì Windows mở thêm một cửa sổ ở đúng hồ sơ.
+- **Múi giờ:** độ lệch hiện tại + các lần chuyển giờ mùa hè trong 401 ngày tới (`GetTimeZoneInformationForYear`), như
+  Android/Apple (MA3N-25-05).
+- **Việc nặng** (Argon2id khi tạo/mở sao lưu, khôi phục, giải mã ảnh) chạy ở luồng phụ; ảnh > 25 MB bị từ chối trước khi
+  đọc tệp (MA3N-25-06, -07).
+- **Nâng cấp không mất dữ liệu (R14, 04 v0.2 Bổ sung B5):** dữ liệu không thuộc bộ cài — sổ Người thân ở
+  `%LOCALAPPDATA%\ClevixLab\LichVanHoaViet`, tệp "Để sau" của bản 0.1.x ở `%LOCALAPPDATA%\Clevix\LichVanHoaViet`;
+  MSI không có thành phần nào trỏ tới hai thư mục này nên cài đè, nâng cấp, gỡ cài đặt đều không xóa. `MajorUpgrade`
+  có `AllowSameVersionUpgrades` (cùng số phiên bản vẫn là nâng cấp, không cài song song). Mở kho lỗi (chuyển đổi lược
+  đồ hỏng — lõi lùi giao dịch, giữ bản sao trước chuyển đổi; hoặc kho của bản mới hơn) → mục Người thân hiện khung báo
+  chỉ xem "Dữ liệu cũ của bạn vẫn còn nguyên…" với nút "Mở thư mục dữ liệu" để chép dự phòng; không thử tạo kho mới, không
+  thử lại trong lần chạy đó. CI (bước R14 của `windows.yml`): cài `LichViet-0.1.4-x64.msi` từ GitHub Releases, ghi "Để
+  sau", tạo sổ Người thân mẫu (`lvhv-ci-check --tao-du-lieu-mau`), cài MSI mới đè lên, mở `LichViet.exe` đã cài 12
+  giây (chính bản phát hành mở kho, chuyển đổi nếu cần và đặt lại thông báo), rồi `lvhv-ci-check --kiem-nang-cap` (so hồ sơ, sự kiện, loại sự kiện, cài đặt, hiện tên, băm SHA-256 từng ảnh, "Để sau"; đặt lại thông
+  báo), gỡ cài đặt rồi so băm từng tệp trong thư mục dữ liệu; kết quả ở `apps/windows/screenshots/nang-cap.txt`.
+  Bản Windows 0.1.4 không lưu cỡ chữ và sáng/tối giữa các lần mở, nên thứ duy nhất cần giữ từ 0.1.4 là "Để sau".
+  Cùng bước còn chạy R14 (c): chép kho của bộ mẫu đóng băng `0.2-dev-before-attachments` vào thư mục dữ liệu, cài MSI,
+  mở `LichViet.exe` đã cài (chuyển 1 → 2), rồi `--kiem-mau-dong-bang` so trạng thái sau chuyển 1 → 2 với `expected/0.2-dev-before-attachments.json`; và ca lỗi
+  `--kiem-chi-doc` (bản chép của bộ mẫu có một hồ sơ hỏng → chỉ đọc, kho cũ và bản sao giữ nguyên, xuất sao lưu được).
+  `force_migration_failure` của lõi không có qua FFI; kiểm thử Rust của ứng dụng chạy ca đó trực tiếp bằng `lvhv-store`.
+  **Giới hạn của ca (a) hiện nay (MA3C-25-02):** tệp `VERSION` vẫn là `0.1.4`, nên "MSI mới" cũng mang số 0.1.4 — phép
+  nâng cấp lớn đang thử là cài **cùng số phiên bản** đè lên (`AllowSameVersionUpgrades`), không phải đường thật 0.1.4 →
+  0.2.0. Khi `VERSION` tăng lên 0.2.0 để phát hành, bước R14 tự chạy đúng đường thật (MSI cũ 0.1.4 thật từ GitHub Releases
+  → MSI mới 0.2.0, phiên bản lớn hơn) mà không phải sửa gì; kết quả R14 (a) của bản phát hành 0.2.0 phải lấy từ lần chạy
+  CI trên commit tăng `VERSION` đó. Từ 0.2.0 trở đi, bước này nên thêm một ca cài từ MSI 0.2.x đã phát hành.
+- **Tệp chạy của CI (MA3C-25-01):** `lvhv-ci-check.exe` (`src/bin/lvhv-ci-check.rs`, `src/ci.rs`) chứa mọi chế độ kiểm
+  thử — `--chup-man-hinh`, `--do-bo-nho`, `--kiem-thong-bao`, `--tao-du-lieu-mau`, `--kiem-nang-cap`,
+  `--kiem-mau-dong-bang`, `--kiem-chi-doc` — và là chỗ duy nhất đọc biến môi trường `LVHV_DATA_DIR`. Được dựng cùng
+  `cargo build --release` nhưng **không** đóng gói vào `.msi` hay `.zip`. `LichViet.exe` (`src/main.rs`) chỉ hiểu URI
+  `lichviet:` của thông báo. Bước CI "LichViet.exe phát hành không có chế độ kiểm thử" khẳng định: `.zip` không có
+  `lvhv-ci-check`, `LichViet.exe` không chứa chuỗi cờ nào (còn `lvhv-ci-check.exe` thì có — để phép tìm đáng tin), và
+  chạy `LichViet.exe --tao-du-lieu-mau x.json` chỉ mở giao diện, không tạo tệp hay kho.
+- **Gỡ cài đặt (BM2-22, MA3N-25-09):** dữ liệu được giữ, không bao giờ tự xóa. Trang kết thúc của bộ cài (khi cài, và khi
+  gỡ bằng cách chạy lại `.msi` → Remove) ghi rõ dữ liệu nằm ở `%LOCALAPPDATA%\ClevixLab\LichVanHoaViet` và được giữ — bảng
+  MSI dùng mã trang 1252 nên câu viết không dấu. Gỡ từ Cài đặt Windows dùng giao diện cơ bản của Windows Installer,
+  không hiện hộp thoại riêng; vì vậy câu có dấu đầy đủ nằm ở trang Giới thiệu và ở mục Người thân › Sao lưu ("Dữ liệu trên
+  máy này" + "Mở thư mục dữ liệu"). Thiếu `%LOCALAPPDATA%` → mục Người thân báo lỗi, không lùi về `%TEMP%`.
+- **Giới hạn đã biết:**
+  - bản `.zip` chạy không cài không có lối tắt mang AUMID → Windows có thể không hiện thông báo dù đặt được; giao diện ghi
+    "Windows chưa xác nhận…" và khuyên cài `.msi`;
+  - gỡ ứng dụng không xóa sổ Người thân (`%LOCALAPPDATA%\ClevixLab\LichVanHoaViet`) và không gỡ thông báo đang chờ — trang
+    Giới thiệu ghi rõ cách xóa;
+  - R5 Windows (máy thật, khởi động lại) **chưa thử** — cần chủ dự án thử trên Windows 11 (04 R5);
+  - YC-2026-07 (giới tính, gợi ý và viết hoa của lõi, tệp đính kèm ảnh/PDF) đã làm theo lõi core2 (#28); bản sao tạm
+    của PDF nằm trong `tmp\` của thư mục dữ liệu, xóa khi mở/đóng ứng dụng.
+- **Kiểm thử:** `src/ui_tests_people.rs` bấm qua mọi luồng: L2 (ngày âm, tháng nhuận, các lỗi), nhắc (mốc, giờ 24
+  giờ, tiên thường), ảnh, L11 tưởng niệm (dừng/thắp lại khói), L12 sửa (`rev`), L3 người đang sống + sinh nhật âm
+  (TK-29), L4 sự kiện, US-M-07 đang sống → đã mất với thông tin báo tử (cùng `id`, B4), B4 biểu mẫu sự kiện, L5
+  bốn loại kỳ × ba bộ lọc so với `events_in_period` của lõi, ‹ › Hôm nay, cài đặt O-9, L8 .ics (không chứa thông
+  tin báo tử), L9/L10 sao lưu → xóa → khôi phục "Thay toàn bộ" giống hệt, sai mật khẩu, L7 thẻ nhắc hôm nay.
+- **Ảnh chụp:** `lvhv-ci-check --chup-man-hinh <thư mục>` dùng kho tạm với dữ liệu mẫu; tên tệp
+  `<màn hình>-<sang|toi>-<1x|2x>.png`. CI chụp ở 1× và 2× rồi commit vào `apps/windows/screenshots/` của nhánh PR
+  (kèm `bo-nho.txt`, `thong-bao.txt`). `--do-bo-nho` mở Người thân + tưởng niệm với dữ liệu mẫu để đo Working Set;
+  `--kiem-thong-bao` tự kiểm đặt/đọc/gỡ một thông báo thử (CI chạy sau khi cài `.msi`).
 
 **Giấy phép Slint:** Slint phát hành theo GPL-3.0 **hoặc** "Slint Royalty-free License 2.0" **hoặc**
 giấy phép thương mại. Bản Royalty-free miễn phí cho ứng dụng desktop, với điều kiện hiển thị ghi công

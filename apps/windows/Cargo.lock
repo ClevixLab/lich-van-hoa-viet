@@ -2690,12 +2690,18 @@ name = "lvhv-windows"
 version = "0.1.4"
 dependencies = [
  "i-slint-backend-testing",
+ "image",
  "lvhv-ffi",
+ "lvhv-store",
  "png",
+ "raw-window-handle",
+ "rusqlite",
  "serde",
  "serde_json",
+ "sha2",
  "slint",
  "slint-build",
+ "windows",
  "winresource",
 ]
 
@@ -4070,6 +4076,7 @@ dependencies = [
  "num-traits",
  "once_cell",
  "pin-weak",
+ "raw-window-handle",
  "slint-macros",
  "vtable",
 ]

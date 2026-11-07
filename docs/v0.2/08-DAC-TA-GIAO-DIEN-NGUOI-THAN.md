@@ -332,7 +332,7 @@ Ba khung:
 (S10, 02 §8.2):
 ```
 Xuất tệp lịch
-Tệp này chứa tên, ngày giỗ, sinh nhật và sự kiện của 3 người. Bất kỳ ai có tệp đều đọc được.
+Tệp này chứa tên, ngày giỗ, sinh nhật và sự kiện của 3 người. Bất kỳ ai có tệp đều đọc được. Không gồm thông tin báo tử.
 Gồm 41 ngày trong 10 năm tới (từ 07/11/2026 đến 06/11/2036), mỗi ngày có lời nhắc như đã đặt.
 Xem trước:
   • 28/07/2026 — Giỗ đầu Ông Nguyễn Văn A
@@ -396,7 +396,7 @@ trên mục giỗ của hôm nay ở "Sắp tới".
 ┌─────────────────────────────────────┐
 │ ‹ Về hồ sơ                          │
 │      Giỗ đầu · hôm nay 15/6 âm lịch │   dòng ngày (chỉ khi hôm nay là giỗ; khác:
-│                                     │   "Ngày giỗ năm nay: 15/6 âm lịch, 28/07/2026")
+│                                     │   "Ngày giỗ sắp tới: 15/6 âm lịch, 28/07/2026")
 │            ╭──────────╮             │
 │            │  (ảnh)   │  khung bầu dục viền vàng đồng
 │            ╰──────────╯             │
@@ -426,9 +426,13 @@ trên mục giỗ của hôm nay ở "Sắp tới".
 - Tên trên bia: khi có dòng quan hệ thì chỉ ghi họ tên, **không** lặp cách gọi ("Ông nội / Nguyễn Văn A", không phải
   "Ông nội / Ông Nguyễn Văn A"); không có dòng quan hệ thì ghi tên hiển thị (cách gọi + họ tên).
 - Tên rất dài (> 28 ký tự): chữ nhỏ lại (lớp `.long`), xuống dòng trong bia, không tràn (TK-35).
-- Năm trên bia: `Can Chi năm âm` + năm, không ngoặc — "Canh Thìn 1940 — Ất Tỵ 2025" (thống nhất PWA, Android, Windows;
-  TKN-X-02) — cho năm sinh (nếu có) và năm mất (nếu có); thiếu năm sinh → chỉ "Mất năm Ất Tỵ 2025"; không rõ năm mất →
+- Năm trên bia: `Can Chi năm âm` + năm, **không ngoặc** — "Canh Thìn 1940 — Ất Tỵ 2025", không phải "Canh Thìn (1940)
+  — Ất Tỵ (2025)". Điều phối chốt dạng này cho mọi nền tảng (TKN-X-02, TKN3-A-02) — cho năm sinh (nếu có) và năm mất (nếu có); thiếu năm sinh → chỉ "Mất năm Ất Tỵ 2025"; không rõ năm mất →
   "Giỗ ngày 10/3 âm lịch".
+- Dòng ngày khi hôm nay không phải ngày giỗ (TKN-X-06, quyết định chung cho mọi nền tảng): luôn "Ngày giỗ **sắp
+  tới**: 15/6 âm lịch, 18/07/2027". Ngày âm ở dòng này là ngày giỗ hằng năm (tháng thường, O-4), không ghi "nhuận".
+- Biểu tượng loại (TKN-X-07, theo PWA, mọi nền tảng): ba nén hương cho giỗ, mâm nhỏ cho tiên thường, bánh có nến cho
+  sinh nhật (dương và âm), ngôi sao cho sự kiện; luôn kèm chữ (§2).
 - Tuổi: "Hưởng thọ 86 tuổi" / "Hưởng dương 45 tuổi" (+ "(khoảng)"); không có tuổi → bỏ dòng.
 - Hình: SVG/CSS viết trong mã (không tệp ảnh ngoài), tông nâu gỗ và vàng đồng, cùng một kiểu ở sáng và tối (nền tối
   ấm cả hai giao diện để bia nổi). Ảnh vẽ bằng canvas; không có ảnh → khung bầu dục trống có chữ cái đầu tên.
@@ -1073,6 +1077,33 @@ Mọi tính toán qua FFI của lõi (`ffi/src/v02.rs`, `LvhvStore`); giao diệ
 | Tệp đính kèm báo tử (YC-2026-07, RA-SOAT-BAO-MAT-V02 §5.3) | Trong khối "Thông tin báo tử": tối đa 6 tệp, chọn loại trước (Tin báo tử / Giấy chứng tử / Tệp khác — bộ tên chung đề xuất ở TKN3-X-01; tin báo tử có thể là ảnh hay PDF), "Thêm ảnh" (Photo Picker → giải mã, xoay, cạnh dài ≤ 2048 px, JPEG ≤ 2 MB, bỏ siêu dữ liệu) hoặc "Thêm tệp PDF" (bộ chọn tệp; kiểm ≤ 10 MB theo kích thước bộ chọn **trước khi** đọc, đọc tối đa 10 MB, kiểm `%PDF-` ở đầu và `%%EOF` trong 1 024 byte cuối như `media::check_attachment` của lõi (lõi kiểm lại khi lưu; MA3C-24-03); lưu nguyên bản, câu "Tệp PDF được lưu nguyên bản" hiện trước khi chọn). Tệp chỉ ghi vào kho khi bấm Lưu; lưu lỗi → xóa tệp/ảnh vừa ghi (`delete_attachment`, `delete_photo`). Trang hồ sơ: ảnh hiện trong trang (giải mã có giới hạn), PDF chỉ có nhãn + tên tệp gốc + "Mở bằng ứng dụng khác…" → hộp xác nhận → bản tạm `cache/att/TepDinhKem.pdf`, `ACTION_VIEW` với `FLAG_GRANT_READ_URI_PERMISSION` chỉ cho Intent đó; quay lại ứng dụng (và mỗi lần mở ứng dụng) → thu hồi quyền, xóa bản tạm. FileProvider không exported, chỉ `cache/ics/` và `cache/att/`. Không bao giờ vào thông báo, .ics, trang tưởng niệm |
 | CI (BM2-09, 18, 24) | Action ghim theo SHA; APK release không có `SelfCheckActivity`; thành phần exported chỉ có MainActivity (và `ProfileInstallReceiver` của androidx, chỉ nhận từ `android.permission.DUMP`); tệp khóa Gradle sinh từ đồ thị đã phân giải và quét bằng osv-scanner |
 | Cần máy thật | R5 (thông báo đúng giờ, sau khởi động lại), P8 (Argon2id trên điện thoại tầm trung), P9 (bộ nhớ, số lần đánh thức) — chưa đo |
+
+## 14. Windows — sai khác và điểm riêng (PR #25; duyệt thiết kế `DUYET-THIET-KE-DOT3-NATIVE.md`, TKN-W-09)
+
+Ứng dụng Windows (Slint 1.8, Skia) theo đúng luồng và câu chữ ở trên; chỗ khác ghi dưới đây. Kiểm thử:
+`apps/windows/src/ui_tests_people.rs`, `toasts.rs`, `ui_tests.rs`; ảnh: `apps/windows/screenshots/` (1× và 2×, sáng và tối,
+thêm lượt `a3-*` ở cỡ chữ A++).
+
+| # | Chỗ | Bản Windows | Lý do / đánh giá |
+|---|---|---|---|
+| 1 | §5.4 "Lời nhắc trên ứng dụng web" | Khung **"Lời nhắc trên Windows"**: trạng thái thật của thông báo (đặt được / Windows chưa xác nhận — bản .zip / tắt trong Cài đặt Windows / không đọc được danh sách chờ), "Bật lời nhắc", "Hiện tên người trong thông báo" (O-9, theo máy). Thêm khung **"Mặc định nhắc cho hồ sơ mới"** (thu gọn sẵn, TKN-W-13) | Có thông báo hệ thống thật (02 §7.5). Duyệt: chấp nhận |
+| 2 | §3.4 gợi ý `datalist` | **Cách gọi** và **Quan hệ:** hàng nút gợi ý nhỏ bấm để điền, danh sách của lõi (`danh_xung_suggestions` theo người sống/mất và giới tính đang chọn, `quan_he_suggestions`); vẫn gõ tự do được. Lõi viết hoa chữ đầu khi lưu; hiển thị qua `display_capitalize` | Slint 1.8 không có ô gợi ý (TKN-W-02 trước đây: chấp nhận tạm) |
+| 3 | TK-03 kiểm khi rời ô | Lỗi ngày hiện khi đã nhập đủ ba ô hoặc sau lần bấm Lưu đầu; sau đó kiểm theo từng lần gõ | Slint không có sự kiện rời ô tiện dùng. Duyệt: chấp nhận |
+| 4 | §2 khung tóm tắt lỗi | "Còn n chỗ cần sửa" + từng lỗi là một liên kết; bấm → cuộn tới nhóm có lỗi (vị trí gần đúng theo nhóm, Slint không có "cuộn tới phần tử"); ô có lỗi viền đỏ | TKN-W-05 |
+| 5 | §3.4 "Sửa tuổi"/"Tính lại" | Hộp "Tự nhập tuổi (khi gia đình ghi khác)" + ô số 1–150 | Cùng dữ liệu `tuoi.manual`. Duyệt: chấp nhận |
+| 6 | TK-16, §12h | "Dữ liệu được khôi phục từ bản sao lưu ngày …" lưu trong tệp `ui-restored-from.txt` của thư mục dữ liệu (không vào `stateHash`) | Tương đương khóa `ui_restored_from` của PWA |
+| 7 | §3.6 bố cục 1280 px | Hồ sơ một người một cột ≤ 760 px | Dễ đọc hơn ở cửa sổ 1180 px (TKN-W-11, chấp nhận) |
+| 8 | §6 vùng chạm 44 px | Ô nhập, nút trong thẻ cao ~32–44 px ở 1× (chuẩn Fluent cho chuột); ở A+/A++ kích thước tăng theo `Theme.scale` | Máy tính dùng chuột (TKN-W-16, chấp nhận) |
+| 9 | §1.1 thanh mục | Ở A+/A++ hoặc khi cửa sổ không đủ rộng (đo bề rộng thật của thanh mục), thanh mục xuống hàng riêng dưới tên ứng dụng; rất hẹp thì chỉ còn biểu tượng (nhãn trợ năng đủ chữ). Kiểm thử đo cạnh phải ở 1180/900/560 px × cỡ 1,0/1,15/1,16/1,32 | Như PWA §12b (TKN-W-01) |
+| 10 | §5.5 thẻ nhắc | Trên Tờ lịch một thẻ (thẳng cột tờ lịch) + "Còn n lời nhắc khác hôm nay — Xem"; trên Sắp tới tối đa 3 thẻ. Ngoài ra Windows hiện **thông báo hệ thống** đặt lịch trước | 02 §7.5 |
+| 11 | Hộp chọn tệp | Hộp thoại của Windows (`GetOpenFileNameW`/`GetSaveFileNameW`), là hộp con của cửa sổ chính; .ics và tệp sao lưu được **lưu** vào chỗ người dùng chọn (không có "tải xuống") | Nền tảng máy tính |
+| 12 | Bấm thông báo | Mở đúng hồ sơ: thông báo kích hoạt URI `lichviet:nguoi/<id>?id=<id lời nhắc>&c=<băm>` (bộ cài đăng ký giao thức). URI có UUID và 16 chữ hex đầu của SHA-256 nội dung (để biết nội dung có đổi), **không** có tên, ngày hay nội dung (BM2-15). Mở từ URI thì khối "Thông tin báo tử" luôn thu gọn | S4' |
+| 13 | Hộp kiểm | Ô vuông 22 px màu đỏ của ứng dụng (không dùng màu xanh của Fluent) | TKN-W-10 |
+| 14 | Biểu mẫu sự kiện | Hai nút chọn lịch dùng cùng chữ với biểu mẫu người: "Nhập theo dương lịch / Nhập theo âm lịch" | TKN-X-05 |
+| 15 | Việc nặng | Mã hóa / giải mã sao lưu (Argon2id), khôi phục, giải mã ảnh chạy ở luồng phụ; hộp giữ trạng thái "đang xử lý" | MA3N-25-06 |
+| 16 | Giới tính (YC-2026-07) | "Giới tính: Nam / Nữ / Không ghi" đứng đầu nhóm (trước Cách gọi, vì thứ tự gợi ý theo giới tính); trang hồ sơ ghi "Giới tính" khi có | — |
+| 17 | Tệp đính kèm báo tử (YC-2026-07, 01 §3.8a) | Tối đa 6 tệp; mỗi tệp một dòng: ảnh thu nhỏ hoặc nhãn "PDF", tên gốc, loại (Tin báo tử / Giấy chứng tử / Tệp khác — cùng bộ tên với bản web, TKN3-X-01), "Bỏ tệp". Ảnh nén lại ≤ 2048 px, ≤ 2 MB, bỏ siêu dữ liệu; PDF kiểm ≤ 10 MB và `%PDF-` trước khi đọc hết, lưu nguyên bản ("Tệp PDF được lưu nguyên bản"). "Mở bằng ứng dụng xem PDF" chép ra `%LOCALAPPDATA%\ClevixLab\LichVanHoaViet\tmp\<ngẫu nhiên>\TepDinhKem.pdf`, xóa khi đóng và khi mở ứng dụng (rà soát bảo mật §5.3). Tệp chỉ ghi vào kho khi bấm Lưu; lưu lỗi thì xóa tệp vừa thêm | Không đưa vào thông báo, .ics, trang tưởng niệm (R-PRIV-2) |
+| 18 | Kho chỉ đọc (01 §7.1, B5) | `migration_status().state = read_only` → khung báo nền vàng nhạt, chữ thường cỡ nội dung, cùng lời với bản web ("Chưa chuyển được dữ liệu sang bản mới. …") + "Tạo tệp sao lưu…", "Mở thư mục dữ liệu"; câu lỗi kỹ thuật thu gọn dưới "Chi tiết kỹ thuật" (TKN3-W-01); xem được mọi trang, ẩn mọi nút thêm/sửa/xóa, khôi phục và cài đặt nhắc; xuất sao lưu được. Kho của bản mới hơn → chỉ còn khung báo | Kiểm thử `chuyen_doi_loi_che_do_chi_doc`; ảnh `nt-23`, `nt-24` |
 
 ## 16. YC-2026-10 — ảnh mâm lễ (07/11/2026; 07 §10, ADR-V02-01; 04 R15)
 
