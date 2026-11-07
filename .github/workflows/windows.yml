@@ -236,9 +236,9 @@ jobs:
           $chk = (Resolve-Path target\release\lvhv-ci-check.exe).Path
           function Open-App($tag) {
             $p = Start-Process -FilePath $prog -PassThru; Start-Sleep -Seconds 12
-            if ($p.HasExited) { Fail "$tag: LichViet.exe đã cài tự thoát (mã $($p.ExitCode))" }
+            if ($p.HasExited) { Fail "${tag}: LichViet.exe đã cài tự thoát (mã $($p.ExitCode))" }
             Stop-Process -Id $p.Id -Force; Start-Sleep -Seconds 2
-            Log "$tag: mở LichViet.exe đã cài 12 giây (mở kho, chuyển đổi nếu cần, đặt lại thông báo) rồi đóng"
+            Log "${tag}: mở LichViet.exe đã cài 12 giây (mở kho, chuyển đổi nếu cần, đặt lại thông báo) rồi đóng"
           }
           Log "R14 Windows — $(Get-Date -Format 'yyyy-MM-dd HH:mm') UTC$((Get-Date).ToString('zzz')), bản mới $env:VERSION (run ${{ github.run_number }})"
           # Máy CI sạch: các bước trước chỉ dùng kho tạm. Có dữ liệu sẵn thì dừng chứ không xóa.
