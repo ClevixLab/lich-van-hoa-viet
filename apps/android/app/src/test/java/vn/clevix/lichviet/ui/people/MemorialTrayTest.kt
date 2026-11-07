@@ -212,7 +212,10 @@ class MemorialTrayTest {
             assertEquals(1, rule.onAllNodes(androidx.compose.ui.test.hasText("Thêm ảnh mâm lễ của gia đình")).fetchSemanticsNodes().size)
             // Ảnh gia đình thắng.
             addFamilyTray()
-            rule.runOnIdle { nav.tab(PRoute.Profiles); nav.go(PRoute.Memorial(ids.a)) }
+            // Dữ liệu đổi ngoài giao diện: rời trang rồi mở lại để trang đọc lại hồ sơ (trong ứng dụng, lưu gọi x.changed()).
+            rule.runOnIdle { nav.tab(PRoute.Profiles) }
+            rule.waitForIdle()
+            rule.runOnIdle { nav.go(PRoute.Memorial(ids.a)) }
             rule.waitForIdle()
             assertEquals(1, trayNodes("Ảnh mâm lễ của gia đình").size)
             assertTrue(rule.onAllNodes(androidx.compose.ui.test.hasText("Ảnh: Nguyễn Thử", substring = true)).fetchSemanticsNodes().isEmpty())
