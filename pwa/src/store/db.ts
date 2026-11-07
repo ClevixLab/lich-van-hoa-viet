@@ -33,6 +33,14 @@ type StoreName = (typeof STORES)[number];
  * giống Rust từng byte kể cả khi tài liệu nhập vào có ghi `null`.
  */
 export function normNotice(p: JsonObj): JsonObj {
+  // 01 §3.7 (MA10-06, báo cáo kiểm định R15 F2): `memorial.tray_photo_id: null` không bao giờ được ghi — kể cả khi tệp
+  // nhập ghi rõ null (như Rust upsert_person). Hàm này là chỗ ghi hồ sơ chung của lưu, nhập và chuyển đổi.
+  const pm = p.memorial;
+  if (pm && typeof pm === "object" && !Array.isArray(pm) && Object.prototype.hasOwnProperty.call(pm, "tray_photo_id") && (pm as JsonObj).tray_photo_id === null) {
+    const { tray_photo_id: _t, ...m } = pm as JsonObj;
+    void _t;
+    p = { ...p, memorial: m };
+  }
   const d = p.death as JsonObj | null;
   if (!d || typeof d !== "object" || !Object.prototype.hasOwnProperty.call(d, "notice") || d.notice !== null) return p;
   const { notice: _n, ...rest } = d;
@@ -49,6 +57,15 @@ export type ImportMode = "replace" | "merge";
 export interface ImportPreview { persons: number; events: number; photos: number; exported_at: string; platform: string }
 export interface VerifiedBackup { doc: JsonObj; photos: Map<string, Uint8Array>; attachments: Map<string, Uint8Array>; preview: ImportPreview }
 export interface NewPhoto { id: string; mime: "image/jpeg" | "image/webp"; width: number; height: number; bytes: Uint8Array }
+
+/** Bản ghi `Photo` + byte của một ảnh mới, đã kiểm (V1 rồi 04 B6) — như Rust `add_photo`. */
+async function photoRecord(np: NewPhoto): Promise<{ id: string; meta: JsonObj; blob: Blob }> {
+  const meta: JsonObj = { bytes: np.bytes.length, created_at: nowRfc3339(), height: np.height, id: np.id, mime: np.mime, sha256: await sha256Hex(np.bytes), stripped: true, width: np.width };
+  try { V.photo(meta, "/photo"); } catch (e) { throw vErr(e); }
+  // 04 B6 / BM2-08: như Rust add_photo.
+  try { checkPhoto(np.mime, np.bytes, np.width, np.height); } catch (e) { throw e instanceof MediaError ? new StoreError("input", mediaMessage(e.code, "Ảnh")) : e; }
+  return { id: np.id, meta, blob: new Blob([np.bytes as Uint8Array<ArrayBuffer>], { type: np.mime }) };
+}
 /** Tệp đính kèm mới (01 §3.8a): ảnh đã mã hóa lại (≤ 2 MiB, cạnh dài ≤ 2048 px) hoặc PDF nguyên bản (≤ 10 MiB). */
 export interface NewAttachment { id: string; mime: "image/jpeg" | "image/webp" | "application/pdf"; file_name: string | null; bytes: Uint8Array }
 
@@ -404,23 +421,36 @@ export class Store {
   /**
    * Ghi một Person (đã đủ trường dẫn xuất — derive.buildPerson) và, nếu có, ảnh mới của người đó, trong
    * **một** giao dịch (01 §4.1). Lần lưu hồ sơ đầu tiên gọi requestPersistentStorage().
+   * `newPhoto`: một ảnh hoặc danh sách ảnh mới (ảnh chân dung và/hoặc ảnh mâm lễ `memorial.tray_photo_id`, YC-2026-10).
    */
-  async putPerson(p: JsonObj, newPhoto?: NewPhoto, newAttachments: NewAttachment[] = []): Promise<void> {
+  async putPerson(p: JsonObj, newPhoto?: NewPhoto | NewPhoto[], newAttachments: NewAttachment[] = []): Promise<void> {
     this.writable();
+    // 01 §3.7 (MA10-06): `memorial.tray_photo_id: null` không được ghi — `normNotice` bỏ khóa ở mọi đường ghi.
     try { V.person(p, "/person"); } catch (e) { throw vErr(e); }
     // `newAttachments`: tệp đính kèm báo tử mới (01 §3.8a) — ghi cùng giao dịch với hồ sơ.
     const attRecs: { id: string; meta: JsonObj; blob: Blob }[] = [];
     for (const a of newAttachments) attRecs.push({ id: a.id, meta: await attachmentMeta(a), blob: new Blob([a.bytes as Uint8Array<ArrayBuffer>], { type: a.mime }) });
     const recs: { id: string; meta: JsonObj; blob: Blob }[] = [];
-    for (const np of newPhoto ? [newPhoto] : []) {
-      const meta: JsonObj = { bytes: np.bytes.length, created_at: nowRfc3339(), height: np.height, id: np.id, mime: np.mime, sha256: await sha256Hex(np.bytes), stripped: true, width: np.width };
-      try { V.photo(meta, "/photo"); } catch (e) { throw vErr(e); }
-      // 04 B6 / BM2-08: như Rust add_photo.
-      try { checkPhoto(np.mime, np.bytes, np.width, np.height); } catch (e) { throw e instanceof MediaError ? new StoreError("input", mediaMessage(e.code, "Ảnh")) : e; }
-      recs.push({ id: np.id, meta, blob: new Blob([np.bytes as Uint8Array<ArrayBuffer>], { type: np.mime }) });
-    }
+    for (const np of newPhoto === undefined ? [] : Array.isArray(newPhoto) ? newPhoto : [newPhoto]) recs.push(await photoRecord(np));
     const all = await this.persons();
     const first = all.length === 0;
+    // Tham chiếu — cùng thứ tự với Rust check_refs_person (MA10-04): ảnh treo (photo_id, rồi tray_photo_id) → cỡ ảnh mâm lễ
+    // (≤ 1600 px, MA10-02) → ảnh mâm lễ dùng chung → tệp đính kèm treo. (Kiểm lại trong giao dịch bên dưới.)
+    const photoMeta = new Map((await this.photos()).map((m) => [m.id as string, m] as const));
+    for (const r of recs) photoMeta.set(r.id, r.meta);
+    const trayRef = V.trayPhotoRef(p);
+    for (const pid of V.personPhotoRefs(p)) {
+      if (photoMeta.has(pid)) continue;
+      const isTray = pid === trayRef && p.photo_id !== pid;
+      throw new StoreError("invalid", isTray ? "V3 /person/memorial/tray_photo_id: ảnh mâm lễ không tồn tại" : "V3 /person/photo_id: ảnh không tồn tại");
+    }
+    if (trayRef !== null && V.trayTooLarge(photoMeta.get(trayRef)!)) throw new StoreError("invalid", `V1 /person/memorial/tray_photo_id: ${V.TRAY_TOO_LARGE}`);
+    const shared = V.trayPhotoShared(p, all);
+    if (shared !== null) throw new StoreError("invalid", `V3 /person/${shared[0]}: ${shared[1]}`);
+    const attIds = new Set([...(await this.attachments()).map((m) => m.id as string), ...attRecs.map((r) => r.id)]);
+    V.personAttachmentRefs(p).forEach((aid, j) => {
+      if (!attIds.has(aid)) throw new StoreError("invalid", `V3 /person/death/notice/attachments/${j}/file_id: tệp đính kèm không tồn tại`);
+    });
     // Ảnh bản cũ dùng mà bản mới bỏ, không hồ sơ nào khác dùng → xóa cùng giao dịch (như Rust put_person).
     const old = all.find((x) => x.id === p.id);
     const keep = new Set([...V.personPhotoRefs(p), ...all.filter((x) => x.id !== p.id).flatMap((x) => V.personPhotoRefs(x))]);
@@ -433,10 +463,12 @@ export class Store {
     for (const r of recs) tx.objectStore("photos").put(r);
     for (const r of attRecs) tx.objectStore("attachments").put(r);
     const fresh = new Set(recs.map((r) => r.id));
+    const trayId = V.trayPhotoRef(p);
     for (const pid of V.personPhotoRefs(p)) {
       if (fresh.has(pid)) continue;
       const r = tx.objectStore("photos").getKey(pid);
-      r.onsuccess = () => { if (r.result === undefined) { tx.abort(); } };
+      const isTray = pid === trayId && p.photo_id !== pid;
+      r.onsuccess = () => { if (r.result === undefined) { if (isTray) missing = "V3 /person/memorial/tray_photo_id: ảnh mâm lễ không tồn tại"; tx.abort(); } };
     }
     const freshAtt = new Set(attRecs.map((r) => r.id));
     V.personAttachmentRefs(p).forEach((aid, j) => {
@@ -518,6 +550,21 @@ export class Store {
     Store.markChanged(tx, now);
     await fin;
     return removed.sort();
+  }
+
+  /**
+   * Thêm một ảnh chưa gắn hồ sơ (như Rust `add_photo`): kiểm bản ghi (V1, ≤ 1 MiB) và byte (04 B6), ghi bản ghi + byte,
+   * trả bản ghi `Photo`. Gắn bằng `photo_id` hoặc `memorial.tray_photo_id` rồi `putPerson`; hủy thì `deletePhoto`.
+   */
+  async addPhoto(np: NewPhoto): Promise<JsonObj> {
+    this.writable();
+    const r = await photoRecord(np);
+    const tx = this.tx(["photos", "meta"], "readwrite");
+    const fin = done(tx);
+    tx.objectStore("photos").put(r);
+    Store.markChanged(tx, nowRfc3339());
+    await fin;
+    return r.meta;
   }
 
   /** Xóa một ảnh không hồ sơ nào dùng (như Rust `delete_photo`). Còn được dùng → "input"; không có → "not_found". */

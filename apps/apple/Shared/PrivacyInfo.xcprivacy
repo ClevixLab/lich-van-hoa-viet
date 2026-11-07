@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <!-- Tệp kê khai quyền riêng tư: không theo dõi, không thu thập dữ liệu.
-     API "lý do bắt buộc" duy nhất dùng tới: UserDefaults (lưu cỡ chữ và chế độ sáng/tối
-     trong chính ứng dụng) — lý do CA92.1. -->
+     API "lý do bắt buộc" dùng tới: UserDefaults (lưu cỡ chữ và chế độ sáng/tối trong chính ứng dụng) — lý do
+     CA92.1; thông tin tệp (stat/fstat của SQLite đóng gói trong lõi, chỉ với tệp dữ liệu trong hộp cát của ứng
+     dụng, v0.2 "Người thân") — lý do C617.1. -->
 <plist version="1.0">
 <dict>
 	<key>NSPrivacyTracking</key>
@@ -19,6 +20,14 @@
 			<key>NSPrivacyAccessedAPITypeReasons</key>
 			<array>
 				<string>CA92.1</string>
+			</array>
+		</dict>
+		<dict>
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategoryFileTimestamp</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<string>C617.1</string>
 			</array>
 		</dict>
 	</array>

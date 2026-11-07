@@ -738,6 +738,8 @@ impl Store {
     /// chuyển bằng [`migrate::migrate_1_to_2`] trong **cùng** giao dịch: ảnh giấy báo tử thành tệp đính kèm.
     pub fn put_person(&mut self, p: &Value) -> Result<()> {
         self.writable()?;
+        // 01 §3.7 (MA10-06): `memorial.tray_photo_id: null` không bao giờ được ghi — `upsert_person` bỏ khóa ở mọi đường
+        // ghi (lưu, nhập, chuyển đổi), dù bên gọi chưa chuẩn hóa.
         let mut written = Vec::new();
         let r = self.put_person_inner(p, &mut written);
         if r.is_err() {
@@ -1766,7 +1768,69 @@ fn gc_attachments(
     Ok(gone)
 }
 
+/// Tham chiếu của một hồ sơ sắp lưu. Thứ tự kiểm (giống `validate::document` và bản TS `putPerson`, MA10-04): ảnh treo
+/// (`photo_id`, rồi `memorial.tray_photo_id`) → cỡ ảnh mâm lễ (≤ 1600 px, MA10-02) → ảnh mâm lễ dùng chung → tệp đính
+/// kèm treo.
 fn check_refs_person(tx: &rusqlite::Transaction<'_>, p: &Value) -> Result<()> {
+    let tray = validate::tray_photo_ref(p);
+    for pid in validate::person_photo_refs(p) {
+        let pid = pid.as_str();
+        let n: i64 = tx.query_row(
+            "SELECT count(*) FROM photo WHERE id = ?1",
+            params![pid],
+            |r| r.get(0),
+        )?;
+        if n == 0 {
+            let is_tray = tray == Some(pid) && p["photo_id"].as_str() != Some(pid);
+            return Err(StoreError::Invalid(ValidationError {
+                code: "V3",
+                path: if is_tray {
+                    "/person/memorial/tray_photo_id".into()
+                } else {
+                    "/person/photo_id".into()
+                },
+                msg: if is_tray {
+                    "ảnh mâm lễ không tồn tại".into()
+                } else {
+                    "ảnh không tồn tại".into()
+                },
+            }));
+        }
+    }
+    if let Some(t) = tray {
+        let meta: Option<String> = tx
+            .query_row("SELECT json FROM photo WHERE id = ?1", params![t], |r| {
+                r.get(0)
+            })
+            .optional()?;
+        if let Some(m) = meta {
+            if validate::tray_too_large(&parse_col(&m)?) {
+                return Err(StoreError::Invalid(ValidationError {
+                    code: "V1",
+                    path: "/person/memorial/tray_photo_id".into(),
+                    msg: validate::TRAY_TOO_LARGE.into(),
+                }));
+            }
+        }
+    }
+    // YC-2026-10: ảnh mâm lễ chỉ thuộc một người.
+    if tray.is_some() || p["photo_id"].is_string() {
+        let others: Vec<Value> = {
+            let mut st = tx.prepare("SELECT json FROM person WHERE id <> ?1")?;
+            let rows: Vec<String> = st
+                .query_map(params![p["id"].as_str()], |r| r.get(0))?
+                .collect::<core::result::Result<_, _>>()?;
+            rows.iter().map(|r| parse_col(r)).collect::<Result<_>>()?
+        };
+        let refs: Vec<&Value> = others.iter().collect();
+        if let Some((f, msg)) = validate::tray_photo_shared(p, &refs) {
+            return Err(StoreError::Invalid(ValidationError {
+                code: "V3",
+                path: format!("/person/{f}"),
+                msg: msg.into(),
+            }));
+        }
+    }
     for (j, aid) in validate::person_attachment_refs(p).iter().enumerate() {
         let n: i64 = tx.query_row(
             "SELECT count(*) FROM attachment WHERE id = ?1",
@@ -1781,25 +1845,20 @@ fn check_refs_person(tx: &rusqlite::Transaction<'_>, p: &Value) -> Result<()> {
             }));
         }
     }
-    for pid in validate::person_photo_refs(p) {
-        let pid = pid.as_str();
-        let n: i64 = tx.query_row(
-            "SELECT count(*) FROM photo WHERE id = ?1",
-            params![pid],
-            |r| r.get(0),
-        )?;
-        if n == 0 {
-            return Err(StoreError::Invalid(ValidationError {
-                code: "V3",
-                path: "/person/photo_id".into(),
-                msg: "ảnh không tồn tại".into(),
-            }));
-        }
-    }
     Ok(())
 }
 
 fn upsert_person(tx: &rusqlite::Transaction<'_>, p: &Value) -> Result<()> {
+    // 01 §3.7 (MA10-06, báo cáo kiểm định R15 F2): khóa `memorial.tray_photo_id` không bao giờ được ghi khi `null` — kể cả
+    // khi tệp nhập ghi rõ `null` — để tài liệu không dùng trường giống từng byte bản trước. Như PWA `normNotice`.
+    let stripped;
+    let p = match validate::without_null_tray(p) {
+        Some(q) => {
+            stripped = q;
+            &stripped
+        }
+        None => p,
+    };
     tx.execute(
         "INSERT INTO person(id, kind, photo_id, rev, updated_at, json) VALUES (?1, ?2, ?3, ?4, ?5, ?6)
          ON CONFLICT(id) DO UPDATE SET kind = excluded.kind, photo_id = excluded.photo_id, rev = excluded.rev,
@@ -1947,25 +2006,24 @@ pub fn merge_docs(local: &Value, incoming: &Value) -> Value {
         }
         e
     });
-    // Ảnh: bản trên máy giữ nguyên; thêm ảnh mới; chỉ giữ ảnh còn được tham chiếu.
+    // Ảnh (01 §6.3, Bổ sung 01-YC10-a / MA10-03): bản trên máy thắng khi cùng id; thêm ảnh của bản nhập; chỉ giữ ảnh
+    // mà hồ sơ sau gộp còn dùng — ảnh trên máy không còn ai dùng bị bỏ (apply_import xóa tệp sau giao dịch).
     let mut photos = by_id(&local["photos"]);
     for (id, x) in by_id(&incoming["photos"]) {
         photos.entry(id).or_insert(x);
     }
-    let used: std::collections::HashSet<&str> = persons
+    // Ảnh chân dung và ảnh mâm lễ (YC-2026-10) mà hồ sơ sau gộp còn dùng.
+    let used: std::collections::HashSet<String> = persons
         .iter()
-        .filter_map(|p| p["photo_id"].as_str())
+        .flat_map(validate::person_photo_refs)
         .collect();
-    let local_photo_ids: std::collections::HashSet<String> =
-        by_id(&local["photos"]).into_keys().collect();
     let photos: Vec<Value> = photos
         .into_iter()
-        .filter(|(id, _)| used.contains(id.as_str()) || local_photo_ids.contains(id))
+        .filter(|(id, _)| used.contains(id))
         .map(|(_, v)| v)
         .collect();
-    // Tệp đính kèm: như ảnh — giữ của máy, thêm tệp mới mà hồ sơ sau gộp còn dùng.
+    // Tệp đính kèm: cùng quy tắc với ảnh (`death.notice.attachments[].file_id`).
     let mut atts = by_id(&local["attachments"]);
-    let local_att_ids: std::collections::HashSet<String> = atts.keys().cloned().collect();
     for (id, x) in by_id(&incoming["attachments"]) {
         atts.entry(id).or_insert(x);
     }
@@ -1975,7 +2033,7 @@ pub fn merge_docs(local: &Value, incoming: &Value) -> Value {
         .collect();
     let atts: Vec<Value> = atts
         .into_iter()
-        .filter(|(id, _)| used_att.contains(id) || local_att_ids.contains(id))
+        .filter(|(id, _)| used_att.contains(id))
         .map(|(_, v)| v)
         .collect();
     let mut out = local.clone();

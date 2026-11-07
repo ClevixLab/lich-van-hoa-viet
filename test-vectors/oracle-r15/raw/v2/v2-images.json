@@ -1,0 +1,27 @@
+{
+ "f0.pdf": {
+  "bytes": 45,
+  "sha256": "5a838678058f6de375e8635b5f2fea47a4e5f07cb1a882a44b10f39abc6f34ff"
+ },
+ "tall1601.jpg": {
+  "bytes": 36491,
+  "height": 1601,
+  "mime": "image/jpeg",
+  "sha256": "1c88b119f05d7a655ab499257407c9c18183a9c6c076af95bbd4a5b968a54083",
+  "width": 100
+ },
+ "w1600.jpg": {
+  "bytes": 35394,
+  "height": 100,
+  "mime": "image/jpeg",
+  "sha256": "6fa6b6ee43c652feee6e4c64f15e80f3a9a7a200fdd1d07e27ebc30008e299ac",
+  "width": 1600
+ },
+ "wide1601.jpg": {
+  "bytes": 36431,
+  "height": 100,
+  "mime": "image/jpeg",
+  "sha256": "d3c7d86fec40a592ffdb54ff63f8ba5ab3fade1233c59a3f7bb6fda3c0ee7710",
+  "width": 1601
+ }
+}

@@ -232,5 +232,28 @@ eq(M.cmpCodepoints("\u{1F600}", "￿") > 0, true, "code-point order (not UTF-16)
   eq([calJ2.leapMonth(2025), calJ2.leapMonth(2026), calJ2.leapMonth(2028)], [6, null, 5], "leapMonth 2025/2026/2028");
 }
 
+// YC-2026-10 (R15 (f), duyệt mã MA10-07): ảnh mâm lễ không bao giờ có trong thông báo, .ics, danh sách sắp tới —
+// như kiểm thử FFI notice_never_leaks. Tài liệu có `memorial.tray_photo_id` vẫn đọc được, mọi đầu ra không có id ảnh.
+{
+  const TRAY = "0b8e4f52-3c1a-4d2e-9f60-0000000000c9";
+  const doc = JSON.parse(readFileSync(join(REPO, "docs/v0.2/schema/example-backup-v1.json"), "utf8"));
+  const dead = doc.persons.filter((x) => x.kind === "deceased");
+  for (const x of dead) x.memorial.tray_photo_id = TRAY;
+  doc.photos.push({ ...doc.photos[0], id: TRAY });
+  const dt = M.parseDataset(JSON.stringify(doc));
+  const outs = [];
+  const today = M.ymd(2026, 7, 1);
+  outs.push(M.generateIcs(cal, dt, { today, dtstamp: "20261106T031500Z", only_ids: null }));
+  outs.push(M.generateIcs(cal, dt, { today, dtstamp: "20261106T031500Z", only_ids: dead.map((x) => x.id) }));
+  outs.push(JSON.stringify(M.icsSummary(cal, dt, { today, dtstamp: "20261106T031500Z", only_ids: null })));
+  outs.push(JSON.stringify(M.upcoming(cal, dt, today, 3660)));
+  for (const d of [M.ymd(2026, 7, 25), M.ymd(2026, 7, 28)]) outs.push(JSON.stringify(M.dueToday(cal, dt, d, tz)));
+  for (const o of M.occurrences(cal, dt, today, M.ymd(2027, 7, 1))) {
+    for (const named of [true, false]) outs.push(JSON.stringify(M.notificationText(cal, o, 3, named)));
+  }
+  eq(dead.length > 0 && outs.length > 6, true, "YC-2026-10: đầu ra đủ để kiểm");
+  eq(outs.filter((t) => t.includes(TRAY)).length, 0, "YC-2026-10: ảnh mâm lễ không có trong .ics, danh sách sắp tới, thông báo");
+}
+
 console.log(`memorial_unit: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

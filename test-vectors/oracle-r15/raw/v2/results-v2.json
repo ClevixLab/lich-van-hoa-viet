@@ -1,0 +1,1144 @@
+{
+ "v2_1": {
+  "rs": {
+   "D1_portrait_1601x100": {
+    "display": null,
+    "ok": true,
+    "outcome": null,
+    "rc": 0,
+    "stage": null,
+    "v": null
+   },
+   "D2_tray_100x1601": {
+    "display": "Dữ liệu không hợp lệ: V1 /person/memorial/tray_photo_id: ảnh mâm lễ có cạnh dài quá 1600 px",
+    "ok": false,
+    "outcome": null,
+    "rc": 1,
+    "stage": "save_person",
+    "v": "V1 /person/memorial/tray_photo_id"
+   },
+   "D2_tray_1600x100": {
+    "display": null,
+    "ok": true,
+    "outcome": null,
+    "rc": 0,
+    "stage": null,
+    "v": null
+   },
+   "D2_tray_1601x100": {
+    "display": "Dữ liệu không hợp lệ: V1 /person/memorial/tray_photo_id: ảnh mâm lễ có cạnh dài quá 1600 px",
+    "ok": false,
+    "outcome": null,
+    "rc": 1,
+    "stage": "save_person",
+    "v": "V1 /person/memorial/tray_photo_id"
+   },
+   "add_clean.jpg": {
+    "display": null,
+    "ok": true,
+    "outcome": null,
+    "rc": 0,
+    "stage": null,
+    "v": null
+   },
+   "add_tall1601.jpg": {
+    "display": null,
+    "ok": true,
+    "outcome": null,
+    "rc": 0,
+    "stage": null,
+    "v": null
+   },
+   "add_w1600.jpg": {
+    "display": null,
+    "ok": true,
+    "outcome": null,
+    "rc": 0,
+    "stage": null,
+    "v": null
+   },
+   "add_wide1601.jpg": {
+    "display": null,
+    "ok": true,
+    "outcome": null,
+    "rc": 0,
+    "stage": null,
+    "v": null
+   },
+   "after_rejects": {
+    "D2_tray": "0b8e4f52-3c1a-4d2e-9f60-0000000000b1",
+    "TRAY_present": true
+   },
+   "base_D2_tray_clean": {
+    "display": null,
+    "ok": true,
+    "outcome": null,
+    "rc": 0,
+    "stage": null,
+    "v": null
+   },
+   "final": {
+    "orphan_files": [],
+    "orphan_records": [
+     "0b8e4f52-3c1a-4d2e-9f60-0000000000c2"
+    ],
+    "photos": [
+     "0b8e4f52-3c1a-4d2e-9f60-0000000000c1",
+     "0b8e4f52-3c1a-4d2e-9f60-0000000000c2",
+     "0b8e4f52-3c1a-4d2e-9f60-0000000000c3"
+    ],
+    "trays": {
+     "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e01": "ABSENT",
+     "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e02": "0b8e4f52-3c1a-4d2e-9f60-0000000000c3"
+    }
+   }
+  },
+  "ts": {
+   "D1_portrait_1601x100": {
+    "display": null,
+    "ok": true,
+    "outcome": null,
+    "rc": 0,
+    "stage": null,
+    "v": null
+   },
+   "D2_tray_100x1601": {
+    "display": "V1 /person/memorial/tray_photo_id: ảnh mâm lễ có cạnh dài quá 1600 px",
+    "ok": false,
+    "outcome": null,
+    "rc": 1,
+    "stage": "save_person",
+    "v": "V1 /person/memorial/tray_photo_id"
+   },
+   "D2_tray_1600x100": {
+    "display": null,
+    "ok": true,
+    "outcome": null,
+    "rc": 0,
+    "stage": null,
+    "v": null
+   },
+   "D2_tray_1601x100": {
+    "display": "V1 /person/memorial/tray_photo_id: ảnh mâm lễ có cạnh dài quá 1600 px",
+    "ok": false,
+    "outcome": null,
+    "rc": 1,
+    "stage": "save_person",
+    "v": "V1 /person/memorial/tray_photo_id"
+   },
+   "add_clean.jpg": {
+    "display": null,
+    "ok": true,
+    "outcome": null,
+    "rc": 0,
+    "stage": null,
+    "v": null
+   },
+   "add_tall1601.jpg": {
+    "display": null,
+    "ok": true,
+    "outcome": null,
+    "rc": 0,
+    "stage": null,
+    "v": null
+   },
+   "add_w1600.jpg": {
+    "display": null,
+    "ok": true,
+    "outcome": null,
+    "rc": 0,
+    "stage": null,
+    "v": null
+   },
+   "add_wide1601.jpg": {
+    "display": null,
+    "ok": true,
+    "outcome": null,
+    "rc": 0,
+    "stage": null,
+    "v": null
+   },
+   "after_rejects": {
+    "D2_tray": "0b8e4f52-3c1a-4d2e-9f60-0000000000b1",
+    "TRAY_present": true
+   },
+   "base_D2_tray_clean": {
+    "display": null,
+    "ok": true,
+    "outcome": null,
+    "rc": 0,
+    "stage": null,
+    "v": null
+   },
+   "final": {
+    "orphan_files": null,
+    "orphan_records": [
+     "0b8e4f52-3c1a-4d2e-9f60-0000000000c2"
+    ],
+    "photos": [
+     "0b8e4f52-3c1a-4d2e-9f60-0000000000c1",
+     "0b8e4f52-3c1a-4d2e-9f60-0000000000c2",
+     "0b8e4f52-3c1a-4d2e-9f60-0000000000c3"
+    ],
+    "trays": {
+     "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e01": "ABSENT",
+     "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e02": "0b8e4f52-3c1a-4d2e-9f60-0000000000c3"
+    }
+   }
+  }
+ },
+ "v2_2": {
+  "rs": {
+   "v2_2_portrait_1601--merge": {
+    "photos": [
+     "0b8e4f52-3c1a-4d2e-9f60-0000000000c1",
+     "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09"
+    ],
+    "trays": {
+     "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e01": "ABSENT",
+     "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e02": "ABSENT",
+     "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e03": "NO_MEMORIAL"
+    },
+    "unchanged_if_rejected": null,
+    "verdict": {
+     "display": null,
+     "ok": true,
+     "outcome": null,
+     "rc": 0,
+     "stage": null,
+     "v": null
+    }
+   },
+   "v2_2_portrait_1601--replace": {
+    "photos": [
+     "0b8e4f52-3c1a-4d2e-9f60-0000000000c1",
+     "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09"
+    ],
+    "trays": {
+     "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e01": "ABSENT",
+     "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e02": "ABSENT",
+     "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e03": "NO_MEMORIAL"
+    },
+    "unchanged_if_rejected": null,
+    "verdict": {
+     "display": null,
+     "ok": true,
+     "outcome": null,
+     "rc": 0,
+     "stage": null,
+     "v": null
+    }
+   },
+   "v2_2_tray_1600_control--merge": {
+    "photos": [
+     "0b8e4f52-3c1a-4d2e-9f60-0000000000c3",
+     "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09"
+    ],
+    "trays": {
+     "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e01": "ABSENT",
+     "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e02": "0b8e4f52-3c1a-4d2e-9f60-0000000000c3",
+     "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e03": "NO_MEMORIAL"
+    },
+    "unchanged_if_rejected": null,
+    "verdict": {
+     "display": null,
+     "ok": true,
+     "outcome": null,
+     "rc": 0,
+     "stage": null,
+     "v": null
+    }
+   },
+   "v2_2_tray_1600_control--replace": {
+    "photos": [
+     "0b8e4f52-3c1a-4d2e-9f60-0000000000c3",
+     "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09"
+    ],
+    "trays": {
+     "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e01": "ABSENT",
+     "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e02": "0b8e4f52-3c1a-4d2e-9f60-0000000000c3",
+     "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e03": "NO_MEMORIAL"
+    },
+    "unchanged_if_rejected": null,
+    "verdict": {
+     "display": null,
+     "ok": true,
+     "outcome": null,
+     "rc": 0,
+     "stage": null,
+     "v": null
+    }
+   },
+   "v2_2_tray_1601--merge": {
+    "photos": [],
+    "trays": {},
+    "unchanged_if_rejected": true,
+    "verdict": {
+     "display": "dữ liệu không hợp lệ: V1 /persons/1/memorial/tray_photo_id: ảnh mâm lễ có cạnh dài quá 1600 px",
+     "ok": false,
+     "outcome": null,
+     "rc": 1,
+     "stage": "open_backup",
+     "v": "V1 /persons/1/memorial/tray_photo_id"
+    }
+   },
+   "v2_2_tray_1601--replace": {
+    "photos": [],
+    "trays": {},
+    "unchanged_if_rejected": true,
+    "verdict": {
+     "display": "dữ liệu không hợp lệ: V1 /persons/1/memorial/tray_photo_id: ảnh mâm lễ có cạnh dài quá 1600 px",
+     "ok": false,
+     "outcome": null,
+     "rc": 1,
+     "stage": "open_backup",
+     "v": "V1 /persons/1/memorial/tray_photo_id"
+    }
+   }
+  },
+  "ts": {
+   "v2_2_portrait_1601--merge": {
+    "photos": [
+     "0b8e4f52-3c1a-4d2e-9f60-0000000000c1",
+     "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09"
+    ],
+    "trays": {
+     "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e01": "ABSENT",
+     "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e02": "ABSENT",
+     "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e03": "NO_MEMORIAL"
+    },
+    "unchanged_if_rejected": null,
+    "verdict": {
+     "display": null,
+     "ok": true,
+     "outcome": null,
+     "rc": 0,
+     "stage": null,
+     "v": null
+    }
+   },
+   "v2_2_portrait_1601--replace": {
+    "photos": [
+     "0b8e4f52-3c1a-4d2e-9f60-0000000000c1",
+     "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09"
+    ],
+    "trays": {
+     "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e01": "ABSENT",
+     "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e02": "ABSENT",
+     "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e03": "NO_MEMORIAL"
+    },
+    "unchanged_if_rejected": null,
+    "verdict": {
+     "display": null,
+     "ok": true,
+     "outcome": null,
+     "rc": 0,
+     "stage": null,
+     "v": null
+    }
+   },
+   "v2_2_tray_1600_control--merge": {
+    "photos": [
+     "0b8e4f52-3c1a-4d2e-9f60-0000000000c3",
+     "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09"
+    ],
+    "trays": {
+     "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e01": "ABSENT",
+     "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e02": "0b8e4f52-3c1a-4d2e-9f60-0000000000c3",
+     "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e03": "NO_MEMORIAL"
+    },
+    "unchanged_if_rejected": null,
+    "verdict": {
+     "display": null,
+     "ok": true,
+     "outcome": null,
+     "rc": 0,
+     "stage": null,
+     "v": null
+    }
+   },
+   "v2_2_tray_1600_control--replace": {
+    "photos": [
+     "0b8e4f52-3c1a-4d2e-9f60-0000000000c3",
+     "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09"
+    ],
+    "trays": {
+     "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e01": "ABSENT",
+     "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e02": "0b8e4f52-3c1a-4d2e-9f60-0000000000c3",
+     "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e03": "NO_MEMORIAL"
+    },
+    "unchanged_if_rejected": null,
+    "verdict": {
+     "display": null,
+     "ok": true,
+     "outcome": null,
+     "rc": 0,
+     "stage": null,
+     "v": null
+    }
+   },
+   "v2_2_tray_1601--merge": {
+    "photos": [],
+    "trays": {},
+    "unchanged_if_rejected": true,
+    "verdict": {
+     "display": "Sai mật khẩu hoặc tệp bị hỏng",
+     "ok": false,
+     "outcome": null,
+     "rc": 1,
+     "stage": "open_backup",
+     "v": "V1 /persons/1/memorial/tray_photo_id"
+    }
+   },
+   "v2_2_tray_1601--replace": {
+    "photos": [],
+    "trays": {},
+    "unchanged_if_rejected": true,
+    "verdict": {
+     "display": "Sai mật khẩu hoặc tệp bị hỏng",
+     "ok": false,
+     "outcome": null,
+     "rc": 1,
+     "stage": "open_backup",
+     "v": "V1 /persons/1/memorial/tray_photo_id"
+    }
+   }
+  }
+ },
+ "v2_3": {
+  "rs": {
+   "forward": {
+    "A_atts": [
+     "0b8e4f52-3c1a-4d2e-9f60-0000000000f0"
+    ],
+    "A_photos": [
+     "0b8e4f52-3c1a-4d2e-9f60-0000000000b1",
+     "0b8e4f52-3c1a-4d2e-9f60-0000000000b3",
+     "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09"
+    ],
+    "F0": false,
+    "P0": false,
+    "Q0": true,
+    "T0": false,
+    "T1": true,
+    "T1_sha_eq": true,
+    "atts": [],
+    "bad_bytes": [],
+    "import_A": {
+     "display": null,
+     "ok": true,
+     "outcome": null,
+     "rc": 0,
+     "stage": null,
+     "v": null
+    },
+    "merge_B": {
+     "display": null,
+     "ok": true,
+     "outcome": null,
+     "rc": 0,
+     "stage": null,
+     "v": null
+    },
+    "orphan_att_files": [],
+    "orphan_att_records": [],
+    "orphan_files": [],
+    "orphan_records": [],
+    "photos": [
+     "0b8e4f52-3c1a-4d2e-9f60-0000000000b2",
+     "0b8e4f52-3c1a-4d2e-9f60-0000000000b3"
+    ],
+    "trays": {
+     "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e01": "ABSENT",
+     "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e02": "0b8e4f52-3c1a-4d2e-9f60-0000000000b2",
+     "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e03": "NO_MEMORIAL"
+    }
+   },
+   "reverse_local_newer": {
+    "A_atts": [
+     "0b8e4f52-3c1a-4d2e-9f60-0000000000f0"
+    ],
+    "A_photos": [
+     "0b8e4f52-3c1a-4d2e-9f60-0000000000b1",
+     "0b8e4f52-3c1a-4d2e-9f60-0000000000b3",
+     "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09"
+    ],
+    "F0": true,
+    "P0": true,
+    "Q0": true,
+    "T0": true,
+    "T1": false,
+    "T1_sha_eq": false,
+    "atts": [
+     "0b8e4f52-3c1a-4d2e-9f60-0000000000f0"
+    ],
+    "bad_bytes": [],
+    "import_A": {
+     "display": null,
+     "ok": true,
+     "outcome": null,
+     "rc": 0,
+     "stage": null,
+     "v": null
+    },
+    "merge_B": {
+     "display": null,
+     "ok": true,
+     "outcome": null,
+     "rc": 0,
+     "stage": null,
+     "v": null
+    },
+    "orphan_att_files": [],
+    "orphan_att_records": [],
+    "orphan_files": [],
+    "orphan_records": [],
+    "photos": [
+     "0b8e4f52-3c1a-4d2e-9f60-0000000000b1",
+     "0b8e4f52-3c1a-4d2e-9f60-0000000000b3",
+     "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09"
+    ],
+    "trays": {
+     "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e01": "ABSENT",
+     "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e02": "0b8e4f52-3c1a-4d2e-9f60-0000000000b1",
+     "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e03": "NO_MEMORIAL"
+    }
+   }
+  },
+  "ts": {
+   "forward": {
+    "A_atts": [
+     "0b8e4f52-3c1a-4d2e-9f60-0000000000f0"
+    ],
+    "A_photos": [
+     "0b8e4f52-3c1a-4d2e-9f60-0000000000b1",
+     "0b8e4f52-3c1a-4d2e-9f60-0000000000b3",
+     "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09"
+    ],
+    "F0": false,
+    "P0": false,
+    "Q0": true,
+    "T0": false,
+    "T1": true,
+    "T1_sha_eq": true,
+    "atts": [],
+    "bad_bytes": [],
+    "import_A": {
+     "display": null,
+     "ok": true,
+     "outcome": null,
+     "rc": 0,
+     "stage": null,
+     "v": null
+    },
+    "merge_B": {
+     "display": null,
+     "ok": true,
+     "outcome": null,
+     "rc": 0,
+     "stage": null,
+     "v": null
+    },
+    "orphan_att_files": null,
+    "orphan_att_records": [],
+    "orphan_files": null,
+    "orphan_records": [],
+    "photos": [
+     "0b8e4f52-3c1a-4d2e-9f60-0000000000b2",
+     "0b8e4f52-3c1a-4d2e-9f60-0000000000b3"
+    ],
+    "trays": {
+     "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e01": "ABSENT",
+     "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e02": "0b8e4f52-3c1a-4d2e-9f60-0000000000b2",
+     "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e03": "NO_MEMORIAL"
+    }
+   },
+   "reverse_local_newer": {
+    "A_atts": [
+     "0b8e4f52-3c1a-4d2e-9f60-0000000000f0"
+    ],
+    "A_photos": [
+     "0b8e4f52-3c1a-4d2e-9f60-0000000000b1",
+     "0b8e4f52-3c1a-4d2e-9f60-0000000000b3",
+     "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09"
+    ],
+    "F0": true,
+    "P0": true,
+    "Q0": true,
+    "T0": true,
+    "T1": false,
+    "T1_sha_eq": false,
+    "atts": [
+     "0b8e4f52-3c1a-4d2e-9f60-0000000000f0"
+    ],
+    "bad_bytes": [],
+    "import_A": {
+     "display": null,
+     "ok": true,
+     "outcome": null,
+     "rc": 0,
+     "stage": null,
+     "v": null
+    },
+    "merge_B": {
+     "display": null,
+     "ok": true,
+     "outcome": null,
+     "rc": 0,
+     "stage": null,
+     "v": null
+    },
+    "orphan_att_files": null,
+    "orphan_att_records": [],
+    "orphan_files": null,
+    "orphan_records": [],
+    "photos": [
+     "0b8e4f52-3c1a-4d2e-9f60-0000000000b1",
+     "0b8e4f52-3c1a-4d2e-9f60-0000000000b3",
+     "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09"
+    ],
+    "trays": {
+     "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e01": "ABSENT",
+     "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e02": "0b8e4f52-3c1a-4d2e-9f60-0000000000b1",
+     "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e03": "NO_MEMORIAL"
+    }
+   }
+  }
+ },
+ "v2_4": {
+  "rs": {
+   "--merge": {
+    "reexport_has_tray_string": false,
+    "store_has_tray_key": false,
+    "store_null_key": false,
+    "verdict": {
+     "display": null,
+     "ok": true,
+     "outcome": null,
+     "rc": 0,
+     "stage": null,
+     "v": null
+    }
+   },
+   "--replace": {
+    "reexport_has_tray_string": false,
+    "store_has_tray_key": false,
+    "store_null_key": false,
+    "verdict": {
+     "display": null,
+     "ok": true,
+     "outcome": null,
+     "rc": 0,
+     "stage": null,
+     "v": null
+    }
+   },
+   "save_null": {
+    "saved_has_key": false,
+    "verdict": {
+     "display": null,
+     "ok": true,
+     "outcome": null,
+     "rc": 0,
+     "stage": null,
+     "v": null
+    }
+   }
+  },
+  "ts": {
+   "--merge": {
+    "reexport_has_tray_string": false,
+    "store_has_tray_key": false,
+    "store_null_key": false,
+    "verdict": {
+     "display": null,
+     "ok": true,
+     "outcome": null,
+     "rc": 0,
+     "stage": null,
+     "v": null
+    }
+   },
+   "--replace": {
+    "reexport_has_tray_string": false,
+    "store_has_tray_key": false,
+    "store_null_key": false,
+    "verdict": {
+     "display": null,
+     "ok": true,
+     "outcome": null,
+     "rc": 0,
+     "stage": null,
+     "v": null
+    }
+   },
+   "save_null": {
+    "saved_has_key": false,
+    "verdict": {
+     "display": null,
+     "ok": true,
+     "outcome": null,
+     "rc": 0,
+     "stage": null,
+     "v": null
+    }
+   }
+  }
+ },
+ "v2_5": {
+  "eq_expected": true,
+  "rs": {
+   "dirs_left": [
+    "keep"
+   ],
+   "files_left": [
+    "keep/file.txt"
+   ],
+   "keep_intact": true,
+   "rc": 0,
+   "scenario": {
+    "command": "scenario",
+    "ok": true,
+    "result": {
+     "c_add_photo": {
+      "exif": "input",
+      "ok": "ok",
+      "over_1mib": "invalid V1 /photo/bytes"
+     },
+     "d_round_trip": {
+      "crafted": {
+       "control": {
+        "open_backup": "ok",
+        "verify": "ok"
+       },
+       "dangling_tray": {
+        "open_backup": "backup",
+        "verify": "invalid V3 /persons/0/memorial/tray_photo_id"
+       },
+       "shared_tray": {
+        "open_backup": "backup",
+        "verify": "invalid V3 /persons/0/memorial/tray_photo_id"
+       },
+       "tray_too_large": {
+        "open_backup": "backup",
+        "verify": "invalid V1 /persons/0/memorial/tray_photo_id"
+       },
+       "tray_with_exif": {
+        "open_backup": "backup",
+        "verify": "invalid PHOTO /photos"
+       }
+      },
+      "explicit_null": {
+       "import": "ok",
+       "reexport_has_null": false,
+       "store_has_null": false,
+       "tray_d2": "absent"
+      },
+      "merge_empty": {
+       "import": "ok",
+       "photos": {
+        "ids": [
+         "0b8e4f52-3c1a-4d2e-9f60-0000000000a1",
+         "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09"
+        ],
+        "orphan_files": 0,
+        "orphan_records": 0
+       },
+       "sha_equal": true,
+       "tray_d1": "0b8e4f52-3c1a-4d2e-9f60-0000000000a1"
+      },
+      "merge_over_old": {
+       "import": "ok",
+       "photos": {
+        "ids": [
+         "0b8e4f52-3c1a-4d2e-9f60-0000000000a1",
+         "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09"
+        ],
+        "orphan_files": 0,
+        "orphan_records": 0
+       },
+       "sha_equal": true,
+       "tray_d1": "0b8e4f52-3c1a-4d2e-9f60-0000000000a1"
+      },
+      "merge_replaces_local_tray": {
+       "import": "ok",
+       "old_tray_in_store": false,
+       "photos": {
+        "ids": [
+         "0b8e4f52-3c1a-4d2e-9f60-0000000000a1",
+         "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09"
+        ],
+        "orphan_files": 0,
+        "orphan_records": 0
+       },
+       "setup": [
+        "ok",
+        "ok",
+        "ok"
+       ],
+       "tray_d1": "0b8e4f52-3c1a-4d2e-9f60-0000000000a1"
+      },
+      "merge_shared_tray": {
+       "import": "backup",
+       "photos": {
+        "ids": [
+         "0b8e4f52-3c1a-4d2e-9f60-0000000000a1",
+         "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09"
+        ],
+        "orphan_files": 0,
+        "orphan_records": 0
+       },
+       "setup": [
+        "ok",
+        "ok"
+       ],
+       "unchanged": true
+      },
+      "replace": {
+       "import": "ok",
+       "photos": {
+        "ids": [
+         "0b8e4f52-3c1a-4d2e-9f60-0000000000a1",
+         "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09"
+        ],
+        "orphan_files": 0,
+        "orphan_records": 0
+       },
+       "sha_equal": true,
+       "tray_d1": "0b8e4f52-3c1a-4d2e-9f60-0000000000a1"
+      }
+     },
+     "e_old_backup": {
+      "has_tray_key": false,
+      "import": "ok",
+      "tray_d1": "absent",
+      "unchanged": true
+     },
+     "f_cleanup": {
+      "delete_person": {
+       "delete": "ok",
+       "photos": {
+        "ids": [
+         "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09"
+        ],
+        "orphan_files": 0,
+        "orphan_records": 0
+       },
+       "set": "ok"
+      },
+      "remove": {
+       "photos": {
+        "ids": [
+         "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09"
+        ],
+        "orphan_files": 0,
+        "orphan_records": 0
+       },
+       "save": "ok",
+       "tray_d1": "absent"
+      },
+      "replace": {
+       "photos": {
+        "ids": [
+         "0b8e4f52-3c1a-4d2e-9f60-0000000000a2",
+         "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09"
+        ],
+        "orphan_files": 0,
+        "orphan_records": 0
+       },
+       "save": "ok"
+      },
+      "to_living": {
+       "photos": {
+        "ids": [
+         "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09"
+        ],
+        "orphan_files": 0,
+        "orphan_records": 0
+       },
+       "save": "ok",
+       "set": "ok",
+       "tray_d1": "no_memorial"
+      },
+      "webp": {
+       "add_photo": "ok",
+       "photos": {
+        "ids": [
+         "0b8e4f52-3c1a-4d2e-9f60-0000000000a6",
+         "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09"
+        ],
+        "orphan_files": 0,
+        "orphan_records": 0
+       },
+       "save": "ok",
+       "tray_d2": "0b8e4f52-3c1a-4d2e-9f60-0000000000a6"
+      }
+     },
+     "g_rules": {
+      "double_dangling": "invalid V3 /person/photo_id",
+      "photos": {
+       "ids": [
+        "0b8e4f52-3c1a-4d2e-9f60-0000000000a1",
+        "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09"
+       ],
+       "orphan_files": 0,
+       "orphan_records": 0
+      },
+      "tray_1601": {
+       "add_photo": "ok",
+       "delete_photo": "ok",
+       "save": "invalid V1 /person/memorial/tray_photo_id"
+      }
+     },
+     "set": {
+      "photos": {
+       "ids": [
+        "0b8e4f52-3c1a-4d2e-9f60-0000000000a1",
+        "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09"
+       ],
+       "orphan_files": 0,
+       "orphan_records": 0
+      },
+      "save": "ok",
+      "tray_d1": "0b8e4f52-3c1a-4d2e-9f60-0000000000a1",
+      "v3": {
+       "dangling": "invalid V3 /person/memorial/tray_photo_id",
+       "portrait_is_other_tray": "invalid V3 /person/photo_id",
+       "shared_tray": "invalid V3 /person/memorial/tray_photo_id",
+       "tray_is_other_portrait": "invalid V3 /person/memorial/tray_photo_id",
+       "tray_is_own_portrait": "invalid V3 /person/memorial/tray_photo_id"
+      }
+     }
+    },
+    "scenario": "tray_photo"
+   }
+  },
+  "rs_eq_ts": true,
+  "ts": {
+   "dirs_left": [
+    "keep"
+   ],
+   "files_left": [
+    "keep/file.txt"
+   ],
+   "keep_intact": true,
+   "rc": 0,
+   "scenario": {
+    "command": "scenario",
+    "ok": true,
+    "result": {
+     "c_add_photo": {
+      "exif": "input",
+      "ok": "ok",
+      "over_1mib": "invalid V1 /photo/bytes"
+     },
+     "d_round_trip": {
+      "crafted": {
+       "control": {
+        "open_backup": "ok",
+        "verify": "ok"
+       },
+       "dangling_tray": {
+        "open_backup": "backup",
+        "verify": "invalid V3 /persons/0/memorial/tray_photo_id"
+       },
+       "shared_tray": {
+        "open_backup": "backup",
+        "verify": "invalid V3 /persons/0/memorial/tray_photo_id"
+       },
+       "tray_too_large": {
+        "open_backup": "backup",
+        "verify": "invalid V1 /persons/0/memorial/tray_photo_id"
+       },
+       "tray_with_exif": {
+        "open_backup": "backup",
+        "verify": "invalid PHOTO /photos"
+       }
+      },
+      "explicit_null": {
+       "import": "ok",
+       "reexport_has_null": false,
+       "store_has_null": false,
+       "tray_d2": "absent"
+      },
+      "merge_empty": {
+       "import": "ok",
+       "photos": {
+        "ids": [
+         "0b8e4f52-3c1a-4d2e-9f60-0000000000a1",
+         "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09"
+        ],
+        "orphan_files": 0,
+        "orphan_records": 0
+       },
+       "sha_equal": true,
+       "tray_d1": "0b8e4f52-3c1a-4d2e-9f60-0000000000a1"
+      },
+      "merge_over_old": {
+       "import": "ok",
+       "photos": {
+        "ids": [
+         "0b8e4f52-3c1a-4d2e-9f60-0000000000a1",
+         "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09"
+        ],
+        "orphan_files": 0,
+        "orphan_records": 0
+       },
+       "sha_equal": true,
+       "tray_d1": "0b8e4f52-3c1a-4d2e-9f60-0000000000a1"
+      },
+      "merge_replaces_local_tray": {
+       "import": "ok",
+       "old_tray_in_store": false,
+       "photos": {
+        "ids": [
+         "0b8e4f52-3c1a-4d2e-9f60-0000000000a1",
+         "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09"
+        ],
+        "orphan_files": 0,
+        "orphan_records": 0
+       },
+       "setup": [
+        "ok",
+        "ok",
+        "ok"
+       ],
+       "tray_d1": "0b8e4f52-3c1a-4d2e-9f60-0000000000a1"
+      },
+      "merge_shared_tray": {
+       "import": "backup",
+       "photos": {
+        "ids": [
+         "0b8e4f52-3c1a-4d2e-9f60-0000000000a1",
+         "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09"
+        ],
+        "orphan_files": 0,
+        "orphan_records": 0
+       },
+       "setup": [
+        "ok",
+        "ok"
+       ],
+       "unchanged": true
+      },
+      "replace": {
+       "import": "ok",
+       "photos": {
+        "ids": [
+         "0b8e4f52-3c1a-4d2e-9f60-0000000000a1",
+         "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09"
+        ],
+        "orphan_files": 0,
+        "orphan_records": 0
+       },
+       "sha_equal": true,
+       "tray_d1": "0b8e4f52-3c1a-4d2e-9f60-0000000000a1"
+      }
+     },
+     "e_old_backup": {
+      "has_tray_key": false,
+      "import": "ok",
+      "tray_d1": "absent",
+      "unchanged": true
+     },
+     "f_cleanup": {
+      "delete_person": {
+       "delete": "ok",
+       "photos": {
+        "ids": [
+         "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09"
+        ],
+        "orphan_files": 0,
+        "orphan_records": 0
+       },
+       "set": "ok"
+      },
+      "remove": {
+       "photos": {
+        "ids": [
+         "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09"
+        ],
+        "orphan_files": 0,
+        "orphan_records": 0
+       },
+       "save": "ok",
+       "tray_d1": "absent"
+      },
+      "replace": {
+       "photos": {
+        "ids": [
+         "0b8e4f52-3c1a-4d2e-9f60-0000000000a2",
+         "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09"
+        ],
+        "orphan_files": 0,
+        "orphan_records": 0
+       },
+       "save": "ok"
+      },
+      "to_living": {
+       "photos": {
+        "ids": [
+         "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09"
+        ],
+        "orphan_files": 0,
+        "orphan_records": 0
+       },
+       "save": "ok",
+       "set": "ok",
+       "tray_d1": "no_memorial"
+      },
+      "webp": {
+       "add_photo": "ok",
+       "photos": {
+        "ids": [
+         "0b8e4f52-3c1a-4d2e-9f60-0000000000a6",
+         "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09"
+        ],
+        "orphan_files": 0,
+        "orphan_records": 0
+       },
+       "save": "ok",
+       "tray_d2": "0b8e4f52-3c1a-4d2e-9f60-0000000000a6"
+      }
+     },
+     "g_rules": {
+      "double_dangling": "invalid V3 /person/photo_id",
+      "photos": {
+       "ids": [
+        "0b8e4f52-3c1a-4d2e-9f60-0000000000a1",
+        "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09"
+       ],
+       "orphan_files": 0,
+       "orphan_records": 0
+      },
+      "tray_1601": {
+       "add_photo": "ok",
+       "delete_photo": "ok",
+       "save": "invalid V1 /person/memorial/tray_photo_id"
+      }
+     },
+     "set": {
+      "photos": {
+       "ids": [
+        "0b8e4f52-3c1a-4d2e-9f60-0000000000a1",
+        "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09"
+       ],
+       "orphan_files": 0,
+       "orphan_records": 0
+      },
+      "save": "ok",
+      "tray_d1": "0b8e4f52-3c1a-4d2e-9f60-0000000000a1",
+      "v3": {
+       "dangling": "invalid V3 /person/memorial/tray_photo_id",
+       "portrait_is_other_tray": "invalid V3 /person/photo_id",
+       "shared_tray": "invalid V3 /person/memorial/tray_photo_id",
+       "tray_is_other_portrait": "invalid V3 /person/memorial/tray_photo_id",
+       "tray_is_own_portrait": "invalid V3 /person/memorial/tray_photo_id"
+      }
+     }
+    },
+    "scenario": "tray_photo"
+   }
+  }
+ }
+}
