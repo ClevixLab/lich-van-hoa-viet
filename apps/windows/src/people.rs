@@ -1446,6 +1446,7 @@ fn open_memorial(ui: &AppWindow, ps: &mut PState, id: &str) {
     p.set_m_photo(img.unwrap_or_default());
     let catholic = v["memorial"]["tray_style"] == "cong_giao";
     p.set_m_incense(!catholic && v["memorial"]["incense"] != false);
+    p.set_m_catholic(catholic);
     // Dòng ngày (§3.9): lấy lần giỗ kế tiếp từ lõi.
     let up = jv(&ps
         .s()
