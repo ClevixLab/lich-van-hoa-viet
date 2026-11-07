@@ -17,6 +17,7 @@ duyệt; nếu duyệt đổi yêu cầu, phần mã đã viết được sửa 
 | YC-2026-03 | 07/11 | "anh muốn bổ sung ngay module cho người đã mất, và module cho người còn sống; lưu ý người dùng có thể xem danh sách sự kiện cho người sống/mất theo tuần/tháng/quý/năm" | Cao |
 | YC-2026-04 | 07/11 | Mọi mở rộng đều theo quy trình chuyên nghiệp (docs/08) | Bắt buộc |
 | YC-2026-05 | 07/11 | "Khi cập nhật một người từ sống thành mất thì nên có phần ghi chú ( ai báo, mất ở đâu, lý do, giấy báo tử nếu có)" | Cao |
+| YC-2026-08 | 07/11 | "phần mềm phải đảm bảo khi nâng cấp không làm mất dữ liệu đã có của khách hàng và updated vào version mới trên máy tính, hoặc điện thoại của khách hàng nhé" — 04 Bổ sung B5, R14 | Bắt buộc |
 | YC-2026-07 | 07/11 | "trong phần cách gọi, các đại từ nhân xưng như: Ông/Bà/Cụ/Kỵ/Bác/Cô/Chú/Dì/Cậu/Mợ/Thím/Anh/Chị/Cháu/Con/Bạn, Ông Tổ họ, Bà Cô Tổ họ, Bé đỏ... đều phải viết hóa chữ cái đầu tiên để thể hiện sự tôn trọng. Thông tin báo tử nên cho phép người dùng load và lưu file ảnh tin báo tử, hoặc bản scanned giấy chứng tử, hoặc một trường text để có thể note lại. Lưu ý các đại từ nhân xưng như: Cụ, Kỵ, Bà Cô Tổ, Ông Tổ họ, Bé đỏ không xuất hiện trong mục danh xưng người sống nhé (cách gọi đứng trước tên). Trong mục người thân nên có thêm mục giới tính" — xử lý ở 01 §3.1, §3.2a, §3.8a | Cao |
 | YC-2026-06 | 07/11 | Với người đã mất chỉ nhắc ngày giỗ; dùng từ thường ngày (ông/bà/cụ/kỵ…), bỏ "Hiển khảo" (04 Bổ sung B4) | Cao |
 
