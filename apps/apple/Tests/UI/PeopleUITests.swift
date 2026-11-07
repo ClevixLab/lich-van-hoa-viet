@@ -317,4 +317,37 @@ final class PeopleUITests: XCTestCase {
         XCTAssertTrue(app.buttons["form.tray.pick"].firstMatch.isHittable, "biểu mẫu cuộn tới mục ảnh mâm lễ")
         app.terminate()
     }
+
+    // MARK: Giới thiệu (bản web 0.2.1, PR #73)
+
+    /// Mở thẳng ứng dụng (không có -lvhvScreen) rồi bấm thẻ "Giới thiệu" như người dùng — trang phải dựng được (Android
+    /// từng lỗi khi nạp biểu tượng ứng dụng; bản Apple vẽ biểu tượng bằng SwiftUI). Kiểm các phần chính và chụp ảnh sáng,
+    /// tối, chữ rất lớn (cỡ A++ của ứng dụng + Dynamic Type Accessibility L).
+    func testAboutPageOpens() {
+        for (v, dark, big) in [("light", false, false), ("dark", true, false), ("large", false, true)] {
+            let app = XCUIApplication()
+            app.launchArguments = ["-lvhvReset", "1", "-lvhvToday", "2026-11-07", "-lvhvNoNotif", "1",
+                                   "-theme", dark ? "2" : "1", "-size", big ? "2" : "1"]
+            if big { app.launchArguments += ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityL"] }
+            app.launch()
+            let tab = app.buttons["tab.about"].firstMatch
+            XCTAssertTrue(tab.waitForExistence(timeout: 15))
+            tab.tap()
+            XCTAssertTrue(app.staticTexts["Về ứng dụng"].firstMatch.waitForExistence(timeout: 10), "trang Giới thiệu dựng được")
+            XCTAssertEqual(app.state, .runningForeground, "ứng dụng không bị dừng khi mở Giới thiệu")
+            for t in ["Ứng dụng giúp bạn", "Bắt đầu trong một phút", "Mẹo để không lỡ ngày nào", "Cách tính lịch", "Quyền riêng tư"] {
+                XCTAssertTrue(app.staticTexts[t].firstMatch.exists, "có mục \(t)")
+            }
+            XCTAssertFalse(app.staticTexts.matching(NSPredicate(format: "label CONTAINS 'sắp ra mắt'")).firstMatch.exists,
+                           "không hứa bản chưa phát hành")
+            XCTAssertFalse(app.staticTexts.matching(NSPredicate(format: "label CONTAINS 'Màn hình chính'")).firstMatch.exists,
+                           "không có mẹo Thêm vào Màn hình chính của bản web")
+            snap("about-\(v)")
+            for i in 2...(big ? 9 : 5) {
+                app.swipeUp(velocity: .slow)
+                snap("about-\(v)-\(i)")
+            }
+            app.terminate()
+        }
+    }
 }

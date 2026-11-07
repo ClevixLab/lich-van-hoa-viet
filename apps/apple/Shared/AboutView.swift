@@ -1,12 +1,44 @@
 // Giới thiệu và Nguồn quy tắc — cùng nội dung với pwa/src/ui/about.ts.
 import SwiftUI
 
-private let methodNote = "Với những năm rất xa, kết quả kém chắc chắn hơn vì không ai dự báo chính xác được tốc độ quay của Trái Đất (ΔT). Sau năm 2077, vài ngày có trăng mới hoặc tiết khí rơi sát nửa đêm có thể lệch một ngày so với các lịch khác."
+/// Câu mô tả phương pháp âm lịch (giống METHOD_TEXT của pwa/src/ui/about.ts).
+private let methodText = [
+    "jpl": "Ngày âm lịch tính từ lịch thiên văn JPL DE441 của NASA JPL (thời điểm trăng mới và tiết khí), với ΔT theo Morrison và Stephenson, rồi quy ra ngày theo múi giờ của từng giai đoạn nêu trên. Với những năm rất xa, kết quả kém chắc chắn hơn vì không ai dự báo chính xác được tốc độ quay của Trái Đất (ΔT). Sau năm 2077, vài ngày có trăng mới hoặc tiết khí rơi sát nửa đêm có thể lệch một ngày so với các lịch khác.",
+    "precise": "Ngày âm lịch tính theo mô hình thiên văn chính xác (Meeus): thời điểm trăng mới và vị trí Mặt Trời được tính đầy đủ, rồi quy ra ngày theo múi giờ của từng giai đoạn nêu trên. Thuật toán Hồ Ngọc Đức, phổ biến trong nhiều lịch Việt, vẫn được giữ trong ứng dụng để đối chiếu; hai cách cho cùng kết quả ở gần như mọi ngày.",
+    "hnd": "Ngày âm lịch tính theo thuật toán Hồ Ngọc Đức (phổ biến trong các lịch Việt), quy ra ngày theo múi giờ của từng giai đoạn nêu trên.",
+]
 
-private let methodLabel = [
-    "jpl": "lịch thiên văn JPL DE441 của NASA JPL, với ΔT theo Morrison và Stephenson",
-    "hnd": "thuật toán Hồ Ngọc Đức (phổ biến trong các lịch Việt)",
-    "precise": "mô hình thiên văn chính xác hơn (Meeus đầy đủ)",
+private let tzNote = "Trước năm 1929, âm lịch tính theo giờ địa phương Bắc Kinh; 1929–1967 theo múi giờ UTC+8; từ 1968 theo UTC+7 (chuẩn miền Bắc). Miền Nam dùng UTC+8 đến năm 1975, nên một số tháng 1968–1975 có thể khác lịch miền Nam thời ấy."
+
+/// "Ứng dụng giúp bạn" (bản web 0.2.1, PR #73): tiêu đề in đậm + phần còn lại.
+private let helps: [(String, String)] = [
+    ("Tờ lịch mỗi ngày", " từ năm 1900 đến năm 3000: ngày âm, Can Chi, tiết khí, giờ hoàng đạo và một câu ca dao, tục ngữ."),
+    ("Chọn ngày tốt", " cho việc lớn: sao tốt, sao xấu, việc nên làm và nên tránh, theo tuổi của bạn."),
+    ("Đổi ngày", " âm sang dương và ngược lại, kể cả tháng nhuận."),
+    ("Người thân", " — ghi lại người đã khuất và người đang sống trong gia đình. Ngày giỗ được tự tính theo âm lịch mỗi năm (giỗ đầu, giỗ hết, giỗ thường), cùng sinh nhật dương lịch, sinh nhật âm lịch và những dịp riêng như tốt nghiệp, ngày cưới."),
+    ("Nhắc trước", " 1, 3, 5, 10, 15 ngày hoặc số ngày bạn tự chọn, để kịp sắm lễ, báo anh em họ hàng."),
+    ("Xem cả nhà có việc gì", " trong tuần, tháng, quý hay cả năm; lọc riêng người đã mất hoặc người đang sống."),
+    ("Trang tưởng niệm ngày giỗ", ": bia ghi tên, năm sinh năm mất theo Can Chi, ảnh chân dung, bát hương ba nén và đôi nến. Gia đình có thể thêm ảnh mâm lễ của chính nhà mình."),
+    ("Thông tin báo tử", " khi một người thân qua đời: ai báo tin, mất ở đâu, ghi chú, kèm ảnh tin báo tử hoặc bản chụp giấy chứng tử."),
+]
+
+/// "Bắt đầu trong một phút" — chữ đậm viết bằng **…**.
+private let steps = [
+    "Mở mục **Người thân**, chọn **Hồ sơ**, rồi bấm “+ Thêm người đã mất” hoặc “+ Thêm người đang sống”.",
+    "Nhập họ tên, cách gọi (Ông, Bà, Bố, Mẹ…) và quan hệ (ví dụ “Ông nội”). Với người đã mất, nhập ngày mất theo dương lịch hoặc âm lịch — ứng dụng tự đổi và tính ngày giỗ hằng năm.",
+    "Chọn nhắc trước mấy ngày, bấm “Lưu”.",
+    "Mở **Sắp tới** để xem các ngày giỗ, sinh nhật gần nhất; mở **Theo kỳ** để xem theo tuần, tháng, quý, năm.",
+    "Đúng ngày giỗ, bấm “Mở trang tưởng niệm” để thắp nén hương tưởng nhớ.",
+    "Vào **Sao lưu** để cất một bản sao có mật khẩu, hoặc xuất tệp lịch (.ics) sang ứng dụng Lịch.",
+]
+
+/// "Mẹo để không lỡ ngày nào" — bản iPhone, iPad, Mac: thông báo thật của máy (02 §7.4), không cần .ics hay
+/// "Thêm vào Màn hình chính" như bản web; không hứa hẹn bản chưa phát hành.
+private let tips = [
+    "Hãy cho phép ứng dụng gửi thông báo (Người thân › nút chuông › Cài đặt nhắc). Máy tự báo đúng giờ đã đặt, cả khi ứng dụng đang đóng hay máy vừa khởi động lại.",
+    "Hệ điều hành chỉ giữ tối đa 64 thông báo đang chờ cho mỗi ứng dụng. Khi có nhiều lời nhắc hơn, ứng dụng đặt trước những lời nhắc gần nhất, kèm một thông báo nhắc bạn mở ứng dụng để đặt tiếp — vì vậy thỉnh thoảng hãy mở ứng dụng.",
+    "Theo mặc định, thông báo trên màn hình khóa không ghi tên người thân; bạn có thể bật hiện tên trong Cài đặt nhắc.",
+    "Thỉnh thoảng tạo tệp sao lưu và cất ở nơi an toàn (Tệp, iCloud Drive, máy tính). Tệp này mở được trên máy khác có ứng dụng và trên bản web.",
 ]
 
 struct AboutView: View {
@@ -41,18 +73,39 @@ struct AboutView: View {
                     }
                     Panel {
                         H2("Về ứng dụng")
-                        P("Lịch âm dương Việt Nam từ năm 1900 đến năm 3000: ngày âm, Can Chi, tiết khí, giờ hoàng đạo, chọn ngày tốt, và một câu ca dao, tục ngữ cho mỗi ngày. Từ năm 1968, âm lịch tính theo múi giờ UTC+7 (giờ Hà Nội).")
-                        P("Trước năm 1929, âm lịch tính theo giờ địa phương Bắc Kinh; 1929–1967 theo múi giờ UTC+8; từ 1968 theo UTC+7 (chuẩn miền Bắc). Miền Nam dùng UTC+8 đến năm 1975, nên một số tháng 1968–1975 có thể khác lịch miền Nam thời ấy.")
-                        P("Ngày âm lịch tính theo \(methodLabel[Lich.method] ?? Lich.method).")
-                        if Lich.method == "jpl" { P(methodNote) }
+                        Text("Lịch và Văn hóa Việt là cuốn lịch vạn niên miễn phí và cũng là sổ tay gia đình: xem ngày âm dương, chọn ngày tốt, và không bao giờ quên ngày giỗ ông bà, cha mẹ hay sinh nhật người thân. Không quảng cáo, không cần tài khoản, dữ liệu chỉ nằm trên máy của bạn.")
+                            .sans(17).foregroundStyle(C.ink).fixedSize(horizontal: false, vertical: true)
+                            .accessibilityIdentifier("about.lead")
+                        H3("Ứng dụng giúp bạn")
+                        ForEach(Array(helps.enumerated()), id: \.offset) { _, it in
+                            Bullet { Text(it.0).bold().foregroundColor(C.ink) + Text(it.1) }
+                        }
+                        H3("Bắt đầu trong một phút")
+                        ForEach(Array(steps.enumerated()), id: \.offset) { i, st in
+                            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                                Text("\(i + 1).").sans(16, .semibold).foregroundStyle(C.redInk).frame(minWidth: 22, alignment: .trailing)
+                                Text(LocalizedStringKey(st)).sans(16).foregroundStyle(C.ink2).fixedSize(horizontal: false, vertical: true)
+                            }
+                            .accessibilityElement(children: .combine)
+                        }
+                        H3("Mẹo để không lỡ ngày nào")
+                        ForEach(Array(tips.enumerated()), id: \.offset) { _, t in Bullet { Text(t) } }
+                    }
+                    Panel {
+                        H2("Cách tính lịch")
+                        P("Từ năm 1968, âm lịch tính theo múi giờ UTC+7 (giờ Hà Nội).")
+                        P(tzNote)
+                        P(methodText[Lich.method] ?? "Ngày âm lịch tính theo phương pháp \(Lich.method).")
                         P("Phần xem ngày (sao tốt, sao xấu, việc nên làm và nên tránh, trực, hoàng đạo, hắc đạo) được biên soạn theo quan niệm truyền thống trong sách Ngọc Hạp Thông Thư. Đây là nét văn hóa dân gian, chỉ có giá trị tham khảo; những quyết định quan trọng xin cân nhắc thêm hoàn cảnh thực tế. Điểm số là quy ước của ứng dụng, không có trong sách.")
                         Button("Nguồn quy tắc xem ngày") { showRules = true }.buttonStyle(.plain).foregroundStyle(C.redInk)
+                            .frame(minHeight: 44)
                     }
                     Panel {
                         H2("Quyền riêng tư")
-                        P("Ứng dụng không thu thập dữ liệu, không có tài khoản, không quảng cáo và không gửi thông tin đi đâu. Mọi tính toán diễn ra ngay trên máy của bạn.")
-                        P("Ứng dụng không dùng mạng và hoạt động hoàn toàn khi không có mạng. Máy chỉ ghi nhớ cỡ chữ, giao diện sáng tối mà bạn chọn và ngày bạn bấm \"Để sau\" ở thẻ nhắc cập nhật.")
-                        P("Năm sinh nhập ở mục Chọn ngày tốt chỉ dùng trong lúc tính, không được lưu lại.")
+                        P("Ứng dụng không thu thập dữ liệu, không có tài khoản, không quảng cáo và không gửi thông tin đi đâu. Mọi tính toán diễn ra ngay trên máy của bạn. Ứng dụng không dùng mạng và hoạt động hoàn toàn khi không có mạng.")
+                        P("Hồ sơ người thân, ảnh, thông tin báo tử và tệp đính kèm chỉ được lưu trong vùng dữ liệu riêng của ứng dụng trên máy này, không đưa vào bản sao lưu iCloud của máy. Trên iPhone và iPad, ảnh và tệp đính kèm chỉ đọc được khi máy đã mở khóa. Ảnh được tự bỏ thông tin vị trí và máy chụp. Tệp sao lưu được mã hóa bằng mật khẩu do bạn đặt; ứng dụng không giữ mật khẩu đó.")
+                        P("Dữ liệu vẫn còn khi bạn đóng ứng dụng, tắt máy hay cập nhật ứng dụng. Dữ liệu sẽ mất nếu bạn xóa ứng dụng khỏi máy. Vì vậy hãy sao lưu định kỳ.")
+                        P("Máy chỉ ghi nhớ thêm cỡ chữ, giao diện sáng tối mà bạn chọn và ngày bạn bấm \"Để sau\" ở thẻ nhắc cập nhật. Năm sinh nhập ở mục Chọn ngày tốt chỉ dùng trong lúc tính, không được lưu lại.")
                     }
                     Panel {
                         H2("Nguồn ca dao, tục ngữ")
@@ -103,6 +156,26 @@ struct RulesView: View {
             .padding(16)
             .frame(maxWidth: 720)
             .frame(maxWidth: .infinity)
+        }
+    }
+}
+
+private struct H3: View {
+    let text: String
+    init(_ t: String) { text = t }
+    var body: some View {
+        Text(text).sans(17, .semibold).foregroundStyle(C.ink).padding(.top, 6).accessibilityAddTraits(.isHeader)
+    }
+}
+
+/// Một dòng có dấu chấm đầu dòng; chữ to theo cỡ chữ và xuống dòng.
+private struct Bullet: View {
+    let text: Text
+    init(@ViewBuilder _ t: () -> Text) { text = t() }
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Text("•").sans(16).foregroundStyle(C.redInk).accessibilityHidden(true)
+            text.sans(16).foregroundStyle(C.ink2).fixedSize(horizontal: false, vertical: true)
         }
     }
 }

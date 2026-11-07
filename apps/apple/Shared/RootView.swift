@@ -211,6 +211,7 @@ struct RootView: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityAddTraits(tab == t ? .isSelected : [])
+                .accessibilityIdentifier("tab.\(t)")
             }
         }
         .padding(.horizontal, 6)
