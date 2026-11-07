@@ -912,3 +912,27 @@ Kiểm chéo bằng `scripts/check-store.sh` (CI "Lưu trữ + sao lưu"), gồm
 | O-9 `show_names` | Lõi lưu tùy chọn "hiện tên trên màn hình khóa" theo từng máy, mặc định **không** hiện (`lock_screen_names`, chỉ trong kho Rust). PWA không có thông báo trên màn hình khóa nên không có tùy chọn này. Thẻ nhắc trong ứng dụng vẫn ghi tên, vì chỉ hiện khi người dùng đã mở ứng dụng. Khung "Ứng dụng web" ở Sắp tới có câu giải thích (`#web-names`) để thống nhất với ứng dụng điện thoại và máy tính |
 | MA3-15-03 (kiểm thử) | Kiểm thử Esc khi mã hóa trước đây đếm hộp còn mở, nên kết quả phụ thuộc thời gian mã hóa. Nay kiểm thử ghi lại sự kiện `cancel`: phải có ít nhất một lần nhấn Esc khi hộp đang bận và lần đó bị chặn |
 | TK-31 (a), `metrics.json` | Giữ nguyên như hiện tại; điều phối sẽ hỏi chủ dự án |
+
+## 13. Android (T6, nhánh `v0.2-w3-android`) — cách áp đặc tả này và sai khác
+
+Android dùng cùng màn hình, trường, câu chữ, luồng và trạng thái như trên, theo quy ước Material 3 (Jetpack Compose).
+Mọi tính toán qua FFI của lõi (`ffi/src/v02.rs`, `LvhvStore`); giao diện chỉ hiển thị. Mã: `apps/android/app/src/main/java/vn/clevix/lichviet/{people,notify,ui/people}`.
+
+| Chỗ | Android |
+|---|---|
+| Điều hướng | Thẻ "Người thân" thứ tư ở thanh điều hướng đáy (giữa "Đổi ngày" và "Giới thiệu"). Bốn trang con là nhóm nút phân đoạn; trang con khác mở chồng lên, nút Quay lại của hệ thống lùi một trang. Không có URL |
+| Cài đặt nhắc (mới, chỉ bản cài) | Nút "Cài đặt nhắc" ở đầu mô-đun → trang: trạng thái quyền thông báo + nút "Cho phép thông báo" (hỏi `POST_NOTIFICATIONS`; đã từ chối thì mở trang cài đặt thông báo của hệ thống), công tắc chung `reminders_enabled`, công tắc "Hiện tên người trên màn hình khóa" (`lock_screen_names`, O-9, mặc định tắt, chỉ trên máy này), câu giải thích báo thức không chính xác (O-6, trễ tới khoảng một giờ) |
+| Quyền thông báo | Hỏi khi người dùng lưu hồ sơ đầu tiên có bật nhắc (hoặc bật công tắc chung) — một lần; về sau chỉ qua trang Cài đặt nhắc |
+| §5.4 "Lời nhắc trên ứng dụng web" | Không áp dụng (có thông báo thật). Thay bằng thẻ cảnh báo ở Sắp tới khi thông báo bị tắt: "Thông báo của ứng dụng đang tắt — điện thoại sẽ không tự nhắc…" + nút "Cài đặt nhắc" |
+| Thẻ nhắc trên **Tờ lịch** (§5.5) | Chưa làm trên Android: điện thoại đã nhắc bằng thông báo; thẻ nhắc hôm nay có ở "Sắp tới" (tối đa 3 thẻ + "… và n lời nhắc khác") |
+| Xuất .ics (§3.8 A) | Hộp xác nhận như đặc tả (+ câu "Không gồm thông tin báo tử") → bảng chia sẻ của hệ thống (`ACTION_SEND`, `text/calendar`, FileProvider chỉ thư mục `cache/ics/`). Nút "Chia sẻ tệp .ics" thay cho "Tải tệp .ics" |
+| Sao lưu (§3.8 B, C) | Mật khẩu hai lần → hộp "Lưu tệp" của hệ thống (Storage Access Framework, `CreateDocument`) → mã hóa có thanh tiến độ → ghi. Khôi phục: "Chọn tệp sao lưu…" (`OpenDocument`), "Đã chọn: <tên>", mật khẩu, "Mở tệp" → hộp xem trước Gộp / Thay toàn bộ → hộp xác nhận thứ hai khi Thay toàn bộ. Tệp > 72 + 128 MiB + 16 byte bị từ chối trước khi đọc (S12). TK-16: ngày bản sao lưu đã khôi phục ghi ở SharedPreferences giao diện (`nguoi_than_ui`), không vào dữ liệu |
+| Ảnh (§3.4, §12g) | Photo Picker (`PickVisualMedia`, không quyền bộ nhớ). Giải mã (`ImageDecoder` xoay theo EXIF; API 26–27: `BitmapFactory` + xoay theo `ExifInterface`), cạnh dài ≤ 1024 px, vẽ lại và mã hóa JPEG (`Bitmap.compress` không chép siêu dữ liệu) → S9 |
+| Gợi ý Cách gọi / Quan hệ | Không có `datalist`: dưới ô có nút "Gợi ý ▸" mở hàng nút chọn nhanh (cùng danh sách từ thường ngày) |
+| Thông báo | Kênh "Nhắc ngày giỗ, sinh nhật"; nội dung chỉ lấy `title`/`body` của lõi (mặc định không có tên, O-9); chạm → mở hồ sơ người đó. Không bao giờ có thông tin báo tử |
+| Chuỗi báo thức (02 §7.3) | `LvhvStore.android_alarm_step_json` → đăng thông báo đến hạn, **một** báo thức `setAndAllowWhileIdle(RTC_WAKEUP)` cho lời nhắc kế tiếp. Đặt lại khi: báo thức chạy, `BOOT_COMPLETED`, `MY_PACKAGE_REPLACED`, `TIME_SET`, `TIMEZONE_CHANGED`, mở ứng dụng (onResume), lưu/xóa, nhập sao lưu. Lần chạy trước lưu ở SharedPreferences (chỉ một số giây Unix) |
+| Giảm chuyển động | Theo cài đặt "Xóa hiệu ứng"/tỷ lệ hoạt ảnh = 0 của Android: khói tĩnh, không có nút "Dừng khói" |
+| Dữ liệu (S5) | `files/lvhv.sqlite`, `files/photos/`; `allowBackup=false` + quy tắc trích xuất loại trừ mọi miền; CI kiểm manifest đã gộp |
+| Quyền (S6) | Đúng và chỉ `POST_NOTIFICATIONS`, `RECEIVE_BOOT_COMPLETED` (+ quyền nội bộ `DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION`); không `INTERNET`, không `SCHEDULE_EXACT_ALARM`; CI so khớp chính xác danh sách |
+| Ảnh chụp | CI (job `ui`) chụp bằng Robolectric + Roborazzi với lõi thật: `apps/android/screenshots/and-*-{light,dark,large}.png`, điện thoại 360 × 800 dp |
+| Cần máy thật | R5 (thông báo đúng giờ, sau khởi động lại), P8 (Argon2id trên điện thoại tầm trung), P9 (bộ nhớ, số lần đánh thức) — chưa đo |
