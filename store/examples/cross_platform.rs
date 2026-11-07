@@ -106,6 +106,9 @@ fn names_doc() -> Value {
         "ơ ba",
         "ưu",
         "ỷ",
+        "  chú  ",
+        "   ",
+        "\u{3000}bà\u{feff}",
     ];
     serde_json::json!({
         "danh_xung": dx,

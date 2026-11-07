@@ -441,6 +441,10 @@ let r6File;
   ok(S.canonicalJson(mine) === S.canonicalJson(rust), "YC-2026-07: gợi ý cách gọi, quan hệ và viết hoa chữ đầu giống hệt Rust");
   const np = S.normalizePersonNames({ danh_xung: "ông", quan_he: "bà ngoại", gioi_tinh: null, ho_ten: "x" });
   ok(np.danh_xung === "Ông" && np.quan_he === "Bà ngoại" && !("gioi_tinh" in np), "YC-2026-07: normalizePersonNames (viết hoa, gioi_tinh null → bỏ khóa)");
+  const nt = S.normalizePersonNames({ danh_xung: "  chú  ", quan_he: "   ", ho_ten: " Lê Văn C ", ten_hieu: "\t", birth: { noi_sinh: " Hà Nội " }, memorial: null, gioi_tinh: null });
+  ok(S.canonicalJson(nt) === S.canonicalJson({ danh_xung: "Chú", quan_he: "", ho_ten: "Lê Văn C", ten_hieu: "", birth: { noi_sinh: "Hà Nội" }, memorial: null })
+    && S.displayCapitalize("  chú  ") === "Chú" && S.displayCapitalize("   ") === "",
+    "Kiểm định vòng 3 (01 §1): cắt khoảng trắng rồi viết hoa; chỉ còn khoảng trắng → \"\" (như Rust normalize_person_names)");
   results.names = { same_as_rust: S.canonicalJson(mine) === S.canonicalJson(rust) };
 }
 

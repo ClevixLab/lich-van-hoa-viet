@@ -71,7 +71,7 @@ Event   1 ──── 1   ReminderRule     (nhúng)
 |---|---|---|---|
 | `id` | UUID v4 | có | §1 |
 | `kind` | `"deceased"` \| `"living"` | có | Đổi `living` → `deceased` được (thêm `death`); đổi ngược lại phải xóa `death` và `memorial`, có hộp xác nhận |
-| `danh_xung` | chuỗi 0–40 | không | Cách gọi đứng trước tên. **Viết hoa chữ cái đầu** (YC-2026-07; quyết định của điều phối 07/11): chữ cái đầu tiên được viết hoa (NFC, phần còn lại giữ nguyên như người dùng gõ) **khi lưu từ giao diện / API** (`save_person_json`, `mark_deceased_json`; PWA `normalizePersonNames`) và **khi hiển thị** (`display_capitalize`; tên hiển thị trong lời nhắc, .ics, danh sách của lõi). **Không** đổi khi nhập tệp sao lưu: khôi phục giữ nguyên byte, nên băm trạng thái R6 không đổi. Gợi ý cho **người đã mất**: Ông, Bà, Cụ, Kỵ, Bác, Cô, Chú, Dì, Cậu, Mợ, Thím, Anh, Chị, Em, Cháu, Con, Bạn, Bố, Mẹ, Ông Tổ họ, Bà Cô Tổ họ, Bé đỏ. Gợi ý cho **người đang sống**: như trên nhưng **không có** Cụ, Kỵ, Ông Tổ họ, Bà Cô Tổ họ, Bé đỏ. Người dùng gõ tự do được; không kiểm tra theo danh sách |
+| `danh_xung` | chuỗi 0–40 | không | Cách gọi đứng trước tên. **Viết hoa chữ cái đầu** (YC-2026-07; quyết định của điều phối 07/11): chữ cái đầu tiên được viết hoa (NFC, phần còn lại giữ nguyên như người dùng gõ) **khi lưu từ giao diện / API** (`save_person_json`, `mark_deceased_json`; PWA `normalizePersonNames`) và **khi hiển thị** (`display_capitalize`; tên hiển thị trong lời nhắc, .ics, danh sách của lõi). Cả hai **cắt khoảng trắng hai đầu trước** (§1): `"  chú  "` → `"Chú"`, `"   "` → `""` (báo cáo kiểm định vòng 3). **Không** đổi khi nhập tệp sao lưu: khôi phục giữ nguyên byte, nên băm trạng thái R6 không đổi. Gợi ý cho **người đã mất**: Ông, Bà, Cụ, Kỵ, Bác, Cô, Chú, Dì, Cậu, Mợ, Thím, Anh, Chị, Em, Cháu, Con, Bạn, Bố, Mẹ, Ông Tổ họ, Bà Cô Tổ họ, Bé đỏ. Gợi ý cho **người đang sống**: như trên nhưng **không có** Cụ, Kỵ, Ông Tổ họ, Bà Cô Tổ họ, Bé đỏ. Người dùng gõ tự do được; không kiểm tra theo danh sách |
 | `gioi_tinh` | `"nam"` \| `"nu"` \| `null` | không | Giới tính (YC-2026-07). Hiển thị "Nam" / "Nữ" / "Không ghi". Dùng để gợi ý cách gọi phù hợp (ví dụ Ông/Bà); **không** ảnh hưởng ngày giỗ, tuổi, lời nhắc. Thiếu khóa = `null` (tệp cũ vẫn hợp lệ) |
 | `ho_ten` | chuỗi 1–120 | **có** | Không rỗng sau khi cắt khoảng trắng |
 | `ten_hieu` | chuỗi 0–120 | không | Tên hiệu, pháp danh, tên thánh… (nhãn hiển thị chung "Tên hiệu / pháp danh") |
@@ -408,11 +408,18 @@ mất ảnh giấy báo tử của bản nhập (PR #30) — đã sửa ở cả
   to_version, backup_path, message}`; PWA `store.migrationStatus()`) cho giao diện biết `ok` / `migrated` / `read_only`.
 - **Tệp sao lưu cũ.** Tài liệu còn `certificate_photo_ids` (bản dựng 0.2 trước YC-2026-07) được chuyển bằng cùng hàm
   khi nhập, khối ảnh được xếp lại thành ảnh + tệp đính kèm.
-- **`schema_version` của tài liệu sao lưu giữ là 1 tới bản phát hành 0.2.0** (quyết định của điều phối viên,
-  2026-11-07): định dạng sao lưu v1 chưa từng phát hành công khai, nên chưa có tệp nào của khách hàng. Các khóa thêm
+- **`schema_version` của tài liệu sao lưu giữ là 1 tới bản phát hành 0.2.0** (quyết định của điều phối viên theo ủy
+  quyền của chủ dự án, 2026-11-07): định dạng sao lưu v1 chưa từng phát hành công khai, nên chưa có tệp nào của khách hàng. Các khóa thêm
   trong quá trình làm 0.2 (`gioi_tinh`, `attachments`, `legacy`) là tùy chọn và không tăng số. **Từ 0.2.0 trở đi**, quy tắc
   ở trên (thêm trường, thêm giá trị enum, siết/nới ràng buộc, đổi tên → tăng `schema_version`, có `migrate_N_to_N+1`)
   áp dụng nghiêm ngặt.
+- **Chuẩn hóa chuỗi khi lưu** (§1; báo cáo kiểm định vòng 3, 2026-11-07): `save_person_json` / `normalizePersonNames`
+  chuẩn hóa NFC và cắt khoảng trắng hai đầu (tập của JavaScript `trim`) cho mọi trường chữ tự do của hồ sơ: `danh_xung`,
+  `ho_ten`, `ten_hieu`, `quan_he`, `noi_an_tang`, `ghi_chu`, `birth.noi_sinh`, `memorial.bia_tieu_de`,
+  `memorial.loi_tuong_niem`; rồi viết hoa chữ đầu `danh_xung`, `quan_he`. Các trường này là **chuỗi** (0–N điểm mã) trong
+  lược đồ đóng, không nhận `null`, nên chỉ còn khoảng trắng thì lưu là chuỗi rỗng `""` (quy tắc "rỗng → `null`" chỉ áp
+  cho trường cho phép `null`, như các trường của `notice` ở §3.2a và `Attachment.file_name`). Nhập sao lưu giữ nguyên
+  byte (vector đã khóa không đổi).
 - **Trường lạ bị từ chối** (lược đồ đóng, V1 "trường lạ") ở mọi đường: lưu, nhập sao lưu, mở kho. Khóa `legacy` **chỉ**
   dành cho trường mà chính phép chuyển đổi của ứng dụng bỏ hay đổi tên (hiện có: `certificate_photo_ids`); nó không phải
   chỗ chứa trường lạ từ tệp ngoài.
