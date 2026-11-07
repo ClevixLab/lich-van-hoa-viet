@@ -404,9 +404,10 @@ jobs:
       # Tải tạo phẩm bị chặn trong môi trường duyệt, nên ảnh chụp (và số đo bộ nhớ, kết quả thử thông báo) được
       # commit vào chính nhánh của PR (apps/windows/screenshots/). Chỉ với PR từ nhánh trong kho; commit có
       # "[skip ci]" để không chạy lại. CHỈ nhánh của nhóm Windows (tên nhánh có "windows"): không bao giờ đẩy commit lên
-      # nhánh PR của nhóm khác (PWA, Apple, Android, lõi).
+      # nhánh PR của nhóm khác (PWA, Apple, Android, lõi). Không chạy khi run bị hủy (!cancelled()): run 339 bị hủy giữa
+      # chừng đã commit một bộ ảnh thiếu, xóa 70 tệp.
       - name: Commit ảnh chụp vào nhánh của PR
-        if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && contains(github.head_ref, 'windows')
+        if: ${{ !cancelled() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && contains(github.head_ref, 'windows') }}
         continue-on-error: true
         env:
           HEAD_REF: ${{ github.head_ref }}
