@@ -25,8 +25,8 @@
    ],
    "desc": "v1: 2 ho so da mat co thong tin bao tu, 3 anh giay chung tu, gioi_tinh vang",
    "expect": "accept",
-   "json_sha256": "2637d0c2f2ef303aa786f321d06a6d6e877f9dd8fa8a4e6f85f474b981c0b329",
-   "lvhv_sha256": "5e874c888953c743528866115f7afef12a4d89d1e5fab8b09a915d9462dfe600",
+   "json_sha256": "041ba9c42610292600c2fa5354cc6571a0de236ba15eecb615189a1aaeef950a",
+   "lvhv_sha256": "1ac7134c0e753a1cf80593a69fa6db4c0874e1c8cc4ccb25846d8ba9c778be93",
    "name": "M01-cu-giay-chung-tu",
    "oracle_codes": [],
    "schema_version": 1
@@ -60,8 +60,8 @@
    ],
    "desc": "v1: toi da 4 anh giay chung tu -> 4 tep dinh kem",
    "expect": "accept",
-   "json_sha256": "bb2a55e662b6a57eed10572a5723a2f5e98aa1110ce5c8f63ea389601adeac02",
-   "lvhv_sha256": "f9dd0f15e3b7f224aec7eecbe7deda54b3359b4d393817c4a68982862b741500",
+   "json_sha256": "2f5c304333ae70aaaea1e4e437f84841b64a01e089a80f9251576044ff2bf316",
+   "lvhv_sha256": "81a5ed6f7a4af52304ab92b6af61b1898444ce2eceaddeedfa65c66f7e04a9ea",
    "name": "M02-cu-4-anh",
    "oracle_codes": [],
    "schema_version": 1
@@ -149,8 +149,8 @@
    ],
    "desc": "v1 + khoa la o goc, Person, DeathNotice, Photo: phai giu trong legacy (A-M7), khong bo lang le",
    "expect": "accept_or_chua_ro",
-   "json_sha256": "f07e3700115e8ab867d799c858d0f862b5f3e3e4f0539e08263a768e181c7d74",
-   "lvhv_sha256": "89a0c33d5131e440c9a1c75dab67943ab3b247c4fedc48afd460df7bd249ac64",
+   "json_sha256": "c9ab76599d15399be682e4082e8d6244283fe447b8db4cdaef49aa8ca19f9a5a",
+   "lvhv_sha256": "2ecc4c22a07b2206740ae14dbacf7ef08da15fd5b619af043f0ac4f591975f67",
    "name": "M06-cu-khoa-la-legacy",
    "oracle_codes": [
     "V1"
@@ -216,6 +216,34 @@
    "oracle_codes": [
     "V3"
    ],
+   "schema_version": 1
+  },
+  {
+   "big": false,
+   "blobs": {
+    "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09": {
+     "len": 33714,
+     "sha256": "22a5c04266a6d2e27fa3085bd0623296dfb7e91b5763e8a746c6a4d220dfb7e9"
+    },
+    "b5000000-0000-4000-8000-0000000000c5": {
+     "len": 1286,
+     "sha256": "6ee4c9ab290c10887a7739562e695e06f5225f6f131b34e79719d0adeb4f2051"
+    },
+    "b5000000-0000-4000-8000-0000000000c6": {
+     "len": 1389,
+     "sha256": "13d7b41988de2b97cb7d838db03b199025f580ed7ea1d17668f4ba40193feffc"
+    }
+   },
+   "class": [
+    "migrate",
+    "shared"
+   ],
+   "desc": "v1: anh giay chung tu C5 dung cho hai ho so: phai con mot tep, ca hai ho so tro toi (A-U1)",
+   "expect": "accept_or_chua_ro",
+   "json_sha256": "89eeffefa77103d8f65f1f52591e78fe902a58a9a357401dac41e3eece414298",
+   "lvhv_sha256": "f18f5ffc5d640131ba2b0d60cacd68e040c5261ff8a891ac3ee482dafcd65cfa",
+   "name": "M10-cu-anh-dung-chung",
+   "oracle_codes": [],
    "schema_version": 1
   },
   {
@@ -331,8 +359,8 @@
    ],
    "desc": "schema_version 2 nhung con certificate_photo_ids",
    "expect": "reject",
-   "json_sha256": "81db771701e564eba9434219ab0d7bb277ab172d394972cfebc5a2b773d82684",
-   "lvhv_sha256": "b3773d177c9a231c593b3399b8272819a71dc047afdcaf9a168b55a8c00e2c50",
+   "json_sha256": "1fa3aac36e7f302b4aa0ecbd98ca51a53c47cdef6c8862501020b2ee29a18fd0",
+   "lvhv_sha256": "aa3d4cc594b1205dba6afdef9ff184e133cd552cfb9e442fa0d5006f87998c9c",
    "name": "N04-v2-dang-cu",
    "oracle_codes": [
     "V1"

@@ -168,6 +168,24 @@
   },
   {
    "class": [
+    "migrate",
+    "shared"
+   ],
+   "counts": {
+    "attachments": 2,
+    "event_types": 4,
+    "events": 1,
+    "persons": 3,
+    "photos": 1
+   },
+   "expect": "accept_or_chua_ro",
+   "expected_json_sha256": "17b7c7ef4101d95c7a5f2b12c0723dc3d6ce04821dd403c45e86e227b492f073",
+   "expected_legacy": [],
+   "expected_norm_sha256": "e10722c098244cd1f742808a72fe476ba8fc42989ec7183111ff4148d2046826",
+   "name": "M10-cu-anh-dung-chung"
+  },
+  {
+   "class": [
     "NEWER"
    ],
    "expect": "reject",

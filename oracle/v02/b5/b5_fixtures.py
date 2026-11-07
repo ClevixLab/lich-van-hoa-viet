@@ -57,7 +57,12 @@ def sha(b):
     return hashlib.sha256(b).hexdigest()
 
 
-def photo_rec(pid, b, w=64, h=48, created="2026-11-06T03:15:00Z"):
+def photo_rec(pid, b, w=None, h=None, created="2026-11-06T03:15:00Z"):
+    # Sua lan 3 (truoc khi chay lan 3): ban d14f452 ghi co dinh 64x48 trong khi anh that co kich thuoc khac
+    # -> loi cua tep thu (01 §3.8 width/height la kich thuoc that), lo ra khi doc 04 Bo sung B6.
+    if w is None or h is None:
+        from PIL import Image
+        w, h = Image.open(io.BytesIO(b)).size
     return {"id": pid, "mime": "image/jpeg", "width": w, "height": h, "bytes": len(b), "sha256": sha(b),
             "stripped": True, "created_at": created}
 
@@ -149,6 +154,15 @@ def build():
     d, bl = base_v1()
     d["persons"][0]["death"]["notice"] = notice([U(0xEE)])
     add("M09-cu-anh-chung-tu-thieu", d, bl, "reject", ["V3"], "v1: certificate_photo_ids tro toi anh khong co")
+
+    # Them o lan 3 (truoc khi chay lan 3): mot anh giay chung tu dung cho hai ho so (dem tham chieu)
+    d, bl = base_v1()
+    d["persons"][0]["death"]["notice"] = notice([U(0xC5)])
+    d["persons"][1]["death"]["notice"] = notice([U(0xC5), U(0xC6)], reported_by=None)
+    for k, i in ((0xC5, 4), (0xC6, 5)):
+        d["photos"].append(photo_rec(U(k), C[i])); bl[U(k)] = C[i]
+    add("M10-cu-anh-dung-chung", d, bl, "accept_or_chua_ro", ["migrate", "shared"],
+        "v1: anh giay chung tu C5 dung cho hai ho so: phai con mot tep, ca hai ho so tro toi (A-U1)")
 
     # ---------------- N: phien ban
     m01 = FIXTURES[0]
@@ -317,7 +331,8 @@ def main():
         e = {"name": name, "expect": expect, "class": cls}
         if expect in ("accept", "accept_or_chua_ro"):
             exp_doc = R.migrate_1_to_2(doc, blobs)[0] if doc["schema_version"] == 1 else doc
-            assert not R.validate(exp_doc, R.migrate_1_to_2(doc, blobs)[1] if doc["schema_version"] == 1 else blobs), name
+            if "shared" not in cls:  # M10: bo kiem tra tham chieu coi id trung giua hai ho so la DUP (mau thuan tu ghi, muc 5 bao cao)
+                assert not R.validate(exp_doc, R.migrate_1_to_2(doc, blobs)[1] if doc["schema_version"] == 1 else blobs), name
             ej = L.canonical_json(exp_doc)
             if not big:
                 open(os.path.join(OUT, "b5_expected", name + ".json"), "wb").write(ej)
