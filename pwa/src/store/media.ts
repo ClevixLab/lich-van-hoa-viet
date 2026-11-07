@@ -4,7 +4,7 @@ export const MAX_EDGE = 2048;
 export const MAX_PDF = 10 * 1024 * 1024;
 export const PDF_EOF_WINDOW = 1024;
 
-export type MediaCode = "bad_mime" | "mime_mismatch" | "bad_header" | "metadata" | "dimensions_mismatch" | "too_large" | "pdf_no_eof";
+export type MediaCode = "bad_mime" | "mime_mismatch" | "bad_header" | "metadata" | "dimensions_mismatch" | "too_large" | "pdf_no_eof" | "trailing_data";
 
 export class MediaError extends Error {
   constructor(public code: MediaCode) { super(code); }
@@ -20,25 +20,47 @@ const tag = (b: Uint8Array, i: number) => String.fromCharCode(b[i], b[i + 1], b[
 
 export interface Dims { width: number; height: number }
 
+/** Như Rust `jpeg_dims`: mọi đoạn và lượt quét tới EOI; APP1/APP13 ở đâu cũng từ chối; SOF cao/rộng 0 → bad_header
+ *  (BM3-05); EOI phải là 2 byte cuối, có byte sau → trailing_data (BM3-04). */
 export function jpegDims(b: Uint8Array): Dims {
   if (b.length < 4 || b[0] !== 0xff || b[1] !== 0xd8 || b[2] !== 0xff) bad("mime_mismatch");
   let i = 2;
   let dims: Dims | null = null;
+  let scanned = false;
   for (;;) {
-    if (i + 4 > b.length || b[i] !== 0xff) bad("bad_header");
+    if (i + 2 > b.length || b[i] !== 0xff) bad("bad_header");
     const m = b[i + 1];
     if (m === 0xff) { i += 1; continue; }
     if (m === 0xd8 || (m >= 0xd0 && m <= 0xd7) || m === 0x01) { i += 2; continue; }
-    if (m === 0xd9) bad("bad_header");
+    if (m === 0xd9) {
+      if (!scanned) bad("bad_header");
+      if (i + 2 !== b.length) bad("trailing_data");
+      return dims ?? bad("bad_header");
+    }
+    if (i + 4 > b.length) bad("bad_header");
     const len = be16(b, i + 2);
     if (len < 2 || i + 2 + len > b.length) bad("bad_header");
     if (m === 0xe1 || m === 0xed) bad("metadata");
     if (m >= 0xc0 && m <= 0xcf && m !== 0xc4 && m !== 0xc8 && m !== 0xcc) {
       if (len < 7) bad("bad_header");
-      dims = { width: be16(b, i + 7), height: be16(b, i + 5) };
+      const h = be16(b, i + 5), w = be16(b, i + 7);
+      if (w === 0 || h === 0) bad("bad_header");
+      dims = { width: w, height: h };
     }
-    if (m === 0xda) return dims ?? bad("bad_header");
     i += 2 + len;
+    if (m === 0xda) {
+      if (!dims) bad("bad_header");
+      scanned = true;
+      for (;;) {
+        if (i + 1 >= b.length) bad("bad_header");
+        if (b[i] === 0xff) {
+          const n = b[i + 1];
+          if (n === 0x00 || (n >= 0xd0 && n <= 0xd7)) { i += 2; continue; }
+          if (n !== 0xff) break;
+        }
+        i += 1;
+      }
+    }
   }
 }
 
@@ -47,6 +69,8 @@ export function webpDims(b: Uint8Array): Dims {
   const riff = le32(b, 4);
   if (riff + 8 > b.length || riff < 4) bad("bad_header");
   const end = riff + 8;
+  const padded = (riff & 1) === 1 && b.length === end + 1 && b[end] === 0;
+  if (b.length !== end && !padded) bad("trailing_data");
   let i = 12;
   let dims: Dims | null = null;
   while (i + 8 <= end) {
@@ -70,6 +94,7 @@ export function webpDims(b: Uint8Array): Dims {
     }
     i = data + size + (size & 1);
   }
+  if (i < end) bad("bad_header");
   if (!dims || dims.width <= 0 || dims.height <= 0) bad("bad_header");
   return dims!;
 }

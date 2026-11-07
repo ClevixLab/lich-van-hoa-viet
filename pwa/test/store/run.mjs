@@ -569,6 +569,21 @@ let r6File;
     a2.close();
     ok(c0 && noLegacyInFile && c1 && c2, `BM2-07: legacy giữ 7 ngày rồi bị bỏ (như Rust); tệp xuất không mang legacy (${[c0, noLegacyInFile, c1, c2].join(",")})`);
   }
+  // Rà soát bảo mật vòng 2, BM3-01 (như Rust moved_certificate_photos_removed_after_7_days_and_on_delete): bản web
+  // chuyển hẳn byte ảnh giấy báo tử sang kho `attachments` và xóa ảnh gốc trong CÙNG giao dịch nâng cấp (quay lui do
+  // IndexedDB lo) — không còn ảnh nào không có hồ sơ dùng; xóa mọi hồ sơ → kho ảnh và tệp đính kèm rỗng.
+  {
+    const fm = await v1Store();
+    const sm = await S.openStore(fm);
+    const ids = new Set((await sm.photos()).map((p) => p.id));
+    const used = new Set((await sm.persons()).flatMap((p) => S.validate.personPhotoRefs(p)));
+    const movedGone = old.photos.filter((ph) => !used.has(ph.id)).every((ph) => !ids.has(ph.id));
+    const noOrphan = [...ids].every((id) => used.has(id));
+    for (const p of await sm.persons()) await sm.deletePerson(p.id);
+    const empty = (await sm.photos()).length === 0 && (await sm.attachments()).length === 0;
+    sm.close();
+    ok(movedGone && noOrphan && empty, `BM3-01: sau chuyển đổi không còn ảnh gốc mồ côi; xóa mọi hồ sơ → 0 ảnh, 0 tệp đính kèm (${[movedGone, noOrphan, empty].join(",")})`);
+  }
   // Kiểm định: buộc lỗi chuyển đổi → chỉ đọc, dữ liệu cũ nguyên.
   const ff = await v1Store();
   const sf = await S.openStore(ff, { forceMigrationFailure: true });

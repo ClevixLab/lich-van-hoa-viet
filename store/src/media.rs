@@ -1,11 +1,15 @@
-//! Kiểm tra chặt ảnh và tệp đính kèm (04 Bổ sung B6, rà soát bảo mật BM2-01/BM2-08) — đọc phần đầu tệp, **không**
-//! giải mã. Bản TypeScript `pwa/src/store/media.ts` giống hệt (cùng mã lỗi; kiểm chéo bằng bộ tệp
+//! Kiểm tra chặt ảnh và tệp đính kèm (04 Bổ sung B6, rà soát bảo mật BM2-01/BM2-08, vòng 2 BM3-04/BM3-05) — duyệt
+//! cấu trúc tệp, **không** giải mã. Bản TypeScript `pwa/src/store/media.ts` giống hệt (cùng mã lỗi; kiểm chéo bằng bộ tệp
 //! `test-vectors/media/`). Dùng ở mọi đường ghi: nhập sao lưu, `add_photo`, `add_attachment`, chuyển đổi lược đồ.
 //!
 //! - Chữ ký khớp `mime`: JPEG `FF D8 FF`; WebP `RIFF····WEBP`; PDF `%PDF-`.
-//! - JPEG: duyệt đoạn tới SOS; đoạn APP1 (EXIF/XMP) hay APP13 (IPTC) → từ chối; kích thước lấy từ SOFn.
+//! - JPEG: duyệt mọi đoạn và mọi lượt quét (SOS → dữ liệu mã hóa → đoạn kế, cả ảnh lũy tiến) tới EOI; đoạn APP1
+//!   (EXIF/XMP) hay APP13 (IPTC) ở bất kỳ đâu → từ chối; kích thước lấy từ SOFn, cao hoặc rộng = 0 → `bad_header`
+//!   (BM3-05); EOI phải là 2 byte cuối của tệp, có byte sau EOI → `trailing_data` (BM3-04); không có EOI → `bad_header`.
 //! - WebP: duyệt khối RIFF; khối `EXIF` hay `XMP ` (hoặc cờ tương ứng trong VP8X) → từ chối; kích thước từ
-//!   VP8X / VP8L / `VP8 `.
+//!   VP8X / VP8L / `VP8 ` (0 → `bad_header`); các khối phải phủ đúng tới cuối khối RIFF, và khối RIFF phải là cả tệp
+//!   (`riff + 8 == len`; thêm đúng một byte 0 đệm khi `riff` lẻ) — có byte sau khối RIFF → `trailing_data` (BM3-04).
+//! - PNG không được nhận ở đâu (`bad_mime`), nên không có quy tắc PNG.
 //! - Kích thước: ảnh (`Photo`) phải **bằng** `width`/`height` của bản ghi và ≤ 2048; ảnh đính kèm cạnh dài ≤ 2048.
 //! - PDF: `%PDF-` ở đầu, `%%EOF` trong 1024 byte cuối, ≤ 10 MiB.
 
@@ -33,6 +37,8 @@ pub enum MediaError {
     TooLarge,
     /// PDF thiếu `%%EOF` gần cuối.
     PdfNoEof,
+    /// Có byte nối sau phần cuối của ảnh (sau EOI của JPEG, sau khối RIFF của WebP) — BM3-04.
+    TrailingData,
 }
 
 impl MediaError {
@@ -46,6 +52,7 @@ impl MediaError {
             MediaError::DimensionsMismatch => "dimensions_mismatch",
             MediaError::TooLarge => "too_large",
             MediaError::PdfNoEof => "pdf_no_eof",
+            MediaError::TrailingData => "trailing_data",
         }
     }
 }
@@ -70,15 +77,16 @@ fn le32(b: &[u8], i: usize) -> Option<u32> {
     Some(le24(b, i)? | u32::from(*b.get(i + 3)?) << 24)
 }
 
-/// JPEG: chữ ký, không APP1/APP13 trước SOS, kích thước từ SOFn.
+/// JPEG: chữ ký, không APP1/APP13 ở bất kỳ đoạn nào, kích thước từ SOFn (≥ 1), EOI là 2 byte cuối.
 pub fn jpeg_dims(b: &[u8]) -> Result<Dims, MediaError> {
     if b.len() < 4 || b[0] != 0xFF || b[1] != 0xD8 || b[2] != 0xFF {
         return Err(MediaError::MimeMismatch);
     }
     let mut i = 2;
     let mut dims = None;
+    let mut scanned = false;
     loop {
-        if i + 4 > b.len() || b[i] != 0xFF {
+        if i + 2 > b.len() || b[i] != 0xFF {
             return Err(MediaError::BadHeader);
         }
         let m = b[i + 1];
@@ -91,7 +99,17 @@ pub fn jpeg_dims(b: &[u8]) -> Result<Dims, MediaError> {
             continue;
         }
         if m == 0xD9 {
-            return Err(MediaError::BadHeader); // EOI trước SOS
+            // EOI: phải sau ít nhất một lượt quét, và là 2 byte cuối của tệp (BM3-04).
+            if !scanned {
+                return Err(MediaError::BadHeader);
+            }
+            if i + 2 != b.len() {
+                return Err(MediaError::TrailingData);
+            }
+            return dims.ok_or(MediaError::BadHeader);
+        }
+        if i + 4 > b.len() {
+            return Err(MediaError::BadHeader);
         }
         let len = be16(b, i + 2).ok_or(MediaError::BadHeader)? as usize;
         if len < 2 || i + 2 + len > b.len() {
@@ -106,15 +124,39 @@ pub fn jpeg_dims(b: &[u8]) -> Result<Dims, MediaError> {
             }
             let h = be16(b, i + 5).ok_or(MediaError::BadHeader)?;
             let w = be16(b, i + 7).ok_or(MediaError::BadHeader)?;
+            if w == 0 || h == 0 {
+                // BM3-05: cao 0 = khai sau ở đoạn DNL (né trần kích thước); rộng 0 không hợp lệ.
+                return Err(MediaError::BadHeader);
+            }
             dims = Some(Dims {
                 width: w,
                 height: h,
             });
         }
-        if m == 0xDA {
-            return dims.ok_or(MediaError::BadHeader);
-        }
         i += 2 + len;
+        if m == 0xDA {
+            if dims.is_none() {
+                return Err(MediaError::BadHeader); // SOS trước SOF
+            }
+            scanned = true;
+            // Dữ liệu mã hóa của lượt quét: tới marker đầu tiên không phải FF 00 (byte nhồi), RSTn hay FF đệm.
+            loop {
+                if i + 1 >= b.len() {
+                    return Err(MediaError::BadHeader); // hết tệp mà chưa có EOI
+                }
+                if b[i] == 0xFF {
+                    let n = b[i + 1];
+                    if n == 0x00 || (0xD0..=0xD7).contains(&n) {
+                        i += 2;
+                        continue;
+                    }
+                    if n != 0xFF {
+                        break;
+                    }
+                }
+                i += 1;
+            }
+        }
     }
 }
 
@@ -128,6 +170,11 @@ pub fn webp_dims(b: &[u8]) -> Result<Dims, MediaError> {
         return Err(MediaError::BadHeader);
     }
     let end = riff + 8;
+    // BM3-04: khối RIFF là cả tệp (thêm đúng một byte 0 đệm nếu `riff` lẻ).
+    let padded = riff & 1 == 1 && b.len() == end + 1 && b[end] == 0;
+    if b.len() != end && !padded {
+        return Err(MediaError::TrailingData);
+    }
     let mut i = 12;
     let mut dims = None;
     while i + 8 <= end {
@@ -174,6 +221,9 @@ pub fn webp_dims(b: &[u8]) -> Result<Dims, MediaError> {
             _ => {}
         }
         i = data + size + (size & 1);
+    }
+    if i < end {
+        return Err(MediaError::BadHeader); // phần thừa < 8 byte trong khối RIFF, không thuộc khối nào
     }
     match dims {
         Some(d) if d.width > 0 && d.height > 0 => Ok(d),

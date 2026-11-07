@@ -88,6 +88,14 @@ kèm giữ nguyên từng byte như trước (khóa `attachments` của JSON ch�
   APP1/APP13, WebP không có khối hay cờ EXIF/XMP; PDF bắt đầu `%PDF-`, có `%%EOF` trong 1024 byte cuối, ≤ 10 MiB. Sai bất
   kỳ khối nào → từ chối **toàn bộ** tệp, thông báo chung. Cùng bộ kiểm ở `add_photo`, `add_attachment` (lỗi `Input` có
   câu cụ thể) và trong chuyển đổi lược đồ (lỗi → chỉ đọc).
+- (Rà soát bảo mật vòng 2, BM3-04/BM3-05, 2026-11-07) Kiểm tra trên **siết thêm** (cả Rust và TS, cùng mã):
+  JPEG được duyệt qua mọi đoạn và mọi lượt quét (kể cả ảnh lũy tiến) tới EOI — APP1/APP13 ở bất kỳ đâu bị từ chối, EOI
+  phải là 2 byte cuối của tệp; WebP: khối RIFF phải là cả tệp (`riff + 8 == len`, thêm đúng một byte 0 đệm nếu `riff`
+  lẻ) và các khối phải phủ đúng tới cuối khối RIFF. Có byte nối sau ảnh → mã mới `trailing_data` (một JPEG có EXIF GPS
+  nối sau EOI của ảnh hợp lệ nay bị từ chối). JPEG có SOF cao hoặc rộng = 0 (DNL), WebP có kích thước 0 → `bad_header`.
+  PNG không được nhận ở đâu (`bad_mime`), nên không có quy tắc PNG. Ca mới ở `schema/test-vectors/media/` (39 ca; 25 ca
+  và 14 tệp cũ giữ nguyên từng byte). Mọi ảnh của vector đã khóa (03 §2.5, R6v2, bộ mẫu đóng băng) kết thúc đúng ở EOI /
+  cuối khối RIFF nên không đổi kết quả.
 - (04 Bổ sung B7, 2026-11-07) Kiểm tra trên **bật cho cả ảnh chân dung** (`Photo`) khi nhập. R6 chạy trên bộ R6v2 ảnh thật
   (§B1.6); bộ R6 cũ có ảnh giả nay bị từ chối. Tệp đính kèm (01 §3.8a) được kiểm như trước (gồm X21: byte PDF khai
   `image/jpeg`).
