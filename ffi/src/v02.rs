@@ -275,7 +275,7 @@ fn js_space(c: char) -> bool {
 }
 
 /// Chuẩn hóa `DeathNotice` (01 §3.2a) trước khi lưu: đủ sáu khóa; chuỗi NFC, cắt khoảng trắng hai đầu, rỗng →
-/// `null`; `certificate_photo_ids` thiếu → `[]`. Khóa lạ để nguyên cho bước kiểm tra báo lỗi.
+/// `null`; `attachments` thiếu → `[]` (YC-2026-07). Khóa lạ để nguyên cho bước kiểm tra báo lỗi.
 fn normalize_notice(n: &Value) -> R<Value> {
     use unicode_normalization::UnicodeNormalization;
     if n.is_null() {
@@ -305,7 +305,7 @@ fn normalize_notice(n: &Value) -> R<Value> {
         o.insert(k.into(), v);
     }
     o.entry("notice_date").or_insert(Value::Null);
-    o.entry("certificate_photo_ids").or_insert(json!([]));
+    o.entry("attachments").or_insert(json!([]));
     Ok(Value::Object(o))
 }
 
@@ -388,6 +388,8 @@ impl LvhvStore {
     /// kiểm V1–V8 rồi ghi. Trả bản đã lưu.
     pub fn save_person_json(&self, json: String) -> R<String> {
         let mut input = parse_json(&json)?;
+        // YC-2026-07: viết hoa chữ đầu cách gọi và quan hệ; `gioi_tinh: null` ≡ thiếu.
+        lvhv_store::names::normalize_person_names(&mut input);
         if input["death"].is_object() {
             if let Some(n) = input["death"].get("notice").cloned() {
                 input["death"]["notice"] = normalize_notice(&n)?;
@@ -467,6 +469,7 @@ impl LvhvStore {
         p["reminders"]["sinh_nhat"] = Value::Null;
         p["reminders"]["sinh_nhat_am"] = Value::Null;
         p["sinh_nhat_am"] = json!(false);
+        lvhv_store::names::normalize_person_names(&mut p);
         let old = p.clone();
         let mut p = lvhv_store::build_person(&p)?;
         if let Some(s) = p["death"]["solar"].as_object() {
@@ -560,6 +563,38 @@ impl LvhvStore {
     /// không có → `NotFound`.
     pub fn delete_photo(&self, id: String) -> R<()> {
         Ok(self.lock().delete_photo(&id)?)
+    }
+
+    /// Thêm một tệp đính kèm thông tin báo tử (01 §3.8a, YC-2026-07). `mime`: `image/jpeg` | `image/webp` (byte
+    /// **đã** được nền tảng giải mã và mã hóa lại, bỏ siêu dữ liệu, cạnh dài ≤ 2048 px, ≤ 2 MB) hoặc
+    /// `application/pdf` (lưu nguyên byte, ≤ 10 MB, phải bắt đầu bằng `%PDF-`; giao diện báo "Tệp PDF được lưu
+    /// nguyên bản"). `file_name`: tên gốc chỉ để hiển thị. Trả bản ghi `Attachment`; gắn vào hồ sơ bằng
+    /// `death.notice.attachments: [{id, kind, file_id}]` rồi `save_person_json` / `mark_deceased_json`. Gỡ khỏi danh
+    /// sách rồi lưu → tệp tự bị xóa.
+    pub fn add_attachment(
+        &self,
+        id: String,
+        mime: String,
+        file_name: Option<String>,
+        bytes: Vec<u8>,
+    ) -> R<String> {
+        Ok(to_text(&self.lock().add_attachment(
+            &id,
+            &mime,
+            file_name.as_deref(),
+            &bytes,
+        )?))
+    }
+
+    /// Byte của một tệp đính kèm (kiểm `sha256` khi đọc).
+    pub fn attachment_bytes(&self, id: String) -> R<Vec<u8>> {
+        Ok(self.lock().attachment_bytes(&id)?)
+    }
+
+    /// Xóa một tệp đính kèm chưa gắn hồ sơ nào (đã `add_attachment` rồi hủy). Còn được dùng → `Invalid`; không
+    /// có → `NotFound`.
+    pub fn delete_attachment(&self, id: String) -> R<()> {
+        Ok(self.lock().delete_attachment(&id)?)
     }
 
     /// Byte của một ảnh (kiểm `sha256` khi đọc).
@@ -1308,6 +1343,33 @@ pub fn backup_password_error(password: String, confirm: Option<String>) -> Optio
     let confirm = confirm.map(zeroize::Zeroizing::new);
     lvhv_backup::password_error(&password, confirm.as_deref().map(String::as_str))
         .map(str::to_owned)
+}
+
+/// Gợi ý cách gọi (01 §3.1, YC-2026-07), đã viết hoa chữ đầu. Người đang sống không có Cụ, Kỵ, Ông Tổ họ, Bà
+/// Cô Tổ họ, Bé đỏ. `gioi_tinh` = `"nam"` / `"nu"`: từ hợp giới tính lên trước (thứ tự gốc trong mỗi nhóm);
+/// `null` hay giá trị khác → thứ tự gốc. Cùng `danhXungSuggestions` của PWA.
+#[uniffi::export]
+pub fn danh_xung_suggestions(deceased: bool, gioi_tinh: Option<String>) -> Vec<String> {
+    lvhv_store::names::danh_xung_suggestions(deceased, gioi_tinh.as_deref())
+        .into_iter()
+        .map(str::to_owned)
+        .collect()
+}
+
+/// Gợi ý quan hệ (01 §3.1), đã viết hoa chữ đầu.
+#[uniffi::export]
+pub fn quan_he_suggestions(deceased: bool) -> Vec<String> {
+    lvhv_store::names::quan_he_suggestions(deceased)
+        .into_iter()
+        .map(str::to_owned)
+        .collect()
+}
+
+/// Viết hoa chữ cái đầu như khi lưu (NFC, phần còn lại giữ nguyên) — để ô nhập hiển thị trước đúng giá trị sẽ
+/// lưu. `save_person_json` tự áp cho `danh_xung` và `quan_he`.
+#[uniffi::export]
+pub fn capitalize_first(text: String) -> String {
+    lvhv_store::names::capitalize_first(&text)
 }
 
 /// Tháng nhuận của năm âm `year` (1899–3000) theo phương pháp mặc định, `null` nếu năm không nhuận — để ô chọn

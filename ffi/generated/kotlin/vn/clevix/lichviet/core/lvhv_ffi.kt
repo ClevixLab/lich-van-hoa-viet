@@ -862,6 +862,18 @@ internal interface UniffiForeignFutureCompleteVoid : com.sun.jna.Callback {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
 // For large crates we prevent `MethodTooLargeException` (see #2340)
 // N.B. the name of the extension is very misleading, since it is 
 // rather `InterfaceTooLargeException`, caused by too many methods 
@@ -898,6 +910,10 @@ fun uniffi_lvhv_ffi_checksum_func_cadao_for(
 fun uniffi_lvhv_ffi_checksum_func_cadao_sources_blocks_json(
 ): Short
 fun uniffi_lvhv_ffi_checksum_func_cadao_sources_markdown(
+): Short
+fun uniffi_lvhv_ffi_checksum_func_capitalize_first(
+): Short
+fun uniffi_lvhv_ffi_checksum_func_danh_xung_suggestions(
 ): Short
 fun uniffi_lvhv_ffi_checksum_func_day_info_json(
 ): Short
@@ -943,6 +959,8 @@ fun uniffi_lvhv_ffi_checksum_func_period_prev(
 ): Short
 fun uniffi_lvhv_ffi_checksum_func_person_summary_json(
 ): Short
+fun uniffi_lvhv_ffi_checksum_func_quan_he_suggestions(
+): Short
 fun uniffi_lvhv_ffi_checksum_func_reminders_json(
 ): Short
 fun uniffi_lvhv_ffi_checksum_func_reschedule_json(
@@ -959,15 +977,21 @@ fun uniffi_lvhv_ffi_checksum_func_weekday(
 ): Short
 fun uniffi_lvhv_ffi_checksum_func_year_can_chi(
 ): Short
+fun uniffi_lvhv_ffi_checksum_method_lvhvstore_add_attachment(
+): Short
 fun uniffi_lvhv_ffi_checksum_method_lvhvstore_add_photo(
 ): Short
 fun uniffi_lvhv_ffi_checksum_method_lvhvstore_android_alarm_step_json(
 ): Short
 fun uniffi_lvhv_ffi_checksum_method_lvhvstore_apply_import(
 ): Short
+fun uniffi_lvhv_ffi_checksum_method_lvhvstore_attachment_bytes(
+): Short
 fun uniffi_lvhv_ffi_checksum_method_lvhvstore_backup_reminder_due(
 ): Short
 fun uniffi_lvhv_ffi_checksum_method_lvhvstore_dataset_json(
+): Short
+fun uniffi_lvhv_ffi_checksum_method_lvhvstore_delete_attachment(
 ): Short
 fun uniffi_lvhv_ffi_checksum_method_lvhvstore_delete_event(
 ): Short
@@ -1076,16 +1100,22 @@ fun uniffi_lvhv_ffi_fn_free_lvhvstore(`ptr`: Pointer,uniffi_out_err: UniffiRustC
 ): Unit
 fun uniffi_lvhv_ffi_fn_constructor_lvhvstore_open(`dir`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Pointer
+fun uniffi_lvhv_ffi_fn_method_lvhvstore_add_attachment(`ptr`: Pointer,`id`: RustBuffer.ByValue,`mime`: RustBuffer.ByValue,`fileName`: RustBuffer.ByValue,`bytes`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
 fun uniffi_lvhv_ffi_fn_method_lvhvstore_add_photo(`ptr`: Pointer,`id`: RustBuffer.ByValue,`mime`: RustBuffer.ByValue,`width`: Int,`height`: Int,`bytes`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_lvhv_ffi_fn_method_lvhvstore_android_alarm_step_json(`ptr`: Pointer,`nowUnixS`: Long,`lastRunUnixS`: RustBuffer.ByValue,`zone`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_lvhv_ffi_fn_method_lvhvstore_apply_import(`ptr`: Pointer,`backup`: Pointer,`mode`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
+fun uniffi_lvhv_ffi_fn_method_lvhvstore_attachment_bytes(`ptr`: Pointer,`id`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
 fun uniffi_lvhv_ffi_fn_method_lvhvstore_backup_reminder_due(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
 ): Byte
 fun uniffi_lvhv_ffi_fn_method_lvhvstore_dataset_json(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
+fun uniffi_lvhv_ffi_fn_method_lvhvstore_delete_attachment(`ptr`: Pointer,`id`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
 fun uniffi_lvhv_ffi_fn_method_lvhvstore_delete_event(`ptr`: Pointer,`id`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
 fun uniffi_lvhv_ffi_fn_method_lvhvstore_delete_person(`ptr`: Pointer,`id`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -1162,6 +1192,10 @@ fun uniffi_lvhv_ffi_fn_func_cadao_sources_blocks_json(uniffi_out_err: UniffiRust
 ): RustBuffer.ByValue
 fun uniffi_lvhv_ffi_fn_func_cadao_sources_markdown(uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
+fun uniffi_lvhv_ffi_fn_func_capitalize_first(`text`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_lvhv_ffi_fn_func_danh_xung_suggestions(`deceased`: Byte,`gioiTinh`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
 fun uniffi_lvhv_ffi_fn_func_day_info_json(`y`: Int,`m`: Int,`d`: Int,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_lvhv_ffi_fn_func_day_rating(`score`: Int,uniffi_out_err: UniffiRustCallStatus, 
@@ -1205,6 +1239,8 @@ fun uniffi_lvhv_ffi_fn_func_period_next(`kind`: RustBuffer.ByValue,`anchor`: Rus
 fun uniffi_lvhv_ffi_fn_func_period_prev(`kind`: RustBuffer.ByValue,`anchor`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_lvhv_ffi_fn_func_person_summary_json(`personJson`: RustBuffer.ByValue,`today`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_lvhv_ffi_fn_func_quan_he_suggestions(`deceased`: Byte,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_lvhv_ffi_fn_func_reminders_json(`datasetJson`: RustBuffer.ByValue,`nowUnixS`: Long,`zone`: RustBuffer.ByValue,`horizonDays`: Int,`showNames`: Byte,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
@@ -1381,6 +1417,12 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_lvhv_ffi_checksum_func_cadao_sources_markdown() != 63224.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_lvhv_ffi_checksum_func_capitalize_first() != 13260.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_lvhv_ffi_checksum_func_danh_xung_suggestions() != 52316.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_lvhv_ffi_checksum_func_day_info_json() != 64774.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1447,6 +1489,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_lvhv_ffi_checksum_func_person_summary_json() != 36375.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_lvhv_ffi_checksum_func_quan_he_suggestions() != 48169.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_lvhv_ffi_checksum_func_reminders_json() != 836.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1471,6 +1516,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_lvhv_ffi_checksum_func_year_can_chi() != 59633.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_lvhv_ffi_checksum_method_lvhvstore_add_attachment() != 56061.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_lvhv_ffi_checksum_method_lvhvstore_add_photo() != 45983.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1480,10 +1528,16 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_lvhv_ffi_checksum_method_lvhvstore_apply_import() != 38554.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_lvhv_ffi_checksum_method_lvhvstore_attachment_bytes() != 44745.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_lvhv_ffi_checksum_method_lvhvstore_backup_reminder_due() != 64715.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_lvhv_ffi_checksum_method_lvhvstore_dataset_json() != 27745.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_lvhv_ffi_checksum_method_lvhvstore_delete_attachment() != 38975.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_lvhv_ffi_checksum_method_lvhvstore_delete_event() != 34738.toShort()) {
@@ -2026,6 +2080,16 @@ public object FfiConverterByteArray: FfiConverterRustBuffer<ByteArray> {
 public interface LvhvStoreInterface {
     
     /**
+     * Thêm một tệp đính kèm thông tin báo tử (01 §3.8a, YC-2026-07). `mime`: `image/jpeg` | `image/webp` (byte
+     * **đã** được nền tảng giải mã và mã hóa lại, bỏ siêu dữ liệu, cạnh dài ≤ 2048 px, ≤ 2 MB) hoặc
+     * `application/pdf` (lưu nguyên byte, ≤ 10 MB, phải bắt đầu bằng `%PDF-`; giao diện báo "Tệp PDF được lưu
+     * nguyên bản"). `file_name`: tên gốc chỉ để hiển thị. Trả bản ghi `Attachment`; gắn vào hồ sơ bằng
+     * `death.notice.attachments: [{id, kind, file_id}]` rồi `save_person_json` / `mark_deceased_json`. Gỡ khỏi danh
+     * sách rồi lưu → tệp tự bị xóa.
+     */
+    fun `addAttachment`(`id`: kotlin.String, `mime`: kotlin.String, `fileName`: kotlin.String?, `bytes`: kotlin.ByteArray): kotlin.String
+    
+    /**
      * Thêm ảnh chân dung (byte **đã** được nền tảng giải mã và mã hóa lại, không còn EXIF — 01 §3.8).
      * Trả bản ghi `Photo`; gắn vào người bằng `photo_id` rồi `save_person_json`.
      */
@@ -2042,6 +2106,11 @@ public interface LvhvStoreInterface {
     fun `applyImport`(`backup`: VerifiedBackup, `mode`: BackupImportMode)
     
     /**
+     * Byte của một tệp đính kèm (kiểm `sha256` khi đọc).
+     */
+    fun `attachmentBytes`(`id`: kotlin.String): kotlin.ByteArray
+    
+    /**
      * Có nên nhắc người dùng sao lưu không (01 §3.9 `backup_nag_days`).
      */
     fun `backupReminderDue`(): kotlin.Boolean
@@ -2051,6 +2120,12 @@ public interface LvhvStoreInterface {
      * hàm ngày giỗ / nhắc / danh sách / .ics bên dưới.
      */
     fun `datasetJson`(): kotlin.String
+    
+    /**
+     * Xóa một tệp đính kèm chưa gắn hồ sơ nào (đã `add_attachment` rồi hủy). Còn được dùng → `Invalid`; không
+     * có → `NotFound`.
+     */
+    fun `deleteAttachment`(`id`: kotlin.String)
     
     /**
      * Xóa một sự kiện.
@@ -2278,6 +2353,27 @@ open class LvhvStore: Disposable, AutoCloseable, LvhvStoreInterface
 
     
     /**
+     * Thêm một tệp đính kèm thông tin báo tử (01 §3.8a, YC-2026-07). `mime`: `image/jpeg` | `image/webp` (byte
+     * **đã** được nền tảng giải mã và mã hóa lại, bỏ siêu dữ liệu, cạnh dài ≤ 2048 px, ≤ 2 MB) hoặc
+     * `application/pdf` (lưu nguyên byte, ≤ 10 MB, phải bắt đầu bằng `%PDF-`; giao diện báo "Tệp PDF được lưu
+     * nguyên bản"). `file_name`: tên gốc chỉ để hiển thị. Trả bản ghi `Attachment`; gắn vào hồ sơ bằng
+     * `death.notice.attachments: [{id, kind, file_id}]` rồi `save_person_json` / `mark_deceased_json`. Gỡ khỏi danh
+     * sách rồi lưu → tệp tự bị xóa.
+     */
+    @Throws(LvhvDataException::class)override fun `addAttachment`(`id`: kotlin.String, `mime`: kotlin.String, `fileName`: kotlin.String?, `bytes`: kotlin.ByteArray): kotlin.String {
+            return FfiConverterString.lift(
+    callWithPointer {
+    uniffiRustCallWithError(LvhvDataException) { _status ->
+    UniffiLib.INSTANCE.uniffi_lvhv_ffi_fn_method_lvhvstore_add_attachment(
+        it, FfiConverterString.lower(`id`),FfiConverterString.lower(`mime`),FfiConverterOptionalString.lower(`fileName`),FfiConverterByteArray.lower(`bytes`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
      * Thêm ảnh chân dung (byte **đã** được nền tảng giải mã và mã hóa lại, không còn EXIF — 01 §3.8).
      * Trả bản ghi `Photo`; gắn vào người bằng `photo_id` rồi `save_person_json`.
      */
@@ -2326,6 +2422,22 @@ open class LvhvStore: Disposable, AutoCloseable, LvhvStoreInterface
 
     
     /**
+     * Byte của một tệp đính kèm (kiểm `sha256` khi đọc).
+     */
+    @Throws(LvhvDataException::class)override fun `attachmentBytes`(`id`: kotlin.String): kotlin.ByteArray {
+            return FfiConverterByteArray.lift(
+    callWithPointer {
+    uniffiRustCallWithError(LvhvDataException) { _status ->
+    UniffiLib.INSTANCE.uniffi_lvhv_ffi_fn_method_lvhvstore_attachment_bytes(
+        it, FfiConverterString.lower(`id`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
      * Có nên nhắc người dùng sao lưu không (01 §3.9 `backup_nag_days`).
      */
     @Throws(LvhvDataException::class)override fun `backupReminderDue`(): kotlin.Boolean {
@@ -2355,6 +2467,22 @@ open class LvhvStore: Disposable, AutoCloseable, LvhvStoreInterface
     }
     )
     }
+    
+
+    
+    /**
+     * Xóa một tệp đính kèm chưa gắn hồ sơ nào (đã `add_attachment` rồi hủy). Còn được dùng → `Invalid`; không
+     * có → `NotFound`.
+     */
+    @Throws(LvhvDataException::class)override fun `deleteAttachment`(`id`: kotlin.String)
+        = 
+    callWithPointer {
+    uniffiRustCallWithError(LvhvDataException) { _status ->
+    UniffiLib.INSTANCE.uniffi_lvhv_ffi_fn_method_lvhvstore_delete_attachment(
+        it, FfiConverterString.lower(`id`),_status)
+}
+    }
+    
     
 
     
@@ -4143,6 +4271,33 @@ public object FfiConverterSequenceTypeZoneTransition: FfiConverterRustBuffer<Lis
     
 
         /**
+         * Viết hoa chữ cái đầu như khi lưu (NFC, phần còn lại giữ nguyên) — để ô nhập hiển thị trước đúng giá trị sẽ
+         * lưu. `save_person_json` tự áp cho `danh_xung` và `quan_he`.
+         */ fun `capitalizeFirst`(`text`: kotlin.String): kotlin.String {
+            return FfiConverterString.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_lvhv_ffi_fn_func_capitalize_first(
+        FfiConverterString.lower(`text`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Gợi ý cách gọi (01 §3.1, YC-2026-07), đã viết hoa chữ đầu. Người đang sống không có Cụ, Kỵ, Ông Tổ họ, Bà
+         * Cô Tổ họ, Bé đỏ. `gioi_tinh` = `"nam"` / `"nu"`: từ hợp giới tính lên trước (thứ tự gốc trong mỗi nhóm);
+         * `null` hay giá trị khác → thứ tự gốc. Cùng `danhXungSuggestions` của PWA.
+         */ fun `danhXungSuggestions`(`deceased`: kotlin.Boolean, `gioiTinh`: kotlin.String?): List<kotlin.String> {
+            return FfiConverterSequenceString.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_lvhv_ffi_fn_func_danh_xung_suggestions(
+        FfiConverterBoolean.lower(`deceased`),FfiConverterOptionalString.lower(`gioiTinh`),_status)
+}
+    )
+    }
+    
+
+        /**
          * Thông tin đầy đủ của một ngày, dạng JSON theo hợp đồng kiến trúc §4 (thứ tự khóa cố định),
          * đúng từng byte như `lvhv_core::DayInfo::to_json` (kể cả phần `ngoc_hap`).
          */
@@ -4441,6 +4596,18 @@ public object FfiConverterSequenceTypeZoneTransition: FfiConverterRustBuffer<Lis
     uniffiRustCallWithError(LvhvDataException) { _status ->
     UniffiLib.INSTANCE.uniffi_lvhv_ffi_fn_func_person_summary_json(
         FfiConverterString.lower(`personJson`),FfiConverterTypeSolarDay.lower(`today`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Gợi ý quan hệ (01 §3.1), đã viết hoa chữ đầu.
+         */ fun `quanHeSuggestions`(`deceased`: kotlin.Boolean): List<kotlin.String> {
+            return FfiConverterSequenceString.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_lvhv_ffi_fn_func_quan_he_suggestions(
+        FfiConverterBoolean.lower(`deceased`),_status)
 }
     )
     }

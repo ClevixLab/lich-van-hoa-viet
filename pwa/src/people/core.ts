@@ -119,14 +119,8 @@ export function ownerOf(sn: Snap, o: M.Occurrence): JsonObj | null {
 }
 
 // ---------------- cách gọi thường ngày (quyết định của chủ dự án 07/11: không dùng từ Hán-Việt cổ như "Hiển khảo") ----------------
-/** Quan hệ gợi ý cho người đã mất — từ thường ngày (PHONG-TUC.md §1): cụ/kỵ (miền Bắc), cố/sơ (miền Nam). */
-export const RELATIONS_DECEASED = ["Bố", "Mẹ", "Ông nội", "Bà nội", "Ông ngoại", "Bà ngoại", "Cụ ông", "Cụ bà", "Kỵ ông", "Kỵ bà",
-  "Ông cố", "Bà cố", "Ông sơ", "Bà sơ", "Bác", "Chú", "Thím", "Cô", "Dì", "Cậu", "Mợ", "Anh", "Chị", "Em", "Chồng", "Vợ", "Con"];
-/** Quan hệ gợi ý cho người đang sống. */
-export const RELATIONS_LIVING = ["Bố", "Mẹ", "Ông nội", "Bà nội", "Ông ngoại", "Bà ngoại", "Bác", "Chú", "Thím", "Cô", "Dì", "Cậu", "Mợ",
-  "Anh", "Chị", "Em", "Chồng", "Vợ", "Con trai", "Con gái", "Cháu"];
-/** Cách gọi (danh xưng) gợi ý — chữ thường, đứng trước họ tên ("ông Nguyễn Văn A"). */
-export const DANH_XUNG = ["cụ", "kỵ", "ông", "bà", "bác", "chú", "thím", "cô", "dì", "cậu", "mợ", "anh", "chị", "em", "bố", "mẹ", "cha", "má", "ba"];
+// Gợi ý quan hệ và cách gọi: hàm của lõi lưu trữ (store/names.ts ≡ store/src/names.rs, YC-2026-07) —
+// danhXungSuggestions, quanHeSuggestions; bốn giao diện dùng chung.
 
 /** Chữ quan hệ trên bia: lấy từ ô "Quan hệ" (bỏ phần trong ngoặc), viết hoa chữ đầu — "ông nội (bên nội)" → "Ông nội". */
 export function biaFromRelation(quanHe: string): string {

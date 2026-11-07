@@ -22,6 +22,9 @@ export const MAX_PLAINTEXT = 128 * 1024 * 1024;
 export const MAX_JSON = 64 * 1024 * 1024;
 export const MAX_PHOTO = 1024 * 1024;
 export const MAX_PHOTOS = 10_000;
+/** Khối lớn nhất trong vùng chứa (PDF đính kèm, 01 §3.8a); giới hạn từng loại kiểm ở lớp lưu trữ. Như Rust MAX_BLOB. */
+export const MAX_BLOB = 10 * 1024 * 1024;
+export const MAX_BLOBS = 20_000;
 export const MIN_PASSWORD_CODEPOINTS = 8;
 
 export type BackupErrorCode =
@@ -106,7 +109,7 @@ export function bytesToUuid(b: Uint8Array): string {
 /** 03 §2.3. */
 export function pack(json: string, photos: PhotoBlob[]): Uint8Array {
   const j = new TextEncoder().encode(json);
-  if (j.length > MAX_JSON || photos.length > MAX_PHOTOS || photos.some((p) => p.bytes.length > MAX_PHOTO)) throw new BackupError("too_large");
+  if (j.length > MAX_JSON || photos.length > MAX_BLOBS || photos.some((p) => p.bytes.length > MAX_BLOB)) throw new BackupError("too_large");
   const total = 8 + 4 + j.length + 4 + photos.reduce((s, p) => s + 20 + p.bytes.length, 0);
   if (total > MAX_PLAINTEXT) throw new BackupError("too_large");
   const out = new Uint8Array(total);
@@ -134,13 +137,13 @@ export function unpack(pt: Uint8Array): Contents {
   try { json = new TextDecoder("utf-8", { fatal: true }).decode(pt.subarray(12, 12 + jl)); } catch { throw bad(); }
   let i = 12 + jl;
   const count = v.getUint32(i, true); i += 4;
-  if (count > MAX_PHOTOS) throw bad();
+  if (count > MAX_BLOBS) throw bad();
   const photos: PhotoBlob[] = [];
   for (let n = 0; n < count; n++) {
     if (i + 20 > pt.length) throw bad();
     const id = pt.slice(i, i + 16);
     const len = v.getUint32(i + 16, true); i += 20;
-    if (len > MAX_PHOTO || i + len > pt.length) throw bad();
+    if (len > MAX_BLOB || i + len > pt.length) throw bad();
     photos.push({ id, bytes: pt.slice(i, i + len) }); i += len;
   }
   if (i !== pt.length) throw bad();

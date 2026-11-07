@@ -1,16 +1,21 @@
 {
-  "cert_photo_id": "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e0c",
-  "description": "Vector bổ sung YC-2026-05 (thông tin báo tử, 01 §3.2a). Không thay vector đã khóa của 03 §2.5.",
+  "attachment_image_id": "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e0c",
+  "attachment_pdf_id": "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e0d",
+  "description": "Vector bổ sung YC-2026-05 / YC-2026-07 (thông tin báo tử, tệp đính kèm, giới tính; 01 §3.2a, §3.8a). Không thay vector đã khóa của 03 §2.5.",
   "file": {
     "file": "notice-v1.lvhv",
-    "sha256": "6e7409eead212792f0156bae005d61a375becb0466f339b5ce3be8d8ec22cc49"
+    "sha256": "a64c7fba9a94ebd4df8ec66dad616483d188e46302fabf761b6a66566209236e"
   },
   "json": {
     "file": "notice-v1.json",
-    "sha256": "4c1c82631466778c57453ee423773cbb494013f0b6ed9e53ac8b58e59fc5fd81"
+    "sha256": "e6f301ca2e48530fc6e020a87eace23b65a244d3e881eaa38bdbb7b52c87b422"
   },
   "nonce_hex": "101112131415161718191a1b1c1d1e1f2021222324252627",
   "password": "mật khẩu thử nghiệm",
+  "pdf": {
+    "file": "giay-chung-tu.pdf",
+    "sha256": "79370862c6cb54e96ed3125464c11e4ce3e8b08fb5048723695b6b9e9728d701"
+  },
   "salt_hex": "000102030405060708090a0b0c0d0e0f",
-  "state_sha256": "683b6fca16fc3ffbafec6aa44111c8c87619fbc6fe24583b13fa20fbcb3b18fa"
+  "state_sha256": "ac8a9dce82d41eebbf7279a3c047614315bcfd428c3d11d8bf3c1b3b95334704"
 }

@@ -81,6 +81,38 @@ fn photo_gc(s: &mut Store) -> Value {
     })
 }
 
+/// Gợi ý cách gọi / quan hệ và quy tắc viết hoa (YC-2026-07) — PWA (`names.ts`) so với tệp này.
+fn names_doc() -> Value {
+    use lvhv_store::names::*;
+    let mut dx = serde_json::Map::new();
+    for (k, dead) in [("deceased", true), ("living", false)] {
+        for g in [None, Some("nam"), Some("nu")] {
+            dx.insert(
+                format!("{k}:{}", g.unwrap_or("null")),
+                serde_json::json!(danh_xung_suggestions(dead, g)),
+            );
+        }
+    }
+    let samples = [
+        "ông nội",
+        "o\u{0302}\u{0300}ng",
+        "đ",
+        "Bà Cô Tổ họ",
+        "bé đỏ",
+        "",
+        "1 ông",
+        "ê",
+        "ơ ba",
+        "ưu",
+        "ỷ",
+    ];
+    serde_json::json!({
+        "danh_xung": dx,
+        "quan_he": {"deceased": quan_he_suggestions(true), "living": quan_he_suggestions(false)},
+        "capitalize": samples.iter().map(|s| serde_json::json!([s, capitalize_first(s)])).collect::<Vec<_>>(),
+    })
+}
+
 fn main() {
     let mode = std::env::args().nth(1).unwrap_or_default();
     let tmp = std::env::temp_dir().join(format!("lvhv-cross-{}", std::process::id()));
@@ -120,6 +152,7 @@ fn main() {
                 (Some("input"), Some("not_found"))
             );
             std::fs::write(out().join("photo-gc-rust.json"), canonical_json(&r)).unwrap();
+            std::fs::write(out().join("names-rust.json"), canonical_json(&names_doc())).unwrap();
             println!("ok: photo-gc-rust.json ({})", r["state_sha256"]);
         }
         "check" => {

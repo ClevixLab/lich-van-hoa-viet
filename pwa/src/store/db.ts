@@ -1,11 +1,12 @@
 // Lớp lưu trữ IndexedDB của PWA (docs/v0.2/01 §4.1) — cùng mô hình dữ liệu và cùng quy tắc kiểm tra với
 // lvhv-store (SQLite). Chỉ API hàm; giao diện ở đợt 3.
 //
-// Cơ sở dữ liệu `lvhv`, phiên bản IndexedDB = schema_version (1). Kho:
+// Cơ sở dữ liệu `lvhv`, phiên bản IndexedDB = IDB_VERSION (2; schema_version của tài liệu vẫn là 1). Kho:
 //   persons      keyPath id                 — bản ghi Person nguyên dạng JSON
 //   events       keyPath id, by_person      — Event; chỉ mục multiEntry trên person_ids
 //   event_types  keyPath id, by_name_key    — { id, name_key, doc } (chỉ mục duy nhất, V7)
 //   photos       keyPath id                 — { id, meta, blob }
+//   attachments  keyPath id                 — { id, meta, blob } — tệp đính kèm báo tử (01 §3.8a, YC-2026-07)
 //   settings     khóa cố định "app"         — AppSettings
 //   meta         khóa ngoài                 — schema_version, created_with_app_version, persist, backup_pending_since
 // Không dùng localStorage/sessionStorage/Cache Storage cho dữ liệu cá nhân (01 §4.1, S4').
@@ -15,7 +16,10 @@ import * as V from "./validate";
 
 export const DB_NAME = "lvhv";
 export const SCHEMA_VERSION = 1;
-const STORES = ["persons", "events", "event_types", "photos", "settings", "meta"] as const;
+/** Phiên bản IndexedDB: 2 thêm kho `attachments` (YC-2026-07). Khác `SCHEMA_VERSION` của tài liệu sao lưu (vẫn 1,
+ *  vector đã khóa) — như bản Rust tạo bảng `attachment` mà không đổi `schema_version`. */
+export const IDB_VERSION = 2;
+const STORES = ["persons", "events", "event_types", "photos", "attachments", "settings", "meta"] as const;
 type StoreName = (typeof STORES)[number];
 
 /**
@@ -38,8 +42,22 @@ export class StoreError extends Error {
 export interface AppInfo { version: string; platform: "pwa" }
 export type ImportMode = "replace" | "merge";
 export interface ImportPreview { persons: number; events: number; photos: number; exported_at: string; platform: string }
-export interface VerifiedBackup { doc: JsonObj; photos: Map<string, Uint8Array>; preview: ImportPreview }
+export interface VerifiedBackup { doc: JsonObj; photos: Map<string, Uint8Array>; attachments: Map<string, Uint8Array>; preview: ImportPreview }
 export interface NewPhoto { id: string; mime: "image/jpeg" | "image/webp"; width: number; height: number; bytes: Uint8Array }
+/** Tệp đính kèm mới (01 §3.8a): ảnh đã mã hóa lại (≤ 2 MiB, cạnh dài ≤ 2048 px) hoặc PDF nguyên bản (≤ 10 MiB). */
+export interface NewAttachment { id: string; mime: "image/jpeg" | "image/webp" | "application/pdf"; file_name: string | null; bytes: Uint8Array }
+
+/** Bản ghi `Attachment` cho byte mới — như Rust `add_attachment` (PDF phải bắt đầu bằng `%PDF-`). */
+async function attachmentMeta(a: NewAttachment): Promise<JsonObj> {
+  const pdf = a.mime === "application/pdf";
+  if (pdf && !(a.bytes.length >= 5 && String.fromCharCode(...a.bytes.subarray(0, 5)) === "%PDF-")) {
+    throw new StoreError("input", "Tệp không phải PDF hợp lệ (thiếu phần đầu %PDF-)");
+  }
+  const name = a.file_name === null ? null : a.file_name.normalize("NFC").trim() || null;
+  const meta: JsonObj = { bytes: a.bytes.length, created_at: nowRfc3339(), file_name: name, id: a.id, mime: a.mime, sha256: await sha256Hex(a.bytes), stripped: !pdf };
+  try { V.attachment(meta, "/attachment"); } catch (e) { throw vErr(e); }
+  return meta;
+}
 
 export const DEFAULT_SETTINGS: JsonObj = {
   backup_nag_days: 30, default_offsets_days: [0, 3], default_time_local: "07:00", last_backup_at: null, reminders_enabled: true, upcoming_days: 30,
@@ -86,6 +104,7 @@ function upgrade(db: IDBDatabase, tx: IDBTransaction, from: number): void {
     tx.objectStore("meta").put("0.2.0", "created_with_app_version");
     for (const t of defaultEventTypes()) tx.objectStore("event_types").put({ id: t.id, name_key: V.nameKey(t.ten as string), doc: t });
   }
+  if (from < 2 && !db.objectStoreNames.contains("attachments")) db.createObjectStore("attachments", { keyPath: "id" });
   // Phiên bản sau: thêm nhánh `if (from < N)` với migrate_{N-1}_to_N (01 §7).
 }
 
@@ -93,7 +112,7 @@ function upgrade(db: IDBDatabase, tx: IDBTransaction, from: number): void {
 export function openStore(factory: IDBFactory = indexedDB): Promise<Store> {
   return new Promise((ok, ko) => {
     let r: IDBOpenDBRequest;
-    try { r = factory.open(DB_NAME, SCHEMA_VERSION); } catch (e) { ko(e); return; }
+    try { r = factory.open(DB_NAME, IDB_VERSION); } catch (e) { ko(e); return; }
     r.onupgradeneeded = (e) => upgrade(r.result, r.transaction!, e.oldVersion);
     r.onsuccess = () => ok(new Store(r.result));
     r.onerror = () => ko(r.error?.name === "VersionError" ? new StoreError("newer_schema", "Dữ liệu được tạo bởi phiên bản mới hơn — hãy cập nhật ứng dụng") : r.error);
@@ -116,6 +135,41 @@ export class Store {
   async events(): Promise<JsonObj[]> { return (await req(this.tx("events").objectStore("events").getAll())) as JsonObj[]; }
   async eventTypes(): Promise<JsonObj[]> { return ((await req(this.tx("event_types").objectStore("event_types").getAll())) as { doc: JsonObj }[]).map((x) => x.doc); }
   async photos(): Promise<JsonObj[]> { return ((await req(this.tx("photos").objectStore("photos").getAll())) as { meta: JsonObj }[]).map((x) => x.meta); }
+  async attachments(): Promise<JsonObj[]> { return ((await req(this.tx("attachments").objectStore("attachments").getAll())) as { meta: JsonObj }[]).map((x) => x.meta); }
+
+  /** Byte một tệp đính kèm (kiểm `sha256` khi đọc). */
+  async attachmentBytes(id: string): Promise<Uint8Array> {
+    const r = (await req(this.tx("attachments").objectStore("attachments").get(id))) as { meta: JsonObj; blob: Blob } | undefined;
+    if (!r) throw new StoreError("not_found", "không tìm thấy");
+    const b = new Uint8Array(await r.blob.arrayBuffer());
+    if ((await sha256Hex(b)) !== r.meta.sha256) throw new StoreError("invalid", "ATTACHMENT: sha256 không khớp");
+    return b;
+  }
+
+  /** Thêm một tệp đính kèm chưa gắn hồ sơ (như Rust `add_attachment`). Trả bản ghi. */
+  async addAttachment(a: NewAttachment): Promise<JsonObj> {
+    const meta = await attachmentMeta(a);
+    const tx = this.tx(["attachments", "meta"], "readwrite");
+    const fin = done(tx);
+    tx.objectStore("attachments").put({ id: a.id, meta, blob: new Blob([a.bytes as Uint8Array<ArrayBuffer>], { type: a.mime }) });
+    Store.markChanged(tx, nowRfc3339());
+    await fin;
+    return meta;
+  }
+
+  /** Xóa tệp đính kèm không hồ sơ nào dùng. Còn dùng → "input"; không có → "not_found". */
+  async deleteAttachment(id: string): Promise<void> {
+    const has = await req(this.tx("attachments").objectStore("attachments").getKey(id));
+    if (has === undefined) throw new StoreError("not_found", "không tìm thấy");
+    if ((await this.persons()).some((x) => V.personAttachmentRefs(x).includes(id))) {
+      throw new StoreError("input", "Tệp đang được dùng trong một hồ sơ nên chưa xóa được");
+    }
+    const tx = this.tx(["attachments", "meta"], "readwrite");
+    const fin = done(tx);
+    tx.objectStore("attachments").delete(id);
+    Store.markChanged(tx, nowRfc3339());
+    await fin;
+  }
   async person(id: string): Promise<JsonObj> {
     const p = await req(this.tx("persons").objectStore("persons").get(id));
     if (!p) throw new StoreError("not_found", "không tìm thấy");
@@ -154,11 +208,13 @@ export class Store {
    * Ghi một Person (đã đủ trường dẫn xuất — derive.buildPerson) và, nếu có, ảnh mới của người đó, trong
    * **một** giao dịch (01 §4.1). Lần lưu hồ sơ đầu tiên gọi requestPersistentStorage().
    */
-  async putPerson(p: JsonObj, newPhoto?: NewPhoto, extraPhotos: NewPhoto[] = []): Promise<void> {
+  async putPerson(p: JsonObj, newPhoto?: NewPhoto, newAttachments: NewAttachment[] = []): Promise<void> {
     try { V.person(p, "/person"); } catch (e) { throw vErr(e); }
-    // `extraPhotos`: ảnh giấy báo tử mới (01 §3.2a) — ghi cùng giao dịch với hồ sơ.
+    // `newAttachments`: tệp đính kèm báo tử mới (01 §3.8a) — ghi cùng giao dịch với hồ sơ.
+    const attRecs: { id: string; meta: JsonObj; blob: Blob }[] = [];
+    for (const a of newAttachments) attRecs.push({ id: a.id, meta: await attachmentMeta(a), blob: new Blob([a.bytes as Uint8Array<ArrayBuffer>], { type: a.mime }) });
     const recs: { id: string; meta: JsonObj; blob: Blob }[] = [];
-    for (const np of newPhoto ? [newPhoto, ...extraPhotos] : extraPhotos) {
+    for (const np of newPhoto ? [newPhoto] : []) {
       const meta: JsonObj = { bytes: np.bytes.length, created_at: nowRfc3339(), height: np.height, id: np.id, mime: np.mime, sha256: await sha256Hex(np.bytes), stripped: true, width: np.width };
       try { V.photo(meta, "/photo"); } catch (e) { throw vErr(e); }
       recs.push({ id: np.id, meta, blob: new Blob([np.bytes as Uint8Array<ArrayBuffer>], { type: np.mime }) });
@@ -169,19 +225,30 @@ export class Store {
     const old = all.find((x) => x.id === p.id);
     const keep = new Set([...V.personPhotoRefs(p), ...all.filter((x) => x.id !== p.id).flatMap((x) => V.personPhotoRefs(x))]);
     const gone = [...new Set(old ? V.personPhotoRefs(old) : [])].filter((x) => !keep.has(x));
-    const tx = this.tx(["persons", "photos", "meta"], "readwrite");
+    const keepAtt = new Set([...V.personAttachmentRefs(p), ...all.filter((x) => x.id !== p.id).flatMap((x) => V.personAttachmentRefs(x))]);
+    const goneAtt = [...new Set(old ? V.personAttachmentRefs(old) : [])].filter((x) => !keepAtt.has(x));
+    const tx = this.tx(["persons", "photos", "attachments", "meta"], "readwrite");
     const fin = done(tx);
+    let missing = "V3 /person/photo_id: ảnh không tồn tại";
     for (const r of recs) tx.objectStore("photos").put(r);
+    for (const r of attRecs) tx.objectStore("attachments").put(r);
     const fresh = new Set(recs.map((r) => r.id));
     for (const pid of V.personPhotoRefs(p)) {
       if (fresh.has(pid)) continue;
       const r = tx.objectStore("photos").getKey(pid);
       r.onsuccess = () => { if (r.result === undefined) { tx.abort(); } };
     }
+    const freshAtt = new Set(attRecs.map((r) => r.id));
+    V.personAttachmentRefs(p).forEach((aid, j) => {
+      if (freshAtt.has(aid)) return;
+      const r = tx.objectStore("attachments").getKey(aid);
+      r.onsuccess = () => { if (r.result === undefined) { missing = `V3 /person/death/notice/attachments/${j}/file_id: tệp đính kèm không tồn tại`; tx.abort(); } };
+    });
     tx.objectStore("persons").put(normNotice(p));
     for (const pid of gone) tx.objectStore("photos").delete(pid);
+    for (const aid of goneAtt) tx.objectStore("attachments").delete(aid);
     Store.markChanged(tx, nowRfc3339());
-    try { await fin; } catch (e) { throw new StoreError("invalid", "V3 /person/photo_id: ảnh không tồn tại", e); }
+    try { await fin; } catch (e) { throw new StoreError("invalid", missing, e); }
     if (first && (await this.persistResult()) === null) await requestPersistentStorage(this);
   }
 
@@ -231,8 +298,10 @@ export class Store {
     const p = await this.person(id);
     const used = new Set((await this.persons()).filter((x) => x.id !== id).flatMap((x) => V.personPhotoRefs(x)));
     const gone = V.personPhotoRefs(p).filter((x) => !used.has(x));
+    const usedAtt = new Set((await this.persons()).filter((x) => x.id !== id).flatMap((x) => V.personAttachmentRefs(x)));
+    const goneAtt = [...new Set(V.personAttachmentRefs(p))].filter((x) => !usedAtt.has(x));
     const evs = await this.eventsOf(id);
-    const tx = this.tx(["persons", "events", "photos", "meta"], "readwrite");
+    const tx = this.tx(["persons", "events", "photos", "attachments", "meta"], "readwrite");
     const fin = done(tx);
     for (const e of evs) {
       const left = (e.person_ids as string[]).filter((x) => x !== id);
@@ -241,6 +310,7 @@ export class Store {
     }
     tx.objectStore("persons").delete(id);
     for (const pid of gone) tx.objectStore("photos").delete(pid);
+    for (const aid of goneAtt) tx.objectStore("attachments").delete(aid);
     Store.markChanged(tx, now);
     await fin;
     return removed.sort();
@@ -273,8 +343,11 @@ export class Store {
   /** Toàn bộ kho dưới dạng tài liệu sao lưu (01 §5), chưa có byte ảnh. Cùng thứ tự với bản Rust. */
   async snapshot(app: AppInfo, exportedAt: string): Promise<JsonObj> {
     const byId = (a: JsonObj[]) => a.slice().sort((x, y) => ((x.id as string) < (y.id as string) ? -1 : 1));
+    const atts = byId(await this.attachments());
     return {
       app: { name: "Lịch và Văn hóa Việt", platform: app.platform, version: app.version },
+      // `attachments` chỉ có khi khác rỗng (như Rust) — tài liệu không có tệp đính kèm giữ nguyên từng byte.
+      ...(atts.length ? { attachments: atts } : {}),
       event_types: byId(await this.eventTypes()),
       events: byId(await this.events()),
       exported_at: exportedAt,
@@ -292,12 +365,15 @@ export class Store {
     delete doc.app; delete doc.exported_at;
     let s = canonicalJson(doc);
     for (const ph of doc.photos as JsonObj[]) s += await sha256Hex(await this.photoBytes(ph.id as string));
+    for (const a of (doc.attachments as JsonObj[] | undefined) ?? []) s += await sha256Hex(await this.attachmentBytes(a.id as string));
     return sha256Hex(new TextEncoder().encode(s));
   }
 
   private async photoBlobs(doc: JsonObj, uuidToBytes: (s: string) => Uint8Array | null) {
     const out = [];
     for (const ph of doc.photos as JsonObj[]) out.push({ id: uuidToBytes(ph.id as string)!, bytes: await this.photoBytes(ph.id as string) });
+    // Tệp đính kèm đi sau ảnh, cùng danh sách khối (03 §2.3).
+    for (const a of (doc.attachments as JsonObj[] | undefined) ?? []) out.push({ id: uuidToBytes(a.id as string)!, bytes: await this.attachmentBytes(a.id as string) });
     return out;
   }
 
@@ -366,10 +442,26 @@ export class Store {
       const all = (await req(this.tx("photos").objectStore("photos").getAll())) as { id: string; meta: JsonObj; blob: Blob }[];
       for (const r of all) if (keepBlob.has(r.id)) keptPhotos.push(r);
     }
-    const tx = this.tx(["persons", "events", "event_types", "photos", "settings", "meta"], "readwrite");
+    // Tệp đính kèm: cùng quy tắc với ảnh.
+    const existingAtt = new Map((await this.attachments()).map((m) => [m.id as string, m.sha256 as string]));
+    const attRecs: { id: string; meta: JsonObj; blob: Blob }[] = [];
+    const keepAtt = new Set<string>();
+    for (const m of (target.attachments as JsonObj[] | undefined) ?? []) {
+      const id = m.id as string;
+      const bytes = b.attachments.get(id);
+      if (existingAtt.get(id) === m.sha256 && (mode === "merge" || !bytes)) keepAtt.add(id);
+      else if (bytes) attRecs.push({ id, meta: m, blob: new Blob([bytes as Uint8Array<ArrayBuffer>], { type: m.mime as string }) });
+      else throw new StoreError("invalid", `ATTACHMENT ${id}: thiếu byte tệp đính kèm`);
+    }
+    if (keepAtt.size) {
+      const all = (await req(this.tx("attachments").objectStore("attachments").getAll())) as { id: string; meta: JsonObj; blob: Blob }[];
+      for (const r of all) if (keepAtt.has(r.id)) attRecs.push(r);
+    }
+    const tx = this.tx(["persons", "events", "event_types", "photos", "attachments", "settings", "meta"], "readwrite");
     const fin = done(tx);
-    for (const n of ["persons", "events", "event_types", "photos"] as const) tx.objectStore(n).clear();
+    for (const n of ["persons", "events", "event_types", "photos", "attachments"] as const) tx.objectStore(n).clear();
     for (const r of [...keptPhotos, ...recs]) tx.objectStore("photos").put(r);
+    for (const r of attRecs) tx.objectStore("attachments").put(r);
     for (const t of target.event_types as JsonObj[]) tx.objectStore("event_types").put({ id: t.id, name_key: V.nameKey(t.ten as string), doc: t });
     for (const p of target.persons as JsonObj[]) tx.objectStore("persons").put(normNotice(p));
     for (const e of target.events as JsonObj[]) tx.objectStore("events").put(e);
@@ -398,17 +490,31 @@ export async function verifyContents(json: string, photos: { id: string; bytes: 
     V.document(doc);
   } catch (e) { throw e instanceof StoreError ? e : generic(e); }
   const meta = new Map((doc.photos as JsonObj[]).map((p) => [p.id as string, p] as const));
-  const out = new Map<string, Uint8Array>();
+  const attMeta = new Map(((doc.attachments as JsonObj[] | undefined) ?? []).map((p) => [p.id as string, p] as const));
+  const out = new Map<string, Uint8Array>(), atts = new Map<string, Uint8Array>();
+  const perr = (m: string) => generic(new V.ValidationError("PHOTO", "/photos", m));
+  const aerr = (m: string) => generic(new V.ValidationError("ATTACHMENT", "/attachments", m));
+  // Khối: ảnh trước, tệp đính kèm sau (03 §2.3) — cùng thứ tự kiểm với Rust.
   for (const b of photos) {
     const m = meta.get(b.id);
-    if (!m) throw generic(new V.ValidationError("PHOTO", "/photos", "ảnh thừa"));
-    if (m.sha256 !== (await sha256Hex(b.bytes)) || m.bytes !== b.bytes.length) throw generic(new V.ValidationError("PHOTO", "/photos", "sha256/bytes không khớp"));
-    if (out.has(b.id)) throw generic(new V.ValidationError("PHOTO", "/photos", "ảnh trùng"));
-    out.set(b.id, b.bytes);
+    if (m) {
+      if (m.sha256 !== (await sha256Hex(b.bytes)) || m.bytes !== b.bytes.length) throw perr("sha256/bytes không khớp");
+      if (atts.size) throw perr("ảnh phải đứng trước tệp đính kèm");
+      if (out.has(b.id)) throw perr("ảnh trùng");
+      out.set(b.id, b.bytes);
+      continue;
+    }
+    const a = attMeta.get(b.id);
+    if (!a) throw perr("ảnh thừa");
+    if (a.sha256 !== (await sha256Hex(b.bytes)) || a.bytes !== b.bytes.length) throw aerr("sha256/bytes không khớp");
+    if (a.mime === "application/pdf" && String.fromCharCode(...b.bytes.subarray(0, 5)) !== "%PDF-") throw aerr("PDF không hợp lệ");
+    if (atts.has(b.id)) throw aerr("tệp đính kèm trùng");
+    atts.set(b.id, b.bytes);
   }
-  if (out.size !== meta.size) throw generic(new V.ValidationError("PHOTO", "/photos", "thiếu ảnh"));
+  if (out.size !== meta.size) throw perr("thiếu ảnh");
+  if (atts.size !== attMeta.size) throw aerr("thiếu tệp đính kèm");
   const app = doc.app as JsonObj;
-  return { doc, photos: out, preview: { persons: (doc.persons as Json[]).length, events: (doc.events as Json[]).length, photos: meta.size, exported_at: doc.exported_at as string, platform: app.platform as string } };
+  return { doc, photos: out, attachments: atts, preview: { persons: (doc.persons as Json[]).length, events: (doc.events as Json[]).length, photos: meta.size, exported_at: doc.exported_at as string, platform: app.platform as string } };
 }
 
 /**

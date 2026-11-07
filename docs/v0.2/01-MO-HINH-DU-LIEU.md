@@ -225,6 +225,20 @@ nào (người dùng hủy màn hình nhập) xóa bằng `delete_photo(id)` (PW
 Lưu trên máy như ảnh (§3.8), thư mục `attachments/`. Có trong tệp sao lưu mã hóa; giới hạn tổng tệp sao lưu (03) giữ nguyên.
 Không bao giờ đưa vào thông báo, .ics, màn hình tưởng niệm.
 
+Cách cài (cả hai bản như nhau, 2026-11-07):
+- Tài liệu sao lưu có khóa gốc `attachments` (mảng `Attachment`, sắp theo `id`) **chỉ khi khác rỗng**; `gioi_tinh`
+  thiếu ≡ `null`. Vì vậy tài liệu không dùng hai trường này giống hệt bản trước và `schema_version` vẫn là 1 (v0.2 chưa
+  phát hành; vector đã khóa của 03 §2.5 không đổi). Đây là ngoại lệ có chủ ý của quy tắc §7 "thêm trường tùy chọn →
+  tăng `schema_version`".
+- Lớp lưu trữ: `add_attachment(id, mime, file_name, bytes)` (PWA `addAttachment`), `attachment_bytes`, `delete_attachment`
+  (chỉ tệp chưa gắn hồ sơ). Lưu hồ sơ mà danh sách bỏ một tệp → tệp bị xóa trong cùng giao dịch; xóa hồ sơ → xóa tệp.
+  Nền tảng giải mã và mã hóa lại ảnh trước khi gọi (cạnh dài ≤ 2048 px, ≤ 2 MB); PDF được kiểm `%PDF-` và cỡ.
+- Viết hoa chữ cái đầu `danh_xung` và `quan_he`: làm ở **bước lưu từ giao diện** (FFI `save_person_json`,
+  `mark_deceased_json`; PWA `normalizePersonNames` trước `buildPerson`). Lớp ghi thấp (`put_person`, nhập sao lưu)
+  giữ nguyên giá trị, để tệp cũ và vector đã khóa không đổi. Gợi ý cách gọi và quan hệ: `danh_xung_suggestions(deceased,
+  gioi_tinh)`, `quan_he_suggestions(deceased)` (PWA `danhXungSuggestions`, `quanHeSuggestions`); với `gioi_tinh` =
+  `nam`/`nu` các từ hợp giới tính đứng trước. Hai bản kiểm chéo trong `scripts/check-store.sh`.
+
 ### 3.9 `AppSettings` — cài đặt chung (một bản ghi)
 
 | Trường | Kiểu | Mặc định | Ghi chú |

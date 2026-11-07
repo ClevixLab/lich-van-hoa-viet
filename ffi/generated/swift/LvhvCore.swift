@@ -569,6 +569,16 @@ fileprivate struct FfiConverterData: FfiConverterRustBuffer {
 public protocol LvhvStoreProtocol: AnyObject, Sendable {
     
     /**
+     * Thêm một tệp đính kèm thông tin báo tử (01 §3.8a, YC-2026-07). `mime`: `image/jpeg` | `image/webp` (byte
+     * **đã** được nền tảng giải mã và mã hóa lại, bỏ siêu dữ liệu, cạnh dài ≤ 2048 px, ≤ 2 MB) hoặc
+     * `application/pdf` (lưu nguyên byte, ≤ 10 MB, phải bắt đầu bằng `%PDF-`; giao diện báo "Tệp PDF được lưu
+     * nguyên bản"). `file_name`: tên gốc chỉ để hiển thị. Trả bản ghi `Attachment`; gắn vào hồ sơ bằng
+     * `death.notice.attachments: [{id, kind, file_id}]` rồi `save_person_json` / `mark_deceased_json`. Gỡ khỏi danh
+     * sách rồi lưu → tệp tự bị xóa.
+     */
+    func addAttachment(id: String, mime: String, fileName: String?, bytes: Data) throws  -> String
+    
+    /**
      * Thêm ảnh chân dung (byte **đã** được nền tảng giải mã và mã hóa lại, không còn EXIF — 01 §3.8).
      * Trả bản ghi `Photo`; gắn vào người bằng `photo_id` rồi `save_person_json`.
      */
@@ -585,6 +595,11 @@ public protocol LvhvStoreProtocol: AnyObject, Sendable {
     func applyImport(backup: VerifiedBackup, mode: BackupImportMode) throws 
     
     /**
+     * Byte của một tệp đính kèm (kiểm `sha256` khi đọc).
+     */
+    func attachmentBytes(id: String) throws  -> Data
+    
+    /**
      * Có nên nhắc người dùng sao lưu không (01 §3.9 `backup_nag_days`).
      */
     func backupReminderDue() throws  -> Bool
@@ -594,6 +609,12 @@ public protocol LvhvStoreProtocol: AnyObject, Sendable {
      * hàm ngày giỗ / nhắc / danh sách / .ics bên dưới.
      */
     func datasetJson() throws  -> String
+    
+    /**
+     * Xóa một tệp đính kèm chưa gắn hồ sơ nào (đã `add_attachment` rồi hủy). Còn được dùng → `Invalid`; không
+     * có → `NotFound`.
+     */
+    func deleteAttachment(id: String) throws 
     
     /**
      * Xóa một sự kiện.
@@ -799,6 +820,25 @@ public static func `open`(dir: String)throws  -> LvhvStore  {
 
     
     /**
+     * Thêm một tệp đính kèm thông tin báo tử (01 §3.8a, YC-2026-07). `mime`: `image/jpeg` | `image/webp` (byte
+     * **đã** được nền tảng giải mã và mã hóa lại, bỏ siêu dữ liệu, cạnh dài ≤ 2048 px, ≤ 2 MB) hoặc
+     * `application/pdf` (lưu nguyên byte, ≤ 10 MB, phải bắt đầu bằng `%PDF-`; giao diện báo "Tệp PDF được lưu
+     * nguyên bản"). `file_name`: tên gốc chỉ để hiển thị. Trả bản ghi `Attachment`; gắn vào hồ sơ bằng
+     * `death.notice.attachments: [{id, kind, file_id}]` rồi `save_person_json` / `mark_deceased_json`. Gỡ khỏi danh
+     * sách rồi lưu → tệp tự bị xóa.
+     */
+open func addAttachment(id: String, mime: String, fileName: String?, bytes: Data)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeLvhvDataError_lift) {
+    uniffi_lvhv_ffi_fn_method_lvhvstore_add_attachment(self.uniffiClonePointer(),
+        FfiConverterString.lower(id),
+        FfiConverterString.lower(mime),
+        FfiConverterOptionString.lower(fileName),
+        FfiConverterData.lower(bytes),$0
+    )
+})
+}
+    
+    /**
      * Thêm ảnh chân dung (byte **đã** được nền tảng giải mã và mã hóa lại, không còn EXIF — 01 §3.8).
      * Trả bản ghi `Photo`; gắn vào người bằng `photo_id` rồi `save_person_json`.
      */
@@ -839,6 +879,17 @@ open func applyImport(backup: VerifiedBackup, mode: BackupImportMode)throws   {t
 }
     
     /**
+     * Byte của một tệp đính kèm (kiểm `sha256` khi đọc).
+     */
+open func attachmentBytes(id: String)throws  -> Data  {
+    return try  FfiConverterData.lift(try rustCallWithError(FfiConverterTypeLvhvDataError_lift) {
+    uniffi_lvhv_ffi_fn_method_lvhvstore_attachment_bytes(self.uniffiClonePointer(),
+        FfiConverterString.lower(id),$0
+    )
+})
+}
+    
+    /**
      * Có nên nhắc người dùng sao lưu không (01 §3.9 `backup_nag_days`).
      */
 open func backupReminderDue()throws  -> Bool  {
@@ -857,6 +908,17 @@ open func datasetJson()throws  -> String  {
     uniffi_lvhv_ffi_fn_method_lvhvstore_dataset_json(self.uniffiClonePointer(),$0
     )
 })
+}
+    
+    /**
+     * Xóa một tệp đính kèm chưa gắn hồ sơ nào (đã `add_attachment` rồi hủy). Còn được dùng → `Invalid`; không
+     * có → `NotFound`.
+     */
+open func deleteAttachment(id: String)throws   {try rustCallWithError(FfiConverterTypeLvhvDataError_lift) {
+    uniffi_lvhv_ffi_fn_method_lvhvstore_delete_attachment(self.uniffiClonePointer(),
+        FfiConverterString.lower(id),$0
+    )
+}
 }
     
     /**
@@ -2953,6 +3015,30 @@ public func cadaoSourcesMarkdown() -> String  {
 })
 }
 /**
+ * Viết hoa chữ cái đầu như khi lưu (NFC, phần còn lại giữ nguyên) — để ô nhập hiển thị trước đúng giá trị sẽ
+ * lưu. `save_person_json` tự áp cho `danh_xung` và `quan_he`.
+ */
+public func capitalizeFirst(text: String) -> String  {
+    return try!  FfiConverterString.lift(try! rustCall() {
+    uniffi_lvhv_ffi_fn_func_capitalize_first(
+        FfiConverterString.lower(text),$0
+    )
+})
+}
+/**
+ * Gợi ý cách gọi (01 §3.1, YC-2026-07), đã viết hoa chữ đầu. Người đang sống không có Cụ, Kỵ, Ông Tổ họ, Bà
+ * Cô Tổ họ, Bé đỏ. `gioi_tinh` = `"nam"` / `"nu"`: từ hợp giới tính lên trước (thứ tự gốc trong mỗi nhóm);
+ * `null` hay giá trị khác → thứ tự gốc. Cùng `danhXungSuggestions` của PWA.
+ */
+public func danhXungSuggestions(deceased: Bool, gioiTinh: String?) -> [String]  {
+    return try!  FfiConverterSequenceString.lift(try! rustCall() {
+    uniffi_lvhv_ffi_fn_func_danh_xung_suggestions(
+        FfiConverterBool.lower(deceased),
+        FfiConverterOptionString.lower(gioiTinh),$0
+    )
+})
+}
+/**
  * Thông tin đầy đủ của một ngày, dạng JSON theo hợp đồng kiến trúc §4 (thứ tự khóa cố định),
  * đúng từng byte như `lvhv_core::DayInfo::to_json` (kể cả phần `ngoc_hap`).
  */
@@ -3217,6 +3303,16 @@ public func personSummaryJson(personJson: String, today: SolarDay)throws  -> Str
 })
 }
 /**
+ * Gợi ý quan hệ (01 §3.1), đã viết hoa chữ đầu.
+ */
+public func quanHeSuggestions(deceased: Bool) -> [String]  {
+    return try!  FfiConverterSequenceString.lift(try! rustCall() {
+    uniffi_lvhv_ffi_fn_func_quan_he_suggestions(
+        FfiConverterBool.lower(deceased),$0
+    )
+})
+}
+/**
  * Mọi lời nhắc (02 §7.1) có thời điểm trong `(now, now + horizon_days ngày]`, sắp theo (thời điểm, id):
  * `[{"id","at_unix_s","fire_local","type","title","body","occ"}]`. `show_names` mặc định `false` (O-9) →
  * tiêu đề không có tên ("Sắp đến ngày giỗ" …) và `occ` rút gọn (xem `reminder_json`). Tôn trọng công tắc
@@ -3373,6 +3469,12 @@ private let initializationResult: InitializationResult = {
     if (uniffi_lvhv_ffi_checksum_func_cadao_sources_markdown() != 63224) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_lvhv_ffi_checksum_func_capitalize_first() != 13260) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_lvhv_ffi_checksum_func_danh_xung_suggestions() != 52316) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_lvhv_ffi_checksum_func_day_info_json() != 64774) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -3439,6 +3541,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_lvhv_ffi_checksum_func_person_summary_json() != 36375) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_lvhv_ffi_checksum_func_quan_he_suggestions() != 48169) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_lvhv_ffi_checksum_func_reminders_json() != 836) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -3463,6 +3568,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_lvhv_ffi_checksum_func_year_can_chi() != 59633) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_lvhv_ffi_checksum_method_lvhvstore_add_attachment() != 56061) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_lvhv_ffi_checksum_method_lvhvstore_add_photo() != 45983) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -3472,10 +3580,16 @@ private let initializationResult: InitializationResult = {
     if (uniffi_lvhv_ffi_checksum_method_lvhvstore_apply_import() != 38554) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_lvhv_ffi_checksum_method_lvhvstore_attachment_bytes() != 44745) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_lvhv_ffi_checksum_method_lvhvstore_backup_reminder_due() != 64715) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_lvhv_ffi_checksum_method_lvhvstore_dataset_json() != 27745) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_lvhv_ffi_checksum_method_lvhvstore_delete_attachment() != 38975) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_lvhv_ffi_checksum_method_lvhvstore_delete_event() != 34738) {

@@ -11,6 +11,7 @@
 
 pub mod derive;
 pub mod model;
+pub mod names;
 pub mod validate;
 
 use lvhv_backup::{BackupError, PhotoBlob};
@@ -19,6 +20,7 @@ use serde_json::{json, Map, Value};
 use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, HashMap};
 use std::path::{Path, PathBuf};
+use unicode_normalization::UnicodeNormalization;
 use validate::ValidationError;
 
 /// Phiên bản lược đồ dữ liệu mà bản này hiểu (01 §7).
@@ -27,6 +29,16 @@ pub const SCHEMA_VERSION: i64 = 1;
 pub const DB_FILE: &str = "lvhv.sqlite";
 /// Thư mục ảnh (trong thư mục dữ liệu).
 pub const PHOTO_DIR: &str = "photos";
+/// Thư mục tệp đính kèm thông tin báo tử (01 §3.8a, YC-2026-07).
+pub const ATTACHMENT_DIR: &str = "attachments";
+
+/// Bảng tệp đính kèm (YC-2026-07). v0.2 chưa phát hành nên không tăng `schema_version` (số này cũng là
+/// `schema_version` của tài liệu sao lưu — vector đã khóa); bảng được tạo nếu thiếu mỗi lần mở kho.
+const ATTACHMENT_TABLE: &str = "CREATE TABLE IF NOT EXISTS attachment (
+        id TEXT PRIMARY KEY,
+        json TEXT NOT NULL,
+        sha256 TEXT NOT NULL
+    ) STRICT;";
 
 /// Lỗi của kho.
 #[derive(Debug)]
@@ -137,6 +149,7 @@ pub struct ImportPreview {
 pub struct VerifiedBackup {
     doc: Value,
     photos: HashMap<String, Vec<u8>>,
+    attachments: HashMap<String, Vec<u8>>,
 }
 
 impl core::fmt::Debug for VerifiedBackup {
@@ -329,6 +342,7 @@ impl Store {
     pub fn open(dir: impl AsRef<Path>) -> Result<Store> {
         let dir = dir.as_ref().to_path_buf();
         std::fs::create_dir_all(dir.join(PHOTO_DIR))?;
+        std::fs::create_dir_all(dir.join(ATTACHMENT_DIR))?;
         let mut conn = Connection::open(dir.join(DB_FILE))?;
         conn.pragma_update(None, "foreign_keys", true)?;
         conn.pragma_update(None, "journal_mode", "WAL")?;
@@ -368,6 +382,7 @@ impl Store {
             }
             tx.commit()?;
         }
+        conn.execute_batch(ATTACHMENT_TABLE)?;
         Ok(Store { conn, dir })
     }
 
@@ -461,6 +476,36 @@ impl Store {
     pub fn photos(&self) -> Result<Vec<Value>> {
         self.all("photo")
     }
+    /// Siêu dữ liệu mọi `Attachment` (01 §3.8a), sắp theo `id`.
+    pub fn attachments(&self) -> Result<Vec<Value>> {
+        self.all("attachment")
+    }
+
+    /// Byte của một tệp đính kèm (kiểm tra `sha256` khi đọc).
+    pub fn attachment_bytes(&self, id: &str) -> Result<Vec<u8>> {
+        let sha: Option<String> = self
+            .conn
+            .query_row(
+                "SELECT sha256 FROM attachment WHERE id = ?1",
+                params![id],
+                |r| r.get(0),
+            )
+            .optional()?;
+        let sha = sha.ok_or(StoreError::NotFound)?;
+        let b = std::fs::read(self.attachment_path(id))?;
+        if sha256_hex(&b) != sha {
+            return Err(StoreError::Invalid(ValidationError {
+                code: "ATTACHMENT",
+                path: id.into(),
+                msg: "sha256 không khớp".into(),
+            }));
+        }
+        Ok(b)
+    }
+
+    fn attachment_path(&self, id: &str) -> PathBuf {
+        self.dir.join(ATTACHMENT_DIR).join(format!("{id}.bin"))
+    }
 
     /// Một `Person`.
     pub fn person(&self, id: &str) -> Result<Value> {
@@ -515,17 +560,86 @@ impl Store {
                 |r| r.get(0),
             )
             .optional()?;
-        let old_refs = match old {
-            Some(s) => validate::person_photo_refs(&parse_col(&s)?),
-            None => Vec::new(),
+        let (old_refs, old_atts) = match old {
+            Some(s) => {
+                let o = parse_col(&s)?;
+                (
+                    validate::person_photo_refs(&o),
+                    validate::person_attachment_refs(&o),
+                )
+            }
+            None => (Vec::new(), Vec::new()),
         };
         upsert_person(&tx, p)?;
         let gone = gc_photos(&tx, old_refs)?;
+        let gone_att = gc_attachments(&tx, old_atts)?;
         Self::mark_changed(&tx, &now)?;
         tx.commit()?;
         for pid in gone {
             let _ = std::fs::remove_file(self.photo_path(&pid));
         }
+        for aid in gone_att {
+            let _ = std::fs::remove_file(self.attachment_path(&aid));
+        }
+        Ok(())
+    }
+
+    /// Thêm một tệp đính kèm thông tin báo tử (01 §3.8a, YC-2026-07). Ảnh (`image/jpeg`, `image/webp`): byte
+    /// **đã** được nền tảng giải mã và mã hóa lại (bỏ siêu dữ liệu, cạnh dài ≤ 2048 px), ≤ 2 MiB. PDF: lưu nguyên
+    /// byte, ≤ 10 MiB, phải bắt đầu bằng `%PDF-`. `file_name`: tên gốc chỉ để hiển thị (không dùng làm tên tệp
+    /// trên máy). Trả bản ghi `Attachment`; gắn vào hồ sơ bằng `death.notice.attachments[].file_id`.
+    pub fn add_attachment(
+        &mut self,
+        id: &str,
+        mime: &str,
+        file_name: Option<&str>,
+        bytes: &[u8],
+    ) -> Result<Value> {
+        let pdf = mime == "application/pdf";
+        if pdf && !bytes.starts_with(b"%PDF-") {
+            return Err(StoreError::Input(
+                "Tệp không phải PDF hợp lệ (thiếu phần đầu %PDF-)".into(),
+            ));
+        }
+        let name = file_name
+            .map(|s| s.nfc().collect::<String>().trim().to_owned())
+            .filter(|s| !s.is_empty());
+        let meta = json!({
+            "id": id, "mime": mime, "bytes": bytes.len(), "sha256": sha256_hex(bytes), "stripped": !pdf,
+            "file_name": name, "created_at": now_rfc3339(),
+        });
+        validate::attachment(&meta, "/attachment")?;
+        write_atomic(&self.attachment_path(id), bytes)?;
+        let tx = self.conn.transaction()?;
+        tx.execute(
+            "INSERT OR REPLACE INTO attachment(id, json, sha256) VALUES (?1, ?2, ?3)",
+            params![id, jtext(&meta), meta["sha256"].as_str()],
+        )?;
+        Self::mark_changed(&tx, &now_rfc3339())?;
+        tx.commit()?;
+        Ok(meta)
+    }
+
+    /// Xóa một tệp đính kèm không hồ sơ nào dùng (đã thêm rồi người dùng hủy). Tệp hồ sơ gỡ khỏi danh sách thì
+    /// [`Store::put_person`] đã tự xóa. Còn được dùng → `Input`; không có → `NotFound`.
+    pub fn delete_attachment(&mut self, id: &str) -> Result<()> {
+        let tx = self.conn.transaction()?;
+        let n: i64 = tx.query_row(
+            "SELECT count(*) FROM attachment WHERE id = ?1",
+            params![id],
+            |r| r.get(0),
+        )?;
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        if gc_attachments(&tx, vec![id.to_owned()])?.is_empty() {
+            return Err(StoreError::Input(
+                "Tệp đang được dùng trong một hồ sơ nên chưa xóa được".into(),
+            ));
+        }
+        Self::mark_changed(&tx, &now_rfc3339())?;
+        tx.commit()?;
+        let _ = std::fs::remove_file(self.attachment_path(id));
         Ok(())
     }
 
@@ -650,7 +764,9 @@ impl Store {
         let Some(pj) = pj else {
             return Err(StoreError::NotFound);
         };
-        let refs = validate::person_photo_refs(&parse_col(&pj)?);
+        let pv = parse_col(&pj)?;
+        let refs = validate::person_photo_refs(&pv);
+        let att_refs = validate::person_attachment_refs(&pv);
         let ev: Vec<String> = {
             let mut st = tx.prepare("SELECT event_id FROM event_person WHERE person_id = ?1")?;
             let r = st
@@ -677,12 +793,16 @@ impl Store {
             upsert_event(&tx, &e)?;
         }
         tx.execute("DELETE FROM person WHERE id = ?1", params![id])?;
-        // Ảnh còn được hồ sơ khác dùng thì giữ.
+        // Ảnh / tệp đính kèm còn được hồ sơ khác dùng thì giữ.
         let gone = gc_photos(&tx, refs)?;
+        let gone_att = gc_attachments(&tx, att_refs)?;
         Self::mark_changed(&tx, &now)?;
         tx.commit()?;
         for pid in gone {
             let _ = std::fs::remove_file(self.photo_path(&pid));
+        }
+        for aid in gone_att {
+            let _ = std::fs::remove_file(self.attachment_path(&aid));
         }
         Ok(removed_events)
     }
@@ -712,7 +832,7 @@ impl Store {
 
     /// Toàn bộ kho dưới dạng tài liệu sao lưu (01 §5), chưa có byte ảnh.
     pub fn snapshot(&self, app: &AppInfo, exported_at: &str) -> Result<Value> {
-        Ok(json!({
+        let mut doc = json!({
             "format": "lvhv-backup",
             "schema_version": SCHEMA_VERSION,
             "app": { "name": "Lịch và Văn hóa Việt", "version": app.version, "platform": app.platform },
@@ -722,7 +842,14 @@ impl Store {
             "persons": self.persons()?,
             "events": self.events()?,
             "photos": self.photos()?,
-        }))
+        });
+        // `attachments` chỉ có khi khác rỗng: tài liệu không có tệp đính kèm giống hệt bản trước YC-2026-07
+        // (vector R6 đã khóa).
+        let atts = self.attachments()?;
+        if !atts.is_empty() {
+            doc["attachments"] = Value::Array(atts);
+        }
+        Ok(doc)
     }
 
     /// Tài liệu + byte ảnh (theo thứ tự `photos`).
@@ -739,6 +866,15 @@ impl Store {
             blobs.push(PhotoBlob {
                 id: raw,
                 bytes: self.photo_bytes(id)?,
+            });
+        }
+        // Tệp đính kèm đi sau ảnh, cùng danh sách khối (03 §2.3).
+        for a in doc["attachments"].as_array().into_iter().flatten() {
+            let id = a["id"].as_str().unwrap_or_default();
+            let raw = lvhv_backup::uuid_from_str(id).ok_or(StoreError::NotFound)?;
+            blobs.push(PhotoBlob {
+                id: raw,
+                bytes: self.attachment_bytes(id)?,
             });
         }
         Ok((doc, blobs))
@@ -763,6 +899,12 @@ impl Store {
         for ph in doc["photos"].as_array().into_iter().flatten() {
             h.update(
                 sha256_hex(&self.photo_bytes(ph["id"].as_str().unwrap_or_default())?).as_bytes(),
+            );
+        }
+        for a in doc["attachments"].as_array().into_iter().flatten() {
+            h.update(
+                sha256_hex(&self.attachment_bytes(a["id"].as_str().unwrap_or_default())?)
+                    .as_bytes(),
             );
         }
         Ok(to_hex(&h.finalize()))
@@ -872,16 +1014,52 @@ impl Store {
                 }
             }
         }
+        let mut new_atts: Vec<(String, Vec<u8>)> = Vec::new();
+        for a in target["attachments"].as_array().into_iter().flatten() {
+            let id = a["id"].as_str().unwrap_or_default();
+            let sha = a["sha256"].as_str().unwrap_or_default();
+            let on_disk = std::fs::read(self.attachment_path(id))
+                .ok()
+                .filter(|x| sha256_hex(x) == sha);
+            if on_disk.is_none() {
+                match b.attachments.get(id) {
+                    Some(bytes) => new_atts.push((id.to_owned(), bytes.clone())),
+                    None => {
+                        return Err(StoreError::Invalid(ValidationError {
+                            code: "ATTACHMENT",
+                            path: id.into(),
+                            msg: "thiếu byte tệp đính kèm".into(),
+                        }))
+                    }
+                }
+            }
+        }
         for (id, bytes) in &new_files {
             write_atomic(&self.photo_path(id), bytes)?;
+        }
+        for (id, bytes) in &new_atts {
+            write_atomic(&self.attachment_path(id), bytes)?;
         }
         let now = now_rfc3339();
         let tx = self
             .conn
             .transaction_with_behavior(TransactionBehavior::Immediate)?;
         let res = (|| -> Result<()> {
-            for t in ["event_person", "event", "person", "event_type", "photo"] {
+            for t in [
+                "event_person",
+                "event",
+                "person",
+                "event_type",
+                "photo",
+                "attachment",
+            ] {
                 tx.execute(&format!("DELETE FROM {t}"), [])?;
+            }
+            for a in target["attachments"].as_array().into_iter().flatten() {
+                tx.execute(
+                    "INSERT INTO attachment(id, json, sha256) VALUES (?1, ?2, ?3)",
+                    params![a["id"].as_str(), jtext(a), a["sha256"].as_str()],
+                )?;
             }
             for ph in target["photos"].as_array().into_iter().flatten() {
                 tx.execute(
@@ -914,6 +1092,9 @@ impl Store {
                 for (id, _) in &new_files {
                     let _ = std::fs::remove_file(self.photo_path(id));
                 }
+                for (id, _) in &new_atts {
+                    let _ = std::fs::remove_file(self.attachment_path(id));
+                }
                 return Err(e);
             }
         }
@@ -927,6 +1108,19 @@ impl Store {
             for f in rd.flatten() {
                 let name = f.file_name().to_string_lossy().into_owned();
                 if name.ends_with(".img") && !keep.contains(&name) {
+                    let _ = std::fs::remove_file(f.path());
+                }
+            }
+        }
+        let keep: std::collections::HashSet<String> = self
+            .attachments()?
+            .iter()
+            .filter_map(|p| p["id"].as_str().map(|s| format!("{s}.bin")))
+            .collect();
+        if let Ok(rd) = std::fs::read_dir(self.dir.join(ATTACHMENT_DIR)) {
+            for f in rd.flatten() {
+                let name = f.file_name().to_string_lossy().into_owned();
+                if name.ends_with(".bin") && !keep.contains(&name) {
                     let _ = std::fs::remove_file(f.path());
                 }
             }
@@ -968,7 +1162,50 @@ fn gc_photos(tx: &rusqlite::Transaction<'_>, mut candidates: Vec<String>) -> Res
     Ok(gone)
 }
 
+/// Như [`gc_photos`] cho tệp đính kèm (bảng `attachment`).
+fn gc_attachments(
+    tx: &rusqlite::Transaction<'_>,
+    mut candidates: Vec<String>,
+) -> Result<Vec<String>> {
+    candidates.sort();
+    candidates.dedup();
+    if candidates.is_empty() {
+        return Ok(candidates);
+    }
+    let mut used: std::collections::HashSet<String> = Default::default();
+    {
+        let mut st = tx.prepare("SELECT json FROM person")?;
+        let rows = st.query_map([], |r| r.get::<_, String>(0))?;
+        for r in rows {
+            used.extend(validate::person_attachment_refs(&parse_col(&r?)?));
+        }
+    }
+    let mut gone = Vec::new();
+    for id in candidates {
+        if !used.contains(&id)
+            && tx.execute("DELETE FROM attachment WHERE id = ?1", params![id])? > 0
+        {
+            gone.push(id);
+        }
+    }
+    Ok(gone)
+}
+
 fn check_refs_person(tx: &rusqlite::Transaction<'_>, p: &Value) -> Result<()> {
+    for (j, aid) in validate::person_attachment_refs(p).iter().enumerate() {
+        let n: i64 = tx.query_row(
+            "SELECT count(*) FROM attachment WHERE id = ?1",
+            params![aid],
+            |r| r.get(0),
+        )?;
+        if n == 0 {
+            return Err(StoreError::Invalid(ValidationError {
+                code: "V3",
+                path: format!("/person/death/notice/attachments/{j}/file_id"),
+                msg: "tệp đính kèm không tồn tại".into(),
+            }));
+        }
+    }
     for pid in validate::person_photo_refs(p) {
         let pid = pid.as_str();
         let n: i64 = tx.query_row(
@@ -1151,9 +1388,28 @@ pub fn merge_docs(local: &Value, incoming: &Value) -> Value {
         .filter(|(id, _)| used.contains(id.as_str()) || local_photo_ids.contains(id))
         .map(|(_, v)| v)
         .collect();
+    // Tệp đính kèm: như ảnh — giữ của máy, thêm tệp mới mà hồ sơ sau gộp còn dùng.
+    let mut atts = by_id(&local["attachments"]);
+    let local_att_ids: std::collections::HashSet<String> = atts.keys().cloned().collect();
+    for (id, x) in by_id(&incoming["attachments"]) {
+        atts.entry(id).or_insert(x);
+    }
+    let used_att: std::collections::HashSet<String> = persons
+        .iter()
+        .flat_map(validate::person_attachment_refs)
+        .collect();
+    let atts: Vec<Value> = atts
+        .into_iter()
+        .filter(|(id, _)| used_att.contains(id) || local_att_ids.contains(id))
+        .map(|(_, v)| v)
+        .collect();
     let mut out = local.clone();
     let o = out.as_object_mut().map(core::mem::take).unwrap_or_default();
     let mut o: Map<String, Value> = o;
+    o.remove("attachments");
+    if !atts.is_empty() {
+        o.insert("attachments".into(), Value::Array(atts));
+    }
     o.insert(
         "event_types".into(),
         Value::Array(types.into_values().collect()),
@@ -1186,7 +1442,14 @@ pub fn verify_contents(c: &lvhv_backup::Contents) -> Result<VerifiedBackup> {
         .flatten()
         .map(|p| (p["id"].as_str().unwrap_or_default().to_owned(), p))
         .collect();
+    let att_meta: HashMap<String, &Value> = doc["attachments"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .map(|p| (p["id"].as_str().unwrap_or_default().to_owned(), p))
+        .collect();
     let mut photos = HashMap::new();
+    let mut attachments = HashMap::new();
     let perr = |m: &str| {
         StoreError::Invalid(ValidationError {
             code: "PHOTO",
@@ -1194,22 +1457,55 @@ pub fn verify_contents(c: &lvhv_backup::Contents) -> Result<VerifiedBackup> {
             msg: m.into(),
         })
     };
+    let aerr = |m: &str| {
+        StoreError::Invalid(ValidationError {
+            code: "ATTACHMENT",
+            path: "/attachments".into(),
+            msg: m.into(),
+        })
+    };
+    // Khối: ảnh trước, tệp đính kèm sau (03 §2.3); mỗi khối khớp đúng một bản ghi theo id.
     for b in &c.photos {
         let id = lvhv_backup::uuid_to_string(&b.id);
-        let m = meta.get(&id).ok_or_else(|| perr("ảnh thừa"))?;
-        if m["sha256"].as_str() != Some(sha256_hex(&b.bytes).as_str())
-            || m["bytes"].as_u64() != Some(b.bytes.len() as u64)
-        {
-            return Err(perr("sha256/bytes không khớp"));
-        }
-        if photos.insert(id, b.bytes.clone()).is_some() {
-            return Err(perr("ảnh trùng"));
+        if let Some(m) = meta.get(&id) {
+            if m["sha256"].as_str() != Some(sha256_hex(&b.bytes).as_str())
+                || m["bytes"].as_u64() != Some(b.bytes.len() as u64)
+            {
+                return Err(perr("sha256/bytes không khớp"));
+            }
+            if !attachments.is_empty() {
+                return Err(perr("ảnh phải đứng trước tệp đính kèm"));
+            }
+            if photos.insert(id, b.bytes.clone()).is_some() {
+                return Err(perr("ảnh trùng"));
+            }
+        } else if let Some(m) = att_meta.get(&id) {
+            if m["sha256"].as_str() != Some(sha256_hex(&b.bytes).as_str())
+                || m["bytes"].as_u64() != Some(b.bytes.len() as u64)
+            {
+                return Err(aerr("sha256/bytes không khớp"));
+            }
+            if m["mime"] == "application/pdf" && !b.bytes.starts_with(b"%PDF-") {
+                return Err(aerr("PDF không hợp lệ"));
+            }
+            if attachments.insert(id, b.bytes.clone()).is_some() {
+                return Err(aerr("tệp đính kèm trùng"));
+            }
+        } else {
+            return Err(perr("ảnh thừa"));
         }
     }
     if photos.len() != meta.len() {
         return Err(perr("thiếu ảnh"));
     }
-    Ok(VerifiedBackup { doc, photos })
+    if attachments.len() != att_meta.len() {
+        return Err(aerr("thiếu tệp đính kèm"));
+    }
+    Ok(VerifiedBackup {
+        doc,
+        photos,
+        attachments,
+    })
 }
 
 /// Một người mới với trường dẫn xuất tính bằng [`derive`] — tiện cho kiểm thử và cho lớp giao diện.

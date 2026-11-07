@@ -115,7 +115,7 @@ const exPhoto = rd(manifest.example.photo);
   results.corrupt_vectors = { n: manifest.corrupt.length, all_rejected_same_code: allOk };
 }
 
-// ---------- YC-2026-05: vector bổ sung thông tin báo tử (01 §3.2a; không thay vector đã khóa) ----------
+// ---------- YC-2026-05 / YC-2026-07: vector bổ sung thông tin báo tử, tệp đính kèm, giới tính (không thay vector đã khóa) ----------
 {
   const SD = join(TV, "supplement-yc05");
   const sm = JSON.parse(readFileSync(join(SD, "manifest.json"), "utf8"));
@@ -123,22 +123,50 @@ const exPhoto = rd(manifest.example.photo);
   const nText = readFileSync(join(SD, "notice-v1.json"), "utf8");
   const v = await S.openBackup(nFile, sm.password);
   ok(S.canonicalJson(v.doc) === nText, "YC-2026-05: notice-v1.lvhv (Rust) mở trong JS, JSON giống từng byte");
-  const blobs = (v.doc.photos).map((ph) => ({ id: bc.uuidToBytes(ph.id), bytes: exPhoto }));
+  const pdf = new Uint8Array(readFileSync(join(SD, "giay-chung-tu.pdf")));
+  ok(sha(pdf) === sm.pdf.sha256, "YC-2026-07: giay-chung-tu.pdf đúng sha256 của manifest");
+  // Khối: ảnh (theo photos) rồi tệp đính kèm (theo attachments) — 03 §2.3.
+  const attBytes = { [sm.attachment_image_id]: exPhoto, [sm.attachment_pdf_id]: pdf };
+  const blobs = [...v.doc.photos.map((ph) => ({ id: bc.uuidToBytes(ph.id), bytes: exPhoto })),
+    ...v.doc.attachments.map((a) => ({ id: bc.uuidToBytes(a.id), bytes: attBytes[a.id] }))];
   const f = await bc.exportWithFixedRng(sm.password, nText, blobs, unhex(sm.salt_hex), unhex(sm.nonce_hex));
   ok(sha(f) === sm.file.sha256, "YC-2026-05: JS xuất notice-v1 với salt/nonce cố định = tệp của Rust (giống từng byte)");
   const t = await freshStore();
   await t.applyImport(v, "replace");
   ok((await t.stateHash()) === sm.state_sha256, "YC-2026-05: nhập vào IndexedDB → stateHash = state_hash(SQLite) của Rust");
   const pA = await t.person("0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e01");
-  ok(pA.death.notice.certificate_photo_ids[0] === sm.cert_photo_id, "YC-2026-05: báo tử và ảnh giấy báo tử được giữ");
+  ok(pA.gioi_tinh === "nam" && pA.death.notice.attachments.map((a) => a.file_id).join() === `${sm.attachment_image_id},${sm.attachment_pdf_id}`,
+    "YC-2026-05/07: báo tử, tệp đính kèm và giới tính được giữ");
+  ok(sha(await t.attachmentBytes(sm.attachment_pdf_id)) === sm.pdf.sha256, "YC-2026-07: PDF đính kèm lưu nguyên byte");
+  // Gỡ PDF khỏi danh sách → lớp lưu trữ xóa tệp (như Rust put_person).
+  const pA2 = structuredClone(pA);
+  pA2.death.notice.attachments.pop(); pA2.rev += 1;
+  await t.putPerson(pA2);
+  ok((await code(() => t.attachmentBytes(sm.attachment_pdf_id))) === "not_found" && (await t.attachments()).length === 1, "YC-2026-07: gỡ tệp khỏi danh sách → tệp bị xóa");
+  ok((await code(() => t.deleteAttachment(sm.attachment_image_id))) === "input", "YC-2026-07: deleteAttachment tệp đang dùng → input");
+  ok((await code(() => t.addAttachment({ id: "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e1f", mime: "application/pdf", file_name: null, bytes: new TextEncoder().encode("<html>") }))) === "input", "YC-2026-07: PDF thiếu %PDF- → từ chối");
+  ok((await code(() => t.addAttachment({ id: "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e1f", mime: "image/jpeg", file_name: null, bytes: new Uint8Array(2 * 1024 * 1024 + 1) }))) === "invalid", "YC-2026-07: ảnh đính kèm > 2 MB → từ chối");
+  const loose = await t.addAttachment({ id: "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e1f", mime: "application/pdf", file_name: "  Bản quét.pdf ", bytes: pdf });
+  ok(loose.stripped === false && loose.file_name === "Bản quét.pdf", "YC-2026-07: PDF stripped = false, tên tệp được cắt khoảng trắng");
+  await t.deleteAttachment(loose.id);
+  ok((await code(() => t.deleteAttachment(loose.id))) === "not_found", "YC-2026-07: deleteAttachment tệp chưa gắn → xóa được");
   await t.deletePerson("0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e01");
-  const left = (await t.snapshot({ version: "0.2.0", platform: "pwa" }, "2026-01-01T00:00:00Z")).photos.map((x) => x.id);
-  ok(!left.includes(sm.cert_photo_id), "YC-2026-05: xóa hồ sơ → xóa ảnh giấy báo tử");
+  ok((await t.attachments()).length === 0 && !("attachments" in (await t.snapshot({ version: "0.2.0", platform: "pwa" }, "2026-01-01T00:00:00Z"))),
+    "YC-2026-07: xóa hồ sơ → xóa tệp đính kèm; tài liệu không còn khóa attachments");
   const bad = structuredClone(v.doc);
-  bad.photos = bad.photos.filter((x) => x.id !== sm.cert_photo_id);
+  bad.attachments = bad.attachments.filter((x) => x.id !== sm.attachment_image_id);
   let got = "";
   try { S.validate.document(bad); } catch (e) { got = `${e.code} ${e.path}`; }
-  ok(got === "V3 /persons/0/death/notice/certificate_photo_ids/0", "YC-2026-05: ảnh giấy báo tử không tồn tại → V3 (cùng đường dẫn với Rust)");
+  ok(got === "V3 /persons/0/death/notice/attachments/0/file_id", "YC-2026-07: tệp đính kèm không tồn tại → V3 (cùng đường dẫn với Rust)");
+  for (const [k, val] of [["stripped", true], ["mime", "application/zip"], ["bytes", 10 * 1024 * 1024 + 1], ["file_name", ""]]) {
+    const b2 = structuredClone(v.doc); b2.attachments[1][k] = val;
+    let threw = false; try { S.validate.document(b2); } catch { threw = true; }
+    ok(threw, `YC-2026-07: Attachment.${k} sai → từ chối`);
+  }
+  // Tệp sao lưu sửa: khối PDF thiếu (chỉ còn ảnh) → từ chối.
+  let rej = "";
+  try { await S.verifyContents(nText, blobs.slice(0, -1).map((b) => ({ id: bc.bytesToUuid(b.id), bytes: b.bytes }))); } catch (e) { rej = e.message; }
+  ok(rej === "Sai mật khẩu hoặc tệp bị hỏng", "YC-2026-07: thiếu khối tệp đính kèm → thông báo chung");
   // "notice": null ≡ vắng khóa (Rust: serde default + skip_serializing_if) → PWA bỏ khóa khi lưu, stateHash như Rust.
   const withNull = structuredClone(v.doc);
   const pB = withNull.persons.find((x) => x.death !== null && !("notice" in x.death));
@@ -371,6 +399,18 @@ let r6File;
     `dọn ảnh: đổi ảnh xóa ảnh cũ, ảnh còn hồ sơ khác dùng thì giữ; deletePhoto đang dùng → input, đã xóa → not_found (${JSON.stringify(got)})`);
   ok(JSON.stringify(got, Object.keys(got).sort()) === JSON.stringify(rust, Object.keys(rust).sort()), "dọn ảnh: kết quả và stateHash giống hệt Rust (photo-gc-rust.json)");
   results.photo_gc = got;
+}
+
+// YC-2026-07: gợi ý cách gọi / quan hệ và viết hoa chữ đầu — giống hệt Rust (names-rust.json do cross_platform write ghi).
+{
+  const rust = JSON.parse(readFileSync(join(OUT, "names-rust.json"), "utf8"));
+  const dx = {};
+  for (const [k, dead] of [["deceased", true], ["living", false]]) for (const g of [null, "nam", "nu"]) dx[`${k}:${g ?? "null"}`] = S.danhXungSuggestions(dead, g);
+  const mine = { capitalize: rust.capitalize.map(([x]) => [x, S.capitalizeFirst(x)]), danh_xung: dx, quan_he: { deceased: S.quanHeSuggestions(true), living: S.quanHeSuggestions(false) } };
+  ok(S.canonicalJson(mine) === S.canonicalJson(rust), "YC-2026-07: gợi ý cách gọi, quan hệ và viết hoa chữ đầu giống hệt Rust");
+  const np = S.normalizePersonNames({ danh_xung: "ông", quan_he: "bà ngoại", gioi_tinh: null, ho_ten: "x" });
+  ok(np.danh_xung === "Ông" && np.quan_he === "Bà ngoại" && !("gioi_tinh" in np), "YC-2026-07: normalizePersonNames (viết hoa, gioi_tinh null → bỏ khóa)");
+  results.names = { same_as_rust: S.canonicalJson(mine) === S.canonicalJson(rust) };
 }
 
 writeFileSync(join(OUT, "results.json"), JSON.stringify(results, null, 2) + "\n");

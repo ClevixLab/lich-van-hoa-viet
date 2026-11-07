@@ -50,6 +50,8 @@ lược đồ `docs/v0.2/schema/backup-v1.schema.json` (Person, Event, EventType
 | `events_json()`, `save_event_json(json)`, `delete_event(id)` | Sự kiện |
 | `event_types_json()`, `save_event_type_json(json)` | Loại sự kiện (tên duy nhất — V7) |
 | `add_photo(id, mime, width, height, bytes)`, `photo_bytes(id)` | Ảnh chân dung (đã mã hóa lại, không EXIF) |
+| `add_attachment(id, mime, file_name, bytes)`, `attachment_bytes(id)`, `delete_attachment(id)` | Tệp đính kèm báo tử (01 §3.8a, YC-2026-07): ảnh đã mã hóa lại (≤ 2 MB, cạnh dài ≤ 2048 px) hoặc PDF nguyên bản (≤ 10 MB, `%PDF-`). Gắn bằng `death.notice.attachments: [{id, kind, file_id}]`; gỡ khỏi danh sách rồi lưu → tự xóa. `delete_attachment` chỉ cho tệp chưa gắn |
+| `danh_xung_suggestions(deceased, gioi_tinh)`, `quan_he_suggestions(deceased)`, `capitalize_first(text)` | Gợi ý cách gọi / quan hệ dùng chung (YC-2026-07); `save_person_json` tự viết hoa chữ đầu `danh_xung`, `quan_he` và bỏ `gioi_tinh: null` |
 | `delete_photo(id)` | Xóa ảnh chưa gắn hồ sơ nào (đã `add_photo` rồi hủy). Ảnh hồ sơ bỏ khi đổi/xóa ảnh thì `save_person_json` đã tự xóa. Ảnh còn dùng → `Invalid` |
 | `dataset_json()` | Toàn bộ kho dạng tài liệu sao lưu — đầu vào `dataset_json` của các hàm dưới |
 | `backup_reminder_due()`, `export_backup(password, app_version, platform)`, `apply_import(backup, mode)` | Sao lưu (03); `mode` = `Replace` \| `Merge`. `export_backup` chỉ tạo byte, **không** đổi `last_backup_at` |

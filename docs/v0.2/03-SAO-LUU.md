@@ -68,10 +68,17 @@ bản rõ := "LVHVPT01" (8 byte ASCII)
           ‖ photo_count × ( 16 byte UUID ảnh (nhị phân) ‖ u32 len ‖ len byte ảnh )
 ```
 
-- Không nén (ảnh đã nén sẵn; tránh "bom giải nén"). Giới hạn: `json_len` ≤ 64 MiB, mỗi ảnh ≤ 1 MiB (01 §3.8),
-  tổng bản rõ ≤ **128 MiB**. Vượt giới hạn khi xuất → báo "Quá nhiều ảnh để sao lưu trong một tệp" (v0.2 mã hóa một
+(YC-2026-07, 2026-11-07) Danh sách khối chứa **ảnh rồi tệp đính kèm** (01 §3.8a): trước hết các `Photo` theo thứ
+tự `photos`, sau đó các `Attachment` theo thứ tự `attachments`. `photo_count` là tổng số khối. Tệp không có tệp đính
+kèm giữ nguyên từng byte như trước (khóa `attachments` của JSON chỉ có khi khác rỗng), nên vector 03 §2.5 không đổi.
+
+- Không nén (ảnh đã nén sẵn; tránh "bom giải nén"). Giới hạn: `json_len` ≤ 64 MiB, mỗi khối ≤ 10 MiB (ảnh ≤ 1 MiB
+  theo 01 §3.8, ảnh đính kèm ≤ 2 MiB, PDF ≤ 10 MiB theo 01 §3.8a; giới hạn từng loại kiểm theo bản ghi JSON), tối đa
+  20 000 khối, tổng bản rõ ≤ **128 MiB** (giữ nguyên). Vượt giới hạn khi xuất → báo "Quá nhiều ảnh để sao lưu trong một tệp" (v0.2 mã hóa một
   lần trong bộ nhớ; mã hóa theo luồng để dành cho v0.3, rủi ro R-BAK-2).
-- Mỗi ảnh phải có bản ghi `Photo` cùng `id` trong JSON và `sha256` khớp; thừa hoặc thiếu → từ chối toàn bộ.
+- Mỗi ảnh phải có bản ghi `Photo` cùng `id` trong JSON và `sha256` khớp; thừa hoặc thiếu → từ chối toàn bộ. Cùng
+  quy tắc cho tệp đính kèm (bản ghi `Attachment`, `sha256` và `bytes` khớp, PDF bắt đầu bằng `%PDF-`); khối ảnh
+  đứng sau một khối tệp đính kèm → từ chối.
 - Ảnh nhập từ tệp sao lưu **được giải mã và mã hóa lại** qua đúng quy trình thêm ảnh (01 §3.8) trước khi lưu, để
   ảnh do người khác tạo không đưa siêu dữ liệu hay dữ liệu dị dạng vào kho.
 
