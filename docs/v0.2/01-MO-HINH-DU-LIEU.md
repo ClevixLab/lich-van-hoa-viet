@@ -367,9 +367,19 @@ mất ảnh giấy báo tử của bản nhập (PR #30) — đã sửa ở cả
   (cùng byte, `stripped = true`, `file_name = null`, `created_at` của ảnh). Ảnh chỉ là giấy báo tử thì bản ghi `Photo` được
   chuyển hẳn (cùng id); ảnh còn là ảnh chân dung thì giữ `Photo`, tệp đính kèm lấy id thay thế tất định (`alt_id`). Một
   ảnh dùng cho nhiều hồ sơ → một tệp dùng chung.
-- **Khóa `legacy`, không xóa.** Hồ sơ có chuyển đổi nhận `legacy.certificate_photo_ids` (danh sách gốc) và
+- **Khóa `legacy`.** Hồ sơ có chuyển đổi nhận `legacy.certificate_photo_ids` (danh sách gốc) và
   `legacy.certificate_photos` (bản ghi `Photo` gốc, có `width`/`height`). `Person.legacy` là đối tượng tự do, không hiển
-  thị, có trong sao lưu, đi qua Gộp như mọi trường. Không phép chuyển nào xóa tệp ảnh trên máy.
+  thị. Không phép chuyển nào xóa tệp ảnh trên máy.
+- **Giữ 7 ngày rồi dọn** (BM2-06, BM2-07; quyết định của điều phối viên 2026-11-07, theo đúng "giữ 1 bản, xóa sau 7
+  ngày nếu chuyển đổi thành công" ở trên). Chuyển đổi **thành công** ghi `meta.migrated_at` (và tên bản sao ở
+  `meta.migration_backup`); lưu một hồ sơ còn khóa cũ hoặc nhập tài liệu đã chuyển cũng ghi lại `migrated_at`. Mỗi lần
+  mở kho (không ở chế độ chỉ đọc), nếu đã qua **7 ngày** kể từ `migrated_at`: bỏ khóa `legacy` khỏi mọi hồ sơ (không đổi
+  `rev`/`updated_at` — dọn nội bộ, không phải sửa của người dùng), xóa bản sao CSDL trước chuyển đổi, ghi
+  `meta.legacy_pruned_at`. Chuyển đổi **lỗi** không ghi `migrated_at`: bản sao và dữ liệu cũ giữ nguyên, không bao giờ tự
+  xóa. Rust `post_migration_cleanup` ≡ PWA `Store.pruneAfterMigration` (bản web không có tệp bản sao riêng).
+- **Tệp sao lưu không mang `legacy`.** `legacy` chỉ để khôi phục trên chính máy đã chuyển đổi, nên mọi tệp xuất (kể cả
+  trong 7 ngày sau chuyển đổi) bỏ khóa này khỏi hồ sơ. Kho vẫn giữ nó tới khi dọn; `state_hash` tính cả `legacy`. Nhập một
+  tệp có `legacy` (tệp do bản #28 xuất) vẫn hợp lệ. Vector đã khóa (03 §2.5, R6v2) không có `legacy`, nên không đổi.
 - **Tài liệu dị dạng bị từ chối, không chuyển** (báo cáo kiểm định B5, 2026-11-07):
   - (X22) `death.notice` có **cả** `attachments` lẫn `certificate_photo_ids` (kể cả `certificate_photo_ids: []`) →
     V1 `/persons/<i>/death/notice`. Một tài liệu chỉ được ở một dạng: cũ hoặc mới.
@@ -383,8 +393,14 @@ mất ảnh giấy báo tử của bản nhập (PR #30) — đã sửa ở cả
   ngay trong cùng giao dịch (cùng hàm thuần, cùng quy tắc trên).
 - **04 B6 trong chuyển đổi.** Byte của mỗi ảnh giấy báo tử được kiểm chặt như tệp đính kèm (§3.8a, 03 §2.3) trước khi
   ghi; sai → không chuyển, kho mở chỉ đọc.
-- **Bản sao trước khi chuyển.** Rust: `lvhv.sqlite.pre-v2.bak` cạnh kho (không tự xóa; thư mục ảnh không bị đụng tới nên
-  bản sao + ảnh = toàn bộ dữ liệu cũ). Web: giao dịch `versionchange` của IndexedDB — lỗi thì trình duyệt quay lui cả
+- **Bản sao trước khi chuyển.** Rust: `lvhv.sqlite.pre-v2.bak` cạnh kho (xóa 7 ngày sau khi chuyển thành công, giữ nếu
+  chuyển lỗi — mục trên; thư mục ảnh không bị đụng tới nên bản sao + ảnh = toàn bộ dữ liệu cũ). Bản sao **giống từng
+  byte** kho cũ (báo cáo PR #36): `user_version` được đọc thẳng từ phần đầu tệp (byte 60–63) và tệp được chép thô —
+  kèm `lvhv.sqlite-wal` thành `….pre-v2.bak-wal` nếu có — **trước** khi mở kết nối (mở kết nối và bật WAL ghi lại byte
+  18–19 và bộ đếm thay đổi).
+- **Chuyển đổi lỗi không để lại tệp.** Tệp đính kèm mới (`attachments/*.bin`) ghi trong lúc chuyển (khi mở kho hoặc khi
+  lưu hồ sơ còn khóa cũ) được ghi lại và **xóa** nếu giao dịch quay lui: thư mục kho trở lại đúng tập tệp như trước, chỉ
+  thêm bản sao trước chuyển đổi (kiểm thử `failed_migration_leaves_folder_unchanged_and_copy_is_byte_identical`). Web: giao dịch `versionchange` của IndexedDB — lỗi thì trình duyệt quay lui cả
   phiên bản lẫn dữ liệu.
 - **Một giao dịch, kiểm 01 §6.2, lỗi → chỉ đọc.** Chuyển đổi và bước kiểm (mọi hồ sơ hợp lệ, tham chiếu tồn tại, bản ghi
   tệp đính kèm hợp lệ) trong cùng giao dịch. Lỗi → quay lui, kho mở ở chế độ **chỉ đọc**: đọc và xuất sao lưu được, mọi

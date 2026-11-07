@@ -541,6 +541,30 @@ let r6File;
     && pure.doc.persons[0].legacy.certificate_photos[0].width === 10 && pure.doc.persons[2].death === null
     && S.altId("0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e0c", new Set()) === "0b8e4f52-3c1a-4d2e-9f60-e5d4c3b2a1f3"
     && !S.migrate1to2(pure.doc).changed, "B5: migrate1to2 cùng ca biên với Rust (store/src/migrate.rs)");
+  // BM2-07 (01 §7): 7 ngày sau chuyển đổi thành công bỏ `legacy`; tệp xuất trong 7 ngày không mang `legacy` — như Rust
+  // legacy_and_backup_pruned_after_7_days.
+  {
+    const fp = await v1Store();
+    const iso = (ms) => new Date(ms).toISOString().slice(0, 19) + "Z";
+    const t0 = Date.parse("2026-11-10T00:00:00Z"), day = 86_400_000;
+    const nLegacy = async (st) => (await st.persons()).filter((p) => "legacy" in p).length;
+    const a0 = await S.openStore(fp, { now: iso(t0) });
+    const c0 = a0.migrationStatus().state === "migrated" && (await nLegacy(a0)) === 2;
+    const xf = await a0.exportBackup("mật khẩu thử nghiệm", { version: "0.2.0", platform: "pwa" });
+    const xv = await S.openBackup(xf, "mật khẩu thử nghiệm");
+    const noLegacyInFile = xv.doc.persons.every((p) => !("legacy" in p));
+    a0.close();
+    const a1 = await S.openStore(fp, { now: iso(t0 + 7 * day - 3_600_000) });
+    const c1 = (await nLegacy(a1)) === 2;
+    a1.close();
+    const a2 = await S.openStore(fp, { now: iso(t0 + 7 * day) });
+    const pruned = (await stateDoc(a2));
+    const expPersons = exp.state.persons.map((p) => { const { legacy: _l, ...r } = p; void _l; return r; });
+    const c2 = (await nLegacy(a2)) === 0 && S.canonicalJson(pruned.persons) === S.canonicalJson(expPersons)
+      && S.canonicalJson(pruned.attachments) === S.canonicalJson(exp.state.attachments);
+    a2.close();
+    ok(c0 && noLegacyInFile && c1 && c2, `BM2-07: legacy giữ 7 ngày rồi bị bỏ (như Rust); tệp xuất không mang legacy (${[c0, noLegacyInFile, c1, c2].join(",")})`);
+  }
   // Kiểm định: buộc lỗi chuyển đổi → chỉ đọc, dữ liệu cũ nguyên.
   const ff = await v1Store();
   const sf = await S.openStore(ff, { forceMigrationFailure: true });
