@@ -15,7 +15,7 @@ use slint::{ComponentHandle, LogicalPosition, Model};
 use crate::ui::*;
 
 /// Bấm chuột trái vào giữa phần tử (nhấn — chờ 50 ms thời gian giả — nhả), như người dùng.
-fn click(ui: &AppWindow, el: &ElementHandle) {
+pub(crate) fn click(ui: &AppWindow, el: &ElementHandle) {
     let p = el.absolute_position();
     let s = el.size();
     assert!(
@@ -39,7 +39,7 @@ fn click(ui: &AppWindow, el: &ElementHandle) {
     i_slint_backend_testing::mock_elapsed_time(Duration::from_millis(20));
 }
 
-fn by_label(ui: &AppWindow, label: &str) -> ElementHandle {
+pub(crate) fn by_label(ui: &AppWindow, label: &str) -> ElementHandle {
     let all: Vec<_> = ElementHandle::find_by_accessible_label(ui, label).collect();
     assert!(!all.is_empty(), "không tìm thấy phần tử có nhãn {label:?}");
     all.into_iter().next().unwrap()
@@ -54,12 +54,12 @@ fn by_label_prefix(ui: &AppWindow, prefix: &str) -> ElementHandle {
         .unwrap_or_else(|| panic!("không tìm thấy phần tử có nhãn bắt đầu bằng {prefix:?}"))
 }
 
-fn count_label(ui: &AppWindow, label: &str) -> usize {
+pub(crate) fn count_label(ui: &AppWindow, label: &str) -> usize {
     ElementHandle::find_by_accessible_label(ui, label).count()
 }
 
 /// Cuộn tờ lịch/trang đang mở sao cho phần tử nằm trong khung nhìn (như người dùng cuộn chuột).
-fn scroll_into_view(ui: &AppWindow, label: &str) {
+pub(crate) fn scroll_into_view(ui: &AppWindow, label: &str) {
     for n in 0..80 {
         let Some(el) = ElementHandle::find_by_accessible_label(ui, label).next() else {
             // Phần tử nằm ngoài khung nhìn (bị cắt): cuộn xuống 40 lần đầu, sau đó cuộn lên.

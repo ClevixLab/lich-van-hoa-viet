@@ -14,7 +14,7 @@ use std::time::Duration;
 
 use lvhv_ffi::{BackupImportMode, DeviceZone, LvhvStore, VerifiedBackup};
 use serde_json::{json, Value};
-use slint::{ComponentHandle, Image, Model, ModelRc, SharedString, Timer, TimerMode, VecModel};
+use slint::{ComponentHandle, Image, Model, ModelRc, SharedString, Timer, VecModel};
 
 
 use crate::platform::{self, Dialog, PendingToastNew, ToastState};
@@ -222,8 +222,8 @@ pub struct PState {
     backup: Option<Arc<VerifiedBackup>>,
     backup_file: Option<PathBuf>,
     dlg: DlgAction,
-    toast_timer: Timer,
-    smoke_timer: Timer,
+    toast_gen: Rc<std::cell::Cell<u64>>,
+    smoke_gen: Rc<std::cell::Cell<u64>>,
     pub scheduled: Option<usize>,
     pub last_error: Option<String>,
 }
@@ -250,8 +250,8 @@ impl PState {
             backup: None,
             backup_file: None,
             dlg: DlgAction::None,
-            toast_timer: Timer::default(),
-            smoke_timer: Timer::default(),
+            toast_gen: Rc::default(),
+            smoke_gen: Rc::default(),
             scheduled: None,
             last_error: None,
         }
@@ -288,12 +288,16 @@ pub fn ensure_store(ui: &AppWindow, ps: &mut PState) -> bool {
 fn toast(ui: &AppWindow, ps: &PState, msg: &str) {
     People::get(ui).set_toast(ss(msg));
     let w = ui.as_weak();
-    ps.toast_timer
-        .start(TimerMode::SingleShot, Duration::from_secs(6), move || {
+    let gen = ps.toast_gen.get() + 1;
+    ps.toast_gen.set(gen);
+    let g = ps.toast_gen.clone();
+    Timer::single_shot(Duration::from_secs(6), move || {
+        if g.get() == gen {
             if let Some(ui) = w.upgrade() {
                 People::get(&ui).set_toast(ss(""));
             }
-        });
+        }
+    });
 }
 
 fn fail(ui: &AppWindow, ps: &mut PState, msg: String) {
@@ -309,12 +313,14 @@ fn fail(ui: &AppWindow, ps: &mut PState, msg: String) {
 struct Summaries {
     tuoi: HashMap<String, String>,
     dead: HashSet<String>,
+    names: HashMap<String, String>,
 }
 
 fn summaries(ps: &PState, today: D) -> Summaries {
     let mut s = Summaries {
         tuoi: HashMap::new(),
         dead: HashSet::new(),
+        names: HashMap::new(),
     };
     let Some(store) = ps.s() else { return s };
     let persons = jv(&store.persons_json().unwrap_or_default());
@@ -323,6 +329,7 @@ fn summaries(ps: &PState, today: D) -> Summaries {
         if p["kind"] == "deceased" {
             s.dead.insert(id.clone());
         }
+        s.names.insert(id.clone(), display_name(p));
         if let Ok(j) = lvhv_ffi::person_summary_json(p.to_string(), today.solar()) {
             if let Some(t) = jv(&j)["tuoi_mat_text"].as_str() {
                 s.tuoi.insert(id, t.to_string());
@@ -344,8 +351,12 @@ fn item(o: &Value, today: D, sums: &Summaries) -> PItem {
             "{} · {name}",
             headline[..headline.len() - name.len()].trim_end()
         )
-    } else if kind == 3 && !name.is_empty() {
-        format!("{headline} · {name}")
+    } else if kind == 3 {
+        // Sự kiện: "Nhãn · tên người" (người đầu tiên của sự kiện, chỉ để hiển thị).
+        match o["person_ids"][0].as_str().and_then(|i| sums.names.get(i)) {
+            Some(n) => format!("{headline} · {n}"),
+            None => headline,
+        }
     } else {
         headline
     };
@@ -829,7 +840,7 @@ pub fn go(ui: &AppWindow, ps: &mut PState, page: &str) {
 
 fn back(ui: &AppWindow, ps: &mut PState) {
     let p = People::get(ui);
-    ps.smoke_timer.stop();
+    ps.smoke_gen.set(ps.smoke_gen.get() + 1);
     let prev = ps.stack.pop().unwrap_or_else(|| "ho-so".into());
     if prev == "nguoi" {
         if let Some(id) = ps.person.clone() {
@@ -1197,11 +1208,11 @@ fn open_memorial(ui: &AppWindow, ps: &mut PState, id: &str) {
                 .unwrap_or(&label)
                 .trim()
                 .to_string();
-            format!("{label} · hôm nay {}", lunar_text(&d["lunar"], false))
+            format!("{label} · hôm nay {}", lunar_text(&o["lunar"], false))
         }
         Some(o) => format!(
             "Ngày giỗ năm nay: {}, {}",
-            lunar_text(&d["lunar"], false),
+            lunar_text(&o["lunar"], false),
             d_iso(o["date"].as_str().unwrap_or(""))
                 .map(|x| x.dmy())
                 .unwrap_or_default()
@@ -1219,12 +1230,18 @@ fn open_memorial(ui: &AppWindow, ps: &mut PState, id: &str) {
 fn start_smoke(ui: &AppWindow, ps: &PState) {
     People::get(ui).set_m_smoke(true);
     let w = ui.as_weak();
-    ps.smoke_timer
-        .start(TimerMode::SingleShot, Duration::from_secs(120), move || {
+    // Mỗi lần thắp là một bộ hẹn giờ mới, có số thế hệ: tránh khởi động lại một Timer đang chờ ngay trong
+    // lượt xử lý hẹn giờ (Slint 1.8 báo lỗi khẳng định `!timer.being_activated`).
+    let gen = ps.smoke_gen.get() + 1;
+    ps.smoke_gen.set(gen);
+    let g = ps.smoke_gen.clone();
+    Timer::single_shot(Duration::from_secs(120), move || {
+        if g.get() == gen {
             if let Some(ui) = w.upgrade() {
                 People::get(&ui).set_m_smoke(false);
             }
-        });
+        }
+    });
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -3123,7 +3140,7 @@ pub fn wire(ui: &AppWindow, ps: Ps) {
     }));
     p.on_smoke_toggle(cb0!(|ui: &AppWindow, ps: &mut PState| {
         if People::get(ui).get_m_smoke() {
-            ps.smoke_timer.stop();
+            ps.smoke_gen.set(ps.smoke_gen.get() + 1);
             People::get(ui).set_m_smoke(false);
         } else {
             start_smoke(ui, ps);
@@ -3150,4 +3167,10 @@ pub fn wire(ui: &AppWindow, ps: Ps) {
         }
         render_upcoming(ui, ps);
     }));
+}
+
+/// Cho kiểm thử: "YYYY-MM-DD" → D.
+#[cfg(test)]
+pub fn tests_date(s: &str) -> D {
+    d_iso(s).expect("ngày ISO")
 }

@@ -435,6 +435,7 @@ component DateIn inherits VerticalLayout {
 component RemBlock inherits VerticalLayout {
     in property <string> key;
     in property <string> switch-text: "Bật nhắc";
+    in property <bool> show-switch: true;
     in-out property <bool> enabled;
     in property <[bool]> offs;
     in-out property <string> custom;
@@ -447,7 +448,7 @@ component RemBlock inherits VerticalLayout {
     callback changed();
     callback toggle(int);
     spacing: 8px;
-    Check { text: root.switch-text; checked <=> root.enabled; toggled => { root.changed(); } }
+    if root.show-switch: Check { text: root.switch-text; checked <=> root.enabled; toggled => { root.changed(); } }
     VerticalLayout {
         spacing: 8px;
         opacity: root.enabled ? 1 : 0.55;
@@ -537,7 +538,7 @@ component PItemRow inherits Rectangle {
     accessible-role: button;
     accessible-label: it.line1 + ", " + it.line2 + ", " + it.right + ". Mở hồ sơ";
     accessible-action-default => { root.open(); }
-    PItemBody { it: root.it; }
+    VerticalLayout { PItemBody { it: root.it; } }
     ta := TouchArea { clicked => { root.open(); } mouse-cursor: pointer; }
 }
 
@@ -550,7 +551,7 @@ component PItemStatic inherits Rectangle {
     border-color: it.today ? Theme.red : Theme.rule;
     accessible-role: text;
     accessible-label: it.line1 + ", " + it.line2 + ", " + it.right;
-    PItemBody { it: root.it; }
+    VerticalLayout { PItemBody { it: root.it; } }
 }
 
 component Notice inherits Rectangle {
@@ -581,10 +582,12 @@ component Segments inherits Rectangle {
             horizontal-stretch: 1;
             min-height: 48px;
             border-radius: 9px;
-            background: People.page == s.id ? Theme.red-deep : (seg-ta.has-hover ? Theme.rule : transparent);
+            background: People.page == s.id ? Theme.paper : (seg-ta.has-hover ? Theme.rule : transparent);
+            drop-shadow-blur: People.page == s.id ? 3px : 0px;
+            drop-shadow-color: #00000026;
             accessible-role: tab; accessible-label: s.label; accessible-checked: People.page == s.id;
             accessible-action-default => { People.go(s.id); }
-            T { text: s.label; size: 15; font-weight: 700; color: People.page == s.id ? #ffffff : Theme.ink2; wrap: no-wrap; horizontal-alignment: center; vertical-alignment: center; }
+            T { text: s.label; size: 15; font-weight: 700; color: People.page == s.id ? Theme.red-ink : Theme.ink2; wrap: no-wrap; horizontal-alignment: center; vertical-alignment: center; }
             seg-ta := TouchArea { clicked => { People.go(s.id); } mouse-cursor: pointer; }
         }
     }
@@ -629,7 +632,7 @@ component SubHead inherits VerticalLayout {
     in property <string> sub;
     spacing: 4px;
     HorizontalLayout { alignment: start; LinkBtn { text: People.back-label; clicked => { People.back(); } } }
-    S { text: root.title; size: 28; accessible-role: AccessibleRole.text; accessible-label: root.title; }
+    if root.title != "": S { text: root.title; size: 28; accessible-role: AccessibleRole.text; accessible-label: root.title; }
     if root.sub != "": T { text: root.sub; color: Theme.ink2; size: 16; }
     if People.toast != "": Rectangle {
         background: Theme.green-tint; border-radius: 12px;
@@ -652,21 +655,27 @@ component Welcome inherits Group {
 
 // ---------------- Trang ----------------
 
-component UpcomingPage inherits PPage {
-    Head { }
+component UpMain inherits VerticalLayout {
+    spacing: 14px;
     for c[i] in People.cards: Rectangle {
-        background: Theme.gold-tint; border-radius: 14px;
-        border-width: 1px; border-color: Theme.gold;
+        background: Theme.paper; border-radius: 14px;
+        border-width: 1px; border-color: Theme.rule;
+        drop-shadow-blur: 6px; drop-shadow-offset-y: 1px; drop-shadow-color: #0000001a;
         accessible-role: AccessibleRole.text; accessible-label: c.title + ". " + c.sub;
-        VerticalLayout {
-            padding: 12px; spacing: 6px;
-            S { text: c.title; size: 18; }
-            T { text: c.sub; size: 14; color: Theme.ink2; }
-            HorizontalLayout {
-                spacing: 8px; alignment: start;
-                if c.memorial: Btn { text: "Mở trang tưởng niệm"; kind: "primary"; clicked => { People.open-memorial(c.pid); } }
-                Btn { text: "Xem"; kind: "outline"; accessible-label: "Xem: " + c.title; clicked => { People.open-person(c.pid); } }
-                Btn { text: "Đã biết"; accessible-label: "Đã biết: " + c.title; clicked => { People.dismiss-card(i); } }
+        Rectangle { x: 0; width: 5px; height: parent.height; background: Theme.red; border-top-left-radius: 14px; border-bottom-left-radius: 14px; }
+        HorizontalLayout {
+            padding: 14px; padding-left: 20px; spacing: 12px;
+            VerticalLayout { alignment: start; padding-top: 2px; KindIcon { kind: c.memorial ? 0 : 3; } }
+            VerticalLayout {
+                spacing: 6px; horizontal-stretch: 1;
+                T { text: c.title; size: 17; font-weight: 700; }
+                T { text: c.sub; size: 14; color: Theme.ink2; }
+                HorizontalLayout {
+                    spacing: 8px; alignment: start; padding-top: 4px;
+                    if c.memorial: Btn { text: "Mở trang tưởng niệm"; kind: "primary"; clicked => { People.open-memorial(c.pid); } }
+                    Btn { text: "Xem"; kind: "outline"; accessible-label: "Xem: " + c.title; clicked => { People.open-person(c.pid); } }
+                    Btn { text: "Đã biết"; kind: "outline"; accessible-label: "Đã biết: " + c.title; clicked => { People.dismiss-card(i); } }
+                }
             }
         }
     }
@@ -689,12 +698,16 @@ component UpcomingPage inherits PPage {
             if it.memorial: HorizontalLayout { alignment: start; Btn { text: "Mở trang tưởng niệm"; kind: "outline"; accessible-label: "Mở trang tưởng niệm: " + it.line1; clicked => { People.open-memorial(it.pid); } } }
         }
     }
-    if People.has-any: HorizontalLayout {
-        spacing: 10px; alignment: start;
-        Btn { text: "+ Thêm người đã mất"; kind: "primary"; clicked => { People.add-dead(); } }
-        Btn { text: "+ Thêm người đang sống"; kind: "outline"; clicked => { People.add-living(); } }
+}
+
+component UpSide inherits VerticalLayout {
+    spacing: 14px;
+    if People.has-any: Group {
+        legend: "Thêm vào sổ";
+        HorizontalLayout { alignment: start; Btn { text: "+ Thêm người đã mất"; kind: "primary"; clicked => { People.add-dead(); } } }
+        HorizontalLayout { alignment: start; Btn { text: "+ Thêm người đang sống"; kind: "outline"; clicked => { People.add-living(); } } }
     }
-    // Cài đặt nhắc trên máy này (Windows): thay khung "Lời nhắc trên ứng dụng web" của bản PWA (§5.4).
+    // Thông báo trên máy này (Windows): thay khung "Lời nhắc trên ứng dụng web" của bản PWA (§5.4).
     Group {
         legend: "Lời nhắc trên Windows";
         Rectangle {
@@ -702,12 +715,27 @@ component UpcomingPage inherits PPage {
             accessible-role: AccessibleRole.text; accessible-label: People.notif-status;
             HorizontalLayout { padding: 10px; T { text: People.notif-status; size: 14; color: People.notif-ok ? Theme.green : Theme.ink; } }
         }
-        Check { text: "Bật lời nhắc (thông báo của Windows)"; checked <=> People.rem-enabled; toggled => { People.settings-changed(); } }
+        Check { text: "Bật lời nhắc"; checked <=> People.rem-enabled; toggled => { People.settings-changed(); } }
         Check { text: "Hiện tên người trong thông báo"; checked <=> People.show-names; toggled => { People.settings-changed(); } }
-        T { text: "Mặc định thông báo không ghi tên (ví dụ \"Sắp đến ngày giỗ\"), để người khác nhìn màn hình không biết là ai. Cài đặt này chỉ lưu trên máy này, không vào tệp sao lưu."; size: 13; color: Theme.ink3; }
-        T { text: "Mặc định cho hồ sơ mới"; size: 15; font-weight: 700; }
+        T { text: "Mặc định thông báo không ghi tên (ví dụ \"Sắp đến ngày giỗ\"), để người khác nhìn màn hình không biết là ai. Lời nhắc trong ứng dụng vẫn ghi tên. Cài đặt này chỉ lưu trên máy này, không vào tệp sao lưu."; size: 13; color: Theme.ink3; }
+    }
+}
+
+component UpcomingPage inherits PPage {
+    maxw: 1000px;
+    property <bool> wide: root.width >= 1060px;
+    Head { }
+    if root.wide: HorizontalLayout {
+        spacing: 16px;
+        UpMain { horizontal-stretch: 1; }
+        VerticalLayout { width: 330px; alignment: start; UpSide { } }
+    }
+    if !root.wide: UpMain { }
+    if !root.wide: UpSide { }
+    Group {
+        legend: "Mặc định nhắc cho hồ sơ mới";
         RemBlock {
-            key: "def"; switch-text: "Nhắc cho hồ sơ mới";
+            key: "def"; show-switch: false;
             enabled: true; offs: People.def-offs;
             custom <=> People.def-custom; hh <=> People.def-hh; mm <=> People.def-mm;
             error: People.def-error;
@@ -1258,18 +1286,19 @@ component MemorialPage inherits Rectangle {
                                     property <float> ph: 0;
                                     init => { self.ph = 1; }
                                     animate ph { duration: 4200ms; iteration-count: -1; easing: linear; }
-                                    x: 10px + i * 16px + sin(ph * 360deg + i * 120deg) * 5px;
-                                    y: 60px - ph * 60px;
-                                    width: 10px; height: 26px; border-radius: 5px;
+                                    x: 11px + i * 14px + sin(ph * 360deg + i * 120deg) * 6px;
+                                    y: 62px - ph * 62px;
+                                    width: 6px + ph * 6px; height: 22px; border-radius: 6px;
                                     background: #d9cfc8;
-                                    opacity: (1 - ph) * 0.45;
+                                    opacity: (1 - ph) * 0.5;
                                 }
                             }
+                            // Khói tĩnh: một vệt mảnh, mờ ngay trên mỗi nén hương.
                             if !smoke && People.m-incense: Rectangle {
                                 x: 74px; y: 0px; width: 60px; height: 90px;
                                 for i in 3: Rectangle {
-                                    x: 10px + i * 16px; y: 44px; width: 10px; height: 26px; border-radius: 5px;
-                                    background: #d9cfc8; opacity: 0.18;
+                                    x: 13px + i * 14px; y: 50px; width: 2px; height: 26px; border-radius: 1px;
+                                    background: #d9cfc8; opacity: 0.35;
                                 }
                             }
                             // Ba nén hương cắm trong bát hương

@@ -17,6 +17,8 @@ mod platform;
 mod shots;
 #[cfg(test)]
 mod ui_tests;
+#[cfg(test)]
+mod ui_tests_people;
 mod update;
 
 #[allow(unsafe_code, dead_code, clippy::all)]
