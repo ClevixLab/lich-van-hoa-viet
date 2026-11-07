@@ -1649,7 +1649,8 @@ component Dialog inherits Rectangle {
         // Viền để hộp tách khỏi lớp phủ ở giao diện tối (TKN-W-14).
         border-width: 1px; border-color: Theme.outline;
         TouchArea { }
-        // Bàn phím: Esc luôn đóng hộp; Enter chỉ đóng khi nút mặc định là "Hủy".
+        // Bàn phím: Esc luôn đóng hộp; Enter chỉ đóng khi nút mặc định là "Hủy". Nội dung nằm TRONG FocusScope để phím
+        // chưa được ô nhập dùng (Esc trong ô mật khẩu) nổi lên tới đây (DV25-05).
         fs := FocusScope {
             init => { self.focus(); }
             key-pressed(e) => {
@@ -1657,32 +1658,32 @@ component Dialog inherits Rectangle {
                 if (e.text == Key.Return && People.dlg-default-cancel) { People.dlg-dismiss(); return accept; }
                 reject
             }
-        }
-        VerticalLayout {
-            padding: 20px; spacing: 10px;
-            S { text: People.dlg-title; size: 22; accessible-role: AccessibleRole.text; accessible-label: People.dlg-title; }
-            for l in People.dlg-lines: T { text: l; size: 15; color: Theme.ink2; accessible-role: AccessibleRole.text; accessible-label: l; }
-            if People.dlg == "tao-sao-luu": VerticalLayout {
-                spacing: 8px;
-                Field { label: "Mật khẩu (ít nhất 8 ký tự)"; text <=> People.pw1; password: true; error: People.e-pw1; }
-                Field { label: "Nhập lại mật khẩu"; text <=> People.pw2; password: true; error: People.e-pw2; }
-                Notice { text: "Lưu ý: quên mật khẩu là mất dữ liệu trong tệp — không ai lấy lại được, kể cả Clevix Lab."; }
-                T { text: "Gợi ý: dùng một câu dễ nhớ, ví dụ \"nhà ở Hà Đông có cây bàng\"."; size: 14; color: Theme.ink3; }
-            }
-            if People.dlg == "khoi-phuc": VerticalLayout {
-                spacing: 6px;
-                T { text: "Cách nhập:"; size: 15; font-weight: 600; }
-                Choice {
-                    items: ["Gộp vào dữ liệu đang có (khuyên dùng)", "Thay toàn bộ"]; current: People.restore-mode; group: "Cách nhập";
-                    picked(i) => { People.restore-mode = i; }
+            VerticalLayout {
+                padding: 20px; spacing: 10px;
+                S { text: People.dlg-title; size: 22; accessible-role: AccessibleRole.text; accessible-label: People.dlg-title; }
+                for l in People.dlg-lines: T { text: l; size: 15; color: Theme.ink2; accessible-role: AccessibleRole.text; accessible-label: l; }
+                if People.dlg == "tao-sao-luu": VerticalLayout {
+                    spacing: 8px;
+                    Field { label: "Mật khẩu (ít nhất 8 ký tự)"; text <=> People.pw1; password: true; error: People.e-pw1; }
+                    Field { label: "Nhập lại mật khẩu"; text <=> People.pw2; password: true; error: People.e-pw2; }
+                    Notice { text: "Lưu ý: quên mật khẩu là mất dữ liệu trong tệp — không ai lấy lại được, kể cả Clevix Lab."; }
+                    T { text: "Gợi ý: dùng một câu dễ nhớ, ví dụ \"nhà ở Hà Đông có cây bàng\"."; size: 14; color: Theme.ink3; }
                 }
-                T { text: People.restore-mode == 0 ? "Giữ bản mới hơn của từng hồ sơ." : "Xóa dữ liệu đang có trên máy rồi dùng dữ liệu trong tệp."; size: 14; color: Theme.ink3; }
-            }
-            if People.dlg-busy: T { text: "Đang xử lý… (có thể mất vài giây)"; size: 15; color: Theme.ink3; }
-            HorizontalLayout {
-                alignment: end; spacing: 10px; padding-top: 6px;
-                Btn { text: People.dlg-cancel; kind: People.dlg-default-cancel ? "primary" : "outline"; enabled: !People.dlg-busy; clicked => { People.dlg-dismiss(); } }
-                if People.dlg-ok != "": Btn { text: People.dlg-ok; kind: People.dlg-default-cancel ? "outline" : (People.dlg-danger ? "danger" : "primary"); enabled: !People.dlg-busy; clicked => { People.dlg-confirm(); } }
+                if People.dlg == "khoi-phuc": VerticalLayout {
+                    spacing: 6px;
+                    T { text: "Cách nhập:"; size: 15; font-weight: 600; }
+                    Choice {
+                        items: ["Gộp vào dữ liệu đang có (khuyên dùng)", "Thay toàn bộ"]; current: People.restore-mode; group: "Cách nhập";
+                        picked(i) => { People.restore-mode = i; }
+                    }
+                    T { text: People.restore-mode == 0 ? "Giữ bản mới hơn của từng hồ sơ." : "Xóa dữ liệu đang có trên máy rồi dùng dữ liệu trong tệp."; size: 14; color: Theme.ink3; }
+                }
+                if People.dlg-busy: T { text: "Đang xử lý… (có thể mất vài giây)"; size: 15; color: Theme.ink3; }
+                HorizontalLayout {
+                    alignment: end; spacing: 10px; padding-top: 6px;
+                    Btn { text: People.dlg-cancel; kind: People.dlg-default-cancel ? "primary" : "outline"; enabled: !People.dlg-busy; clicked => { People.dlg-dismiss(); } }
+                    if People.dlg-ok != "": Btn { text: People.dlg-ok; kind: People.dlg-default-cancel ? "outline" : (People.dlg-danger ? "danger" : "primary"); enabled: !People.dlg-busy; clicked => { People.dlg-confirm(); } }
+                }
             }
         }
     }

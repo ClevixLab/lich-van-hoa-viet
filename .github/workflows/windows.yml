@@ -2,11 +2,42 @@
 # cargo-wix 0.3.9). Ký mã (Authenticode) chỉ chạy khi có secret LVHV_WIN_CERT_PFX_BASE64.
 name: windows
 
+# Chỉ chạy khi mã hay dữ liệu mà bản Windows dùng thay đổi (đường lọc không áp cho thẻ v*: thẻ luôn dựng).
 on:
   push:
     branches: [main]
     tags: ["v*"]
+    paths:
+      - "apps/windows/**"
+      - "core/**"
+      - "ngochap/**"
+      - "store/**"
+      - "backup/**"
+      - "ffi/**"
+      - "memorial/**"
+      - "content/memorial/trays/**"
+      - "scripts/check-tray-pack.py"
+      - "docs/v0.2/schema/test-vectors/released/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "VERSION"
+      - ".github/workflows/windows.yml"
   pull_request:
+    paths:
+      - "apps/windows/**"
+      - "core/**"
+      - "ngochap/**"
+      - "store/**"
+      - "backup/**"
+      - "ffi/**"
+      - "memorial/**"
+      - "content/memorial/trays/**"
+      - "scripts/check-tray-pack.py"
+      - "docs/v0.2/schema/test-vectors/released/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "VERSION"
+      - ".github/workflows/windows.yml"
   workflow_dispatch:
     inputs:
       publish_release:
@@ -17,9 +48,10 @@ on:
 permissions:
   contents: read
 
+# Một run cho mỗi nhánh PR: commit mới hủy run cũ. Trên main/thẻ mỗi commit vẫn được dựng trọn (nhóm có sha) để push
+# dồn dập không làm mất kết quả.
 concurrency:
-  group: windows-${{ github.ref }}-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
-  # Chỉ hủy run cũ của PR; mỗi commit trên main/thẻ đều được dựng trọn (push dồn dập không làm mất kết quả).
+  group: windows-${{ github.ref }}-${{ github.event_name == 'pull_request' && 'pr' || github.sha }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
@@ -371,9 +403,10 @@ jobs:
 
       # Tải tạo phẩm bị chặn trong môi trường duyệt, nên ảnh chụp (và số đo bộ nhớ, kết quả thử thông báo) được
       # commit vào chính nhánh của PR (apps/windows/screenshots/). Chỉ với PR từ nhánh trong kho; commit có
-      # "[skip ci]" để không chạy lại.
+      # "[skip ci]" để không chạy lại. CHỈ nhánh của nhóm Windows (tên nhánh có "windows"): không bao giờ đẩy commit lên
+      # nhánh PR của nhóm khác (PWA, Apple, Android, lõi).
       - name: Commit ảnh chụp vào nhánh của PR
-        if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && contains(github.head_ref, 'windows')
         continue-on-error: true
         env:
           HEAD_REF: ${{ github.head_ref }}

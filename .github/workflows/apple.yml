@@ -3,20 +3,51 @@
 # Ký và nộp App Store cần chứng chỉ của chủ dự án — xem docs/04-BUILD-NATIVE.md.
 name: apple
 
+# Chỉ chạy khi mã hay dữ liệu mà bản Apple dùng thay đổi (như windows.yml, #64), để hàng đợi máy macOS không bị nghẽn.
 on:
   push:
     branches: [main]
     tags: ["v*"]
+    paths:
+      - "apps/apple/**"
+      - "core/**"
+      - "ngochap/**"
+      - "store/**"
+      - "backup/**"
+      - "ffi/**"
+      - "memorial/**"
+      - "content/memorial/trays/**"
+      - "scripts/check-tray-pack.py"
+      - "docs/v0.2/schema/test-vectors/released/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "VERSION"
+      - ".github/workflows/apple.yml"
   pull_request:
+    paths:
+      - "apps/apple/**"
+      - "core/**"
+      - "ngochap/**"
+      - "store/**"
+      - "backup/**"
+      - "ffi/**"
+      - "memorial/**"
+      - "content/memorial/trays/**"
+      - "scripts/check-tray-pack.py"
+      - "docs/v0.2/schema/test-vectors/released/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "VERSION"
+      - ".github/workflows/apple.yml"
   workflow_dispatch:
 
 permissions:
   # write: ghi ảnh chụp giao diện của PR vào chính nhánh PR (apps/apple/screenshots/), vì tải tạo phẩm bị chặn.
   contents: write
 
+# Một run cho mỗi nhánh PR: commit mới hủy run cũ. Trên main/thẻ mỗi commit vẫn được dựng trọn (nhóm có sha).
 concurrency:
-  group: apple-${{ github.ref }}-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
-  # Chỉ hủy run cũ của PR; mỗi commit trên main/thẻ đều được dựng trọn (push dồn dập không làm mất kết quả).
+  group: apple-${{ github.ref }}-${{ github.event_name == 'pull_request' && 'pr' || github.sha }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
@@ -158,7 +189,7 @@ jobs:
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO test-without-building | tee build/ipad-tests.log
 
       - name: Ghi ảnh chụp vào nhánh PR (apps/apple/screenshots/)
-        if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && contains(github.head_ref, 'apple')
         env:
           HEAD_REF: ${{ github.head_ref }}
           RUN_NO: ${{ github.run_number }}
@@ -227,7 +258,7 @@ jobs:
       - name: R14 — nâng cấp tại chỗ (0.1 → mới, 0.2-dev → mới)
         run: bash apps/apple/ci/upgrade.sh
       - name: Ghi ảnh nâng cấp vào nhánh PR (apps/apple/screenshots/upgrade/)
-        if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && contains(github.head_ref, 'apple')
         env:
           HEAD_REF: ${{ github.head_ref }}
           RUN_NO: ${{ github.run_number }}

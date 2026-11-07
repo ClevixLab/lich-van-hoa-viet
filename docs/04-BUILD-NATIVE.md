@@ -203,11 +203,14 @@ trong `lvhv-memorial`, `lvhv-store`, `lvhv-backup`. Giao diện chỉ hiển th�
   `lichviet:` của thông báo. Bước CI "LichViet.exe phát hành không có chế độ kiểm thử" khẳng định: `.zip` không có
   `lvhv-ci-check`, `LichViet.exe` không chứa chuỗi cờ nào (còn `lvhv-ci-check.exe` thì có — để phép tìm đáng tin), và
   chạy `LichViet.exe --tao-du-lieu-mau x.json` chỉ mở giao diện, không tạo tệp hay kho.
-- **Gỡ cài đặt (BM2-22, MA3N-25-09):** dữ liệu được giữ, không bao giờ tự xóa. Trang kết thúc của bộ cài (khi cài, và khi
-  gỡ bằng cách chạy lại `.msi` → Remove) ghi rõ dữ liệu nằm ở `%LOCALAPPDATA%\ClevixLab\LichVanHoaViet` và được giữ — bảng
-  MSI dùng mã trang 1252 nên câu viết không dấu. Gỡ từ Cài đặt Windows dùng giao diện cơ bản của Windows Installer,
-  không hiện hộp thoại riêng; vì vậy câu có dấu đầy đủ nằm ở trang Giới thiệu và ở mục Người thân › Sao lưu ("Dữ liệu trên
-  máy này" + "Mở thư mục dữ liệu"). Thiếu `%LOCALAPPDATA%` → mục Người thân báo lỗi, không lùi về `%TEMP%`.
+- **Gỡ cài đặt (BM2-22, MA3N-25-09):** dữ liệu được giữ, không bao giờ tự xóa. Trang kết thúc của bộ cài ghi rõ dữ liệu nằm ở
+  `%LOCALAPPDATA%\ClevixLab\LichVanHoaViet` và được giữ — **chỉ khi cài mới hoặc nâng cấp** (bảng MSI dùng mã trang 1252
+  nên câu viết không dấu). Khi gỡ, câu này **không hiện** ở đường nào: `ExitDialog` của WixUI chỉ hiện
+  `WIXUI_EXITDIALOGOPTIONALTEXT` với điều kiện `NOT Installed` (chạy lại `.msi` → Remove), còn gỡ từ Cài đặt Windows dùng
+  giao diện cơ bản của Windows Installer, không có hộp thoại riêng (DV25-01). Người dùng biết dữ liệu được giữ qua trang
+  Giới thiệu ("Cài lại, nâng cấp hay gỡ ứng dụng đều không xóa sổ này") và mục Người thân › Sao lưu ("Dữ liệu trên máy
+  này" + "Mở thư mục dữ liệu"), cả hai có dấu đầy đủ. Chưa thêm điều khiển riêng cho trang gỡ vì CI cài/gỡ im lặng, không
+  xem được giao diện; nếu thêm thì phải thử trên máy thật. Thiếu `%LOCALAPPDATA%` → mục Người thân báo lỗi, không lùi về `%TEMP%`.
 - **Giới hạn đã biết:**
   - bản `.zip` chạy không cài không có lối tắt mang AUMID → Windows có thể không hiện thông báo dù đặt được; giao diện ghi
     "Windows chưa xác nhận…" và khuyên cài `.msi`;
