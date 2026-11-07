@@ -995,7 +995,7 @@ fn render_ics_state(ui: &AppWindow, ps: &PState) {
     p.set_ics_note(ss(if n > 0 { "" } else { "Chưa có hồ sơ nào bật nhắc." }));
 }
 
-fn local_date_of_rfc3339(s: &str) -> Option<D> {
+pub(crate) fn local_date_of_rfc3339(s: &str) -> Option<D> {
     let d = d_iso(s.get(0..10)?)?;
     let hh: i64 = s.get(11..13)?.parse().ok()?;
     let mm: i64 = s.get(14..16)?.parse().ok()?;

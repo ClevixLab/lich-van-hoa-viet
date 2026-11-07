@@ -662,7 +662,18 @@ fn theo_ky_ics_sao_luu_the_nhac() {
     assert_eq!(p.get_dlg(), "");
     assert_eq!(store.persons_json().unwrap(), before, "khôi phục giống hệt trước khi xóa");
     assert!(p.get_toast().starts_with("Đã khôi phục: 5 người"));
-    assert!(p.get_last_backup().contains("Dữ liệu được khôi phục từ bản sao lưu ngày 07/11/2026"));
+    // Ngày xuất trong tệp do lõi ghi theo đồng hồ thật (không phải đồng hồ giả của kiểm thử) — lấy từ chính tệp, nếu
+    // không ca này hỏng mỗi khi chạy sau 0 giờ ngày 08/11/2026 giờ Việt Nam.
+    let exported = lvhv_ffi::open_backup(std::fs::read(tmp.join("saoluu.lvhv")).unwrap(), "nhà ở Hà Đông có cây bàng".into())
+        .unwrap()
+        .preview()
+        .exported_at;
+    let day = crate::people::local_date_of_rfc3339(&exported).unwrap().dmy();
+    assert!(
+        p.get_last_backup().contains(&format!("Dữ liệu được khôi phục từ bản sao lưu ngày {day}")),
+        "{}",
+        p.get_last_backup()
+    );
 
     // --- Thẻ nhắc hôm nay (L7): giỗ bà Bình (dữ liệu mẫu) đúng hôm nay; trên Sắp tới và một thẻ trên Tờ lịch ---
     seg(&ui, "Sắp tới");
