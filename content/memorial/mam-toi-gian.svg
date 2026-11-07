@@ -1,0 +1,99 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 200" width="360" height="200" role="img" aria-labelledby="t d">
+  <title id="t">Mâm lễ kiểu tối giản</title>
+  <desc id="d">Kệ gỗ thấp, nhiều khoảng trống: một ngọn nến trong cốc thủy tinh bên trái, bát hương nhỏ ở giữa có ba nén hương, một chén nước trong, một bình gốm mảnh cắm một bông hoa trắng bên phải.</desc>
+  <!-- Vẽ mới cho dự án Lịch và Văn hóa Việt (Clevix Lab), 2026-11-07. Giấy phép MIT. Bản mẫu thiết kế, docs/v0.2/09. -->
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="10%" r="95%">
+      <stop offset="0" stop-color="#5a2a1e"/><stop offset=".5" stop-color="#3a1a14"/><stop offset="1" stop-color="#1d0f0c"/>
+    </radialGradient>
+    <linearGradient id="wood" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#8a4b22"/><stop offset=".6" stop-color="#5a2c12"/><stop offset="1" stop-color="#3d1d0b"/>
+    </linearGradient>
+    <linearGradient id="brass" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#8a5e0c"/><stop offset=".45" stop-color="#e8c67a"/><stop offset="1" stop-color="#8a5e0c"/>
+    </linearGradient>
+    <linearGradient id="candle" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#8f1416"/><stop offset=".4" stop-color="#c4161c"/><stop offset="1" stop-color="#8f1416"/>
+    </linearGradient>
+    <radialGradient id="glow" r=".5">
+      <stop offset="0" stop-color="#ffb25a" stop-opacity=".55"/><stop offset="1" stop-color="#ffb25a" stop-opacity="0"/>
+    </radialGradient>
+    <g id="nen">
+      <circle cx="0" cy="-58" r="12" fill="url(#glow)"/>
+      <path d="M0 -66 C4 -60 4 -55 0 -52 C-4 -55 -4 -60 0 -66Z" fill="#ffd27a"/>
+      <path d="M0 -61 C2 -58 2 -55 0 -54 C-2 -55 -2 -58 0 -61Z" fill="#ff8a3a"/>
+      <rect x="-5" y="-52" width="10" height="34" rx="2" fill="url(#candle)"/>
+      <ellipse cx="0" cy="-18" rx="9" ry="2.5" fill="#e8c67a"/>
+      <rect x="-2" y="-18" width="4" height="12" fill="url(#brass)"/>
+      <ellipse cx="0" cy="-6" rx="10" ry="3" fill="url(#brass)"/>
+    </g>
+  </defs>
+  <rect width="360" height="200" rx="14" fill="url(#bg)"/>
+
+  <!-- khói tĩnh -->
+  <g fill="none" stroke="#f3e6d0" stroke-linecap="round" stroke-width="2.5" opacity=".14">
+    <path d="M176 64 C170 54 182 46 174 34"/>
+    <path d="M180 60 C186 50 176 40 184 28"/>
+    <path d="M184 64 C190 56 182 48 188 40"/>
+  </g>
+
+  <!-- kệ gỗ thấp -->
+  <rect x="64" y="152" width="232" height="8" rx="2" fill="#6b3a1c"/>
+  <rect x="64" y="152" width="232" height="1.2" fill="#e8c67a" opacity=".55"/>
+  <rect x="80" y="160" width="6" height="14" fill="#3d1d0b"/>
+  <rect x="274" y="160" width="6" height="14" fill="#3d1d0b"/>
+
+  <!-- nến trong cốc thủy tinh -->
+  <g transform="translate(116 152)">
+    <circle cx="0" cy="-30" r="13" fill="url(#glow)"/>
+    <rect x="-7" y="-20" width="14" height="19" rx="1.5" fill="#efe6d6"/>
+    <ellipse cx="0" cy="-20" rx="7" ry="1.4" fill="#fbf7ee"/>
+    <line x1="0" y1="-24" x2="0" y2="-20" stroke="#3d1d0b" stroke-width="1"/>
+    <path d="M0 -36 C3.5 -31 3.5 -27 0 -24 C-3.5 -27 -3.5 -31 0 -36Z" fill="#ffd27a"/>
+    <path d="M0 -31.5 C1.6 -29 1.6 -27 0 -26 C-1.6 -27 -1.6 -29 0 -31.5Z" fill="#ff8a3a"/>
+    <rect x="-10" y="-30" width="20" height="30" rx="2.5" fill="#f3e6d0" fill-opacity=".12" stroke="#e8c67a" stroke-opacity=".7" stroke-width="1"/>
+  </g>
+
+  <!-- bát hương nhỏ, ba nén hương -->
+  <g transform="translate(180 152)">
+    <g stroke-linecap="round" stroke-width="2">
+      <line x1="-4" y1="-20" x2="-6" y2="-86" stroke="#7a5a3a"/>
+      <line x1="0" y1="-20" x2="0" y2="-90" stroke="#7a5a3a"/>
+      <line x1="4" y1="-20" x2="6" y2="-86" stroke="#7a5a3a"/>
+      <line x1="-4" y1="-20" x2="-4.6" y2="-36" stroke="#a3271b"/>
+      <line x1="0" y1="-20" x2="0" y2="-36" stroke="#a3271b"/>
+      <line x1="4" y1="-20" x2="4.6" y2="-36" stroke="#a3271b"/>
+    </g>
+    <circle cx="-6" cy="-87" r="1.9" fill="#ff8a3a"/>
+    <circle cx="0" cy="-91" r="1.9" fill="#ff8a3a"/>
+    <circle cx="6" cy="-87" r="1.9" fill="#ff8a3a"/>
+    <path d="M-20 -22 C-20 -8 -12 0 0 0 C12 0 20 -8 20 -22Z" fill="#b98b3e"/>
+    <ellipse cx="0" cy="-22" rx="20" ry="3.5" fill="#e8c67a"/>
+    <ellipse cx="0" cy="-22" rx="17" ry="2.4" fill="#d8cbb0"/>
+  </g>
+
+  <!-- chén nước trong -->
+  <g transform="translate(214 152)">
+    <path d="M-7 -10 L7 -10 L5 0 L-5 0Z" fill="#efe6d6"/>
+    <ellipse cx="0" cy="-10" rx="7" ry="1.6" fill="#bcd3dc"/>
+  </g>
+
+  <!-- bình gốm mảnh, một cành cúc trắng -->
+  <g transform="translate(250 152)">
+    <path d="M0 -40 C-1 -60 2 -76 6 -90" stroke="#5f8f4a" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+    <path d="M1 -62 C-8 -66 -12 -60 -6 -57 C-3 -58 -1 -60 1 -62Z" fill="#5f8f4a"/>
+    <g transform="translate(6 -94)" fill="#f3e6d0">
+      <ellipse cx="0" cy="-7" rx="2.6" ry="6"/>
+      <ellipse cx="0" cy="-7" rx="2.6" ry="6" transform="rotate(45)"/>
+      <ellipse cx="0" cy="-7" rx="2.6" ry="6" transform="rotate(90)"/>
+      <ellipse cx="0" cy="-7" rx="2.6" ry="6" transform="rotate(135)"/>
+      <ellipse cx="0" cy="-7" rx="2.6" ry="6" transform="rotate(180)"/>
+      <ellipse cx="0" cy="-7" rx="2.6" ry="6" transform="rotate(225)"/>
+      <ellipse cx="0" cy="-7" rx="2.6" ry="6" transform="rotate(270)"/>
+      <ellipse cx="0" cy="-7" rx="2.6" ry="6" transform="rotate(315)"/>
+      <circle r="3.2" fill="#e3b45c"/>
+    </g>
+    <path d="M-4 -42 C-4 -36 -8 -30 -8 -14 C-8 -4 -5 0 -4 0 L4 0 C5 0 8 -4 8 -14 C8 -30 4 -36 4 -42Z" fill="#d9cdb8" stroke="#8a6a32" stroke-width="1"/>
+    <path d="M-7.6 -24 H7.6" stroke="#b98b3e" stroke-width="1"/>
+  </g>
+</svg>
