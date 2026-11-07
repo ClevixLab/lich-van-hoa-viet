@@ -74,7 +74,7 @@ fun SuggestIn(label: String, value: String, onChange: (String) -> Unit, options:
     var open by remember { mutableStateOf(false) }
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         TextIn(label, value, onChange, error = error, help = help)
-        LinkButton(if (open) "Ẩn gợi ý ▾" else "Gợi ý ▸") { open = !open }
+        LinkButton(if (open) "Ẩn gợi ý ▴" else "Gợi ý ▾") { open = !open }
         if (open) Flow { options.forEach { o -> Chip(o, value == o, { onChange(o); open = false }) } }
     }
 }
@@ -136,7 +136,7 @@ fun NoticeEditor(st: NoticeState, startOpen: Boolean, showErrors: Boolean, today
     PCard {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             H2("Thông tin báo tử (không bắt buộc)", Modifier.weight(1f))
-            LinkButton(if (open) "Thu gọn ▾" else "Mở ▸") { open = !open }
+            LinkButton(if (open) "Thu gọn ▴" else "Mở ▾") { open = !open }
         }
         if (open) {
             Fine(
@@ -255,7 +255,6 @@ fun PersonForm(x: PeopleCtx, id: String?, deceasedNew: Boolean?) {
         val (res, err) = f.birthPreview(x.today)
         DateInput(
             f.birth, res, err,
-            calLabels = listOf("Dương lịch", "Âm lịch"),
             yearOnlyLabels = listOf("Biết đủ ngày", "Chỉ biết năm"),
         )
         TextIn("Nơi sinh", f.noiSinh, { f.noiSinh = it }, error = if (showErrors) lenErr(f.noiSinh, 300, "Nơi sinh") else null,
@@ -309,7 +308,7 @@ fun PersonForm(x: PeopleCtx, id: String?, deceasedNew: Boolean?) {
             var open by remember { mutableStateOf(false) }
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 H2("Tưởng niệm", Modifier.weight(1f))
-                LinkButton(if (open) "Thu gọn ▾" else "Mở ▸") { open = !open }
+                LinkButton(if (open) "Thu gọn ▴" else "Mở ▾") { open = !open }
             }
             if (open) {
                 Fine("Giỗ hết (giỗ lần cuối của thời gian để tang) vào")

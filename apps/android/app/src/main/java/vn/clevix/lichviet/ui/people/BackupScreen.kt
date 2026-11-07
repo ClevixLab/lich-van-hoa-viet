@@ -140,7 +140,7 @@ fun BackupScreen(x: PeopleCtx) {
             PrimaryButton("Tạo tệp sao lưu…", { exportOpen = true; exportErr = null }, Modifier.fillMaxWidth())
         } else {
             // Bản Android: các ô mật khẩu mở ngay trong khung (không đặt ô nhập trong hộp thoại) — 08 §13.
-            val e1 = if (pwTouched && pw1.length < 8) "Mật khẩu cần ít nhất 8 ký tự" else null
+            val e1 = if (pwTouched && pwLen(pw1) < 8) "Mật khẩu cần ít nhất 8 ký tự" else null
             val e2 = if (pwTouched && e1 == null && pw1 != pw2) "Hai lần nhập mật khẩu chưa giống nhau" else null
             H3("Tạo tệp sao lưu")
             Body("Tệp sẽ chứa ${ds.first} người, ${ds.second} sự kiện, ${ds.third} ảnh — đã mã hóa bằng mật khẩu.")
@@ -153,7 +153,7 @@ fun BackupScreen(x: PeopleCtx) {
             exportErr?.let { ErrorText(it) }
             PrimaryButton(if (busy) "Đang mã hóa…" else "Tạo và lưu tệp", {
                 pwTouched = true
-                if (pw1.length >= 8 && pw1 == pw2) {
+                if (pwLen(pw1) >= 8 && pw1 == pw2) {
                     busy = true
                     exportErr = null
                     createDoc.launch("LichVanHoaViet-saoluu-$today.lvhv")
@@ -198,44 +198,43 @@ fun BackupScreen(x: PeopleCtx) {
     }
     var replace by remember { mutableStateOf(false) }
     var confirmReplace by remember { mutableStateOf(false) }
+    var importing by remember { mutableStateOf(false) }
+    // Giải phóng ngay bản rõ ở phía Rust (không chờ GC) và xóa mật khẩu khỏi ô — MA3N-24-02.
+    val dropVerified: () -> Unit = {
+        verified?.first?.let { runCatching { it.destroy() } }
+        verified = null
+        pwIn = ""
+        confirmReplace = false
+        replace = false
+    }
     val doImport: () -> Unit = {
         val v = verified
-        if (v != null) {
-            try {
-                x.repo.applyImport(v.first, replace)
-                val prefs = ctx.getSharedPreferences(UI_PREFS, Context.MODE_PRIVATE).edit()
-                if (replace) prefs.putString(KEY_RESTORED, PFmt.dateOfInstant(v.second.exportedAt)) else prefs.remove(KEY_RESTORED)
-                prefs.apply()
-                verified = null; picked = null; pickedName = null; pwIn = ""
-                x.changed()
-                x.toast("Đã khôi phục: ${v.second.persons} người, ${v.second.events} sự kiện.")
-            } catch (e: Exception) {
-                verified = null
-                openErr = "Chưa khôi phục được — dữ liệu trên máy giữ nguyên. ${errText(e)}"
+        if (v != null && !importing) {
+            importing = true
+            val rep = replace
+            scope.launch {
+                // Ghi giao dịch + tệp ảnh ngoài luồng giao diện (MA3N-24-01).
+                val r = withContext(Dispatchers.IO) { runCatching { x.repo.applyImport(v.first, rep) } }
+                importing = false
+                r.onSuccess {
+                    val prefs = ctx.getSharedPreferences(UI_PREFS, Context.MODE_PRIVATE).edit()
+                    if (rep) prefs.putString(KEY_RESTORED, PFmt.dateOfInstant(v.second.exportedAt)) else prefs.remove(KEY_RESTORED)
+                    prefs.apply()
+                    picked = null; pickedName = null
+                    x.changed()
+                    x.toast("Đã khôi phục: ${v.second.persons} người, ${v.second.events} sự kiện.")
+                }.onFailure { e -> openErr = "Chưa khôi phục được — dữ liệu trên máy giữ nguyên. ${errText(e)}" }
+                dropVerified()
             }
         }
     }
     verified?.let { (_, pv) ->
-        if (!confirmReplace) {
-            ConfirmDialog(
-                title = "Khôi phục dữ liệu", confirm = "Khôi phục",
-                onDismiss = { verified = null },
-                onConfirm = { if (replace) confirmReplace = true else doImport() },
-            ) {
-                Body("Tệp xuất ngày ${PFmt.dateOfInstant(pv.exportedAt)} từ ${platformName(pv.platform)}: ${pv.persons} người, ${pv.events} sự kiện, ${pv.photos} ảnh.")
-                Fine("Cách nhập:")
-                RadioRow("Gộp vào dữ liệu đang có (khuyên dùng) — giữ bản mới hơn của từng hồ sơ", !replace, { replace = false })
-                RadioRow("Thay toàn bộ — xóa dữ liệu đang có trên máy rồi dùng dữ liệu trong tệp", replace, { replace = true })
-            }
-        } else {
-            ConfirmDialog(
-                title = "Thay toàn bộ?", confirm = "Thay toàn bộ", danger = true,
-                onDismiss = { confirmReplace = false },
-                onConfirm = { confirmReplace = false; doImport() },
-            ) {
-                Body("Dữ liệu hiện có trên máy (${ds.first} người) sẽ bị thay bằng dữ liệu trong tệp xuất ngày ${PFmt.dateOfInstant(pv.exportedAt)}. Không hoàn tác được.")
-            }
-        }
+        RestoreDialogs(
+            pv = pv, currentPersons = ds.first, replace = replace, confirmReplace = confirmReplace, busy = importing,
+            onReplace = { replace = it },
+            onDismiss = { if (confirmReplace) confirmReplace = false else dropVerified() },
+            onConfirm = { if (replace && !confirmReplace) confirmReplace = true else doImport() },
+        )
     }
 
     // ---- D. Nhắc sao lưu ----
@@ -250,6 +249,48 @@ fun BackupScreen(x: PeopleCtx) {
                     runCatching { x.repo.putSettings(s) }.onSuccess { x.changed() }.onFailure { x.toast(errText(it)) }
                 }
             })
+        }
+    }
+}
+
+/** Độ dài mật khẩu như lõi đếm: điểm mã sau NFC (backup/src/lib.rs) — không phải đơn vị UTF-16 (MA3N-24-08). */
+fun pwLen(pw: String): Int {
+    val n = java.text.Normalizer.normalize(pw, java.text.Normalizer.Form.NFC)
+    return n.codePointCount(0, n.length)
+}
+
+/** Hộp xem trước khôi phục (Gộp / Thay toàn bộ) và hộp xác nhận thứ hai "Thay toàn bộ" (08 §3.8 C). */
+@Composable
+fun RestoreDialogs(
+    pv: BackupPreview,
+    currentPersons: Int,
+    replace: Boolean,
+    confirmReplace: Boolean,
+    busy: Boolean,
+    onReplace: (Boolean) -> Unit,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
+) {
+    if (!confirmReplace) {
+        ConfirmDialog(
+            title = "Khôi phục dữ liệu", confirm = if (busy) "Đang khôi phục…" else "Khôi phục",
+            confirmEnabled = !busy, dismissEnabled = !busy,
+            onDismiss = onDismiss, onConfirm = onConfirm,
+        ) {
+            Body("Tệp xuất ngày ${PFmt.dateOfInstant(pv.exportedAt)} từ ${platformName(pv.platform)}: ${pv.persons} người, ${pv.events} sự kiện, ${pv.photos} ảnh.")
+            Fine("Cách nhập:")
+            RadioRow("Gộp vào dữ liệu đang có (khuyên dùng) — giữ bản mới hơn của từng hồ sơ", !replace, { if (!busy) onReplace(false) })
+            RadioRow("Thay toàn bộ — xóa dữ liệu đang có trên máy rồi dùng dữ liệu trong tệp", replace, { if (!busy) onReplace(true) })
+            if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
+        }
+    } else {
+        ConfirmDialog(
+            title = "Thay toàn bộ?", confirm = if (busy) "Đang khôi phục…" else "Thay toàn bộ", danger = true,
+            confirmEnabled = !busy, dismissEnabled = !busy,
+            onDismiss = onDismiss, onConfirm = onConfirm,
+        ) {
+            Body("Dữ liệu hiện có trên máy ($currentPersons người) sẽ bị thay bằng dữ liệu trong tệp xuất ngày ${PFmt.dateOfInstant(pv.exportedAt)}. Không hoàn tác được.")
+            if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
         }
     }
 }
@@ -274,20 +315,38 @@ private fun readLimited(ctx: Context, uri: Uri): ByteArray? {
     val size = ctx.contentResolver.query(uri, arrayOf(OpenableColumns.SIZE), null, null, null)?.use { c ->
         if (c.moveToFirst() && !c.isNull(0)) c.getLong(0) else -1L
     } ?: -1L
+    return ctx.contentResolver.openInputStream(uri)?.use { readBackupBytes(it, size) }
+}
+
+/**
+ * Đọc thân tệp sao lưu với bộ nhớ có giới hạn (MA3N-24-03, S12): biết kích thước → cấp **đúng** một mảng và đọc đầy
+ * (không nới bộ đệm, không chép lần hai); không biết → đọc theo khối, dừng ngay khi vượt giới hạn. Quá giới hạn, hoặc tệp
+ * dài hơn kích thước đã báo → null (không cấp thêm bộ nhớ).
+ */
+fun readBackupBytes(input: java.io.InputStream, size: Long): ByteArray? {
     if (size > BACKUP_MAX_BYTES) return null
-    return ctx.contentResolver.openInputStream(uri)?.use { s ->
-        val out = java.io.ByteArrayOutputStream()
-        val buf = ByteArray(64 * 1024)
-        var total = 0L
-        while (true) {
-            val n = s.read(buf)
-            if (n < 0) break
-            total += n
-            if (total > BACKUP_MAX_BYTES) return null
-            out.write(buf, 0, n)
+    if (size >= 0) {
+        val buf = ByteArray(size.toInt())
+        var off = 0
+        while (off < buf.size) {
+            val n = input.read(buf, off, buf.size - off)
+            if (n < 0) return null // ngắn hơn kích thước đã báo
+            off += n
         }
-        out.toByteArray()
+        if (input.read() >= 0) return null // dài hơn kích thước đã báo
+        return buf
     }
+    val out = java.io.ByteArrayOutputStream(1 shl 20)
+    val chunk = ByteArray(64 * 1024)
+    var total = 0L
+    while (true) {
+        val n = input.read(chunk)
+        if (n < 0) break
+        total += n
+        if (total > BACKUP_MAX_BYTES) return null
+        out.write(chunk, 0, n)
+    }
+    return out.toByteArray()
 }
 
 /** Ghi .ics vào cache/ics/ (xóa tệp cũ) rồi mở bảng chia sẻ của hệ thống. */

@@ -130,7 +130,7 @@ class PeopleScreensTest {
         shoot("09-ho-so-dang-song")
         go(PRoute.PersonPage(ids.d))
         shoot("10-ho-so-bao-tu") {
-            if (rule.onAllNodesWithText("Xem ▸").fetchSemanticsNodes().isNotEmpty()) rule.onNodeWithText("Xem ▸").performScrollTo().performClick()
+            if (rule.onAllNodesWithText("Xem ▾").fetchSemanticsNodes().isNotEmpty()) rule.onNodeWithText("Xem ▾").performScrollTo().performClick()
             rule.onNode(hasScrollAction()).performScrollToNode(hasText("Người báo tin"))
         }
         go(PRoute.Memorial(ids.a))
@@ -175,10 +175,10 @@ class PeopleScreensTest {
             if (rule.onAllNodesWithText("Tạo và lưu tệp").fetchSemanticsNodes().isEmpty()) {
                 rule.onNodeWithText("Tạo tệp sao lưu…").performScrollTo().performClick()
             }
-            rule.onNode(hasScrollAction()).performScrollToNode(hasText("Nhập lại mật khẩu"))
+            rule.onNode(hasScrollAction()).performScrollToNode(androidx.compose.ui.test.hasContentDescription("Nhập lại mật khẩu"))
         }
         // Lỗi mật khẩu hiện ngay dưới ô (TK-14).
-        rule.onNodeWithText("Mật khẩu (ít nhất 8 ký tự)").performTextInput("ngan")
+        field("Mật khẩu (ít nhất 8 ký tự)").performTextInput("ngan")
         rule.onNodeWithText("Tạo và lưu tệp").performScrollTo().performClick()
         rule.onNodeWithText("Mật khẩu cần ít nhất 8 ký tự").assertExists()
     }
@@ -207,7 +207,7 @@ class PeopleScreensTest {
         val r = Seed.newRepo()
         show(r = r, start = PRoute.Profiles)
         go(PRoute.AddPerson(true))
-        rule.onNodeWithText("Họ và tên *").performTextInput("Hoàng Văn E")
+        field("Họ và tên *").performTextInput("Hoàng Văn E")
         field("Ngày").performTextInput("8")
         field("Tháng").performTextInput("8")
         field("Năm").performTextInput("2025")
@@ -244,7 +244,7 @@ class PeopleScreensTest {
         field("Ngày").performTextInput("1")
         field("Tháng").performTextInput("11")
         field("Năm").performTextInput("2026")
-        rule.onNodeWithText("Người báo tin").performTextInput("Anh Tuấn")
+        field("Người báo tin").performTextInput("Anh Tuấn")
         rule.onNode(hasScrollAction()).performScrollToNode(hasText("Lưu"))
         rule.onNodeWithText("Lưu").performClick()
         rule.onNodeWithText("Lưu thay đổi").performClick()

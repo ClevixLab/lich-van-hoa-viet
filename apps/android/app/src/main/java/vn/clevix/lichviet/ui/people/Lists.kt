@@ -107,6 +107,7 @@ fun UpcomingScreen(x: PeopleCtx) {
     }
     val nag = remember(x.rev) { runCatching { x.repo.backupDue() }.getOrDefault(false) }
     val hidden = remember { mutableStateListOf<String>() }
+    val idx = remember(x.rev, x.today) { occIndex(x) }
     data.onFailure { NoticeBox("Không mở được dữ liệu trên máy: ${errText(it)}. Lịch vẫn dùng được bình thường.", warn = true); return }
     val (persons, items, reminders) = data.getOrThrow()
     if (persons.isEmpty()) { Welcome(x); return }
@@ -135,7 +136,7 @@ fun UpcomingScreen(x: PeopleCtx) {
             LinkButton("Xem theo tháng, quý, năm") { x.nav.tab(PRoute.Period) }
         } else {
             items.forEach { o ->
-                OccRow(o, x.today) { personOfEntity(x, o.entityId, o.personIds)?.let { x.nav.go(PRoute.PersonPage(it)) } }
+                OccRow(o, x.today, { personOfEntity(x, o.entityId, o.personIds)?.let { x.nav.go(PRoute.PersonPage(it)) } }, idx)
                 if (o.cls == "gio" && o.date == x.today) {
                     val pid = personOfEntity(x, o.entityId, o.personIds)
                     if (pid != null) SecondaryButton("Mở trang tưởng niệm", { x.nav.go(PRoute.Memorial(pid)) }, Modifier.fillMaxWidth())
@@ -162,6 +163,7 @@ fun PeriodScreen(x: PeopleCtx) {
     var anchorEpoch by rememberSaveable { mutableStateOf(x.today.toEpochDay()) }
     val anchor = LocalDate.ofEpochDay(anchorEpoch)
     val persons = remember(x.rev) { runCatching { x.repo.persons() }.getOrDefault(emptyList()) }
+    val idx = remember(x.rev, x.today) { occIndex(x) }
     if (persons.isEmpty()) { Welcome(x); return }
     val res = remember(x.rev, kind, anchorEpoch, filter) { runCatching { x.repo.period(kind, anchor, filter) } }
 
@@ -198,10 +200,10 @@ fun PeriodScreen(x: PeopleCtx) {
         // R-UX-2: chia nhóm theo tháng; tháng không có mục thì không có tiêu đề.
         items.groupBy { it.date.withDayOfMonth(1) }.forEach { (m, list) ->
             H3("Tháng ${m.monthValue}/${m.year}")
-            list.forEach { o -> OccRow(o, x.today) { open(o) } }
+            list.forEach { o -> OccRow(o, x.today, { open(o) }, idx) }
         }
     } else {
-        items.forEach { o -> OccRow(o, x.today) { open(o) } }
+        items.forEach { o -> OccRow(o, x.today, { open(o) }, idx) }
     }
 }
 

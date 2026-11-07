@@ -97,7 +97,8 @@ jobs:
           export LVHV_BUILD_DATE="$(date -u +%Y-%m-%d)"
           # Kiểm thử JVM (logic + giao diện Robolectric) chạy trên biến thể debug (cần ui-test-manifest) và gọi lõi Rust
           # bản máy tính (target/release/liblvhv_ffi.so, build-rust.sh đã dựng).
-          gradle --no-daemon --stacktrace :app:testDebugUnitTest :app:lintRelease :app:assembleRelease :app:bundleRelease
+          # testReleaseUnitTest: kiểm thử logic (chuỗi báo thức, dữ liệu) trên biến thể release, trừ kiểm thử giao diện.
+          gradle --no-daemon --stacktrace :app:testDebugUnitTest :app:testReleaseUnitTest :app:lintRelease :app:assembleRelease :app:bundleRelease
 
       - name: Kiểm tra — quyền đúng danh sách cho phép (S6), không INTERNET; có đủ 3 ABI
         working-directory: apps/android
@@ -171,12 +172,11 @@ jobs:
   ui:
     runs-on: ubuntu-24.04
     timeout-minutes: 45
+    # Chỉ đọc: job này chạy mã của PR (Gradle). Việc commit ảnh nằm ở job "screenshots" không chạy mã của PR.
     permissions:
-      contents: write
+      contents: read
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event_name == 'pull_request' && github.head_ref || github.ref }}
 
       - uses: actions/setup-java@v4
         with:
@@ -215,9 +215,45 @@ jobs:
           gradle --no-daemon --stacktrace -Plvhv.hostOnly=true :app:testDebugUnitTest
           ls -la screenshots
 
-      - name: Commit ảnh chụp vào nhánh PR
-        if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: android-screenshots
+          path: apps/android/screenshots/and-*.png
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Kết quả kiểm thử
+        if: steps.tests.outcome != 'success'
         run: |
+          echo "::error::Kiểm thử JVM / giao diện không đạt (xem bước 'Kiểm thử JVM + ảnh chụp màn hình')."
+          exit 1
+
+  # Commit ảnh vào nhánh PR (MA3N-24-08): có quyền ghi nhưng KHÔNG chạy mã của PR — chỉ lấy tệp PNG từ artifact.
+  screenshots:
+    needs: ui
+    if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: android-screenshots
+          path: ${{ runner.temp }}/shots
+      - name: Commit ảnh chụp vào nhánh PR
+        run: |
+          shopt -s nullglob
+          files=("$RUNNER_TEMP"/shots/*.png)
+          if [ ${#files[@]} -eq 0 ]; then echo "Không có ảnh."; exit 0; fi
+          rm -f apps/android/screenshots/and-*.png
+          for f in "${files[@]}"; do
+            case "$(basename "$f")" in and-*.png) cp -- "$f" apps/android/screenshots/ ;; esac
+          done
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A apps/android/screenshots
@@ -225,9 +261,3 @@ jobs:
           git commit -m "Android: ảnh chụp màn hình mô-đun Người thân (CI, run ${{ github.run_number }})"
           git pull --rebase origin "${{ github.head_ref }}" || true
           git push origin "HEAD:${{ github.head_ref }}"
-
-      - name: Kết quả kiểm thử
-        if: steps.tests.outcome != 'success'
-        run: |
-          echo "::error::Kiểm thử JVM / giao diện không đạt (xem bước 'Kiểm thử JVM + ảnh chụp màn hình')."
-          exit 1

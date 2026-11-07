@@ -44,11 +44,16 @@ object AlarmChain {
      */
     fun run(host: Host, nowUnixS: Long): Step {
         val last = host.lastRun()
-        // Đồng hồ máy bị lùi (TIME_SET về quá khứ): coi như chưa chạy, để lõi tự giới hạn 24 giờ.
-        val lastOk = last?.takeIf { it <= nowUnixS }
+        // Đồng hồ máy bị lùi (TIME_SET về quá khứ): coi như vừa chạy lúc này — không đăng lại các thông báo của 24 giờ
+        // trước mà người dùng đã gạt (MA3N-24-05).
+        val lastOk = if (last != null && last > nowUnixS) nowUnixS else last
         val step = parse(host.step(nowUnixS, lastOk))
-        if (host.canPost()) step.post.forEach { host.post(it) }
-        host.setLastRun(nowUnixS)
+        // Chỉ ghi nhận đã chạy khi đăng được: quyền bị tắt rồi bật lại trong 24 giờ thì lời nhắc vẫn được đăng bù
+        // (02 §7.3; lõi tự giới hạn 24 giờ) — MA3N-24-06.
+        if (host.canPost()) {
+            step.post.forEach { host.post(it) }
+            host.setLastRun(nowUnixS)
+        }
         val next = step.nextAtUnixS
         if (next != null) host.schedule(next) else host.cancel()
         return step

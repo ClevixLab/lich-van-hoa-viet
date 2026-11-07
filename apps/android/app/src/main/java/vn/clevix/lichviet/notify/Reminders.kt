@@ -45,6 +45,10 @@ object PeopleStore {
 
     fun openError(): String? = error
 
+    /** Chỉ cho kiểm thử: bỏ kho đã mở (mỗi kiểm thử Robolectric có thư mục dữ liệu riêng). */
+    @androidx.annotation.VisibleForTesting
+    fun reset() = synchronized(this) { repo = null; error = null }
+
     /** Đã từng có sổ người thân trên máy (để không tạo kho khi người dùng chưa mở mô-đun). */
     fun exists(ctx: Context): Boolean = File(dir(ctx), "lvhv.sqlite").exists()
 }
@@ -64,16 +68,49 @@ object Reminders {
     fun rearmAsync(ctx: Context, done: (() -> Unit)? = null) {
         val app = ctx.applicationContext
         worker.execute {
-            try { rearm(app) } catch (_: Exception) { }
+            rearm(app)
             done?.invoke()
         }
     }
 
-    /** Một bước của chuỗi (đồng bộ). Không có sổ người thân → không làm gì. */
-    fun rearm(ctx: Context) {
-        if (!PeopleStore.exists(ctx)) return
-        val repo = PeopleStore.get(ctx) ?: return
-        AlarmChain.run(AndroidHost(ctx, repo), System.currentTimeMillis() / 1000)
+    /** Thời gian chờ trước khi thử lại khi một bước lỗi (MA3N-24-04). */
+    const val RETRY_S = 6 * 3600L
+    private const val KEY_ERR = "last_error_at_unix_s"
+
+    /**
+     * Một bước của chuỗi (đồng bộ). Không có sổ người thân → không làm gì. Bước lỗi (kho không mở được, dữ liệu, múi giờ…)
+     * **không** làm chuỗi dừng: ghi thời điểm lỗi (không ghi nội dung — có thể chứa dữ liệu người dùng), đặt báo thức thử
+     * lại sau [RETRY_S] giây. Trả true nếu bước thành công.
+     */
+    fun rearm(ctx: Context, nowUnixS: Long = System.currentTimeMillis() / 1000): Boolean {
+        if (!PeopleStore.exists(ctx)) return true
+        return try {
+            val repo = PeopleStore.get(ctx) ?: throw IllegalStateException("kho")
+            AlarmChain.run(AndroidHost(ctx, repo), nowUnixS)
+            prefs(ctx).edit().remove(KEY_ERR).apply()
+            true
+        } catch (e: Exception) {
+            android.util.Log.w("LvhvNhac", "Đặt lời nhắc lỗi (${e.javaClass.simpleName}); thử lại sau ${RETRY_S / 3600} giờ")
+            prefs(ctx).edit().putLong(KEY_ERR, nowUnixS).apply()
+            scheduleAlarm(ctx, nowUnixS + RETRY_S)
+            false
+        }
+    }
+
+    /** Thời điểm lần đặt lời nhắc gần nhất bị lỗi (null = không lỗi). */
+    fun lastError(ctx: Context): Long? = prefs(ctx).getLong(KEY_ERR, -1L).takeIf { it >= 0 }
+
+    /** Đặt báo thức duy nhất của chuỗi. O-6: không chính xác, không bao giờ sớm hơn t; Android 12+ giao trong khoảng 1 giờ. */
+    fun scheduleAlarm(ctx: Context, atUnixS: Long) {
+        val am = ctx.getSystemService(AlarmManager::class.java) ?: return
+        am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, atUnixS * 1000, alarmIntent(ctx))
+    }
+
+    /** Tiêu đề không tên dùng cho bản hiện trên màn hình khóa khi người dùng bật "hiện tên" (MA3N-24-06). */
+    fun genericTitle(cls: String): String = when (cls) {
+        "gio", "tien_thuong" -> "Sắp đến ngày giỗ"
+        "sinh_nhat", "sinh_nhat_am" -> "Sắp đến sinh nhật"
+        else -> "Sắp đến ngày kỷ niệm"
     }
 
     fun ensureChannel(ctx: Context) {
@@ -131,16 +168,28 @@ object Reminders {
                 ctx, AlarmChain.notificationId(r.id), open,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
             )
-            val n = NotificationCompat.Builder(ctx, CHANNEL)
+            val names = runCatching { repo.lockScreenNames() }.getOrDefault(false)
+            val b = NotificationCompat.Builder(ctx, CHANNEL)
                 .setSmallIcon(R.drawable.ic_stat_nhac)
                 .setContentTitle(r.title)
                 .setContentText(r.body)
                 .setStyle(NotificationCompat.BigTextStyle().bigText(r.body))
                 .setCategory(NotificationCompat.CATEGORY_REMINDER)
-                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                 .setAutoCancel(true)
                 .setContentIntent(pi)
-                .build()
+            if (names) {
+                // Có tên: PRIVATE + bản công khai không tên, để cài đặt "Ẩn nội dung nhạy cảm" của máy vẫn có hiệu lực.
+                val pub = NotificationCompat.Builder(ctx, CHANNEL)
+                    .setSmallIcon(R.drawable.ic_stat_nhac)
+                    .setContentTitle(genericTitle(r.cls))
+                    .setCategory(NotificationCompat.CATEGORY_REMINDER)
+                    .build()
+                b.setVisibility(NotificationCompat.VISIBILITY_PRIVATE).setPublicVersion(pub)
+            } else {
+                // Mặc định O-9: nội dung đã không có tên.
+                b.setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            }
+            val n = b.build()
             try {
                 NotificationManagerCompat.from(ctx).notify(AlarmChain.notificationId(r.id), n)
             } catch (_: SecurityException) {
@@ -148,11 +197,7 @@ object Reminders {
             }
         }
 
-        override fun schedule(atUnixS: Long) {
-            val am = ctx.getSystemService(AlarmManager::class.java) ?: return
-            // O-6: không chính xác, không bao giờ sớm hơn t; Android 12+ giao trong khoảng một giờ.
-            am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, atUnixS * 1000, alarmIntent(ctx))
-        }
+        override fun schedule(atUnixS: Long) = scheduleAlarm(ctx, atUnixS)
 
         override fun cancel() {
             ctx.getSystemService(AlarmManager::class.java)?.cancel(alarmIntent(ctx))

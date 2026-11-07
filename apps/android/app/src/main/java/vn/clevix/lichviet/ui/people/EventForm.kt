@@ -6,8 +6,13 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.MenuAnchorType
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -107,9 +112,16 @@ fun EventForm(x: PeopleCtx, personId: String, eventId: String?) {
     PCard(title = "Sự kiện") {
         val label = if (typeId == OTHER) "Loại khác…" else types.firstOrNull { it.id == typeId }?.ten ?: "Chọn loại"
         Fine("Loại")
-        Box {
-            SecondaryButton("$label ▾", { menu = true }, Modifier.fillMaxWidth())
-            DropdownMenu(menu, { menu = false }) {
+        // Ô chọn M3 (ô viền, chữ căn trái, mũi tên bên phải) — TKN-A-13.
+        ExposedDropdownMenuBox(expanded = menu, onExpandedChange = { menu = it }) {
+            OutlinedTextField(
+                value = label, onValueChange = {}, readOnly = true, singleLine = true,
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = menu) },
+                colors = fieldColors(),
+                modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                    .semantics { contentDescription = "Loại sự kiện" },
+            )
+            ExposedDropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                 types.forEach { t ->
                     DropdownMenuItem(text = { Text(t.ten) }, onClick = {
                         typeId = t.id; menu = false

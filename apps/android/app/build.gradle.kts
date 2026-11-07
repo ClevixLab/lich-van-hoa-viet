@@ -149,6 +149,8 @@ android {
                 t.systemProperty("roborazzi.test.record", "true")
                 t.systemProperty("lvhv.screenshots.dir", rootProject.file("screenshots").absolutePath)
                 t.maxHeapSize = "3g"
+                // Biến thể release không có ui-test-manifest: chạy mọi kiểm thử trừ kiểm thử giao diện Compose.
+                if (t.name.contains("Release")) t.exclude("**/ui/people/**")
                 // Mã UniFFI (android = true) dùng android.system.SystemCleaner khi API ≥ 33; dưới Robolectric lớp này
                 // gọi jdk.internal.ref.CleanerFactory của JDK — cần mở gói cho kiểm thử.
                 t.jvmArgs("--add-exports=java.base/jdk.internal.ref=ALL-UNNAMED", "--add-opens=java.base/jdk.internal.ref=ALL-UNNAMED")

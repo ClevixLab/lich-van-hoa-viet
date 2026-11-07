@@ -156,7 +156,8 @@ private fun yearsLine(p: vn.clevix.lichviet.people.Person): String? {
     val by = p.birth?.i("lunar_year")
     val bcc = p.birth?.sn("can_chi")
     val dcc = PeopleRepo.canChi(dy)
-    return if (by != null && bcc != null) "$bcc $by — $dcc $dy" else "Mất năm $dcc ($dy)"
+    // Dạng của 08 §3.9: "Can Chi (năm)" — TKN-X-02.
+    return if (by != null && bcc != null) "$bcc ($by) — $dcc ($dy)" else "Mất năm $dcc ($dy)"
 }
 
 private val SteleShape = GenericShape { size, _ ->

@@ -23,6 +23,12 @@ fun SettingsScreen(x: PeopleCtx) {
     BackLink("Về Người thân") { x.nav.back() }
     H1("Cài đặt nhắc")
 
+    if (remember(x.rev) { Reminders.lastError(ctx) } != null) {
+        NoticeBox(
+            "Lần đặt lời nhắc gần nhất bị lỗi. Ứng dụng sẽ tự thử lại sau vài giờ và mỗi lần bạn mở ứng dụng.",
+            warn = true,
+        )
+    }
     PCard(title = "Thông báo") {
         if (allowed) {
             Body("Thông báo đang bật. Điện thoại sẽ nhắc ngày giỗ, sinh nhật và sự kiện theo giờ bạn đặt, kể cả khi không mở ứng dụng.")

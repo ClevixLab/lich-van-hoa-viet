@@ -51,6 +51,7 @@ fun PersonScreen(x: PeopleCtx, id: String) {
             }
         }
     }
+    val idx = remember(x.rev, x.today) { occIndex(x) }
     BackLink("Về danh sách hồ sơ") { x.nav.backTo(PRoute.Profiles) }
     data.onFailure { NoticeBox(errText(it), warn = true); return }
     val d = data.getOrNull()
@@ -76,15 +77,17 @@ fun PersonScreen(x: PeopleCtx, id: String) {
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
         if (p.deceased) {
             PrimaryButton("Tưởng niệm", { x.nav.go(PRoute.Memorial(p.id)) }, Modifier.weight(1f))
+            SecondaryButton("Sửa", { x.nav.go(PRoute.EditPerson(p.id)) }, Modifier.weight(1f))
         } else {
+            // "Sửa" trước, "Cập nhật: đã mất" sau — thống nhất mọi nền tảng (TKN-X-01).
+            SecondaryButton("Sửa", { x.nav.go(PRoute.EditPerson(p.id)) }, Modifier.weight(1f))
             SecondaryButton("Cập nhật: đã mất", { x.nav.go(PRoute.MarkDeceased(p.id)) }, Modifier.weight(1f))
         }
-        SecondaryButton("Sửa", { x.nav.go(PRoute.EditPerson(p.id)) }, Modifier.weight(1f))
     }
 
     PCard(title = "Lần tới") {
         if (d.next.isEmpty()) Body("Không có lần nào trong 12 tháng tới.")
-        d.next.forEach { OccRow(it, x.today, null) }
+        d.next.forEach { OccRow(it, x.today, null, idx) }
     }
 
     PCard(title = "Thông tin") { InfoTable(p, d.sum) }
@@ -202,7 +205,7 @@ private fun NoticeView(x: PeopleCtx, n: Map<String, Any?>) {
     PCard {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             H2("Thông tin báo tử", Modifier.weight(1f))
-            LinkButton(if (open) "Thu gọn ▾" else "Xem ▸") { open = !open }
+            LinkButton(if (open) "Thu gọn ▴" else "Xem ▾") { open = !open }
         }
         if (open) {
             n.sn("reported_by")?.let { InfoLine("Người báo tin", it) }

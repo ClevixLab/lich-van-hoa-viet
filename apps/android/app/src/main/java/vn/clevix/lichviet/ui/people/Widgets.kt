@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -63,6 +64,8 @@ import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selectableGroup
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
@@ -125,8 +128,13 @@ fun Body(text: String, modifier: Modifier = Modifier, color: Color? = null) {
 @Composable
 fun Fine(text: String, modifier: Modifier = Modifier) {
     val c = LocalLich.current
-    Text(text, style = MaterialTheme.typography.bodyMedium, color = c.ink3, modifier = modifier)
+    // ink2: đủ 4,5:1 cả trên nền thẻ (paper) lẫn nền trang (wall) — TKN-A-07.
+    Text(text, style = MaterialTheme.typography.bodyMedium, color = c.ink2, modifier = modifier)
 }
+
+/** Chữ lớn (cỡ chữ hệ thống ≥ 1,15): bố cục xếp chồng thay cho hàng ngang (TKN-A-01, TKN-A-03). */
+@Composable
+fun largeText(): Boolean = androidx.compose.ui.platform.LocalDensity.current.fontScale >= 1.15f
 
 @Composable
 fun ErrorText(text: String) {
@@ -174,7 +182,7 @@ fun SecondaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modi
     val c = LocalLich.current
     OutlinedButton(
         onClick = onClick, enabled = enabled, modifier = modifier.heightIn(min = 48.dp),
-        border = BorderStroke(1.dp, if (danger) c.red else c.rule),
+        border = BorderStroke(1.dp, if (danger) c.red else c.outline),
         colors = ButtonDefaults.outlinedButtonColors(contentColor = if (danger) c.red else c.ink),
     ) { Text(text, style = MaterialTheme.typography.labelLarge, textAlign = TextAlign.Center) }
 }
@@ -187,24 +195,49 @@ fun LinkButton(text: String, onClick: () -> Unit) {
     }
 }
 
-/** Nhóm chọn một trong nhiều (Tuần/Tháng/Quý/Năm, Dương/Âm…). */
+/**
+ * Nhóm chọn một trong nhiều (Tuần/Tháng/Quý/Năm, bộ lọc, Dương/Âm…). Không giới hạn số dòng của nhãn. Cỡ chữ thường: một
+ * hàng, các ô cao bằng nhau. Chữ lớn (≥ 1,15): nhóm 4 ô thành lưới 2 × 2, nhóm 3 ô thành ba hàng dọc (TKN-A-01, như PWA A++).
+ */
 @Composable
 fun Choice(options: List<String>, selected: Int, onSelect: (Int) -> Unit, modifier: Modifier = Modifier) {
+    val perRow = when {
+        !largeText() || options.size <= 2 -> options.size
+        options.size == 4 -> 2
+        else -> 1
+    }
+    Column(
+        modifier.fillMaxWidth().semantics { selectableGroup() },
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        options.chunked(perRow).forEachIndexed { r, row ->
+            Row(
+                Modifier.fillMaxWidth().height(androidx.compose.foundation.layout.IntrinsicSize.Min),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                row.forEachIndexed { k, t ->
+                    val i = r * perRow + k
+                    ChoiceCell(t, selected == i, { onSelect(i) }, Modifier.weight(1f).fillMaxHeight())
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ChoiceCell(text: String, on: Boolean, onClick: () -> Unit, modifier: Modifier) {
     val c = LocalLich.current
-    SingleChoiceSegmentedButtonRow(modifier.fillMaxWidth().height(androidx.compose.foundation.layout.IntrinsicSize.Min)) {
-        options.forEachIndexed { i, t ->
-            SegmentedButton(
-                selected = selected == i,
-                onClick = { onSelect(i) },
-                shape = SegmentedButtonDefaults.itemShape(i, options.size),
-                icon = {},
-                colors = SegmentedButtonDefaults.colors(
-                    activeContainerColor = c.redDeep, activeContentColor = Color.White,
-                    inactiveContainerColor = c.paper, inactiveContentColor = c.ink,
-                    activeBorderColor = c.redDeep, inactiveBorderColor = c.rule,
-                ),
-                modifier = Modifier.heightIn(min = 48.dp).fillMaxHeight(),
-            ) { Text(t, maxLines = 2, textAlign = TextAlign.Center, style = MaterialTheme.typography.labelLarge) }
+    Surface(
+        selected = on,
+        onClick = onClick,
+        modifier = modifier.heightIn(min = 48.dp).semantics { role = Role.RadioButton },
+        shape = RoundedCornerShape(12.dp),
+        color = if (on) c.redDeep else c.paper,
+        contentColor = if (on) Color.White else c.ink,
+        border = BorderStroke(1.dp, if (on) c.redDeep else c.outline),
+    ) {
+        Box(Modifier.padding(horizontal = 8.dp, vertical = 10.dp), contentAlignment = Alignment.Center) {
+            Text(text, textAlign = TextAlign.Center, style = MaterialTheme.typography.labelLarge)
         }
     }
 }
@@ -220,6 +253,9 @@ fun Chip(text: String, on: Boolean, onClick: () -> Unit, enabled: Boolean = true
         colors = FilterChipDefaults.filterChipColors(
             selectedContainerColor = c.redDeep, selectedLabelColor = Color.White,
             containerColor = c.paper, labelColor = c.ink,
+        ),
+        border = FilterChipDefaults.filterChipBorder(
+            enabled = enabled, selected = on, borderColor = c.outline, selectedBorderColor = c.redDeep,
         ),
     )
 }
@@ -262,7 +298,11 @@ fun SwitchRow(text: String, checked: Boolean, onChange: (Boolean) -> Unit, sub: 
         Spacer(Modifier.width(12.dp))
         Switch(
             checked = checked, onCheckedChange = null,
-            colors = SwitchDefaults.colors(checkedTrackColor = c.redDeep, checkedThumbColor = Color.White),
+            // Trạng thái tắt cũng phải thấy rõ (TKN-A-05): viền + núm ≥ 3:1.
+            colors = SwitchDefaults.colors(
+                checkedTrackColor = c.redDeep, checkedThumbColor = Color.White, checkedBorderColor = c.redDeep,
+                uncheckedTrackColor = c.paper2, uncheckedThumbColor = c.outline, uncheckedBorderColor = c.outline,
+            ),
         )
     }
 }
@@ -293,11 +333,16 @@ fun TextIn(
     password: Boolean = false,
     number: Boolean = false,
 ) {
+    val c = LocalLich.current
     Column(modifier.fillMaxWidth()) {
+        // Nhãn cố định phía trên ô, cỡ chữ đầy đủ (TKN-A-14) — không thu nhỏ vào viền khi ô có chữ.
+        Text(
+            label, style = MaterialTheme.typography.labelLarge, color = if (error != null) c.red else c.ink2,
+            modifier = Modifier.padding(bottom = 4.dp).clearAndSetSemantics { },
+        )
         OutlinedTextField(
             value = value,
             onValueChange = onChange,
-            label = { Text(label) },
             singleLine = !multiline,
             minLines = if (multiline) 3 else 1,
             isError = error != null,
@@ -308,7 +353,7 @@ fun TextIn(
                 number -> KeyboardOptions(keyboardType = KeyboardType.Number)
                 else -> KeyboardOptions.Default
             },
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().semantics { contentDescription = label },
             colors = fieldColors(),
         )
         if (error != null) ErrorText(error)
@@ -352,17 +397,39 @@ fun ConfirmDialog(
     body: @Composable () -> Unit,
 ) {
     val c = LocalLich.current
+    // Hộp thoại theo cùng mật độ / cỡ chữ với trang mở nó (TKN-A-09); nội dung cuộn được khi chữ rất lớn.
+    val d = androidx.compose.ui.platform.LocalDensity.current
+    val dark = c == vn.clevix.lichviet.ui.DarkLich
+    // Nút xóa: đỏ đậm ở giao diện tối (chữ trắng 10,9:1), đỏ ở sáng (6,0:1) — TKN-A-06.
+    val dangerBg = if (dark) c.redDeep else c.red
     AlertDialog(
         onDismissRequest = { if (dismissEnabled) onDismiss() },
-        title = { Text(title, style = MaterialTheme.typography.titleLarge, color = c.ink) },
-        text = { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { body() } },
-        confirmButton = {
-            Button(
-                onClick = onConfirm, enabled = confirmEnabled,
-                colors = ButtonDefaults.buttonColors(containerColor = if (danger) c.red else c.redDeep, contentColor = Color.White),
-            ) { Text(confirm) }
+        title = {
+            androidx.compose.runtime.CompositionLocalProvider(androidx.compose.ui.platform.LocalDensity provides d) {
+                Text(title, style = MaterialTheme.typography.titleLarge, color = c.ink)
+            }
         },
-        dismissButton = { TextButton(onClick = onDismiss, enabled = dismissEnabled) { Text(dismiss, color = c.ink) } },
+        text = {
+            androidx.compose.runtime.CompositionLocalProvider(androidx.compose.ui.platform.LocalDensity provides d) {
+                Column(
+                    Modifier.verticalScroll(androidx.compose.foundation.rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) { body() }
+            }
+        },
+        confirmButton = {
+            androidx.compose.runtime.CompositionLocalProvider(androidx.compose.ui.platform.LocalDensity provides d) {
+                Button(
+                    onClick = onConfirm, enabled = confirmEnabled,
+                    colors = ButtonDefaults.buttonColors(containerColor = if (danger) dangerBg else c.redDeep, contentColor = Color.White),
+                ) { Text(confirm, textAlign = TextAlign.Center) }
+            }
+        },
+        dismissButton = {
+            androidx.compose.runtime.CompositionLocalProvider(androidx.compose.ui.platform.LocalDensity provides d) {
+                TextButton(onClick = onDismiss, enabled = dismissEnabled) { Text(dismiss, color = c.ink) }
+            }
+        },
         containerColor = c.paper,
     )
 }
@@ -421,13 +488,29 @@ fun daysText(date: LocalDate, today: LocalDate): String {
 }
 
 /** Dòng 1 của mục: "Giỗ đầu · Ông Nguyễn Văn A" (tách từ headline của lõi). */
-fun occTitle(o: Occ): String {
+fun occTitle(o: Occ, who: String? = null): String {
     val h = o.headline
+    // Sự kiện: lõi đặt `name` = tên sự kiện; tên người lấy từ người đầu tiên của `person_ids` (TKN-A-08).
+    if (o.cls.startsWith("su_kien") && !who.isNullOrBlank() && !h.contains(who)) return "$h · $who"
     return if (o.name.isNotEmpty() && h.endsWith(o.name) && h.length > o.name.length) {
         h.removeSuffix(o.name).trimEnd(' ', '·', '—', ':') + " · " + o.name
-    } else if (o.name.isNotEmpty() && !h.contains(o.name)) {
-        "$h · ${o.name}" // sự kiện: tên sự kiện · tên người
     } else h
+}
+
+/** Tên hiển thị của người theo id + dòng phụ (dòng 3: "Hưởng thọ 86 tuổi"), dùng để vẽ mục sự kiện. */
+class OccIndex(val names: Map<String, String>, val subs: Map<String, String>) {
+    fun who(o: Occ): String? = o.personIds.firstOrNull()?.let { names[it] }
+    fun sub(o: Occ): String? = if (o.isGio) o.personIds.firstOrNull()?.let { subs[it] } ?: subs[o.entityId] else null
+}
+
+/** Dựng chỉ mục tên người (một lần mỗi lần dữ liệu đổi). */
+fun occIndex(x: PeopleCtx): OccIndex {
+    val ps = runCatching { x.repo.persons() }.getOrDefault(emptyList())
+    val names = ps.associate { it.id to it.displayName }
+    val subs = ps.filter { it.deceased }.mapNotNull { p ->
+        runCatching { x.repo.summary(p, x.today).tuoiMatText }.getOrNull()?.let { p.id to it }
+    }.toMap()
+    return OccIndex(names, subs)
 }
 
 /** Dòng 2: "26/11/2026 · 7/10 âm lịch". */
@@ -469,18 +552,25 @@ fun KindIcon(cls: String, color: Color, modifier: Modifier = Modifier.size(24.dp
  * [onClick] = null → chỉ để xem (khung "Lần tới", TK-08).
  */
 @Composable
-fun OccRow(o: Occ, today: LocalDate, onClick: (() -> Unit)?) {
+fun OccRow(o: Occ, today: LocalDate, onClick: (() -> Unit)?, idx: OccIndex? = null) {
     val c = LocalLich.current
     val isToday = o.date == today
     val past = o.date.isBefore(today)
     val dist = o.daysText ?: daysText(o.date, today)
+    val title = occTitle(o, idx?.who(o))
+    val sub = idx?.sub(o)
     val shape = RoundedCornerShape(12.dp)
+    val large = largeText()
+    val distColor = when { isToday -> c.red; past -> c.ink2; else -> c.ink2 }
+    val distWeight = if (isToday) FontWeight.Bold else FontWeight.Normal
     Row(
         Modifier.fillMaxWidth().heightIn(min = 64.dp).clip(shape)
             .background(c.paper)
-            .border(if (isToday) 2.dp else 1.dp, if (isToday) c.red else c.rule, shape)
+            .border(if (isToday) 2.dp else 1.dp, if (isToday) c.red else c.outline, shape)
             .let { if (onClick != null) it.clickable(role = Role.Button, onClick = onClick) else it }
-            .semantics(mergeDescendants = true) { contentDescription = "${occTitle(o)}. ${occDates(o)}. $dist" }
+            .semantics(mergeDescendants = true) {
+                contentDescription = listOfNotNull(o.classText, title, occDates(o), sub, dist).joinToString(". ")
+            }
             .padding(horizontal = 10.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -491,20 +581,27 @@ fun OccRow(o: Occ, today: LocalDate, onClick: (() -> Unit)?) {
         }
         Spacer(Modifier.width(10.dp))
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(
-                occTitle(o), style = MaterialTheme.typography.titleMedium, color = if (past) c.ink2 else c.ink,
-                maxLines = 3, overflow = TextOverflow.Ellipsis,
-            )
+            // Không giới hạn số dòng (TKN-A-03): tên người không bao giờ bị rút gọn.
+            Text(title, style = MaterialTheme.typography.titleMedium, color = if (past) c.ink2 else c.ink)
             Text(occDates(o), style = MaterialTheme.typography.bodyMedium, color = c.ink2)
+            if (sub != null) Text(sub, style = MaterialTheme.typography.bodyMedium, color = c.ink2)
+            if (large) {
+                // Chữ lớn: loại + khoảng cách xuống dưới, một cột.
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    KindIcon(o.cls, if (o.isGio) c.gold else c.redInk)
+                    Text(o.classText, style = MaterialTheme.typography.labelMedium, color = c.ink2)
+                    Text("· $dist", style = MaterialTheme.typography.labelMedium, color = distColor, fontWeight = distWeight)
+                }
+            }
         }
-        Spacer(Modifier.width(8.dp))
-        Column(horizontalAlignment = Alignment.End, modifier = Modifier.widthIn(max = 96.dp)) {
-            KindIcon(o.cls, if (o.isGio) c.gold else c.redInk)
-            Text(
-                dist, style = MaterialTheme.typography.labelMedium,
-                color = when { isToday -> c.red; past -> c.ink3; else -> c.ink2 },
-                fontWeight = if (isToday) FontWeight.Bold else FontWeight.Normal, textAlign = TextAlign.End,
-            )
+        if (!large) {
+            Spacer(Modifier.width(8.dp))
+            Column(horizontalAlignment = Alignment.End, modifier = Modifier.widthIn(max = 96.dp)) {
+                KindIcon(o.cls, if (o.isGio) c.gold else c.redInk)
+                // Chữ loại luôn đi kèm biểu tượng (08 §2, TKN-A-10).
+                Text(o.classText, style = MaterialTheme.typography.labelSmall, color = c.ink2, textAlign = TextAlign.End)
+                Text(dist, style = MaterialTheme.typography.labelMedium, color = distColor, fontWeight = distWeight, textAlign = TextAlign.End)
+            }
         }
     }
 }

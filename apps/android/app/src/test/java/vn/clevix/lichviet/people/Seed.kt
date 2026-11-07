@@ -56,7 +56,7 @@ object Seed {
         val a = repo.savePerson(
             deceased(
                 "Ông", "Nguyễn Văn A", "ông nội (bên nội)", dv("solar", 2025, 8, 8), dv("solar", 1940, 5, 1),
-                tenHieu = "Pháp danh Phúc Thiện", loi = "Con cháu luôn nhớ ông.",
+                tenHieu = "Phúc Thiện", loi = "Con cháu luôn nhớ ông.",
             ),
         ).id
         // Bà B: ngày mất âm lịch = ngày âm của hôm nay (năm 2019) → giỗ đúng hôm nay.
