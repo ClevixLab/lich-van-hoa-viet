@@ -166,10 +166,11 @@ final class PeopleUITests: XCTestCase {
     /// DV23-01, DV23-03: tấm khôi phục có hai hàng chọn to theo chữ; khi đang khôi phục, nút Hủy bị khóa.
     func testRestoreSheetLocksCancelWhileRunning() {
         let app = launch(screen: "restore", extra: ["-lvhvSlowRestore", "1"])
-        XCTAssertTrue(app.otherElements["restore.sheet"].firstMatch.waitForExistence(timeout: 40))
-        let merge = app.buttons["restore.merge"].firstMatch
-        let replace = app.buttons["restore.replace"].firstMatch
-        XCTAssertTrue(merge.exists && replace.exists)
+        // Tấm mở sau khi bản Debug tạo và giải mã tệp sao lưu mẫu (Argon2id) — chờ chính hàng chọn.
+        let merge = app.descendants(matching: .any)["restore.merge"].firstMatch
+        let replace = app.descendants(matching: .any)["restore.replace"].firstMatch
+        XCTAssertTrue(merge.waitForExistence(timeout: 60), "tấm khôi phục có hàng Gộp")
+        XCTAssertTrue(replace.exists)
         XCTAssertTrue(merge.isSelected, "mặc định là Gộp")
         XCTAssertFalse(replace.isSelected)
         let cancel = app.buttons["restore.cancel"].firstMatch
