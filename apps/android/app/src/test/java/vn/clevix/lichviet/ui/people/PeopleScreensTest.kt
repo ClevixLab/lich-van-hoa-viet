@@ -22,6 +22,9 @@ import androidx.compose.ui.test.performTextInput
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.test.core.app.ApplicationProvider
 import com.github.takahirom.roborazzi.ExperimentalRoborazziApi
 import com.github.takahirom.roborazzi.captureRoboImage
@@ -466,6 +469,65 @@ class PeopleScreensTest {
         rule.onNodeWithText("Thắp lại").performClick()
         rule.mainClock.advanceTimeBy(SMOKE_MS + 1_000)
         rule.onNodeWithText("Thắp lại").assertExists()
+    }
+
+    /**
+     * TKN-A-02: nội dung thông báo. Robolectric không vẽ được khay thông báo của hệ thống, nên ảnh là **mô phỏng** bố cục
+     * thông báo với **đúng văn bản** lõi trả về (`title`/`body` của `android_alarm_step`), mặc định không tên (O-9) và khi bật tên.
+     */
+    @Test
+    fun screenshotNotificationContent() {
+        val zone = java.time.ZoneId.of("Asia/Ho_Chi_Minh")
+        val now0 = Seed.TODAY.atStartOfDay(zone).toEpochSecond()
+        fun msgs(names: Boolean) = vn.clevix.lichviet.people.parseArr(
+            vn.clevix.lichviet.core.remindersJson(repo.datasetJson(), now0, vn.clevix.lichviet.people.Zones.device(zone), 30u, names),
+        ).take(3).map { vn.clevix.lichviet.people.ReminderMsg.of(it as vn.clevix.lichviet.people.JMap) }
+        val hidden = msgs(false)
+        val shown = msgs(true)
+        assertTrue(hidden.isNotEmpty())
+        // Mặc định: không tên người nào.
+        val names = repo.persons().map { it.hoTen }
+        assertFalse(hidden.any { m -> names.any { m.title.contains(it) || m.body.contains(it) } })
+        rule.setContent {
+            val d = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(d.density, d.fontScale * variant.scale)) {
+                LichTheme(variant.mode, 1f) {
+                    androidx.compose.foundation.layout.Column(
+                        androidx.compose.ui.Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color(0xFF101418))
+                            .padding(16.dp),
+                        verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(10.dp),
+                    ) {
+                        NotifLabel("Mô phỏng thông báo — văn bản thật của lõi. Mặc định (không hiện tên):")
+                        hidden.forEach { NotifCard(it.title, it.body) }
+                        NotifLabel("Khi bật “Hiện tên người trên màn hình khóa”:")
+                        shown.forEach { NotifCard(it.title, it.body) }
+                    }
+                }
+            }
+        }
+        shoot("40-thong-bao")
+    }
+
+    @androidx.compose.runtime.Composable
+    private fun NotifLabel(t: String) =
+        androidx.compose.material3.Text(t, color = androidx.compose.ui.graphics.Color(0xFFCFD8DC), style = androidx.compose.material3.MaterialTheme.typography.bodyMedium)
+
+    @androidx.compose.runtime.Composable
+    private fun NotifCard(title: String, body: String) {
+        androidx.compose.material3.Surface(
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
+            color = androidx.compose.ui.graphics.Color(0xFFECEFF1),
+            modifier = androidx.compose.ui.Modifier.fillMaxWidth(),
+        ) {
+            androidx.compose.foundation.layout.Column(androidx.compose.ui.Modifier.padding(14.dp)) {
+                androidx.compose.material3.Text(
+                    "Lịch và Văn hóa Việt · bây giờ", color = androidx.compose.ui.graphics.Color(0xFF455A64),
+                    style = androidx.compose.material3.MaterialTheme.typography.labelMedium,
+                )
+                androidx.compose.material3.Text(title, color = androidx.compose.ui.graphics.Color(0xFF111111), style = androidx.compose.material3.MaterialTheme.typography.titleMedium)
+                if (body.isNotEmpty()) androidx.compose.material3.Text(body, color = androidx.compose.ui.graphics.Color(0xFF263238), style = androidx.compose.material3.MaterialTheme.typography.bodyMedium)
+            }
+        }
     }
 
     /** TKN-A-08: mục sự kiện ghi tên người (người đầu tiên của person_ids). */
