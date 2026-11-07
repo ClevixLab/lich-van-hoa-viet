@@ -81,6 +81,20 @@ kèm giữ nguyên từng byte như trước (khóa `attachments` của JSON ch�
   đứng sau một khối tệp đính kèm → từ chối.
 - Ảnh nhập từ tệp sao lưu **được giải mã và mã hóa lại** qua đúng quy trình thêm ảnh (01 §3.8) trước khi lưu, để
   ảnh do người khác tạo không đưa siêu dữ liệu hay dữ liệu dị dạng vào kho.
+- (04 Bổ sung B6, 2026-11-07 — thay biện pháp ở dòng trên: **không** mã hóa lại khi nhập, vì sẽ đổi byte và `sha256`,
+  trái R6 (a)/(d).) Lõi kiểm **chặt** từng khối trước khi ghi bất cứ thứ gì (`lvhv_store::media` ≡
+  `pwa/src/store/media.ts`, cùng mã lỗi; bộ tệp độc hại và mã kỳ vọng ở `schema/test-vectors/media/`): chữ ký khớp
+  `mime`; JPEG/WebP đọc kích thước từ phần đầu, không giải mã, phải bằng bản ghi (`Photo`) và ≤ 2048 px; JPEG không có
+  APP1/APP13, WebP không có khối hay cờ EXIF/XMP; PDF bắt đầu `%PDF-`, có `%%EOF` trong 1024 byte cuối, ≤ 10 MiB. Sai bất
+  kỳ khối nào → từ chối **toàn bộ** tệp, thông báo chung. Cùng bộ kiểm ở `add_photo`, `add_attachment` (lỗi `Input` có
+  câu cụ thể) và trong chuyển đổi lược đồ (lỗi → chỉ đọc).
+- **Đang chờ quyết định (2026-11-07):** với **ảnh chân dung** (`Photo`) khi nhập, bộ kiểm chưa bật. 20 "ảnh" của bộ R6
+  đã khóa (`dataset-r6.json`, tệp salt/nonce cố định) là byte tổng hợp `FF D8 FF E0 … FF D9`, không có đoạn SOF, 10 ảnh
+  còn khai `image/webp`; bật kiểm sẽ làm chính vector R6 không nhập được (R6 (a)/(d), lật bit). Không sửa vector đã
+  khóa; đã báo điều phối viên. Tệp đính kèm (01 §3.8a) được kiểm đầy đủ khi nhập (gồm X21: byte PDF khai `image/jpeg`).
+- Định dạng khối của tệp đính kèm (khối ảnh rồi khối tệp đính kèm, mục trên) là định dạng **chuẩn** cho mọi bản
+  cài đặt (rà soát BM2-03); vector `supplement-yc05` (một ảnh và một PDF đính kèm) và `scripts/check-store.sh` kiểm Rust ↔
+  PWA đọc được tệp của nhau.
 
 ### 2.4 Quy trình
 

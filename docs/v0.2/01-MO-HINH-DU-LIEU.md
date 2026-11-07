@@ -113,7 +113,7 @@ hai đầu, rỗng ghi là `null`.
 | `place` | chuỗi ≤ 200 \| `null` | Mất ở đâu (khác nơi an táng ở `Person`) |
 | `reason` | chuỗi ≤ 500 \| `null` | Lý do. **Nhạy cảm**: chỉ hiện trên trang hồ sơ |
 | `notice_date` | `DateValue` \| `null` | Ngày nhận tin (dương), không được sau hôm nay |
-| `attachments` | mảng 0–6 phần tử `{ "id": UUID, "kind": "tin_bao_tu" \| "giay_chung_tu" \| "khac", "file_id": UUID }` | Tệp đính kèm (YC-2026-07, **thay** `certificate_photo_ids`): ảnh tin báo tử, bản chụp/quét giấy chứng tử, hoặc tệp khác. `file_id` trỏ tới một `Attachment` (§3.8a). Thuộc về hồ sơ này; xóa hồ sơ hoặc gỡ khỏi danh sách thì xóa tệp |
+| `attachments` | mảng 0–6 phần tử `{ "id": UUID, "kind": "tin_bao_tu" \| "giay_chung_tu" \| "khac", "file_id": UUID }` (không được có cùng lúc với khóa cũ `certificate_photo_ids` — §7.1, X22) | Tệp đính kèm (YC-2026-07, **thay** `certificate_photo_ids`): ảnh tin báo tử, bản chụp/quét giấy chứng tử, hoặc tệp khác. `file_id` trỏ tới một `Attachment` (§3.8a). Thuộc về hồ sơ này; xóa hồ sơ hoặc gỡ khỏi danh sách thì xóa tệp |
 | `note` | chuỗi ≤ 2000 \| `null` | Ghi chú |
 
 Quy tắc: `notice` chỉ có khi có `DeathInfo`. Không trường nào của `notice` được đưa vào thông báo, tệp .ics, màn hình
@@ -367,9 +367,22 @@ mất ảnh giấy báo tử của bản nhập (PR #30) — đã sửa ở cả
   (cùng byte, `stripped = true`, `file_name = null`, `created_at` của ảnh). Ảnh chỉ là giấy báo tử thì bản ghi `Photo` được
   chuyển hẳn (cùng id); ảnh còn là ảnh chân dung thì giữ `Photo`, tệp đính kèm lấy id thay thế tất định (`alt_id`). Một
   ảnh dùng cho nhiều hồ sơ → một tệp dùng chung.
-- **Khóa `legacy`, không xóa.** Hồ sơ có chuyển đổi nhận `legacy.certificate_photo_ids` (danh sách gốc, kể cả id không có
-  ảnh) và `legacy.certificate_photos` (bản ghi `Photo` gốc, có `width`/`height`). `Person.legacy` là đối tượng tự do,
-  không hiển thị, có trong sao lưu, đi qua Gộp như mọi trường. Không phép chuyển nào xóa tệp ảnh trên máy.
+- **Khóa `legacy`, không xóa.** Hồ sơ có chuyển đổi nhận `legacy.certificate_photo_ids` (danh sách gốc) và
+  `legacy.certificate_photos` (bản ghi `Photo` gốc, có `width`/`height`). `Person.legacy` là đối tượng tự do, không hiển
+  thị, có trong sao lưu, đi qua Gộp như mọi trường. Không phép chuyển nào xóa tệp ảnh trên máy.
+- **Tài liệu dị dạng bị từ chối, không chuyển** (báo cáo kiểm định B5, 2026-11-07):
+  - (X22) `death.notice` có **cả** `attachments` lẫn `certificate_photo_ids` (kể cả `certificate_photo_ids: []`) →
+    V1 `/persons/<i>/death/notice`. Một tài liệu chỉ được ở một dạng: cũ hoặc mới.
+  - (M09) id trong `certificate_photo_ids` không có bản ghi `Photo` → V3 `/persons/<i>/death/notice/certificate_photo_ids/<j>`,
+    như mọi tham chiếu treo (§6.2 V3); không giữ lặng lẽ trong `legacy`.
+  - Khi nhập: thông báo chung "Sai mật khẩu hoặc tệp bị hỏng". Khi mở kho: chỉ đọc. Khi lưu (`save_person`): lỗi.
+- **Ảnh dùng chung.** Hai hồ sơ cùng trỏ một ảnh giấy báo tử → sau chuyển đổi cùng trỏ **một** tệp đính kèm (cùng
+  `file_id`; bộ mẫu đóng băng có ca này: 5e0c của hồ sơ 5e01 và 5e02). Xóa hồ sơ, hay gỡ tệp khỏi danh sách, **đếm tham
+  chiếu**: tệp chỉ bị xóa khi không còn hồ sơ nào dùng (kiểm thử `shared_attachment_reference_counted`).
+- **Ứng dụng chưa cập nhật** (BM2-02): `save_person_json` / `put_person` nhận hồ sơ còn `certificate_photo_ids` và chuyển
+  ngay trong cùng giao dịch (cùng hàm thuần, cùng quy tắc trên).
+- **04 B6 trong chuyển đổi.** Byte của mỗi ảnh giấy báo tử được kiểm chặt như tệp đính kèm (§3.8a, 03 §2.3) trước khi
+  ghi; sai → không chuyển, kho mở chỉ đọc.
 - **Bản sao trước khi chuyển.** Rust: `lvhv.sqlite.pre-v2.bak` cạnh kho (không tự xóa; thư mục ảnh không bị đụng tới nên
   bản sao + ảnh = toàn bộ dữ liệu cũ). Web: giao dịch `versionchange` của IndexedDB — lỗi thì trình duyệt quay lui cả
   phiên bản lẫn dữ liệu.
@@ -379,6 +392,14 @@ mất ảnh giấy báo tử của bản nhập (PR #30) — đã sửa ở cả
   to_version, backup_path, message}`; PWA `store.migrationStatus()`) cho giao diện biết `ok` / `migrated` / `read_only`.
 - **Tệp sao lưu cũ.** Tài liệu còn `certificate_photo_ids` (bản dựng 0.2 trước YC-2026-07) được chuyển bằng cùng hàm
   khi nhập, khối ảnh được xếp lại thành ảnh + tệp đính kèm.
+- **`schema_version` của tài liệu sao lưu giữ là 1 tới bản phát hành 0.2.0** (quyết định của điều phối viên,
+  2026-11-07): định dạng sao lưu v1 chưa từng phát hành công khai, nên chưa có tệp nào của khách hàng. Các khóa thêm
+  trong quá trình làm 0.2 (`gioi_tinh`, `attachments`, `legacy`) là tùy chọn và không tăng số. **Từ 0.2.0 trở đi**, quy tắc
+  ở trên (thêm trường, thêm giá trị enum, siết/nới ràng buộc, đổi tên → tăng `schema_version`, có `migrate_N_to_N+1`)
+  áp dụng nghiêm ngặt.
+- **Trường lạ bị từ chối** (lược đồ đóng, V1 "trường lạ") ở mọi đường: lưu, nhập sao lưu, mở kho. Khóa `legacy` **chỉ**
+  dành cho trường mà chính phép chuyển đổi của ứng dụng bỏ hay đổi tên (hiện có: `certificate_photo_ids`); nó không phải
+  chỗ chứa trường lạ từ tệp ngoài.
 - **Bộ mẫu đóng băng.** `schema/test-vectors/released/` (README ở đó): `0.2-dev-before-attachments/` do mã ở commit
   7338f04 tạo; Rust (`store/tests/released.rs`) và PWA (`pwa/test/store/run.mjs`) chuyển nó ra **cùng** tệp kỳ vọng
   `released/expected/0.2-dev-before-attachments.json` (0 bản ghi mất, 0 trường khác ngoài phần chuyển đổi đã định).
