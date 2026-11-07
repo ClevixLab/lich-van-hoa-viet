@@ -263,3 +263,78 @@ jobs:
           git commit -m "Android: ảnh chụp màn hình mô-đun Người thân (CI, run ${{ github.run_number }})"
           git pull --rebase origin "${{ github.head_ref }}" || true
           git push origin "HEAD:${{ github.head_ref }}"
+
+  # R14 (docs/v0.2/04 Bổ sung B5): nâng cấp tại chỗ không mất dữ liệu, trên trình giả lập. Cài bản cũ (v0.1.4 = d9650c7 và
+  # 0.2-dev từ main), tạo dữ liệu, `adb install -r` bản mới, kiểm dữ liệu còn nguyên và chuỗi báo thức được đặt lại.
+  upgrade:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    permissions:
+      contents: read
+    env:
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: "platforms;android-35 build-tools;35.0.0"
+
+      - uses: nttld/setup-ndk@v1
+        id: ndk
+        with:
+          ndk-version: ${{ env.NDK_VERSION }}
+          add-to-path: false
+          link-to-sdk: true
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-linux-android
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: android-upgrade
+
+      - name: Cài cargo-ndk ${{ env.CARGO_NDK_VERSION }}
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-ndk@${{ env.CARGO_NDK_VERSION }}
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: ${{ env.GRADLE_VERSION }}
+
+      - name: Dựng APK debug — bản cũ v0.1.4 (d9650c7), 0.2-dev (main) và bản mới (PR)
+        env:
+          ANDROID_NDK_HOME: ${{ steps.ndk.outputs.ndk-path }}
+        run: |
+          set -euo pipefail
+          OUT="$RUNNER_TEMP/apk"; mkdir -p "$OUT"
+          git worktree add "$RUNNER_TEMP/v014" d9650c7
+          git worktree add "$RUNNER_TEMP/main" origin/main
+          apps/android/ci/build-debug-apk.sh "$RUNNER_TEMP/v014" "$OUT/old-v0.1.4.apk"
+          apps/android/ci/build-debug-apk.sh "$RUNNER_TEMP/main" "$OUT/old-main.apk"
+          apps/android/ci/build-debug-apk.sh "$GITHUB_WORKSPACE" "$OUT/new.apk"
+          ls -la "$OUT"
+
+      - name: Bật KVM cho trình giả lập
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: R14 — cài đè trên trình giả lập (API 34)
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          script: apps/android/ci/upgrade-test.sh "$RUNNER_TEMP/apk/new.apk" "$RUNNER_TEMP/apk/old-v0.1.4.apk" "$RUNNER_TEMP/apk/old-main.apk"

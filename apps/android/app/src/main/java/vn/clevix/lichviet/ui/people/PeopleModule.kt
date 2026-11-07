@@ -123,7 +123,8 @@ fun PeopleModule(
             Page {
                 Header(nav)
                 NoticeBox(
-                    "Không mở được dữ liệu trên máy: ${openError ?: "lỗi không rõ"}. Lịch vẫn dùng được bình thường.",
+                    "Không mở được dữ liệu trên máy: ${openError ?: "lỗi không rõ"}. Lịch vẫn dùng được bình thường.\n\n" +
+                        STORE_SAFE_TEXT,
                     warn = true,
                 )
             }
@@ -154,6 +155,15 @@ fun PeopleModule(
         SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).padding(12.dp))
     }
 }
+
+/**
+ * B5 (R14) — khi kho không mở được (ví dụ chuyển đổi dữ liệu sau cập nhật lỗi): dữ liệu không bị xóa. Ứng dụng không ghi
+ * gì vào thư mục dữ liệu khi lỗi; cập nhật Android (`install -r`) không xóa dữ liệu; allowBackup=false.
+ * TODO(#28): khi lõi có trạng thái chuyển đổi + chế độ chỉ đọc, hiện nút "Tạo tệp sao lưu" từ bản sao dữ liệu cũ.
+ */
+const val STORE_SAFE_TEXT =
+    "Dữ liệu người thân của bạn vẫn còn nguyên trên máy — ứng dụng không xóa gì. Đừng gỡ cài đặt ứng dụng (gỡ cài đặt sẽ " +
+        "xóa dữ liệu). Hãy cập nhật ứng dụng lên bản mới nhất; nếu vẫn lỗi, hãy liên hệ Clevix Lab."
 
 /** Khung trang: một cột cuộn, lề 16 dp, rộng tối đa 720 dp, căn giữa. */
 @Composable

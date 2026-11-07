@@ -101,6 +101,20 @@ object Reminders {
         }
     }
 
+    /** Chuỗi có đang giữ một báo thức không (PendingIntent của chuỗi còn tồn tại). Dùng cho tự kiểm R14. */
+    fun alarmArmed(ctx: Context): Boolean = PendingIntent.getBroadcast(
+        ctx, 0,
+        Intent(ctx, ReminderReceiver::class.java).setAction(ACTION_ALARM),
+        PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE,
+    ) != null
+
+    /** Hủy báo thức của chuỗi và PendingIntent của nó (tự kiểm R14: mô phỏng báo thức mất khi cập nhật). */
+    fun cancelAlarm(ctx: Context) {
+        val pi = alarmIntent(ctx)
+        ctx.getSystemService(AlarmManager::class.java)?.cancel(pi)
+        pi.cancel()
+    }
+
     /** Thời điểm lần đặt lời nhắc gần nhất bị lỗi (null = không lỗi). */
     fun lastError(ctx: Context): Long? = prefs(ctx).getLong(KEY_ERR, -1L).takeIf { it >= 0 }
 
