@@ -1,0 +1,56 @@
+{
+  "_note": "Tìm ảnh thật cho mâm truyền thống (YC-2026-09). Ứng viên 'direct' đã mở trang ảnh và kiểm giấy phép ngày 2026-11-07; ứng viên Commons được kiểm giấy phép qua API trên máy chạy CI.",
+  "items": {
+    "ga-luoc": {
+      "commons_queries": ["boiled chicken Vietnam", "gà luộc", "white cut chicken whole", "poached whole chicken", "ancestor altar offering chicken Vietnam", "Hainanese chicken whole"],
+      "per_query": 6
+    },
+    "khoanh-gio": {
+      "commons_queries": ["giò lụa", "chả lụa", "Vietnamese pork roll", "Vietnamese ham slice"],
+      "per_query": 6
+    },
+    "dia-xoi": {
+      "commons_queries": ["xôi gấc", "xôi", "Vietnamese sticky rice plate", "gac sticky rice"],
+      "per_query": 6
+    },
+    "bat-com-trung": {
+      "direct": [
+        {"source": "unsplash", "page_url": "https://unsplash.com/photos/a-white-bowl-filled-with-rice-on-top-of-a-wooden-table-qM8PlclZGg4", "thumb_url": "https://images.unsplash.com/photo-1680137248876-6ad53db8caef?w=400&q=70&fm=jpg", "photographer": "Seiya Maeda", "licence": "Unsplash License"}
+      ],
+      "commons_queries": ["bowl of steamed white rice", "cơm trắng bát", "peeled boiled egg", "boiled egg white background"],
+      "per_query": 5
+    },
+    "dia-hoa-qua": {
+      "commons_queries": ["mâm ngũ quả", "Vietnamese fruit offering tray", "fruit offering altar Vietnam", "fruit plate bananas pomelo"],
+      "per_query": 6
+    },
+    "bat-huong": {
+      "direct": [
+        {"source": "pixabay", "page_url": "https://pixabay.com/photos/incense-pots-smoke-oriental-1285138/", "thumb_url": "https://cdn.pixabay.com/photo/2016/03/28/09/32/incense-1285138_640.jpg", "photographer": "Pexels (người đăng trên Pixabay)", "licence": "Pixabay Content License"},
+        {"source": "pixabay", "page_url": "https://pixabay.com/photos/traditional-candle-chinese-religion-4165756/", "thumb_url": "https://cdn.pixabay.com/photo/2019/04/29/10/33/traditional-4165756_640.jpg", "photographer": "BMACC", "licence": "Pixabay Content License"},
+        {"source": "unsplash", "page_url": "https://unsplash.com/photos/lighted-incense-_12PwFpWZZ0", "thumb_url": "https://images.unsplash.com/photo-1551690935-a9e6f0a7e788?w=400&q=70&fm=jpg", "photographer": "Denis Oliveira", "licence": "Unsplash License"}
+      ],
+      "commons_queries": ["bát hương", "incense burner Vietnam altar", "joss sticks incense pot ash", "ancestor altar Vietnam incense", "incense bowl ash"],
+      "per_query": 5
+    },
+    "lo-hoa": {
+      "direct": [
+        {"source": "unsplash", "page_url": "https://unsplash.com/photos/a-bouquet-of-white-lilies-in-a-vase-HKaX84_IMmA", "thumb_url": "https://images.unsplash.com/photo-1749221479901-8c901e5150aa?w=400&q=70&fm=jpg", "photographer": "Jerry Wang", "licence": "Unsplash License"},
+        {"source": "unsplash", "page_url": "https://unsplash.com/photos/white-lilies-bloom-in-a-glass-vase-lunbqFx8SkQ", "thumb_url": "https://images.unsplash.com/photo-1749221479907-c77891a3404c?w=400&q=70&fm=jpg", "photographer": "Jerry Wang", "licence": "Unsplash License"}
+      ],
+      "commons_queries": ["yellow chrysanthemum vase", "chrysanthemum bouquet vase", "Lilium vase white background"],
+      "per_query": 5
+    },
+    "nen": {
+      "direct": [
+        {"source": "unsplash", "page_url": "https://unsplash.com/photos/three-red-candles-are-lit-in-the-dark-y5Us50JgIBk", "thumb_url": "https://images.unsplash.com/photo-1632770385660-5c51b3adbf60?w=400&q=70&fm=jpg", "photographer": "Gülfer ERGİN", "licence": "Unsplash License"}
+      ],
+      "commons_queries": ["red candle burning", "red candles altar Vietnam", "candle brass candlestick lit"],
+      "per_query": 5
+    },
+    "mam": {
+      "commons_queries": ["lacquer tray round Vietnam", "mâm đồng", "round wooden tray"],
+      "per_query": 4
+    }
+  }
+}

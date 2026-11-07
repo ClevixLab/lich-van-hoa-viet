@@ -1,0 +1,72 @@
+# Ảnh thật cho mâm truyền thống (YC-2026-09, docs/v0.2/09 §3). Chạy trên máy chạy GitHub, không trong máy
+# của người dùng. Bước nào chạy do content/memorial/photos/run.json quyết định (hoặc ô "steps" khi chạy tay):
+#   discover   — tìm ứng viên (Commons qua API, kiểm giấy phép) và tạo tờ ảnh thu nhỏ để người xem chọn
+#   fetch      — tải ảnh gốc đã chọn trong ledger.json vào originals/, ghi / kiểm sha256
+#   composite  — cắt nền (rembg, chỉ chỉnh sửa ảnh thật), xuất WebP 1×/2×/3× trong ngân sách, ảnh xem trước
+# Kết quả được commit lại vào chính nhánh đã chạy.
+name: memorial-assets
+
+on:
+  workflow_dispatch:
+    inputs:
+      steps:
+        description: "Các bước, cách nhau bởi dấu phẩy (discover,fetch,composite). Để trống = theo run.json"
+        required: false
+        default: ""
+  push:
+    branches: [v0.2-content]
+    paths:
+      - content/memorial/photos/run.json
+
+permissions:
+  contents: write
+
+concurrency:
+  group: memorial-assets-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  assets:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Chọn bước
+        id: steps
+        run: |
+          S="${{ github.event.inputs.steps }}"
+          if [ -z "$S" ]; then S=$(python3 -c "import json;print(','.join(json.load(open('content/memorial/photos/run.json'))['steps']))"); fi
+          echo "steps=$S" >> "$GITHUB_OUTPUT"
+          echo "Bước: $S"
+      - name: Cài thư viện
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install "pillow==11.3.0"
+          if echo "${{ steps.steps.outputs.steps }}" | grep -q composite; then
+            python -m pip install "rembg[cpu]>=2.0.60,<2.1"
+          fi
+      - name: discover
+        if: contains(steps.steps.outputs.steps, 'discover')
+        working-directory: content/memorial/photos/tools
+        run: python discover.py
+      - name: fetch
+        if: contains(steps.steps.outputs.steps, 'fetch')
+        working-directory: content/memorial/photos/tools
+        run: python fetch_originals.py
+      - name: composite
+        if: contains(steps.steps.outputs.steps, 'composite')
+        working-directory: content/memorial/photos/tools
+        run: python composite.py
+      - name: Commit kết quả
+        run: |
+          git config user.name "memorial-assets"
+          git config user.email "memorial-assets@users.noreply.github.com"
+          git add content/memorial/photos
+          if git diff --cached --quiet; then echo "Không có gì mới"; exit 0; fi
+          git commit -m "memorial-assets: ${{ steps.steps.outputs.steps }} (máy chạy CI)"
+          git push origin HEAD:${{ github.ref_name }}
