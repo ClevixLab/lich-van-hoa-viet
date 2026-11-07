@@ -6,22 +6,22 @@
  },
  "attachments": [
   {
-   "bytes": 33077,
-   "created_at": "2026-11-07T02:00:00Z",
-   "file_name": "tin-bao-tu.jpg",
-   "id": "2ac7bd96-e82b-450d-92da-fb8cfcd3a50a",
-   "mime": "image/jpeg",
-   "sha256": "b91c1ed8b3f6bc372798fdc86ae3d888d77178f2f386e3b996ed3a94dfc467b7",
-   "stripped": true
-  },
-  {
    "bytes": 97,
    "created_at": "2026-11-07T02:00:00Z",
    "file_name": "giay-chung-tu.pdf",
-   "id": "50486fe7-9abf-4bbb-bf0a-31e742521c35",
+   "id": "09a052bd-5068-406e-b01b-d93b1d47066b",
    "mime": "application/pdf",
    "sha256": "489e1dcf942d7f0bcca10c27d39e4685b695d40d36e9787415597d6598c56034",
    "stripped": false
+  },
+  {
+   "bytes": 33077,
+   "created_at": "2026-11-07T02:00:00Z",
+   "file_name": "tin-bao-tu.jpg",
+   "id": "11723486-1760-4544-8943-8fc93a9d155e",
+   "mime": "image/jpeg",
+   "sha256": "b91c1ed8b3f6bc372798fdc86ae3d888d77178f2f386e3b996ed3a94dfc467b7",
+   "stripped": true
   }
  ],
  "event_types": [
@@ -64,24 +64,24 @@
  ],
  "events": [
   {
-   "id": "9a5521e3-c0f3-48eb-b3ae-a3a852a54c89",
-   "type_id": "6f1c2a1e-0b6e-4c55-9a51-0d1f2b7c0001",
+   "id": "3367b668-71f6-4542-a440-6b569a4a37f5",
+   "type_id": "6f1c2a1e-0b6e-4c55-9a51-0d1f2b7c0002",
    "tieu_de": "",
    "date": {
-    "calendar": "solar",
+    "calendar": "lunar",
     "precision": "day",
-    "year": 2026,
-    "month": 8,
-    "day": 15,
+    "year": 2020,
+    "month": 10,
+    "day": 10,
     "leap": false
    },
-   "recurring": false,
+   "recurring": true,
    "person_ids": [
-    "daf79c43-f976-4d00-a41d-4a325e16672e"
+    "ce08a84a-1425-4f7f-b778-f0006c8053d4"
    ],
    "ghi_chu": "",
    "reminder": {
-    "id": "84644754-f27b-40b5-9e7c-f9e70a6a3f61",
+    "id": "46e2a518-01d0-41de-a8f7-f29c6a82efde",
     "enabled": true,
     "offsets_days": [
      0,
@@ -95,24 +95,24 @@
    "rev": 1
   },
   {
-   "id": "d98520e0-be28-4040-9701-be370dc3fab0",
-   "type_id": "6f1c2a1e-0b6e-4c55-9a51-0d1f2b7c0002",
+   "id": "6385d9bb-3117-4ae4-87bb-42c0dc32db2a",
+   "type_id": "6f1c2a1e-0b6e-4c55-9a51-0d1f2b7c0001",
    "tieu_de": "",
    "date": {
-    "calendar": "lunar",
+    "calendar": "solar",
     "precision": "day",
-    "year": 2020,
-    "month": 10,
-    "day": 10,
+    "year": 2026,
+    "month": 8,
+    "day": 15,
     "leap": false
    },
-   "recurring": true,
+   "recurring": false,
    "person_ids": [
-    "daf79c43-f976-4d00-a41d-4a325e16672e"
+    "ce08a84a-1425-4f7f-b778-f0006c8053d4"
    ],
    "ghi_chu": "",
    "reminder": {
-    "id": "81f957c2-e54d-4356-b715-0697cfe365fe",
+    "id": "9dcd0afe-199d-4a21-925f-970b1a3b75be",
     "enabled": true,
     "offsets_days": [
      0,
@@ -130,7 +130,125 @@
  "format": "lvhv-backup",
  "persons": [
   {
-   "id": "3547a888-06db-4769-bbfa-254957238dfa",
+   "id": "1800511a-cb87-4758-a550-39fb0e86b8b9",
+   "kind": "deceased",
+   "danh_xung": "",
+   "ho_ten": "Đỗ Văn Mạnh",
+   "ten_hieu": "",
+   "quan_he": "Bác",
+   "birth": {
+    "input": {
+     "calendar": "solar",
+     "precision": "day",
+     "year": 1950,
+     "month": 9,
+     "day": 2,
+     "leap": false
+    },
+    "noi_sinh": "",
+    "can_chi": "Canh Dần",
+    "lunar": {
+     "year": 1950,
+     "month": 7,
+     "day": 20,
+     "leap": false
+    },
+    "lunar_year": 1950,
+    "lunar_year_approx": false,
+    "solar": {
+     "y": 1950,
+     "m": 9,
+     "d": 2
+    }
+   },
+   "death": {
+    "input": {
+     "calendar": "lunar",
+     "precision": "day",
+     "year": 2024,
+     "month": 6,
+     "day": 12,
+     "leap": false
+    },
+    "notice": {
+     "reported_by": "Anh Đỗ Văn Hải",
+     "place": "Bệnh viện Bạch Mai",
+     "reason": "Tuổi cao",
+     "notice_date": {
+      "calendar": "solar",
+      "precision": "day",
+      "year": 2024,
+      "month": 7,
+      "day": 18,
+      "leap": false
+     },
+     "attachments": [
+      {
+       "id": "0ac2394e-8b06-4cd8-b221-410dc5e7b913",
+       "kind": "tin_bao_tu",
+       "file_id": "11723486-1760-4544-8943-8fc93a9d155e"
+      },
+      {
+       "id": "83ae8f9a-c8d5-4180-ac1b-a19fae438246",
+       "kind": "giay_chung_tu",
+       "file_id": "09a052bd-5068-406e-b01b-d93b1d47066b"
+      }
+     ],
+     "note": null
+    },
+    "lunar": {
+     "year": 2024,
+     "month": 6,
+     "day": 12,
+     "leap": false
+    },
+    "lunar_source": "entered",
+    "method": "jpl",
+    "solar": {
+     "y": 2024,
+     "m": 7,
+     "d": 17
+    },
+    "tuoi": {
+     "approx": false,
+     "label": "huong_tho",
+     "manual": false,
+     "value": 75
+    }
+   },
+   "noi_an_tang": "",
+   "photo_id": null,
+   "memorial": {
+    "tray_style": "truyen_thong",
+    "incense": true,
+    "bia_tieu_de": "",
+    "loi_tuong_niem": "",
+    "gio_het_nam": 2,
+    "huong_duong_duoi": 60
+   },
+   "reminders": {
+    "gio": {
+     "id": "f200146d-4723-4886-857c-9db1b5f8e2a2",
+     "enabled": true,
+     "offsets_days": [
+      0,
+      3
+     ],
+     "time_local": "07:00",
+     "tien_thuong": false
+    },
+    "sinh_nhat": null,
+    "sinh_nhat_am": null
+   },
+   "sinh_nhat_am": false,
+   "feb29_rule": "feb28",
+   "ghi_chu": "",
+   "created_at": "2026-11-07T02:00:00Z",
+   "updated_at": "2026-11-07T02:00:00Z",
+   "rev": 2
+  },
+  {
+   "id": "2eac64fe-712f-4982-aa02-ef26a2e6b2f2",
    "kind": "deceased",
    "danh_xung": "Ông",
    "gioi_tinh": "nam",
@@ -192,18 +310,19 @@
     }
    },
    "noi_an_tang": "Nghĩa trang Văn Điển, Hà Nội",
-   "photo_id": "b0e9e984-2880-4928-b2a2-851901f592d1",
+   "photo_id": "a65c4ebd-6b12-4d1d-8015-ee622b86045f",
    "memorial": {
     "tray_style": "truyen_thong",
     "incense": true,
     "bia_tieu_de": "",
     "loi_tuong_niem": "Con cháu muôn đời ghi nhớ công ơn ông.",
     "gio_het_nam": 2,
-    "huong_duong_duoi": 60
+    "huong_duong_duoi": 60,
+    "tray_photo_id": "2f7d65d5-26b7-4d1f-b1d4-5ed1b0032d94"
    },
    "reminders": {
     "gio": {
-     "id": "ec043a6a-76fb-4b48-ac4c-12db3b5aed7f",
+     "id": "cac5559a-7f1c-4416-adeb-331412e24ebd",
      "enabled": true,
      "offsets_days": [
       0,
@@ -223,125 +342,7 @@
    "rev": 1
   },
   {
-   "id": "4d5ae6ba-d8e0-466c-b256-c3d2b812d072",
-   "kind": "deceased",
-   "danh_xung": "",
-   "ho_ten": "Đỗ Văn Mạnh",
-   "ten_hieu": "",
-   "quan_he": "Bác",
-   "birth": {
-    "input": {
-     "calendar": "solar",
-     "precision": "day",
-     "year": 1950,
-     "month": 9,
-     "day": 2,
-     "leap": false
-    },
-    "noi_sinh": "",
-    "can_chi": "Canh Dần",
-    "lunar": {
-     "year": 1950,
-     "month": 7,
-     "day": 20,
-     "leap": false
-    },
-    "lunar_year": 1950,
-    "lunar_year_approx": false,
-    "solar": {
-     "y": 1950,
-     "m": 9,
-     "d": 2
-    }
-   },
-   "death": {
-    "input": {
-     "calendar": "lunar",
-     "precision": "day",
-     "year": 2024,
-     "month": 6,
-     "day": 12,
-     "leap": false
-    },
-    "notice": {
-     "reported_by": "Anh Đỗ Văn Hải",
-     "place": "Bệnh viện Bạch Mai",
-     "reason": "Tuổi cao",
-     "notice_date": {
-      "calendar": "solar",
-      "precision": "day",
-      "year": 2024,
-      "month": 7,
-      "day": 18,
-      "leap": false
-     },
-     "attachments": [
-      {
-       "id": "587ead6c-3460-4aa2-bac4-660f46bf1d3d",
-       "kind": "tin_bao_tu",
-       "file_id": "2ac7bd96-e82b-450d-92da-fb8cfcd3a50a"
-      },
-      {
-       "id": "e054f3fa-7681-4300-9337-64cdfdfc24df",
-       "kind": "giay_chung_tu",
-       "file_id": "50486fe7-9abf-4bbb-bf0a-31e742521c35"
-      }
-     ],
-     "note": null
-    },
-    "lunar": {
-     "year": 2024,
-     "month": 6,
-     "day": 12,
-     "leap": false
-    },
-    "lunar_source": "entered",
-    "method": "jpl",
-    "solar": {
-     "y": 2024,
-     "m": 7,
-     "d": 17
-    },
-    "tuoi": {
-     "approx": false,
-     "label": "huong_tho",
-     "manual": false,
-     "value": 75
-    }
-   },
-   "noi_an_tang": "",
-   "photo_id": null,
-   "memorial": {
-    "tray_style": "truyen_thong",
-    "incense": true,
-    "bia_tieu_de": "",
-    "loi_tuong_niem": "",
-    "gio_het_nam": 2,
-    "huong_duong_duoi": 60
-   },
-   "reminders": {
-    "gio": {
-     "id": "5a2bab97-8d26-4609-9287-ef62573c3a57",
-     "enabled": true,
-     "offsets_days": [
-      0,
-      3
-     ],
-     "time_local": "07:00",
-     "tien_thuong": false
-    },
-    "sinh_nhat": null,
-    "sinh_nhat_am": null
-   },
-   "sinh_nhat_am": false,
-   "feb29_rule": "feb28",
-   "ghi_chu": "",
-   "created_at": "2026-11-07T02:00:00Z",
-   "updated_at": "2026-11-07T02:00:00Z",
-   "rev": 2
-  },
-  {
-   "id": "804fe281-1b70-43fe-9450-38c2e9297221",
+   "id": "c9df16e8-a749-4cca-8352-77c72f831e45",
    "kind": "deceased",
    "danh_xung": "Bà",
    "gioi_tinh": "nu",
@@ -390,7 +391,7 @@
    },
    "reminders": {
     "gio": {
-     "id": "b37ea8be-a32d-43dc-b080-2e886328d9ce",
+     "id": "e9164ade-4ea5-4275-9a34-ad08ea3dae15",
      "enabled": true,
      "offsets_days": [
       0,
@@ -410,7 +411,7 @@
    "rev": 1
   },
   {
-   "id": "daf79c43-f976-4d00-a41d-4a325e16672e",
+   "id": "ce08a84a-1425-4f7f-b778-f0006c8053d4",
    "kind": "living",
    "danh_xung": "Anh",
    "gioi_tinh": "nam",
@@ -449,7 +450,7 @@
    "reminders": {
     "gio": null,
     "sinh_nhat": {
-     "id": "cb5d7915-b0ec-4f3c-bd0e-60e8db4ca9f5",
+     "id": "30507558-d671-4cce-8473-efd9d5df25c0",
      "enabled": true,
      "offsets_days": [
       0,
@@ -459,7 +460,7 @@
      "tien_thuong": false
     },
     "sinh_nhat_am": {
-     "id": "79ddeb6f-59b9-41a3-9645-270ab8d063d8",
+     "id": "ac8c7549-ee7e-4892-a7d2-ecdbfc109dce",
      "enabled": true,
      "offsets_days": [
       0,
@@ -482,7 +483,17 @@
    "bytes": 33077,
    "created_at": "2026-11-07T02:00:00Z",
    "height": 1024,
-   "id": "b0e9e984-2880-4928-b2a2-851901f592d1",
+   "id": "2f7d65d5-26b7-4d1f-b1d4-5ed1b0032d94",
+   "mime": "image/jpeg",
+   "sha256": "b91c1ed8b3f6bc372798fdc86ae3d888d77178f2f386e3b996ed3a94dfc467b7",
+   "stripped": true,
+   "width": 768
+  },
+  {
+   "bytes": 33077,
+   "created_at": "2026-11-07T02:00:00Z",
+   "height": 1024,
+   "id": "a65c4ebd-6b12-4d1d-8015-ee622b86045f",
    "mime": "image/jpeg",
    "sha256": "b91c1ed8b3f6bc372798fdc86ae3d888d77178f2f386e3b996ed3a94dfc467b7",
    "stripped": true,

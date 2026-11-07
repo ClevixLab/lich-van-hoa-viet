@@ -195,8 +195,8 @@ if (!NOTES) {
 // build thất bại. Gói rỗng → không nhúng gì, không hiện mâm. LVHV_TRAY_MANIFEST: gói thử (kiểm thử §16.4 (5)).
 const TRAY_MANIFEST = process.env.LVHV_TRAY_MANIFEST ? resolve(process.env.LVHV_TRAY_MANIFEST) : join(REPO, "content", "memorial", "trays", "manifest.json");
 const trayPack = (() => {
-  // Chưa có gói (content/memorial/trays chưa vào kho) ≡ gói rỗng.
-  if (!existsSync(TRAY_MANIFEST)) return [];
+  // G-04 (duyệt #50): đặt LVHV_TRAY_MANIFEST mà tệp không có → thất bại (không lặng lẽ dựng bản không mâm).
+  if (!existsSync(TRAY_MANIFEST)) { if (process.env.LVHV_TRAY_MANIFEST) fail(`LVHV_TRAY_MANIFEST trỏ tới tệp không có: ${TRAY_MANIFEST}`); return []; }
   const tmp = join(GEN, "tray-pack.json");
   mkdirSync(GEN, { recursive: true });
   try {
@@ -210,8 +210,9 @@ const trayPack = (() => {
     if (createHash("sha256").update(bytes).digest("hex") !== it.sha256) fail(`gói ảnh mâm lễ: sha256 của ${it.file} không khớp`);
     const ext = it.mime === "image/webp" ? "webp" : "jpg";
     return { src, out: `trays/${it.id}.${ext}`, item: { id: it.id, tray_style: it.tray_style, path: `trays/${it.id}.${ext}`, mime: it.mime, width: it.width, height: it.height,
-      // 08 §16.1: ảnh có giấy phép cần ghi công → "Ảnh: <tác giả> · <giấy phép>".
-      credit: it.ghi_cong === null ? null : `Ảnh: ${it.tac_gia} · ${it.giay_phep}` } };
+      // 08 §16.1 / G-03 (duyệt #50): ảnh cần ghi công → hiện NGUYÊN VĂN `ghi_cong` của vai nội dung (một số giấy phép đòi
+      // câu ghi công riêng); vai nội dung viết theo dạng "Ảnh: <tác giả> · <giấy phép>".
+      credit: it.ghi_cong === null ? null : it.ghi_cong } };
   });
 })();
 log(`gói ảnh mâm lễ: ${trayPack.length} ảnh đã duyệt${trayPack.length ? "" : " (gói rỗng — không hiện mâm)"}`);

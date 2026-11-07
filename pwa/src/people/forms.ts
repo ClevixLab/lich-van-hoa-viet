@@ -156,11 +156,12 @@ export async function renderPersonForm(root: HTMLElement, kindIn: "deceased" | "
   const photoErr = h("p", { class: "ferr", role: "alert", hidden: true });
   const file = h("input", { type: "file", id: "pf-file", accept: "image/*", class: "sr-only", tabindex: "-1", "aria-hidden": "true" }) as HTMLInputElement;
   // Nút thật (bàn phím bấm được) mở hộp chọn tệp; ô chọn tệp gốc ẩn hẳn (TK-01, TK-06).
-  const pickLbl = h("button", { type: "button", class: "btn2", id: "pf-pick", onclick: () => file.click() }, photo.oldId ? "Đổi ảnh" : "Chọn ảnh");
-  const rmBtn = h("button", { type: "button", class: "btn2", hidden: !photo.oldId, onclick: () => {
+  // NS-01 (duyệt #50): chữ trên nút giữ nguyên; tên cho trình đọc màn hình phân biệt ảnh chân dung với ảnh mâm lễ.
+  const pickLbl = h("button", { type: "button", class: "btn2", id: "pf-pick", "aria-label": photo.oldId ? "Đổi ảnh chân dung" : "Chọn ảnh chân dung", onclick: () => file.click() }, photo.oldId ? "Đổi ảnh" : "Chọn ảnh");
+  const rmBtn = h("button", { type: "button", class: "btn2", id: "pf-rm", "aria-label": "Bỏ ảnh chân dung", hidden: !photo.oldId, onclick: () => {
     photo.pending = null; photo.removed = true; dirty = true;
     canvas.getContext("2d")!.clearRect(0, 0, canvas.width, canvas.height); delete canvas.dataset.drawn;
-    rmBtn.hidden = true; pickLbl.textContent = "Chọn ảnh";
+    rmBtn.hidden = true; pickLbl.textContent = "Chọn ảnh"; pickLbl.setAttribute("aria-label", "Chọn ảnh chân dung");
   } }, "Bỏ ảnh");
   file.addEventListener("change", async () => {
     const f = file.files?.[0];
@@ -171,7 +172,7 @@ export async function renderPersonForm(root: HTMLElement, kindIn: "deceased" | "
       photo.pending = await processPhoto(f);
       photo.removed = false; dirty = true;
       await drawPhoto(canvas, photo.pending.bytes);
-      rmBtn.hidden = false; pickLbl.textContent = "Đổi ảnh";
+      rmBtn.hidden = false; pickLbl.textContent = "Đổi ảnh"; pickLbl.setAttribute("aria-label", "Đổi ảnh chân dung");
     } catch (e) { photoErr.textContent = (e as Error).message; photoErr.hidden = false; }
   });
   if (photo.oldId) s.photoBytes(photo.oldId).then((b) => drawPhoto(canvas, b)).catch(() => {});
@@ -186,9 +187,9 @@ export async function renderPersonForm(root: HTMLElement, kindIn: "deceased" | "
   const trayBusy = h("p", { class: "fine", id: "pf-tray-busy", role: "status", hidden: true }, "Đang xử lý ảnh…");
   const trayErr = h("p", { class: "ferr", id: "pf-tray-err", role: "alert", hidden: true });
   const trayFile = h("input", { type: "file", id: "pf-tray-file", accept: "image/*", class: "sr-only", tabindex: "-1", "aria-hidden": "true" }) as HTMLInputElement;
-  const trayPick = h("button", { type: "button", class: "btn2", id: "pf-tray-pick", onclick: () => trayFile.click() }, tray.oldId ? "Đổi ảnh" : "Chọn ảnh mâm lễ…");
-  const trayRm = h("button", { type: "button", class: "btn2", id: "pf-tray-rm", hidden: !tray.oldId }, "Bỏ ảnh");
-  const showTray = (has: boolean) => { trayCanvas.hidden = !has; trayEmpty.hidden = has; trayRm.hidden = !has; trayPick.textContent = has ? "Đổi ảnh" : "Chọn ảnh mâm lễ…"; };
+  const trayPick = h("button", { type: "button", class: "btn2", id: "pf-tray-pick", "aria-label": tray.oldId ? "Đổi ảnh mâm lễ" : "Chọn ảnh mâm lễ", onclick: () => trayFile.click() }, tray.oldId ? "Đổi ảnh" : "Chọn ảnh mâm lễ…");
+  const trayRm = h("button", { type: "button", class: "btn2", id: "pf-tray-rm", "aria-label": "Bỏ ảnh mâm lễ", hidden: !tray.oldId }, "Bỏ ảnh");
+  const showTray = (has: boolean) => { trayCanvas.hidden = !has; trayEmpty.hidden = has; trayRm.hidden = !has; trayPick.textContent = has ? "Đổi ảnh" : "Chọn ảnh mâm lễ…"; trayPick.setAttribute("aria-label", has ? "Đổi ảnh mâm lễ" : "Chọn ảnh mâm lễ"); };
   trayRm.addEventListener("click", () => {
     tray.pending = null; tray.removed = true; dirty = true; trayErr.hidden = true;
     trayCanvas.getContext("2d")!.clearRect(0, 0, trayCanvas.width, trayCanvas.height); delete trayCanvas.dataset.drawn;
@@ -210,8 +211,8 @@ export async function renderPersonForm(root: HTMLElement, kindIn: "deceased" | "
     finally { trayBusy.hidden = true; tray.busy = false; saveBtn.disabled = false; trayPick.disabled = false; }
   });
   if (tray.oldId) s.photoBytes(tray.oldId).then((b) => drawPhoto(trayCanvas, b)).catch(() => {});
-  const traySec = h("div", { class: "field pf-tray", id: "pf-tray" },
-    h("p", { class: "flabel" }, "Ảnh mâm lễ ngày giỗ"),
+  const traySec = h("div", { class: "field pf-tray", id: "pf-tray", role: "group", "aria-labelledby": "pf-tray-label" },
+    h("p", { class: "flabel", id: "pf-tray-label" }, "Ảnh mâm lễ ngày giỗ"),
     trayEmpty, trayCanvas, trayBusy,
     h("div", { class: "photo-acts" }, trayFile, trayPick, trayRm), trayErr,
     h("p", { class: "fine" }, "Ảnh chỉ lưu trên máy này và trong tệp sao lưu mã hóa. Ứng dụng tự bỏ thông tin vị trí và máy chụp trong ảnh."));
@@ -391,7 +392,7 @@ export async function renderPersonForm(root: HTMLElement, kindIn: "deceased" | "
     notice?.el ?? null,
     rGio?.el ?? null, rSn?.el ?? null, rSnAm?.el ?? null,
     dead ? h("details", { class: "pfs more", id: "pf-mem", open: focus === "mam-le" || (!!old && ((mem.loi_tuong_niem as string) !== "" || !!tray.oldId)) },
-      h("summary", null, "Tưởng niệm (giỗ hết, lời tưởng niệm)"),
+      h("summary", null, "Tưởng niệm (giỗ hết, lời tưởng niệm, ảnh mâm lễ)"),
       h("div", { class: "field" }, h("p", { class: "flabel" }, "Giỗ hết (giỗ lần cuối của thời gian để tang) vào"),
         pressGroup("Giỗ hết vào", [["2", "Năm thứ 2 sau năm mất"], ["3", "Năm thứ 3 sau năm mất"]], gioHet, (v) => { gioHet = v; dirty = true; }, "pseg two")),
       fLoi.el,

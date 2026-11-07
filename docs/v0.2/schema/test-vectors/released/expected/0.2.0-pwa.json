@@ -1,12 +1,12 @@
 {
   "fixture": "0.2.0/pwa",
-  "state_hash": "ede6b1d91052518d0e94bc98ad4ec85cb4861049d64c724ee7da3ecb9c448749",
+  "state_hash": "8a480c15dbe04d9f1daa0fed7a33b34e24515d4ec1dc8d8c31ba9b111fa9c2c5",
   "store_version": 3,
-  "backup_import_state_hash": "402d92b34d4324e4a007183115f0b02a39d3e5d508267aedfedc858227aa5543",
+  "backup_import_state_hash": "4e9d9118e2bbc22cb147dec3490070aceb49e5486e547381d306fb2b52c47c4b",
   "persons": 4,
   "events": 2,
   "person_ids": {
-    "A": "3547a888-06db-4769-bbfa-254957238dfa",
-    "D": "4d5ae6ba-d8e0-466c-b256-c3d2b812d072"
+    "A": "2eac64fe-712f-4982-aa02-ef26a2e6b2f2",
+    "D": "1800511a-cb87-4758-a550-39fb0e86b8b9"
   }
 }

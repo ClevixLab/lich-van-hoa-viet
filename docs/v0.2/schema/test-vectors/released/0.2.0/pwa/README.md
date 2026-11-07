@@ -1,6 +1,6 @@
 # Bộ mẫu đóng băng — bản web 0.2.0
 
-Tạo ngày 2026-11-07 bằng `pwa/test/tools/freeze-pwa-release.mjs` trên commit `bf03033` (VERSION 0.2.0),
+Tạo ngày 2026-11-07 bằng `pwa/test/tools/freeze-pwa-release.mjs` trên commit `9fc5f16` (VERSION 0.2.0),
 **qua giao diện của chính bản dựng phát hành** (`npm run build` → `pwa/dist`, Chromium, đồng hồ cố định
 2026-11-07 09:00 giờ Việt Nam). Không bao giờ sửa, đổi tên hay xóa tệp nào ở đây (released/README.md).
 
@@ -12,7 +12,7 @@ Tạo ngày 2026-11-07 bằng `pwa/test/tools/freeze-pwa-release.mjs` trên comm
 | `manifest.json` | sha256 từng tệp, cách tạo |
 
 Dữ liệu: A người đã mất nhập ngày dương (tháng 6 nhuận âm lịch), cách gọi, giới tính, tên hiệu, nơi an táng, ảnh
-chân dung, lời tưởng niệm; B người đã mất nhập theo âm lịch; C người đang sống, sinh nhật âm,
+chân dung, ảnh mâm lễ, lời tưởng niệm; B người đã mất nhập theo âm lịch; C người đang sống, sinh nhật âm,
 hai sự kiện (Tốt nghiệp một lần; Ngày cưới âm lịch lặp hằng năm); D người đang sống chuyển "Cập nhật: đã mất", có thông
 tin báo tử và hai tệp đính kèm (ảnh tin báo tử, PDF giấy chứng tử); nhắc sao lưu 60 ngày.
 

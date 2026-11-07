@@ -89,7 +89,11 @@ export async function renderMemorial(root: HTMLElement, id: string): Promise<voi
       packTray?.credit ? h("figcaption", { class: "mem-tray-credit" }, packTray.credit) : null);
     const fig = trayFig;
     const bytesP = famTray ? s.photoBytes(famTray) : fetch(packTray!.path).then((r) => { if (!r.ok) throw new Error(String(r.status)); return r.arrayBuffer(); }).then((b) => new Uint8Array(b));
-    bytesP.then((bytes) => drawPhoto(c, bytes, packTray?.mime ?? "image/jpeg")).catch(() => fig.remove());
+    bytesP.then((bytes) => drawPhoto(c, bytes, packTray?.mime ?? "image/jpeg")).catch(() => {
+      // G-02 (duyệt #50): ảnh gia đình không đọc được → gỡ khung và hiện lại lối thêm ảnh.
+      const add = famTray && !isReadOnly() ? h("p", { class: "mem-add-tray" }, h("a", { class: "textlink", id: "mem-add-tray", href: `#/nguoi-than/sua/${id}/mam-le` }, "Thêm ảnh mâm lễ của gia đình")) : null;
+      if (add) fig.replaceWith(add); else fig.remove();
+    });
   }
   // Chưa có ảnh của gia đình → lối thêm ảnh (mở biểu mẫu sửa, cuộn tới mục ảnh mâm lễ). Chỉ đọc → không có (TKN3-P-01).
   const addTray = !famTray && !isReadOnly()

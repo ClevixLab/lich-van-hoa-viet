@@ -505,7 +505,7 @@ const LAZY = JSON.parse(readFileSync(join(DIST, "lazy-manifest.json"), "utf8"));
   const src = readFileSync(join(ROOT, "..", "content/memorial/trays/test/04-dat/a.jpg"));
   writeFileSync(join(TMP_P, "a.jpg"), src);
   const item = { id: "thu-a", tray_style: "truyen_thong", file: "a.jpg", mime: "image/jpeg", width: 32, height: 24, sha256: createHash("sha256").update(src).digest("hex"),
-    nguon: "Bộ ca kiểm 04-dat", giay_phep: "CC BY 4.0", tac_gia: "Clevix Lab Thử", ghi_cong: "Clevix Lab Thử", duyet_boi: "kiểm thử", ngay_duyet: "2026-11-07", trang_thai: "duyet" };
+    nguon: "Bộ ca kiểm 04-dat", giay_phep: "CC BY 4.0", tac_gia: "Clevix Lab Thử", ghi_cong: "Ảnh: Clevix Lab Thử · CC BY 4.0 (ghi công nguyên văn)", duyet_boi: "kiểm thử", ngay_duyet: "2026-11-07", trang_thai: "duyet" };
   writeFileSync(join(TMP_P, "manifest.json"), JSON.stringify({ pack_version: 1, items: [item, { ...item, id: "thu-cho", trang_thai: "cho" }] }));
   const DIST_P = join(TMP_P, "dist");
   execFileSync(process.execPath, [join(ROOT, "build.mjs")], { cwd: ROOT, env: { ...process.env, LVHV_TRAY_MANIFEST: join(TMP_P, "manifest.json"), LVHV_OUT_DIR: DIST_P }, stdio: "ignore" });

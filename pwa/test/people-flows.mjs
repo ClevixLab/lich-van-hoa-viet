@@ -1102,6 +1102,13 @@ export async function runTrayFlow({ browser, BASE, SHOTS, check }) {
     const f1 = await page.evaluate(() => ({ pick: document.querySelector("#pf-tray-pick").textContent, rm: !document.querySelector("#pf-tray-rm").hidden, busy: document.querySelector("#pf-tray-busy").hidden,
       save: document.querySelector(".form-acts .primary").disabled, w: Math.round(document.querySelector("#pf-tray-img").getBoundingClientRect().width), hh: Math.round(document.querySelector("#pf-tray-img").getBoundingClientRect().height) }));
     check(f1.pick === "Đổi ảnh" && f1.rm && f1.busy && !f1.save && f1.w === 120 && f1.hh === 90, `§16.2: có ảnh → ảnh thu nhỏ 120 × 90, "Đổi ảnh", "Bỏ ảnh"; xử lý xong thì nút Lưu bật lại (${JSON.stringify(f1)})`);
+    const a11y = await page.evaluate(() => ({ sum: document.querySelector("#pf-mem > summary").textContent, group: document.querySelector("#pf-tray").getAttribute("role"),
+      groupName: document.getElementById(document.querySelector("#pf-tray").getAttribute("aria-labelledby"))?.textContent,
+      trayPick: document.querySelector("#pf-tray-pick").getAttribute("aria-label"), trayRm: document.querySelector("#pf-tray-rm").getAttribute("aria-label"),
+      portraitPick: document.querySelector("#pf-pick").getAttribute("aria-label") }));
+    check(a11y.sum === "Tưởng niệm (giỗ hết, lời tưởng niệm, ảnh mâm lễ)" && a11y.group === "group" && a11y.groupName === "Ảnh mâm lễ ngày giỗ"
+      && a11y.trayPick === "Đổi ảnh mâm lễ" && a11y.trayRm === "Bỏ ảnh mâm lễ" && a11y.portraitPick === "Chọn ảnh chân dung",
+      `NS-01/NS-02 (duyệt #50): nút ảnh mâm lễ và ảnh chân dung có tên riêng cho trình đọc màn hình; mục là nhóm có nhãn; tiêu đề khung có "ảnh mâm lễ" (${JSON.stringify(a11y)})`);
     await page.locator("#pf-tray").screenshot({ path: join(SHOTS, "v02-form-tray-360.png") });
     await page.click(".form-acts .primary");
     await page.waitForSelector("#person-name");
@@ -1201,7 +1208,7 @@ export async function runTrayPack({ browser, BASE, SHOTS, check }) {
     const id = await addDeceased(page, BASE, "Trần Văn Gói");
     await openMemorial(page, BASE, id, true);
     const m5 = await memState(page);
-    check(m5.fig === "clevix" && m5.drawn && m5.below && m5.label === "Ảnh mâm lễ" && m5.credit === "Ảnh: Clevix Lab Thử · CC BY 4.0" && m5.add === "Thêm ảnh mâm lễ của gia đình",
+    check(m5.fig === "clevix" && m5.drawn && m5.below && m5.label === "Ảnh mâm lễ" && m5.credit === "Ảnh: Clevix Lab Thử · CC BY 4.0 (ghi công nguyên văn)" && m5.add === "Thêm ảnh mâm lễ của gia đình",
       `§16.4 (5): gói có 1 ảnh đã duyệt → ảnh Clevix hiện dưới bàn thờ, nhãn "Ảnh mâm lễ", dòng ghi công; vẫn có "Thêm ảnh mâm lễ của gia đình" (${JSON.stringify(m5)})`);
     await page.evaluate(() => document.querySelector(".mem-tray").scrollIntoView({ block: "center" }));
     await page.screenshot({ path: join(SHOTS, "v02-tray-clevix-360-light.png") });
