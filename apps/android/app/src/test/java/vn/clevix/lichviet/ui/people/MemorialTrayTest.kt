@@ -71,7 +71,7 @@ class MemorialTrayTest {
     /** Không phần tử nào mang nhãn có chữ "mâm" (nhãn trợ năng hay thẻ kiểm thử của mâm). */
     private fun assertNoTray() {
         val trayDesc = SemanticsMatcher("nhãn có chữ mâm") { n ->
-            n.config.getOrNull(SemanticsProperties.ContentDescription)?.any { it.contains("mâm", ignoreCase = true) } == true
+            n.config.getOrElseNullable(SemanticsProperties.ContentDescription) { null }?.any { d -> d.contains("mâm", ignoreCase = true) } == true
         }
         assertTrue("không có phần tử mâm", rule.onAllNodes(trayDesc, useUnmergedTree = true).fetchSemanticsNodes().isEmpty())
         assertTrue(rule.onAllNodes(hasTestTag("tray"), useUnmergedTree = true).fetchSemanticsNodes().isEmpty())
