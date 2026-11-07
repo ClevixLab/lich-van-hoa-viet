@@ -41,6 +41,7 @@ import vn.clevix.lichviet.people.PeopleRepo
 import vn.clevix.lichviet.people.Person
 import vn.clevix.lichviet.people.Photos
 import vn.clevix.lichviet.people.b
+import vn.clevix.lichviet.people.capFirst
 import vn.clevix.lichviet.people.copyJ
 import vn.clevix.lichviet.people.errText
 import vn.clevix.lichviet.people.i
