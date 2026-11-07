@@ -147,8 +147,13 @@ class PeopleScreensTest {
         assertTrue(rule.onAllNodesWithText("+ Thêm").fetchSemanticsNodes().isEmpty())
         // Dữ liệu cũ vẫn xem được.
         assertTrue(rule.onAllNodesWithText("Nguyễn Văn A", substring = true).fetchSemanticsNodes().isNotEmpty())
+        // TKN3-A-01: lời thường; mã kỹ thuật chỉ trong mục thu gọn "Chi tiết kỹ thuật".
+        assertTrue(rule.onAllNodesWithText("/person/", substring = true).fetchSemanticsNodes().isEmpty())
         shoot("41-chi-doc", variants = withXl)
-        rule.onNodeWithText("Tạo tệp sao lưu…").performScrollTo().performClick()
+        rule.onNodeWithText("Chi tiết kỹ thuật ▾").performClick()
+        rule.onNodeWithText("/person/death/notice/place", substring = true).assertExists()
+        rule.onNodeWithText("Chi tiết kỹ thuật ▴").performClick()
+        rule.onNodeWithText("Đi tới Sao lưu").performScrollTo().performClick()
         rule.waitForIdle()
         assertTrue(rule.onAllNodesWithText("Khôi phục từ tệp sao lưu").fetchSemanticsNodes().isEmpty())
         shoot("42-chi-doc-sao-luu")

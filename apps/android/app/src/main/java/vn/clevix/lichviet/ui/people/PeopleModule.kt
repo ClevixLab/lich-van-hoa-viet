@@ -171,18 +171,30 @@ const val STORE_SAFE_TEXT =
     "Dữ liệu người thân của bạn vẫn còn nguyên trên máy — ứng dụng không xóa gì. Đừng gỡ cài đặt ứng dụng (gỡ cài đặt sẽ " +
         "xóa dữ liệu). Hãy cập nhật ứng dụng lên bản mới nhất; nếu vẫn lỗi, hãy liên hệ Clevix Lab."
 
-/** Thẻ đỏ chế độ chỉ đọc (B5 mục 3, `migration_status`): câu của lõi + lối tới "Tạo tệp sao lưu". */
+/**
+ * Thẻ đỏ chế độ chỉ đọc (B5 mục 3, `migration_status`; TKN3-A-01): lời thường như bản web, không mã kỹ thuật. Câu lỗi
+ * của lõi chỉ ở mục thu gọn "Chi tiết kỹ thuật" (để gửi Clevix Lab).
+ */
 @Composable
 fun ReadOnlyBanner(x: PeopleCtx) {
-    val t = x.readOnlyText ?: return
-    val toBackup: @Composable () -> Unit = { PrimaryButton("Tạo tệp sao lưu…", { x.nav.tab(PRoute.Backup) }) }
-    NoticeBox(
-        "$t\n\nDữ liệu người thân vẫn còn nguyên trên máy. Trong lúc này chỉ xem được và tạo được tệp sao lưu; chưa thêm, " +
-            "sửa hay xóa được. Đừng gỡ cài đặt ứng dụng.",
-        warn = true,
-        action = if (x.nav.top != PRoute.Backup) toBackup else null,
-    )
+    val detail = x.readOnlyText ?: return
+    var open by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(false) }
+    val actions: @Composable () -> Unit = {
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            if (x.nav.top != PRoute.Backup) PrimaryButton("Đi tới Sao lưu", { x.nav.tab(PRoute.Backup) })
+            LinkButton(if (open) "Chi tiết kỹ thuật ▴" else "Chi tiết kỹ thuật ▾") { open = !open }
+            if (open) Fine(detail)
+        }
+    }
+    NoticeBox(READ_ONLY_TEXT, warn = true, action = actions)
 }
+
+/** Câu chuẩn của khung chỉ đọc (như bản web, 08 §12j/§13). */
+const val READ_ONLY_TEXT =
+    "Chưa chuyển được dữ liệu sang bản mới. Dữ liệu cũ vẫn còn nguyên trên máy và đang mở ở chế độ chỉ đọc: xem được, " +
+        "nhưng chưa thêm hay sửa được.\n\nHãy tạo ngay một tệp sao lưu để giữ dữ liệu: vào Sao lưu → “Tạo tệp sao lưu…”, " +
+        "rồi cất tệp ở nơi an toàn. Sau đó thử mở lại ứng dụng; nếu vẫn thấy thông báo này, hãy báo cho Clevix Lab kèm " +
+        "tệp sao lưu. Đừng gỡ cài đặt ứng dụng."
 
 /** Biểu mẫu khi đang chỉ đọc: không mở biểu mẫu, chỉ thẻ đỏ và lối quay lại. */
 @Composable

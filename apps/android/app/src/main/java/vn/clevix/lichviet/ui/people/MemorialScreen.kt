@@ -145,7 +145,7 @@ fun MemorialScreen(x: PeopleCtx, id: String) {
     }
 }
 
-/** Năm trên bia: "Canh Thìn 1940 — Ất Tỵ 2025"; thiếu năm sinh → "Mất năm Ất Tỵ (2025)"; không rõ năm mất → "Giỗ ngày 10/3 âm lịch". */
+/** Năm trên bia (08 §3.9, TKN3-A-02): "Canh Thìn 1940 — Ất Tỵ 2025"; thiếu năm sinh → "Mất năm Ất Tỵ 2025"; không rõ năm mất → "Giỗ ngày 10/3 âm lịch". */
 private fun yearsLine(p: vn.clevix.lichviet.people.Person): String? {
     val death = p.death ?: return null
     val dl = Lunar.of(death.o("lunar"))
@@ -156,8 +156,8 @@ private fun yearsLine(p: vn.clevix.lichviet.people.Person): String? {
     val by = p.birth?.i("lunar_year")
     val bcc = p.birth?.sn("can_chi")
     val dcc = PeopleRepo.canChi(dy)
-    // Dạng của 08 §3.9: "Can Chi (năm)" — TKN-X-02.
-    return if (by != null && bcc != null) "$bcc ($by) — $dcc ($dy)" else "Mất năm $dcc ($dy)"
+    // 08 §3.9: Can Chi + năm, không ngoặc — thống nhất PWA, Android, Windows (TKN-X-02, TKN3-A-02).
+    return if (by != null && bcc != null) "$bcc $by — $dcc $dy" else "Mất năm $dcc $dy"
 }
 
 private val SteleShape = GenericShape { size, _ ->
