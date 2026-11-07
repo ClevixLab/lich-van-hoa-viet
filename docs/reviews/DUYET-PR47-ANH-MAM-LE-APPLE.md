@@ -152,3 +152,80 @@ px, ≤ 1 MB, bỏ siêu dữ liệu, có cả HEIC và tệp trên Mac), ảnh 
 C-1 cần một lần CI `apple` chạy trọn và xanh cùng ảnh chụp để duyệt; C-2 cần khôi phục hai ảnh R14 bị commit CI xóa.
 N-1 (bỏ ảnh Windows khỏi PR) nên làm cùng lúc. Sau khi có CI xanh và ảnh chụp, người duyệt xem lại ảnh và N-2 trước khi
 đổi kết luận. Không đổi gì trên nhánh của PR #47.
+
+---
+
+## Vòng 2 — 07/11/2026
+
+- Đầu nhánh lúc duyệt: `6efec2e`. Mã ở `43a1992` (gộp `origin/main` vào nhánh). Hai commit sau đó (`4e6ce7f`, `6efec2e`)
+  do CI ghi và **chỉ** có ảnh trong `apps/apple/screenshots/` (đã kiểm `git diff --name-only 43a1992 6efec2e`).
+- So với `origin/main` (`d47812a`): 16 tệp mã/tài liệu + ảnh chụp Apple. Không có tệp nào bị xóa, không có tệp ngoài
+  `apps/apple/`, `.github/workflows/apple.yml` và một dòng 08 §12-Apple. Gộp thử với `main` và với PR #61 (`26d37fb`): không
+  xung đột.
+
+### V2.1 Bằng chứng CI
+
+`apple` 42379199813 trên `43a1992`: **đạt** cả hai job.
+
+| Bước | Kết quả |
+|---|---|
+| Dựng iOS mô phỏng, iOS arm64, macOS | đạt |
+| Kiểm tra (không quyền mạng, PrivacyInfo, phông) + mới: `NSCameraUsageDescription` trong Info.plist đã dựng, quyền `files.user-selected.read-write` | đạt; nhật ký in "NSCameraUsageDescription: Ứng dụng dùng máy ảnh khi bạn chọn chụp ảnh mâm lễ ngày giỗ. Ảnh chỉ lưu trên máy này và trong tệp sao lưu mã hóa." |
+| Đơn vị (22 ca, 0 lỗi) | `testTrayPhotoSavedStrippedAndRemoved`, `testTrayPackKeepsOnlyApprovedVerifiedItems`, `testEverySavePathKeepsTrayPhoto` **đạt** |
+| Giao diện iPhone (10 ca chạy, 0 lỗi; 2 ca `PeopleUpgradeTests` bỏ qua đúng thiết kế, chạy ở job upgrade) | `testMemorialAltar` (35,8 s), `testTrayPhoto` (187,2 s) **đạt** |
+| Giao diện iPad (3 ca, 0 lỗi) | `testMemorialAltar`, `testTrayPhoto` **đạt** |
+| upgrade: R14 + ghi ảnh | đạt |
+
+Các lần chạy trên `4e6ce7f`, `6efec2e` ở trạng thái `action_required` (commit của bot, chỉ có ảnh), nên GitHub hiện PR là
+`unstable`. Không ảnh hưởng mã đã kiểm.
+
+### V2.2 Trạng thái phát hiện vòng 1
+
+| Mã | Trạng thái | Bằng chứng |
+|---|---|---|
+| C-1 | **ĐÃ SỬA** | Lần chạy xanh trọn ở V2.1; năm kiểm thử YC-2026-10 đạt trên iPhone và (hai ca giao diện) iPad; ảnh chụp đã ghi vào nhánh (xem V2.3) |
+| C-2 | **ĐÃ SỬA** | Hai ảnh `upgrade-readonly-{diag,profiles}.png` còn nguyên (chỉ chụp lại, 384 880 → 386 191 và 407 354 → 409 469 byte). Gốc đã chặn: `commit_shots.sh` không còn `rm`, chỉ chép ảnh khác rỗng và báo lỗi nếu chỉ mục có dòng `D`; bước ghi ảnh upgrade chỉ chạy khi `steps.r14.outcome == 'success'`, bước ghi ảnh build dùng `!cancelled()` |
+| N-1 | **ĐÃ SỬA** | Diff không còn tệp `apps/windows/`. `windows.yml` đã có lọc đường dẫn và chỉ ghi ảnh trên nhánh Windows (#64, trên `main`); `apple.yml` nay cũng có `paths` và chỉ ghi ảnh khi tên nhánh có `apple` |
+| N-2 | **ĐÃ SỬA** | Ảnh thu nhỏ được bọc trong `ZStack` có `accessibilityElement(children: .ignore)`, `.isImage`, nhãn "Ảnh mâm lễ đã chọn", định danh `form.tray.thumb`; kiểm thử khẳng định nhãn này |
+| N-3 | **ĐÃ SỬA** | Nhãn trợ năng: "Đổi ảnh mâm lễ", "Bỏ ảnh mâm lễ"; mục chân dung: "Chọn ảnh chân dung" / "Đổi ảnh chân dung", "Bỏ ảnh chân dung". Chữ hiển thị giữ đúng §16.2. Kiểm thử khẳng định nhãn "Bỏ ảnh mâm lễ" |
+| N-4 | **ĐÃ SỬA (mã)** — còn thử máy thật | `com.apple.security.files.user-selected.read-write` ở `LichViet.entitlements` và `project.yml`; CI kiểm có khóa này. Việc hộp chọn tệp thật sự mở được trên Mac vẫn chỉ xác nhận được trên máy Mac (danh sách "Cần máy thật") |
+| N-5 | **ĐÃ SỬA** | Câu xin quyền mới (trên); CI đọc Info.plist đã dựng bằng `PlistBuddy` và trượt nếu thiếu "tệp sao lưu mã hóa" |
+
+Góp ý vòng 1: G-1 sửa một phần (ảnh Clevix nay qua `PhotoCache` với khóa `traypack:<id>`; `PhotoView` vẫn giải mã
+`newTray` mỗi lần vẽ lại biểu mẫu); G-2 đã sửa (`jpegData` chạy trong `Task.detached`); G-3 đã sửa (nút chọn ảnh luôn ở
+trong cây, chỉ bị khóa khi đang xử lý; có định danh `form.tray.busy`); G-4 giữ nguyên (chấp nhận); G-5 (b)(c) đã sửa
+(`ios-form-tray-large*`, `ipad-form-tray-large*`; 08 §12-Apple liệt kê `testEverySavePathKeepsTrayPhoto`), (a)(d) chưa;
+G-6 hết (không còn xung đột với #61).
+
+### V2.3 Ảnh chụp đã xem
+
+Đã mở và xem: `ios-altar-huong-light`, `ios-altar-cong-giao-light`, `ios-altar-tray-light`, `ios-altar-tray-dark-2`,
+`ios-altar-clevix-dark`, `ios-form-tray-light`, `ios-form-tray-empty-dark`, `ios-form-tray-large`,
+`ipad-altar-huong-dark`, `ipad-altar-tray-light`, `ipad-altar-clevix-light`.
+
+| Ca §16.4 | Thấy trong ảnh |
+|---|---|
+| (1) không ảnh, gói rỗng | iPad: hai nến, bát hương ba nén có khói, kệ gỗ; **không** mâm, không lọ hoa; nút chữ "Thêm ảnh mâm lễ của gia đình" dưới bàn thờ |
+| (4) Công giáo | iPhone: nến · hoa · nến, không hương, không nút "Dừng khói"; có nút thêm ảnh |
+| (2) ảnh gia đình | iPhone `-dark-2`: ảnh nằm dưới hàng bàn thờ, rộng hết cột trừ lề 16, khung 4:3, bo góc, viền vàng đồng; lời tưởng niệm dưới ảnh; không có nút thêm. iPad: ảnh rộng hơn kệ (≤ 480 so với kệ ≤ 380), căn giữa — đúng §16.1 |
+| (5) gói thử | iPad: ảnh Clevix dưới bàn thờ khi chưa có ảnh gia đình |
+| Biểu mẫu | Mục ngay sau "Lời tưởng niệm"; chưa có ảnh: đúng câu + "Chọn ảnh mâm lễ…"; có ảnh: thu nhỏ 120 × 90, "Đổi ảnh", "Bỏ ảnh" (đỏ); dòng gợi ý đúng chữ. Chữ rất lớn: không cắt chữ, hàng ảnh + hai nút vẫn vừa |
+
+### V2.4 Phát hiện mới
+
+**V2-01 — góp ý — Ảnh trang đầu trên iPhone không thấy được phần cần chứng minh.** `ios-altar-huong-*`,
+`ios-altar-tray-light` và `ios-altar-clevix-*` chỉ chụp màn đầu: hàng bàn thờ bị thanh thẻ che (chỉ thấy đầu nén hương),
+nên ảnh không cho thấy ca (1) "không có mâm" hay ảnh Clevix và dòng ghi công trên iPhone. Ca (2) có ảnh cuộn `-2`; các ca
+khác chỉ được kiểm bằng khẳng định trong kiểm thử (đã đạt) và bằng ảnh iPad. Đề nghị thêm ảnh sau khi cuộn
+(`altar-huong-*-2`, `altar-clevix-*-2`) để ảnh chụp tự đứng làm bằng chứng R15 (a) trên iPhone. Không chặn.
+
+**V2-02 — góp ý — Dòng ghi công Clevix chưa có trong ảnh nào.** Chỉ được khẳng định bằng `memorial.trayCredit`. Gộp với
+V2-01.
+
+Không có phát hiện chặn mới.
+
+### V2.5 Kết luận vòng 2
+
+**GỘP ĐƯỢC — 0 chặn.** C-1, C-2, N-1, N-2, N-3, N-5 đã sửa; N-4 đã sửa trong mã và CI, còn chờ thử trên Mac thật như mọi
+mục "Cần máy thật" (máy ảnh, ảnh HEIC thật, hộp chọn tệp Mac), không chặn gộp nhưng phải xong trước khi phát hành bản Mac.
+Hai góp ý mới (V2-01, V2-02) về ảnh chụp. Không đổi gì trên nhánh của PR #47.
