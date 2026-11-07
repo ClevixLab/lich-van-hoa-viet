@@ -584,6 +584,14 @@ let r6File;
     sm.close();
     ok(movedGone && noOrphan && empty, `BM3-01: sau chuyển đổi không còn ảnh gốc mồ côi; xóa mọi hồ sơ → 0 ảnh, 0 tệp đính kèm (${[movedGone, noOrphan, empty].join(",")})`);
   }
+  // putUiMeta (PR #30, MA3C-30-04) chỉ ghi khóa giao diện; khóa của lõi trong `meta` không bị giao diện ghi đè.
+  {
+    const su = await freshStore();
+    const okUi = (await su.putUiMeta("ui_restored_from", "2026-11-07T00:00:00Z")) === true && (await su.putUiMeta("persist", true)) === true;
+    const denied = await Promise.all(["migrated_at", "migration_moved_photos", "store_version", "schema_version", "ui_", "UI_X"].map((k) => code(() => su.putUiMeta(k, "x"))));
+    su.close();
+    ok(okUi && denied.every((c) => c === "input"), `putUiMeta: khóa ui_*/persist ghi được; khóa của lõi → input (${denied.join(",")})`);
+  }
   // Kiểm định: buộc lỗi chuyển đổi → chỉ đọc, dữ liệu cũ nguyên.
   const ff = await v1Store();
   const sf = await S.openStore(ff, { forceMigrationFailure: true });
