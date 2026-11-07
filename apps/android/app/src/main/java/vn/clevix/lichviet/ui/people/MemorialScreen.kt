@@ -179,7 +179,7 @@ private fun Stele(quanHe: String, hoTen: String, displayName: String, tenHieu: S
     val name = if (rel.isNotEmpty()) hoTen else displayName
     val long = name.length > 28
     Box(
-        Modifier.fillMaxWidth(0.8f).widthIn(max = 360.dp).clip(SteleShape).background(STONE)
+        Modifier.widthIn(max = 360.dp).fillMaxWidth(0.8f).clip(SteleShape).background(STONE)
             .border(2.dp, STONE_EDGE, SteleShape)
             .semantics(mergeDescendants = true) { contentDescription = listOfNotNull(rel.ifEmpty { null }, name, years, age).joinToString(". ") },
     ) {
@@ -216,7 +216,7 @@ private fun Altar(incense: Boolean, catholic: Boolean, animate: Boolean) {
         t.animateFloat(0f, 1f, infiniteRepeatable(tween(4000, easing = LinearEasing), RepeatMode.Restart), label = "pha").value
     } else 0.35f
     val desc = when { catholic -> ALTAR_DESC_CATHOLIC; incense -> ALTAR_DESC; else -> ALTAR_DESC_NO_INCENSE }
-    Canvas(Modifier.fillMaxWidth().widthIn(max = 420.dp).height(220.dp).testTag("altar").semantics { contentDescription = desc }) {
+    Canvas(Modifier.widthIn(max = 420.dp).fillMaxWidth().height(220.dp).testTag("altar").semantics { contentDescription = desc }) {
         val w = size.width
         val h = size.height
         val cx = w / 2f
