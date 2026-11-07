@@ -11,7 +11,8 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  # write: ghi ảnh chụp giao diện của PR vào chính nhánh PR (apps/apple/screenshots/), vì tải tạo phẩm bị chặn.
+  contents: write
 
 concurrency:
   group: apple-${{ github.ref }}-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
@@ -26,7 +27,7 @@ jobs:
   build:
     # macos-15 có Xcode 16.x (Swift 5.10/6), hỗ trợ iOS 16 / macOS 13 làm mục tiêu triển khai.
     runs-on: macos-15
-    timeout-minutes: 60
+    timeout-minutes: 100
     steps:
       - uses: actions/checkout@v4
 
@@ -123,6 +124,47 @@ jobs:
           ditto -c -k --sequesterRsrc --keepParent "$MAC" "$RUNNER_TEMP/LichViet-macOS-unsigned.zip"
           ls -la "$RUNNER_TEMP"/*.zip
 
+      - name: Kiểm thử đơn vị + giao diện (iPhone mô phỏng, Debug) và ảnh chụp "Người thân"
+        working-directory: apps/apple
+        run: |
+          set -o pipefail
+          PHONE=$(python3 ci/pick_sim.py iPhone "iPhone 16" "iPhone 16 Pro" "iPhone 15")
+          IPAD=$(python3 ci/pick_sim.py iPad "iPad Air 11-inch (M2)" "iPad Pro 11-inch (M4)" "iPad (10th generation)")
+          echo "PHONE=$PHONE IPAD=$IPAD"
+          echo "IPAD=$IPAD" >> "$GITHUB_ENV"
+          for U in $PHONE $IPAD; do
+            xcrun simctl boot "$U" || true
+            xcrun simctl status_bar "$U" override --time 9:41 --batteryState charged --batteryLevel 100 || true
+          done
+          xcodebuild -project LichVanHoaViet.xcodeproj -scheme LichViet-iOS -configuration Debug \
+            -destination "id=$PHONE" -derivedDataPath build/ddt \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build-for-testing | tee build/test-build.log
+          mkdir -p "$RUNNER_TEMP/shots"
+          TEST_RUNNER_SCREENSHOT_DIR="$RUNNER_TEMP/shots" TEST_RUNNER_SHOT_PREFIX=ios \
+          xcodebuild -project LichVanHoaViet.xcodeproj -scheme LichViet-iOS -configuration Debug \
+            -destination "id=$PHONE" -derivedDataPath build/ddt -resultBundlePath build/ios-tests.xcresult \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO test-without-building | tee build/ios-tests.log
+
+      - name: Ảnh chụp bố cục iPad
+        if: always() && env.IPAD != ''
+        continue-on-error: true
+        working-directory: apps/apple
+        run: |
+          set -o pipefail
+          TEST_RUNNER_SCREENSHOT_DIR="$RUNNER_TEMP/shots" TEST_RUNNER_SHOT_PREFIX=ipad \
+          xcodebuild -project LichVanHoaViet.xcodeproj -scheme LichViet-iOS -configuration Debug \
+            -destination "id=$IPAD" -derivedDataPath build/ddt -resultBundlePath build/ipad-tests.xcresult \
+            -only-testing:LichVietUITests-iOS/PeopleUITests/testScreenshotsLight \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO test-without-building | tee build/ipad-tests.log
+
+      - name: Ghi ảnh chụp vào nhánh PR (apps/apple/screenshots/)
+        if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+          RUN_NO: ${{ github.run_number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: bash apps/apple/ci/commit_shots.sh
+
       - name: Chạy thử trên iOS Simulator (khởi động và chụp màn hình)
         continue-on-error: true
         run: |
@@ -148,3 +190,48 @@ jobs:
           name: apple-logs
           path: apps/apple/build/*.log
           retention-days: 14
+
+  # R14 (04 Bổ sung B5): cài bản cũ, tạo dữ liệu, cài đè bản mới trên iPhone mô phỏng; dữ liệu phải còn nguyên.
+  upgrade:
+    runs-on: macos-15
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Chọn Xcode 16
+        run: |
+          X=$(find /Applications -maxdepth 1 -name 'Xcode_16*.app' | sort -V | tail -1)
+          sudo xcode-select -s "$X/Contents/Developer"
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-ios,aarch64-apple-ios-sim,x86_64-apple-ios,aarch64-apple-darwin,x86_64-apple-darwin
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: apple
+      - name: Cài XcodeGen ${{ env.XCODEGEN_VERSION }}
+        run: |
+          curl -fsSL -o "$RUNNER_TEMP/xcodegen.zip" \
+            "https://github.com/yonaskolb/XcodeGen/releases/download/${XCODEGEN_VERSION}/xcodegen.zip"
+          unzip -q "$RUNNER_TEMP/xcodegen.zip" -d "$RUNNER_TEMP/xcodegen"
+          echo "$RUNNER_TEMP/xcodegen/xcodegen/bin" >> "$GITHUB_PATH"
+      - name: Dự phòng — brew install xcodegen
+        run: command -v xcodegen || brew install xcodegen
+      - name: Dựng XCFramework (dùng chung cho bản cũ và bản mới — lõi không đổi giữa các bản thử)
+        env:
+          LVHV_BUILD_NUMBER: ${{ github.run_number }}
+        run: |
+          export LVHV_BUILD_DATE="$(date -u +%Y-%m-%d)"
+          apps/apple/build-xcframework.sh
+          cd apps/apple && xcodegen generate
+      - name: R14 — nâng cấp tại chỗ (0.1 → mới, 0.2-dev → mới)
+        run: bash apps/apple/ci/upgrade.sh
+      - name: Ghi ảnh nâng cấp vào nhánh PR (apps/apple/screenshots/upgrade/)
+        if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+          RUN_NO: ${{ github.run_number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          SUBDIR: upgrade
+          RESULT: ${{ runner.temp }}/r14/upgrade.xcresult
+        run: SHOTS="$RUNNER_TEMP/shots-upgrade" bash apps/apple/ci/commit_shots.sh

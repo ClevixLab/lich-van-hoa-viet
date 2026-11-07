@@ -933,6 +933,77 @@ Kiểm chéo bằng `scripts/check-store.sh` (CI "Lưu trữ + sao lưu"), gồm
 | YC-2026-07 | Biểu mẫu hồ sơ có ô "Giới tính" (Nam / Nữ / Không ghi). Gợi ý cách gọi lấy từ lõi (`danhXungSuggestions`, theo người sống/mất, từ hợp giới tính lên trước), gợi ý quan hệ từ `quanHeSuggestions`; chữ đầu viết hoa khi lưu (`normalizePersonNames`). Khối thông tin báo tử: "Tệp đính kèm" tối đa 6 tệp, chọn loại (Ảnh tin báo tử / Giấy chứng tử (ảnh hoặc bản quét PDF) / Khác), nhận ảnh (nén lại, ≤ 2048 px, ≤ 2 MB) hoặc PDF (≤ 10 MB, lưu nguyên bản, có câu "Tệp PDF được lưu nguyên bản"); PDF hiện nhãn, không mở trong trang. Tên tệp gốc chỉ hiện trên trang hồ sơ, cùng thông tin báo tử (R-PRIV-2) |
 | TKN-A-08 | Lõi ghép tên người vào tiêu đề sự kiện (02 §8: `Tốt nghiệp đại học · Lê Văn Cường`) cho .ics và thông báo khi bật hiện tên. Giao diện tự ghép tên riêng (`itemTitle`), nên nhãn dùng `headline_plain` (không tên) để tên không lặp hai lần |
 
+### 12-Apple. Ứng dụng iPhone, iPad, Mac (PR #23, T7) — sai khác so với đặc tả này
+
+Ứng dụng Apple dùng cùng màn hình, trường, câu chữ, luồng và trạng thái của tài liệu này, theo cách trình bày của
+Apple (HIG). Mọi tính toán qua lõi Rust (UniFFI). Ảnh chụp: `apps/apple/screenshots/` (iPhone mô phỏng: sáng `-light`,
+tối `-dark`, chữ rất lớn Accessibility L `-large`; bố cục iPad `ipad-*`).
+
+**Thích nghi theo HIG (không đổi nội dung):**
+
+| Chỗ trong 08 | Bản Apple |
+|---|---|
+| §1.1 thanh mục 5 ô | Thanh thẻ đáy 5 ô (iPhone, iPad); macOS: nhóm phân đoạn ở thanh trên |
+| §1.2 URL `#/nguoi-than/…` | `NavigationStack` với đường đi chỉ chứa id ngẫu nhiên (không tên, không ngày) |
+| §1.2 nút "‹ Quay lại", TK-21 "‹ Về hồ sơ" | Nút quay lại của hệ thống, ghi tên trang trước ("‹ Người thân", "‹ Hồ sơ") |
+| §2 hộp xác nhận `<dialog>` | Xóa, bỏ thay đổi, "Cập nhật: đã mất", "Thay toàn bộ": `alert` của hệ thống (nút an toàn là nút hủy). Xuất .ics, tạo sao lưu, khôi phục: tấm `sheet` có nút Hủy / nút chính trên thanh công cụ |
+| §2 ô nhập, `datalist` | Ô chữ có nhãn phía trên; gợi ý cách gọi và quan hệ là hàng nút cuộn ngang dưới ô |
+| §2 nhóm nút `aria-pressed` | Nút viên thuốc có đặc tính `isSelected`, to theo Dynamic Type — dùng cho loại kỳ, bộ lọc, mốc nhắc, thanh trang con, Dương/Âm, "Biết đủ ngày / Chỉ biết năm" (không dùng `Picker` phân đoạn vì không to theo chữ, TKN-I-05); hộp kiểm: `Toggle` |
+| §3.4–§3.7, §12g biểu mẫu | Thêm nút Hủy / Lưu trên thanh điều hướng (vẫn có hai nút ở cuối biểu mẫu); nút quay lại của hệ thống (và cử chỉ vuốt) ẩn ở mọi biểu mẫu, kể cả "Cập nhật: đã mất"; Hủy khi đã nhập → "Bỏ các thay đổi chưa lưu?" (TKN-I-09) |
+| §2 ô nhập | Ô có nền riêng và viền `#8F807D` (sáng) / `#8A7B78` (tối), ≥ 3:1 với nền thẻ (TKN-I-06) |
+| Màu nhấn | Chữ màu nhấn (nút quay lại, Hủy/Lưu, nút hộp xác nhận, công tắc) = `redInk` (sáng `#B3151B`, tối `#FF8A83`); `redDeep` chỉ làm nền nút đặc (TKN-I-01) |
+| §3.8 A tải tệp .ics | Hộp xác nhận + xem trước (S10), có câu "Không gồm thông tin báo tử" (TKN-X-04), rồi nút "Lưu tệp…" (`ShareLink`); tệp tạm bị xóa khi đóng hộp |
+| §3.8 B, C tải / chọn tệp | `fileExporter` / `fileImporter` của hệ thống |
+| §5.2 vùng `role="status"` | Thẻ thông báo ngắn ở đầu trang, tự ẩn sau 6 giây, có nút đóng |
+| §5.4 "Lời nhắc trên ứng dụng web" | Không áp dụng: ứng dụng có thông báo thật. Trang Sao lưu nói .ics là tùy chọn cho ứng dụng Lịch hoặc máy khác |
+| §6 cỡ chữ A/A+/A++ | Giữ A/A+/A++ của ứng dụng và co thêm theo Dynamic Type của máy |
+| §6 giảm chuyển động | `accessibilityReduceMotion` → khói tĩnh, không có nút Dừng khói / Thắp lại |
+
+**Khác về hành vi:**
+
+| Mã | Khác | Lý do |
+|---|---|---|
+| A-1 | Thẻ nhắc chỉ ở "Sắp tới" (tối đa 3 + "… và n lời nhắc khác hôm nay"); **không** thêm thẻ vào Tờ lịch (§5.5, TK-15) | Ứng dụng có thông báo hệ thống; giữ nguyên Tờ lịch v0.1 |
+| A-2 | Thêm trang **Cài đặt nhắc** (nút chuông ở đầu mô-đun): công tắc chung `reminders_enabled`, trạng thái quyền thông báo (+ "Mở Cài đặt" khi bị từ chối), **hiện tên trên màn hình khóa** (O-9, mặc định tắt, lưu theo máy), mặc định mốc/giờ nhắc cho hồ sơ mới. §11 ghi hai mục đầu "chưa có màn hình" cho PWA | Native cần chỗ đổi O-9 và xin quyền |
+| A-3 | Lỗi trường hiện khi trường đã được sửa (không đợi rời ô) và khi bấm Lưu; câu "Hãy nhập đủ …" của ô ngày chỉ hiện khi bấm Lưu (TK-03) | SwiftUI không có sự kiện rời ô đáng tin cho mọi ô; tránh báo lỗi khi đang gõ dở |
+| A-4 | Màn hình tưởng niệm: dòng ngày khi hôm nay không phải ngày giỗ là "Ngày giỗ sắp tới: 15/6 âm lịch, 18/07/2027" (thống nhất với Android, TKN-X-06/TKN-I-13). Thanh điều hướng của trang này: nút "‹ Về hồ sơ" và tiêu đề màu vàng đồng trên nền gỗ ở cả sáng và tối (TKN-I-03) | Ngày giỗ năm nay có thể đã qua; dòng này lấy lần giỗ kế tiếp của lõi |
+| A-5 | (Đã bỏ sai khác) Biểu tượng loại vẽ trong mã như PWA/Android/Windows: ba nén hương (giỗ), mâm nhỏ (tiên thường), bánh có nến (sinh nhật), ngôi sao (sự kiện); dòng 1 mục "Giỗ đầu · Ông Nguyễn Văn A" có dấu "·" (TKN-I-12) | — |
+| A-6 | (Đã đóng, core2) Ảnh và tệp đính kèm ghi bằng `add_photo` / `add_attachment` trước khi lưu hồ sơ; lưu hỏng thì ứng dụng xóa ngay những gì vừa ghi (`delete_photo`, `delete_attachment`) — không còn tệp mồ côi | — |
+| A-7 | (Đã đóng, core2) Bỏ ảnh chân dung hoặc tệp đính kèm rồi lưu: `save_person_json` của lõi xóa tệp khỏi máy trong cùng giao dịch (TKN-I-08) | — |
+| A-8 | Không cài `BGAppRefreshTask` (02 §7.4 cho phép, "không dựa vào nó") | Thông báo nhắc mở ứng dụng (`lvhv:sentinel`) đã che trường hợp lâu không mở; giữ 0 lần đánh thức nền (P9) |
+| A-9 | (Đã làm) TK-16 như PWA: sau "Thay toàn bộ", trang Sao lưu ghi "Chưa sao lưu lần nào trên máy này" (hoặc "Lần sao lưu gần nhất: …") và "Dữ liệu được khôi phục từ bản sao lưu ngày dd/mm/yyyy". Ngày lưu ở tùy chọn giao diện của máy (`UserDefaults` `restoredFrom`), không vào tệp sao lưu; xóa khi tạo được tệp sao lưu mới | — |
+| A-10 | (Đã đóng, core2) `export_backup` chỉ tạo byte; ứng dụng gọi `mark_backup_saved` khi `fileExporter` báo lưu thành công — Hủy ở hộp Lưu không tính là đã sao lưu (MA3N-23-01, TKN-I-07) | — |
+| A-11 | Kiểm thử giao diện dùng tham số khởi chạy chỉ có ở bản Debug (`-lvhvSeed demo`, `-lvhvToday`, `-lvhvScreen`, `-lvhvPrefill`) để mở thẳng từng màn hình. Hai trạng thái được ép bằng tham số Debug vì không tạo được thật trên mô phỏng: quyền thông báo bị từ chối (`-lvhvFakeDenied`) và nhắc sao lưu đến hạn (`-lvhvNagDue`). Lỗi kho là thật: kho được ghi `user_version` = 99 rồi lõi báo lỗi | Ảnh chụp ổn định trên CI; không có trong bản Release |
+| A-12 | Trang Cài đặt nhắc có khung "Thông báo kế tiếp sẽ hiện như sau": dựng lại hình thông báo trên màn hình khóa từ văn bản thật của lõi (`reminders_json` của kho, theo O-9) — không phải ảnh màn hình khóa thật | Mô phỏng trên CI không chụp được màn hình khóa; khung này cũng giúp người dùng hiểu tùy chọn O-9 |
+| A-13 | Nhóm "A / A+ / A++" ở thanh trên (thành phần v0.1, ngoài mô-đun) vẫn là `Picker` phân đoạn | Đổi thanh trên của v0.1 cần hỏi chủ dự án; mọi điều khiển chọn trong mô-đun đã to theo chữ |
+| A-14 | iPad / Mac (≥ 740 pt): Sắp tới hai cột (danh sách | nhắc sao lưu, quyền, nút thêm), hồ sơ một người hai cột, Hồ sơ hai khung cạnh nhau (TKN-I-11) | 08 §7 |
+
+**Cần máy thật (không làm được trên CI mô phỏng, chưa ký):** R5 trên iPhone thật (thông báo đến đúng giờ, sau khởi
+động lại, xoay vòng 64 khi để lâu), P8 (Argon2id trên iPhone), P9 (bộ nhớ, 0 lần đánh thức nền), thông báo trên macOS
+(app chưa ký), chọn ảnh HEIC thật từ thư viện (S9 với ảnh iPhone).
+
+**Riêng tư, bảo mật và nâng cấp (bản Apple, sau rà soát `RA-SOAT-BAO-MAT-V02.md` và 04 Bổ sung B5/B6):**
+
+| Mã | Bản Apple |
+|---|---|
+| BM2-04 | Khi ứng dụng rời tiền cảnh (`scenePhase` khác `.active`), cửa sổ chính và mọi tấm (sao lưu, khôi phục, .ics) bị phủ một lớp nền + tên ứng dụng — ảnh của bộ chuyển ứng dụng không chứa thông tin báo tử, ảnh giấy tờ hay ô mật khẩu |
+| BM2-10, B6 mục 3 | Giải mã ảnh để hiển thị: đọc kích thước từ phần đầu tệp, từ chối > 12 000 px mỗi cạnh hoặc > 50 Mpx, lấy mẫu xuống ≤ 2048 px bằng ImageIO (không giải mã đầy đủ) |
+| BM2-14 | Ô mật khẩu sao lưu không đặt `textContentType(.password)` — hệ điều hành không đề nghị lưu vào Keychain (BK-I5) |
+| BM2-17 | Mật khẩu khôi phục bị xóa khỏi ô ngay sau khi mở tệp, kể cả khi lỗi; `VerifiedBackup` được thả khi đóng tấm |
+| BM2-20 | Thư mục `photos/` (và `attachments/` khi có) dùng lớp bảo vệ `.complete`; `lvhv.sqlite` giữ mặc định để lập lịch lại thông báo khi máy còn khóa |
+| §5.3 | Xem tệp PDF đính kèm: Quick Look trên tệp tạm `tmp/att/TepDinhKem.pdf` (tên chung), xóa khi đóng và khi mở ứng dụng; PDF không bao giờ hiển thị trong tiến trình ứng dụng |
+| BM3-03 (S10) | Ảnh đính kèm xem ngay trong ứng dụng (trang "Tệp đính kèm", giải mã có giới hạn điểm ảnh, phóng to bằng chụm ngón, không có nút Chia sẻ, không ghi tệp tạm). PDF: hộp "Mở tệp PDF?" nói rõ trình xem của hệ thống có nút Chia sẻ, có thể gửi tệp ra ngoài ứng dụng; "Hủy" là nút mặc định; chỉ "Mở tệp" mới ghi bản chép tạm và mở Quick Look. Kiểm thử `testAttachmentViewing`, ảnh `ios-att-image-*`, `ios-att-pdf-confirm-*`, `ios-att-pdf-open-light` |
+| R14 (B5) | CI `apple` job `upgrade` trên iPhone mô phỏng: (A) bản 0.1 (`main` cũ) → bản mới: cỡ chữ, sáng/tối, "Để sau" giữ nguyên; (B) bản 0.2-dev (`89dedb3`, còn `certificate_photo_ids`) tạo 5 hồ sơ, 1 sự kiện, 2 ảnh, thông tin báo tử → cài đè: lõi chuyển 1 → 2 (`migration_status` = `migrated`), ảnh giấy báo tử thành tệp đính kèm đọc lại được, khóa `legacy` có mặt, dữ liệu giống hệt bản chép đã chuyển cùng cách, lịch nhắc được đặt lại; (C) ca chuyển đổi lỗi (ảnh hỏng): `read_only`, băng "Đang ở chế độ chỉ đọc" với câu của lõi, không thêm/sửa/xóa được, dữ liệu và tệp ảnh cũ còn nguyên. Dữ liệu ở `Application Support/LichVanHoaViet/`, không có mã nào xóa nó khi cập nhật |
+| YC-2026-07 | Đã làm trên lõi core2: ô "Giới tính" (Nam / Nữ / Không ghi), hiện trên trang hồ sơ; gợi ý cách gọi / quan hệ từ lõi (`danh_xung_suggestions(deceased, gioi_tinh)`, `quan_he_suggestions`), hiển thị qua `display_capitalize`. "Tệp đính kèm" tối đa 6, loại Tin báo tử / Giấy chứng tử / Tệp khác (nhãn như PWA); ảnh qua PhotosPicker, nén lại ≤ 2048 px, ≤ 2 MB, bỏ siêu dữ liệu; PDF qua `fileImporter`, kiểm ≤ 10 MB và `%PDF-` trước khi đọc, lưu nguyên bản ("Tệp PDF được lưu nguyên bản"). Xem: ảnh trong ứng dụng, PDF qua Quick Look sau hộp hỏi lại (BM3-03). Tên tệp gốc chỉ hiện trên trang hồ sơ và biểu mẫu. Không vào thông báo, .ics, màn hình tưởng niệm |
+
+**Hàm lõi dùng thay cho mã tự viết (core2, §8.1):** thẻ nhắc hôm nay `due_today_json`; hộp .ics `IcsExport.summary`
+(câu riêng tư, cửa sổ, ≤ 5 dòng xem trước); mật khẩu `backup_password_error`; kiểm phần đầu tệp sao lưu
+`backup_header_check`; tháng nhuận `lunar_leap_month`; xóa người `delete_person_and_orphan_events`; ghi nhận đã lưu tệp
+`mark_backup_saved`; trạng thái chuyển đổi `migration_status`.
+Từ core3 (#38) ứng dụng Apple không phải đổi mã gọi: lõi tự cắt khoảng trắng khi lưu, kiểm ảnh khi nhập sao lưu,
+giữ bản chép CSDL nguyên byte trước chuyển đổi (`pre-v2.bak`) và tự dọn khóa `legacy` cùng bản chép sau 7 ngày, không để
+tệp đính kèm mồ côi khi chuyển đổi hỏng. Băng chỉ đọc nói bằng lời của ứng dụng; câu của lõi hiện bên dưới ở dòng "Chi tiết".
+
 ### 12i. YC-2026-07 (01 §3.1, §3.2a, §3.8a; PR #29) và ghi chú đa nền tảng — PR #30, trên nền PR #28 (core2)
 
 PR #30 dựng trên lõi của PR #28: lớp lưu trữ, định dạng tệp sao lưu, chuyển đổi, kiểm tra (B6) và gợi ý đều là của

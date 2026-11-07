@@ -2,13 +2,14 @@
 import SwiftUI
 
 enum Tab: String, CaseIterable, Identifiable {
-    case sheet = "Tờ lịch", good = "Chọn ngày tốt", convert = "Đổi ngày", about = "Giới thiệu"
+    case sheet = "Tờ lịch", good = "Chọn ngày tốt", convert = "Đổi ngày", people = "Người thân", about = "Giới thiệu"
     var id: String { rawValue }
     var symbol: String {
         switch self {
         case .sheet: return "calendar"
         case .good: return "star"
         case .convert: return "arrow.left.arrow.right"
+        case .people: return "person.2"
         case .about: return "info.circle"
         }
     }
@@ -22,13 +23,29 @@ struct RootView: View {
     @AppStorage("theme") private var themeRaw = 0
     /// Cờ giao diện duy nhất ngoài cỡ chữ/sáng tối: hết hạn "Để sau" của thẻ nhắc cập nhật (giây, 1970).
     @AppStorage("updateSnoozedUntil") private var snoozedUntil: Double = 0
-    @State private var tab: Tab = .sheet
+    @State private var tab: Tab = RootView.initialTab
     @State private var date = Lich.clamp(CivilDate.today())
     @State private var today = CivilDate.today()
     @State private var monthOpen = false
     @Environment(\.scenePhase) private var phase
 
     private let scales: [CGFloat] = [1, 1.15, 1.32]
+
+    private static var initialTab: Tab {
+        #if DEBUG
+        if UserDefaults.standard.string(forKey: "lvhvScreen") != nil { return .people }
+        #endif
+        return .sheet
+    }
+
+    /// Mở ứng dụng / trở lại tiền cảnh / đổi múi giờ: lập lịch lại thông báo nếu đã có sổ người thân (02 §7.4).
+    private func refreshPeople(_ reason: ReminderScheduler.Reason) {
+        let m = PeopleModel.shared
+        guard PeoplePaths.storeExists || m.opened else { return }
+        m.openIfNeeded()
+        m.reload()
+        Task { await m.scheduler.reschedule(store: m.store, reason: reason) }
+    }
 
     private var scheme: ColorScheme? {
         switch ThemeMode(rawValue: themeRaw) ?? .system {
@@ -73,16 +90,25 @@ struct RootView: View {
         .background(C.wall.ignoresSafeArea())
         .environment(\.textScale, scales[min(max(size, 1), 3) - 1])
         .preferredColorScheme(scheme)
-        .tint(C.redDeep)
+        .tint(C.redInk)
+        .privacyCover() // chữ màu nhấn đủ tương phản ở sáng và tối (TKN-I-01); redDeep chỉ làm nền nút đặc
         .sheet(isPresented: $monthOpen) {
             MonthSheet(selected: date, today: today, onPick: { d in monthOpen = false; openDay(d) }, onClose: { monthOpen = false })
+                .privacyCover()
                 .environment(\.textScale, scales[min(max(size, 1), 3) - 1])
                 .preferredColorScheme(scheme)
                 #if os(macOS)
                 .frame(minWidth: 460, minHeight: 600)
                 #endif
         }
-        .onChange(of: phase) { p in if p == .active { today = CivilDate.today() } }
+        .onChange(of: phase) { p in
+            if p == .active {
+                today = CivilDate.today()
+                refreshPeople(.appOpen)
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .NSSystemTimeZoneDidChange)) { _ in refreshPeople(.timezone) }
+        .onReceive(NotificationCenter.default.publisher(for: NotificationDelegate.openPeople)) { _ in tab = .people }
         #if os(macOS)
         .frame(minWidth: 420, minHeight: 640)
         #endif
@@ -96,9 +122,9 @@ struct RootView: View {
             }
             .pickerStyle(.segmented)
             .labelsHidden()
-            .frame(maxWidth: 520)
+            .frame(maxWidth: 680)
             #else
-            Text("Lịch Việt").serif(20, .semibold).foregroundStyle(C.ink)
+            Text("Lịch Việt").serif(20, .semibold).foregroundStyle(C.ink).lineLimit(1).minimumScaleFactor(0.6)
             #endif
             Spacer()
             Picker("Cỡ chữ", selection: $size) {
@@ -162,6 +188,8 @@ struct RootView: View {
             GoodDaysView(today: today, openDay: openDay)
         case .convert:
             ConvertView(current: date, today: today, openDay: openDay)
+        case .people:
+            PeopleView()
         case .about:
             AboutView()
         }
