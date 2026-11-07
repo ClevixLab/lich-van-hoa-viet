@@ -1,7 +1,7 @@
 // Cửa vào mô-đun "Người thân" (docs/v0.2/08). NẠP LƯỜI từ main.ts bằng import() — không có trong lần tải đầu (P3, P6).
 import { clear, h } from "../dom";
 import { renderBackup, openIcsDialog } from "./backup";
-import { snap } from "./core";
+import { snap, store } from "./core";
 import { renderEventForm, renderPersonForm, type Nav } from "./forms";
 import { renderConvertForm } from "./notice";
 import { disposeMemorial, renderMemorial } from "./memorial";
@@ -26,6 +26,14 @@ export async function renderPeople(root: HTMLElement, sub: string, nav: Nav): Pr
   setToastHost(toastHost);
   root.classList.add("people");
   const body = h("div", { class: "people-body" });
+  // 04 B5 mục 3: chuyển đổi lỗi → lõi mở kho cũ ở chế độ chỉ đọc (`migrationStatus().state === "read_only"`).
+  const ms = await store().then((x) => x.migrationStatus()).catch(() => null);
+  if (ms?.state === "read_only") {
+    root.append(h("div", { class: "notice warnbox", role: "alert", id: "ro-banner" },
+      h("p", null, h("b", null, "Chưa chuyển được dữ liệu sang bản mới. "), "Dữ liệu cũ vẫn còn nguyên trên máy và đang mở ở chế độ chỉ đọc: xem được, nhưng chưa thêm hay sửa được."),
+      h("p", null, "Hãy tạo ngay một tệp sao lưu để giữ dữ liệu: vào Sao lưu → “Tạo tệp sao lưu…”, rồi cất tệp ở nơi an toàn. Sau đó thử tải lại trang; nếu vẫn thấy thông báo này, hãy báo cho Clevix Lab kèm tệp sao lưu."),
+      h("a", { class: "btnlink main", href: "#/nguoi-than/sao-luu" }, "Đi tới Sao lưu")));
+  }
   try {
     if (top === "" || top in TITLES) {
       const h1 = h("h1", { tabindex: "-1" }, "Người thân");

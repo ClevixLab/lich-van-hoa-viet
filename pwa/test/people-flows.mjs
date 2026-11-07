@@ -72,7 +72,10 @@ export async function runPeople({ browser, BASE, ORIGIN, ROOT, SHOTS, check, met
     await page.click(".form-acts .primary");
     const sum0 = await text(".errsum");
     check(sum0.includes("Họ tên không được để trống") && sum0.includes("Hãy nhập ngày mất"), `L1: lưu khi trống → "Họ tên không được để trống", "Hãy nhập ngày mất" (${sum0.replace(/\n/g, " | ")})`);
-    await page.fill("#pf-dx", "Ông");
+    const dxDead = await page.$$eval("#pf-dx-list option", (os) => os.map((o) => o.value));
+    check(dxDead.includes("Bé đỏ") && dxDead.includes("Ông Tổ họ") && dxDead.includes("Kỵ") && dxDead.every((x) => x[0] === x[0].toLocaleUpperCase("vi")), `YC-2026-07: gợi ý cách gọi (lõi) cho người đã mất viết hoa chữ đầu, có Cụ/Kỵ/Ông Tổ họ/Bà Cô Tổ họ/Bé đỏ (${dxDead.length} mục)`);
+    await page.check("#pf-gt-nam");
+    await page.fill("#pf-dx", "ông");
     await page.fill("#pf-ten", "Nguyễn Văn A");
     const sum1 = await page.locator(".errsum").innerText();
     check(await page.locator("#pf-ten-err").isHidden() && !sum1.includes("Họ tên") && sum1.includes("Hãy nhập ngày mất"), `TK-03: gõ tên → lỗi dưới ô mất, khung tóm tắt bỏ dòng "Họ tên" (${sum1.replace(/\n/g, " | ")})`);
@@ -98,7 +101,7 @@ export async function runPeople({ browser, BASE, ORIGIN, ROOT, SHOTS, check, met
     const withExif = Buffer.concat([jpg.subarray(0, 2), app1, jpg.subarray(2)]);
     await page.setInputFiles("#pf-file", { name: "khong-phai-anh.jpg", mimeType: "image/jpeg", buffer: Buffer.from("đây không phải ảnh", "utf8") });
     await page.waitForSelector(".photo-acts .ferr:not([hidden])");
-    check((await text(".photo-acts .ferr")).includes("Không đọc được ảnh này"), "ảnh hỏng → \"Không đọc được ảnh này (định dạng không hỗ trợ)\"");
+    check((await text(".photo-acts .ferr")) === "Định dạng ảnh chưa hỗ trợ — hãy chọn ảnh JPEG, PNG, WebP hoặc GIF", "ảnh hỏng / định dạng không nhận ra → không giải mã, báo \"Định dạng ảnh chưa hỗ trợ…\" (BM2-13)");
     const bigPng = Buffer.alloc(64);
     Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]).copy(bigPng); bigPng.writeUInt32BE(13, 8); bigPng.write("IHDR", 12); bigPng.writeUInt32BE(20000, 16); bigPng.writeUInt32BE(20000, 20);
     await page.setInputFiles("#pf-file", { name: "rat-lon.png", mimeType: "image/png", buffer: bigPng });
@@ -121,6 +124,10 @@ export async function runPeople({ browser, BASE, ORIGIN, ROOT, SHOTS, check, met
     const recA = await store(`async (s) => { const p = await s.person("${idA}"); const ph = new Uint8Array(await s.photoBytes(p.photo_id)); let i = 2, app1 = false; while (i + 4 < ph.length && ph[i] === 0xff && ph[i+1] !== 0xda) { if (ph[i+1] === 0xe1 || ph[i+1] === 0xed) app1 = true; i += 2 + ((ph[i+2] << 8) | ph[i+3]); } return { lunar: p.death.lunar, src: p.death.lunar_source, rev: p.rev, persist: await s.persistResult(), app1, mime: (await s.photos())[0].mime }; }`);
     check(JSON.stringify(recA.lunar) === JSON.stringify({ day: 15, leap: true, month: 6, year: 2025 }) || (recA.lunar.year === 2025 && recA.lunar.month === 6 && recA.lunar.day === 15 && recA.lunar.leap === true), `L1: lưu death.lunar = 15/6 nhuận 2025 (${JSON.stringify(recA.lunar)})`);
     check(recA.src === "converted" && recA.rev === 1, "L1: lunar_source = converted, rev = 1");
+    const gA = await store(`async (s) => { const p = await s.person("${idA}"); return [p.gioi_tinh, p.danh_xung, p.quan_he]; }`);
+    const pfacts = await text(".people-body");
+    check(JSON.stringify(gA) === JSON.stringify(["nam", "Ông", "Ông nội"]) && /Giới tính\s*Nam/.test(pfacts),
+      `YC-2026-07: lưu gioi_tinh = "nam"; gõ "ông"/"ông nội" → lưu "Ông"/"Ông nội"; hồ sơ hiện "Giới tính: Nam" (${JSON.stringify(gA)})`);
     check(recA.app1 === false && recA.mime === "image/jpeg", "S9: ảnh lưu đã mã hóa lại, không còn đoạn APP1/APP13 (EXIF/GPS)");
     check(typeof recA.persist === "boolean", `R-PWA-1: navigator.storage.persist() đã gọi khi lưu hồ sơ đầu tiên (${recA.persist})`);
     await page.waitForSelector(".pp-photo[data-drawn]");
@@ -162,6 +169,9 @@ export async function runPeople({ browser, BASE, ORIGIN, ROOT, SHOTS, check, met
 
     // ---------- L3 + L4: người đang sống, sự kiện ----------
     await go("#/nguoi-than/them/dang-song", "#pf-ten");
+    const dxLive = await page.$$eval("#pf-dx-list option", (os) => os.map((o) => o.value));
+    check(!["Cụ", "Kỵ", "Ông Tổ họ", "Bà Cô Tổ họ", "Bé đỏ"].some((x) => dxLive.includes(x)) && dxLive.includes("Anh") && await page.isChecked("#pf-gt-none"),
+      `YC-2026-07: gợi ý cách gọi người đang sống không có Cụ, Kỵ, Ông Tổ họ, Bà Cô Tổ họ, Bé đỏ; giới tính mặc định "Không ghi" (${dxLive.join(", ")})`);
     await page.fill("#pf-ten", "Lê Văn C"); await page.fill("#pf-qh", "con trai");
     await page.fill("#pf-birth-d", "20"); await page.fill("#pf-birth-m", "1"); await page.fill("#pf-birth-y", "1990");
     const res3 = await text("#pf-birth-res");
@@ -349,6 +359,7 @@ export async function runPeople({ browser, BASE, ORIGIN, ROOT, SHOTS, check, met
     await page.click("#ics-open");
     await page.waitForSelector(".ics-dialog[open]");
     const icsTxt = await text(".ics-dialog");
+    check(icsTxt.includes("Không gồm thông tin báo tử."), "TKN-X-04: hộp .ics nói rõ \"Không gồm thông tin báo tử.\"");
     check(icsTxt.includes("Tệp này chứa tên, ngày giỗ, sinh nhật và sự kiện của 4 người. Bất kỳ ai có tệp đều đọc được.") && icsTxt.includes("Xem trước") && icsTxt.includes("Tốt nghiệp · Lê Văn C"), `L8 (S10, TK-11): câu riêng tư đúng nội dung tệp, xem trước có tên người (${icsTxt.split("\n")[1]})`);
     await shot("ics-dialog-360", false);
     const [dl] = await Promise.all([page.waitForEvent("download"), page.click('.ics-dialog .dbtn.main')]);
@@ -613,8 +624,26 @@ export async function runPeople({ browser, BASE, ORIGIN, ROOT, SHOTS, check, met
     await page.fill("#nf-by", SEN.by); await page.fill("#nf-place", SEN.place); await page.fill("#nf-reason", SEN.reason); await page.fill("#nf-note", SEN.note);
     await page.fill("#nf-date-d", "18"); await page.fill("#nf-date-m", "7"); await page.fill("#nf-date-y", "2024");
     // Tên tệp gốc cũng là chuỗi canh gác: chỉ được nằm trong bản ghi Attachment (R-PRIV-2, YC-2026-07).
+    await page.selectOption("#nf-kind", "tin_bao_tu");
     await page.setInputFiles("#nf-file", { name: "SENTINEL-TENTEP-7731.jpg", mimeType: "image/jpeg", buffer: withExif });
     await page.waitForSelector(".cert-item canvas[data-drawn]");
+    // YC-2026-07 + BM2-12: PDF — hộp báo "lưu nguyên bản" trước khi nhận; "Không đính kèm" → không thêm.
+    const pdfBytes = Buffer.from("%PDF-1.4\n1 0 obj<</Type/Catalog>>endobj\n% SENTINEL-NOIDUNG-PDF\ntrailer<<>>\n%%EOF\n");
+    await page.selectOption("#nf-kind", "giay_chung_tu");
+    await page.setInputFiles("#nf-file", { name: "SENTINEL-TENPDF-7731.pdf", mimeType: "application/pdf", buffer: pdfBytes });
+    await page.waitForSelector(".pdf-warn-dialog[open]");
+    const pdfWarn = await text(".pdf-warn-dialog");
+    await page.click(".pdf-warn-dialog .dbtn:not(.main)");
+    check(pdfWarn.includes("PDF được lưu nguyên bản, có thể còn tên máy quét") && await page.locator("#nf-certs .cert-pdf").count() === 0, "BM2-12: chọn PDF → hộp báo lưu nguyên bản; \"Không đính kèm\" → không thêm");
+    await page.setInputFiles("#nf-file", { name: "SENTINEL-TENPDF-7731.pdf", mimeType: "application/pdf", buffer: pdfBytes });
+    await page.waitForSelector(".pdf-warn-dialog[open]");
+    await page.click(".pdf-warn-dialog .dbtn.main");
+    await page.waitForSelector("#nf-certs .cert-pdf");
+    await page.setInputFiles("#nf-file", { name: "khong-phai.pdf", mimeType: "application/pdf", buffer: Buffer.from("hello") });
+    await page.waitForSelector(".pdf-warn-dialog[open]");
+    await page.click(".pdf-warn-dialog .dbtn.main");
+    await page.waitForSelector("#nf .ferr:not([hidden])");
+    check(await page.locator("#nf-certs .cert-item").count() === 2, "YC-2026-07: tệp .pdf không phải PDF → báo lỗi, không thêm; còn 2 tệp (ảnh tin báo tử + PDF giấy chứng tử)");
     const cvLay = await layout();
     check(layoutOk(cvLay), `US-M-07: biểu mẫu cập nhật không tràn ở 360 px (${layoutTxt(cvLay)})`);
     await shot("convert-form-360");
@@ -626,13 +655,14 @@ export async function runPeople({ browser, BASE, ORIGIN, ROOT, SHOTS, check, met
     await shot("convert-confirm-360", false);
     await page.click(".cv-dialog .dbtn.main");
     await page.waitForSelector("#person-name");
-    const recM = await store(`async (s) => { const p = await s.person("${idM}"); const n = p.death.notice; const ph = new Uint8Array(await s.attachmentBytes(n.attachments[0].file_id)); const am = (await s.attachments())[0]; let i = 2, app1 = false; while (i + 4 < ph.length && ph[i] === 0xff && ph[i+1] !== 0xda) { if (ph[i+1] === 0xe1 || ph[i+1] === 0xed) app1 = true; i += 2 + ((ph[i+2] << 8) | ph[i+3]); } return { am, id: p.id, kind: p.kind, created: p.created_at, rev: p.rev, birth: p.birth && p.birth.input.year, sn: p.reminders.sinh_nhat, gio: !!p.reminders.gio, n, app1, evs: (await s.events()).filter((e) => e.person_ids.includes(p.id)).length }; }`);
+    const recM = await store(`async (s) => { const p = await s.person("${idM}"); const n = p.death.notice; const ph = new Uint8Array(await s.attachmentBytes(n.attachments[0].file_id)); const am = (await s.attachments()).find((a) => a.id === n.attachments[0].file_id); const pdf = (await s.attachments()).find((a) => a.id === n.attachments[1].file_id); const pdfB = await s.attachmentBytes(n.attachments[1].file_id); let i = 2, app1 = false; while (i + 4 < ph.length && ph[i] === 0xff && ph[i+1] !== 0xda) { if (ph[i+1] === 0xe1 || ph[i+1] === 0xed) app1 = true; i += 2 + ((ph[i+2] << 8) | ph[i+3]); } return { am, pdf, pdfB64: btoa(String.fromCharCode(...pdfB)), id: p.id, kind: p.kind, created: p.created_at, rev: p.rev, birth: p.birth && p.birth.input.year, sn: p.reminders.sinh_nhat, gio: !!p.reminders.gio, n, app1, evs: (await s.events()).filter((e) => e.person_ids.includes(p.id)).length }; }`);
     check(recM.id === idM && page.url().endsWith(`/nguoi/${idM}`) && recM.kind === "deceased" && recM.created === createdM && recM.rev === 2 && recM.birth === 1950 && recM.sn === null && recM.gio && recM.evs === 1,
       `US-M-07: CÙNG hồ sơ (id giữ nguyên, rev 2) chuyển sang đã mất; giữ ngày sinh và sự kiện; nhắc giỗ bật, không còn nhắc sinh nhật (${JSON.stringify({ kind: recM.kind, rev: recM.rev, evs: recM.evs })})`);
-    check(recM.n.reported_by === SEN.by && recM.n.place === SEN.place && recM.n.reason === SEN.reason && recM.n.note === SEN.note && recM.n.notice_date.day === 18 && recM.n.attachments.length === 1 && recM.n.attachments[0].kind === "giay_chung_tu"
+    check(recM.n.reported_by === SEN.by && recM.n.place === SEN.place && recM.n.reason === SEN.reason && recM.n.note === SEN.note && recM.n.notice_date.day === 18 && recM.n.attachments.length === 2 && recM.n.attachments[0].kind === "tin_bao_tu" && recM.n.attachments[1].kind === "giay_chung_tu"
       && recM.am.file_name === "SENTINEL-TENTEP-7731.jpg" && recM.am.stripped === true,
       "01 §3.2a, §3.8a: lưu death.notice đủ trường (tệp đính kèm loại giấy chứng tử, tên gốc trong bản ghi Attachment)");
     check(recM.app1 === false, "S9: ảnh đính kèm đã mã hóa lại, không còn EXIF/GPS (APP1/APP13)");
+    check(Buffer.from(recM.pdfB64, "base64").equals(pdfBytes) && recM.pdf.stripped === false && recM.pdf.mime === "application/pdf", "01 §3.8a: PDF lưu nguyên byte (stripped = false)");
     // Tài liệu sao lưu có notice qua được kiểm tra; trỏ tới ảnh không có → V3; notice có chuỗi rỗng → V1.
     const vdoc = await page.evaluate(`(async () => { const S = await window.__lvhv.storage.loadStore(); const s = await S.openStore(); try {
       const doc = await s.snapshot({ version: "0.1.4", platform: "pwa" }, "2026-07-25T02:00:00Z");
@@ -649,8 +679,48 @@ export async function runPeople({ browser, BASE, ORIGIN, ROOT, SHOTS, check, met
     await page.click("#notice-box > summary");
     await page.waitForSelector("#notice-box .cert-thumb[data-drawn]");
     const nbTxt = await text("#notice-box");
-    check(nbTxt.includes(SEN.reason) && nbTxt.includes("18/07/2024"), "Trang hồ sơ: mở khối thì thấy lý do, ngày nhận tin, ảnh giấy báo tử");
+    check(nbTxt.includes(SEN.reason) && nbTxt.includes("18/07/2024") && nbTxt.includes("Ảnh tin báo tử") && nbTxt.includes("Giấy chứng tử (ảnh hoặc bản quét PDF)") && nbTxt.includes("Tệp PDF được lưu nguyên bản"),
+      "Trang hồ sơ: mở khối thì thấy lý do, ngày nhận tin, hai tệp đính kèm theo loại");
+    // S10 / BM2-05: tải tệp đính kèm phải qua hộp xác nhận; "Không tải" → không có tệp nào được tải.
+    let dlCount = 0; const onDl = () => { dlCount++; }; page.on("download", onDl);
+    await page.click('#notice-box .att-dl[data-i="1"]');
+    await page.waitForSelector(".att-dl-dialog[open]");
+    const dlTxt = await text(".att-dl-dialog");
+    await page.click(".att-dl-dialog .dbtn:not(.main)");
+    await page.waitForTimeout(500);
+    page.off("download", onDl);
+    check(dlTxt.includes("Tải tệp xuống máy?") && dlTxt.includes("Tệp có thể chứa thông tin riêng tư.") && dlTxt.includes("Tệp PDF còn thông tin của máy quét") && dlCount === 0,
+      "S10 / BM2-05: tải tệp đính kèm → hộp \"Tải tệp xuống máy?\"; \"Không tải\" → 0 tệp tải xuống");
+    await page.click('#notice-box .att-dl[data-i="1"]');
+    await page.waitForSelector(".att-dl-dialog[open]");
+    await shot("attachment-download-dialog-360", false);
+    const [pdfDl] = await Promise.all([page.waitForEvent("download"), page.click(".att-dl-dialog .dbtn.main")]);
+    check(readFileSync(await pdfDl.path()).equals(pdfBytes) && pdfDl.suggestedFilename() === "TepDinhKem-2.pdf", `YC-2026-07: tải PDF từ trang hồ sơ → đúng từng byte, tên tệp chung "${pdfDl.suggestedFilename()}" (không lộ tên gốc)`);
     await shot("person-notice-360");
+    // 04 B6 mục 3 / BM2-10: byte độc đã có trong kho từ trước (ghi thẳng IndexedDB) — "JPEG" khai 20000 × 20000 → không
+    // giải mã khi hiển thị, khung trống, trang vẫn chạy.
+    const bomb = Buffer.from([0xff, 0xd8, 0xff, 0xc0, 0x00, 0x11, 0x08, 0x4e, 0x20, 0x4e, 0x20, 0x03, 0x01, 0x22, 0x00, 0x02, 0x11, 0x01, 0x03, 0x11, 0x01, 0xff, 0xd9]);
+    const bombSaved = await page.evaluate(async ([b64, fid]) => {
+      const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+      const db = await new Promise((ok) => { const r = indexedDB.open("lvhv"); r.onsuccess = () => ok(r.result); });
+      const rec = await new Promise((ok) => { const r = db.transaction("attachments").objectStore("attachments").get(fid); r.onsuccess = () => ok(r.result); });
+      const orig = new Uint8Array(await rec.blob.arrayBuffer()); let bin = ""; for (const x of orig) bin += String.fromCharCode(x);
+      const hash = [...new Uint8Array(await crypto.subtle.digest("SHA-256", bytes))].map((x) => x.toString(16).padStart(2, "0")).join("");
+      await new Promise((ok) => { const tx = db.transaction("attachments", "readwrite"); tx.objectStore("attachments").put({ ...rec, meta: { ...rec.meta, bytes: bytes.length, sha256: hash }, blob: new Blob([bytes], { type: "image/jpeg" }) }); tx.oncomplete = ok; });
+      db.close();
+      return { rec: { ...rec, blob: null }, b64: btoa(bin) };
+    }, [bomb.toString("base64"), recM.n.attachments[0].file_id]);
+    await page.reload();
+    await page.waitForSelector("#notice-box");
+    await page.click("#notice-box > summary");
+    await page.waitForSelector('#notice-box .cert-thumb[data-blocked="20000x20000"]', { timeout: 10000 });
+    check(await page.locator('#notice-box .cert-thumb[data-blocked="20000x20000"]').count() === 1 && (await text("#person-name")) !== "", "04 B6 mục 3 / BM2-10: ảnh khai 20000 × 20000 trong kho → không giải mã khi hiển thị, khung trống, trang vẫn chạy");
+    await page.evaluate(async (sv) => {
+      const bytes = Uint8Array.from(atob(sv.b64), (c) => c.charCodeAt(0));
+      const db = await new Promise((ok) => { const r = indexedDB.open("lvhv"); r.onsuccess = () => ok(r.result); });
+      await new Promise((ok) => { const tx = db.transaction("attachments", "readwrite"); tx.objectStore("attachments").put({ ...sv.rec, blob: new Blob([bytes], { type: sv.rec.meta.mime }) }); tx.oncomplete = ok; });
+      db.close();
+    }, bombSaved);
     // B4 sau khi chuyển: sinh nhật và sự kiện của M không còn trong Sắp tới / Theo kỳ; giỗ hôm nay có thẻ nhắc.
     await page.goto(BASE + "#/nguoi-than"); await page.reload();
     await page.waitForSelector("#upcoming-list");
@@ -676,6 +746,7 @@ export async function runPeople({ browser, BASE, ORIGIN, ROOT, SHOTS, check, met
     await page.click("#bk-export");
     await page.waitForSelector(".bk-dialog[open]");
     check((await text("#bk-notice")).startsWith("Tệp gồm cả thông tin báo tử"), "R-PRIV-2: hộp tạo tệp sao lưu nói rõ tệp gồm cả thông tin báo tử");
+    check((await text("#bk-pdf")).startsWith("Tệp gồm 1 tệp PDF đính kèm, lưu nguyên bản"), "BM2-12 / R-PDF-1: hộp tạo tệp sao lưu ghi số tệp PDF lưu nguyên bản");
     await shot("backup-notice-dialog-360", false);
     await page.click(".bk-dialog .dbtn:not(.main)");
     // Người đã mất thêm mới: khối báo tử thu gọn.

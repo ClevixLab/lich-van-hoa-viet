@@ -49,6 +49,8 @@ export async function openIcsDialog(): Promise<void> {
     title: "Xuất tệp lịch", ok: "Tải tệp .ics", cls: "ics-dialog",
     body: [
       h("p", { class: "pd-privacy" }, sum.privacy_text),
+      // TKN-X-04 (duyệt thiết kế native): mọi nền tảng nói rõ .ics không gồm thông tin báo tử (R-PRIV-2).
+      h("p", { class: "fine", id: "ics-no-notice" }, "Không gồm thông tin báo tử."),
       h("p", null, `Gồm ${sum.events} ngày trong 10 năm tới (từ ${dmy(sum.from)} đến ${dmy(sum.to)}), mỗi ngày có lời nhắc như đã đặt.`),
       h("p", { class: "flabel" }, "Xem trước:"),
       h("ul", { class: "dots pd-preview" }, ...preview, sum.events > sum.preview.length ? h("li", null, `… và ${sum.events - sum.preview.length} ngày khác`) : null),
@@ -76,6 +78,8 @@ export async function renderBackup(root: HTMLElement, rerender: () => void): Pro
   // B. xuất sao lưu
   const expBtn = h("button", { type: "button", class: "primary", id: "bk-export", disabled: sn.persons.length === 0 && sn.events.length === 0, onclick: () => void exportFlow() }, "Tạo tệp sao lưu…");
   async function exportFlow(): Promise<void> {
+    // BM2-12 / R-PDF-1: hộp xuất ghi số tệp PDF lưu nguyên bản.
+    const nPdf = (await s.attachments()).filter((a) => a.mime === "application/pdf").length;
     const pw1 = h("input", { type: "password", id: "bk-pw1", autocomplete: "new-password", autocapitalize: "off", spellcheck: "false", class: "tin" }) as HTMLInputElement;
     const pw2 = h("input", { type: "password", id: "bk-pw2", autocomplete: "new-password", autocapitalize: "off", spellcheck: "false", class: "tin" }) as HTMLInputElement;
     const e1 = h("p", { class: "ferr", id: "bk-pw1-err", role: "alert", hidden: true });
@@ -92,7 +96,8 @@ export async function renderBackup(root: HTMLElement, rerender: () => void): Pro
       title: "Tạo tệp sao lưu", ok: "Tạo và tải tệp", cls: "bk-dialog",
       body: [
         h("p", null, `Tệp sẽ chứa ${sn.persons.length} người, ${sn.events.length} sự kiện, ${photos} ảnh — đã mã hóa bằng mật khẩu.`),
-        ...(sn.persons.some((p) => (p.death as JsonObj | null)?.notice) ? [h("p", { class: "fine", id: "bk-notice" }, "Tệp gồm cả thông tin báo tử (người báo tin, nơi mất, lý do, ảnh giấy báo tử) — chỉ ai biết mật khẩu mới đọc được.")] : []),
+        ...(sn.persons.some((p) => (p.death as JsonObj | null)?.notice) ? [h("p", { class: "fine", id: "bk-notice" }, "Tệp gồm cả thông tin báo tử (người báo tin, nơi mất, lý do, ghi chú, tệp đính kèm) — chỉ ai biết mật khẩu mới đọc được.")] : []),
+        ...(nPdf ? [h("p", { class: "fine", id: "bk-pdf" }, `Tệp gồm ${nPdf} tệp PDF đính kèm, lưu nguyên bản — có thể còn thông tin của máy quét (tên máy, phần mềm, ngày quét).`)] : []),
         h("div", { class: "field" }, h("label", { for: "bk-pw1" }, "Mật khẩu (ít nhất 8 ký tự)"), pw1, e1),
         h("div", { class: "field" }, h("label", { for: "bk-pw2" }, "Nhập lại mật khẩu"), pw2, e2),
         h("p", { class: "notice pd-note" }, "Lưu ý: quên mật khẩu là mất dữ liệu trong tệp — không ai lấy lại được, kể cả Clevix Lab."),

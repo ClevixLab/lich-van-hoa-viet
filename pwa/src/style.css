@@ -907,3 +907,9 @@ details[open] .sum-hint { display: none; }
 .notice-box[open] > summary::after { content: "▴"; }
 .cv-intro { margin: 0 0 1rem; }
 .cv-list { margin: 0; padding-left: 1.2rem; display: grid; gap: .4rem; }
+
+/* Tệp đính kèm trên trang hồ sơ (08 §12i) */
+.cert-item .att-name { margin: 0; font-weight: 600; }
+.cert-item .att-dl { justify-self: start; }
+.cert-pdf { display: grid; align-content: center; justify-items: center; gap: .3rem; padding: .5rem; text-align: center; overflow-wrap: anywhere; }
+.cert-pdf > span:first-child { font-weight: 700; letter-spacing: .08em; color: var(--red-ink); }

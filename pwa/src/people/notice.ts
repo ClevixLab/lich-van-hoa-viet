@@ -7,12 +7,14 @@ import { buildPerson, normalizePersonNames, validate, type NewAttachment } from 
 import { M, cal as cal0, displayName, dmy, nowTs, snap, store, today, type JsonObj } from "./core";
 import { deathPreview, errSummary, textField, type Issue, type Nav } from "./forms";
 import { ATTACHMENT_LIMITS, drawPhoto, processPhoto } from "./photo";
+import { download } from "./backup";
 import { backLink, confirmDialog, dateInput, ruleSummary, toast, type DateValueJ } from "./ui";
 
 /** Tối đa 6 tệp đính kèm (01 §3.2a, YC-2026-07). */
 export const MAX_ATTACHMENTS = 6;
 const MAX_PDF = 10 * 1024 * 1024;
-export const ATTACHMENT_KIND_TEXT: Record<string, string> = { tin_bao_tu: "Tin báo tử", giay_chung_tu: "Giấy chứng tử", khac: "Tệp khác" };
+export const ATTACHMENT_KIND_TEXT: Record<string, string> = { tin_bao_tu: "Ảnh tin báo tử", giay_chung_tu: "Giấy chứng tử (ảnh hoặc bản quét PDF)", khac: "Khác" };
+const sizeText = (n: number) => (n >= 1048576 ? `${(n / 1048576).toFixed(1).replace(".", ",")} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
 
 /** Một tệp đính kèm trong biểu mẫu: `id` của phần tử danh sách, `file_id` của bản ghi Attachment. */
 interface AttItem { id: string; file_id: string; kind: string; mime: string; name: string | null; fresh: NewAttachment | null }
@@ -79,6 +81,14 @@ export function noticeSection(old: JsonObj | null, open: boolean, onDirty: () =>
       const fileId = crypto.randomUUID();
       let fresh: NewAttachment;
       if (f.type === "application/pdf" || /\.pdf$/i.test(f.name)) {
+        const go = await confirmDialog({
+          title: "Đính kèm tệp PDF?", ok: "Đính kèm PDF", cancel: "Không đính kèm", cls: "pdf-warn-dialog",
+          body: [
+            h("p", null, "PDF được lưu nguyên bản, có thể còn tên máy quét, phần mềm, ngày quét."),
+            h("p", { class: "fine" }, "Nếu không muốn, hãy chụp ảnh tờ giấy thay vì đính kèm PDF — ảnh sẽ được bỏ các thông tin này."),
+          ],
+        });
+        if (!go) return;
         if (f.size > MAX_PDF) throw new Error("Tệp PDF lớn hơn 10 MB — hãy chọn tệp nhỏ hơn");
         const bytes = new Uint8Array(await f.arrayBuffer());
         if (String.fromCharCode(...bytes.subarray(0, 5)) !== "%PDF-") throw new Error("Tệp này không phải PDF hợp lệ");
@@ -132,15 +142,33 @@ export function noticeBlock(p: JsonObj): HTMLElement | null {
   if (!n) return null;
   const row = (k: string, v: string | null) => (v ? [h("div", null, h("dt", null, k), h("dd", null, v))] : []);
   const nd = n.notice_date as JsonObj | null;
-  const list = h("div", { class: "cert-list" });
+  const list = h("div", { class: "cert-list", id: "notice-atts" });
   const atts = (n.attachments as JsonObj[] | undefined) ?? [];
   if (atts.length) {
     void store().then((s) => s.attachments()).then((all) => {
       const byId = new Map(all.map((m) => [m.id as string, m]));
       atts.forEach((a, i) => {
         const m = byId.get(a.file_id as string);
+        const pdf = m?.mime === "application/pdf";
+        const dl = h("button", { type: "button", class: "btn2 sm att-dl", "data-i": String(i), onclick: async () => {
+          // S10 / BM2-05: mọi đường đưa dữ liệu ra ngoài ứng dụng đều qua hộp xác nhận.
+          const ok = await confirmDialog({
+            title: "Tải tệp xuống máy?", ok: "Tải xuống", cancel: "Không tải", cls: "att-dl-dialog", focusCancel: true,
+            body: [
+              h("p", null, "Tệp có thể chứa thông tin riêng tư."),
+              h("p", { class: "fine" }, "Tệp sẽ nằm trong thư mục Tải về của máy, ngoài ứng dụng: không có mật khẩu, ứng dụng khác có thể đọc được, và không tự xóa khi bạn xóa hồ sơ."),
+              ...(pdf ? [h("p", { class: "fine" }, "Tệp PDF còn thông tin của máy quét (nếu có).")] : []),
+            ],
+          });
+          if (!ok) return;
+          const s = await store();
+          // Tên tệp tải về là tên chung, không dùng tên gốc (01 §3.8a); tải bằng liên kết tải xuống — CSP giữ nguyên.
+          download(`TepDinhKem-${i + 1}.${pdf ? "pdf" : "jpg"}`, await s.attachmentBytes(a.file_id as string), (m?.mime as string) ?? "application/octet-stream");
+        } }, pdf ? "Tải tệp PDF…" : "Tải ảnh…");
         list.append(h("div", { class: "cert-item" }, attThumb({ file_id: a.file_id as string, kind: a.kind as string, mime: (m?.mime as string) ?? "image/jpeg", name: (m?.file_name as string | null) ?? null, fresh: null }, i),
-          h("p", { class: "fine" }, ATTACHMENT_KIND_TEXT[a.kind as string] ?? "Tệp")));
+          h("p", { class: "att-name" }, ATTACHMENT_KIND_TEXT[a.kind as string] ?? "Tệp"),
+          h("p", { class: "fine" }, `${(m?.file_name as string | null) ?? (pdf ? "Tệp PDF" : "Ảnh")} · ${sizeText((m?.bytes as number) ?? 0)}`),
+          pdf ? h("p", { class: "fine att-pdfnote" }, "Tệp PDF được lưu nguyên bản.") : null, dl));
       });
     }).catch(() => {});
   }

@@ -169,7 +169,8 @@ Tiêu đề: "Thêm người đã mất" / "Sửa hồ sơ". Biểu mẫu chia n
 
 | Trường | Điều khiển | Bắt buộc | Kiểm tra → câu báo lỗi |
 |---|---|---|---|
-| Cách gọi (đứng trước tên) | ô chữ + gợi ý (`datalist`): cụ, kỵ, ông, bà, bác, chú, thím, cô, dì, cậu, mợ, anh, chị, em, bố, mẹ, cha, má, ba (trường `danh_xung`) | không | > 40 ký tự → "Cách gọi tối đa 40 ký tự" |
+| Cách gọi (đứng trước tên) | ô chữ + gợi ý (`datalist`) của lõi `danhXungSuggestions(deceased, gioi_tinh)`, **viết hoa chữ cái đầu** (YC-2026-07): người đã mất — Ông, Bà, Cụ, Kỵ, Bác, Cô, Chú, Dì, Cậu, Mợ, Thím, Anh, Chị, Em, Cháu, Con, Bạn, Bố, Mẹ, Ông Tổ họ, Bà Cô Tổ họ, Bé đỏ; người đang sống — như trên nhưng **không có** Cụ, Kỵ, Ông Tổ họ, Bà Cô Tổ họ, Bé đỏ. Rời ô và khi lưu: chữ cái đầu viết hoa (`danh_xung`) | không | > 40 ký tự → "Cách gọi tối đa 40 ký tự" |
+| Giới tính | ba ô chọn (radio) Nam / Nữ / Không ghi (mặc định Không ghi); đổi giới tính thì xếp lại gợi ý cách gọi; `gioi_tinh` = `"nam"` / `"nu"`, "Không ghi" thì không ghi khóa | không | — |
 | Họ và tên | ô chữ, `autocomplete="off"` | **có** | rỗng sau khi cắt khoảng trắng → "Họ tên không được để trống"; > 120 → "Họ tên tối đa 120 ký tự" |
 | Tên hiệu / pháp danh | ô chữ | không | > 120 → "Tên hiệu tối đa 120 ký tự" |
 | Quan hệ với bạn | ô chữ + gợi ý (`datalist`) bằng từ thường ngày: Bố, Mẹ, Ông nội, Bà nội, Ông ngoại, Bà ngoại, Cụ ông, Cụ bà, Kỵ ông, Kỵ bà, Ông cố, Bà cố, Ông sơ, Bà sơ, Bác, Chú, Thím, Cô, Dì, Cậu, Mợ, Anh, Chị, Em, Chồng, Vợ, Con (người đang sống: Bố … Con trai, Con gái, Cháu). Dưới ô (người đã mất): "Trang tưởng niệm ghi quan hệ này phía trên tên, ví dụ “Ông nội”, “Mẹ”. Để trống thì chỉ ghi tên." | không | > 120 → "Quan hệ tối đa 120 ký tự" |
@@ -924,5 +925,87 @@ Kiểm chéo bằng `scripts/check-store.sh` (CI "Lưu trữ + sao lưu"), gồm
 | O-9 `show_names` | Lõi lưu tùy chọn "hiện tên trên màn hình khóa" theo từng máy, mặc định **không** hiện (`lock_screen_names`, chỉ trong kho Rust). PWA không có thông báo trên màn hình khóa nên không có tùy chọn này. Thẻ nhắc trong ứng dụng vẫn ghi tên, vì chỉ hiện khi người dùng đã mở ứng dụng. Khung "Ứng dụng web" ở Sắp tới có câu giải thích (`#web-names`) để thống nhất với ứng dụng điện thoại và máy tính |
 | MA3-15-03 (kiểm thử) | Kiểm thử Esc khi mã hóa trước đây đếm hộp còn mở, nên kết quả phụ thuộc thời gian mã hóa. Nay kiểm thử ghi lại sự kiện `cancel`: phải có ít nhất một lần nhấn Esc khi hộp đang bận và lần đó bị chặn |
 | TK-31 (a), `metrics.json` | Giữ nguyên như hiện tại; điều phối sẽ hỏi chủ dự án |
-| YC-2026-07 | Biểu mẫu hồ sơ có ô "Giới tính" (Nam / Nữ / Không ghi). Gợi ý cách gọi lấy từ lõi (`danhXungSuggestions`, theo người sống/mất, từ hợp giới tính lên trước), gợi ý quan hệ từ `quanHeSuggestions`; chữ đầu viết hoa khi lưu (`normalizePersonNames`). Khối thông tin báo tử: "Tệp đính kèm" tối đa 6 tệp, chọn loại (Tin báo tử / Giấy chứng tử / Tệp khác), nhận ảnh (nén lại, ≤ 2048 px, ≤ 2 MB) hoặc PDF (≤ 10 MB, lưu nguyên bản, có câu "Tệp PDF được lưu nguyên bản"); PDF hiện nhãn, không mở trong trang. Tên tệp gốc chỉ hiện trên trang hồ sơ, cùng thông tin báo tử (R-PRIV-2) |
+| YC-2026-07 | Biểu mẫu hồ sơ có ô "Giới tính" (Nam / Nữ / Không ghi). Gợi ý cách gọi lấy từ lõi (`danhXungSuggestions`, theo người sống/mất, từ hợp giới tính lên trước), gợi ý quan hệ từ `quanHeSuggestions`; chữ đầu viết hoa khi lưu (`normalizePersonNames`). Khối thông tin báo tử: "Tệp đính kèm" tối đa 6 tệp, chọn loại (Ảnh tin báo tử / Giấy chứng tử (ảnh hoặc bản quét PDF) / Khác), nhận ảnh (nén lại, ≤ 2048 px, ≤ 2 MB) hoặc PDF (≤ 10 MB, lưu nguyên bản, có câu "Tệp PDF được lưu nguyên bản"); PDF hiện nhãn, không mở trong trang. Tên tệp gốc chỉ hiện trên trang hồ sơ, cùng thông tin báo tử (R-PRIV-2) |
 | TKN-A-08 | Lõi ghép tên người vào tiêu đề sự kiện (02 §8: `Tốt nghiệp đại học · Lê Văn Cường`) cho .ics và thông báo khi bật hiện tên. Giao diện tự ghép tên riêng (`itemTitle`), nên nhãn dùng `headline_plain` (không tên) để tên không lặp hai lần |
+
+### 12i. YC-2026-07 (01 §3.1, §3.2a, §3.8a; PR #29) và ghi chú đa nền tảng — PR #30, trên nền PR #28 (core2)
+
+PR #30 dựng trên lõi của PR #28: lớp lưu trữ, định dạng tệp sao lưu, chuyển đổi, kiểm tra (B6) và gợi ý đều là của
+lõi (`pwa/src/store/*`, `tsport`). PWA chỉ thêm giao diện và kiểm thử.
+
+**Cách gọi và Quan hệ.**
+- Gợi ý lấy từ lõi: `danhXungSuggestions(deceased, gioi_tinh)` và `quanHeSuggestions(deceased)`.
+- Lưu: `normalizePersonNames` của lõi viết hoa chữ cái đầu. Biểu mẫu cũng viết hoa ngay khi rời ô (`capitalizeFirst`).
+- Hiển thị (Quan hệ trên hồ sơ và danh sách, cách gọi trong tên) qua `displayCapitalize` của lõi. Tệp khôi phục từ bản
+  cũ giữ nguyên byte, nên có thể còn chữ thường.
+- Không chuẩn hóa khi nhập sao lưu, theo quy tắc của lõi.
+
+**Giới tính.** Có ở cả hai biểu mẫu người. Trên hồ sơ có dòng "Giới tính: Nam / Nữ / Không ghi".
+
+**Tệp đính kèm báo tử** (lõi: `putPerson(p, newPhoto?, newAttachments)`, `attachments()`, `attachmentBytes()`):
+- Tối đa 6 tệp. Loại tệp chọn trước khi thêm: Ảnh tin báo tử / Giấy chứng tử (ảnh hoặc bản quét PDF) / Khác.
+- Ảnh: vẽ lại bằng canvas (≤ 2048 px, ≤ 2 MB). PDF: lưu nguyên bản; chọn PDF thì phải qua hộp xác nhận (BM2-12, §12k).
+- Gỡ một tệp khỏi danh sách rồi lưu → lõi tự xóa tệp. Xóa hồ sơ → lõi xóa các tệp của hồ sơ đó.
+- Trang hồ sơ: mỗi tệp hiện loại, tên gốc, dung lượng; với PDF có câu "Tệp PDF được lưu nguyên bản". Nút
+  "Tải ảnh…" / "Tải tệp PDF…" mở hộp xác nhận (BM2-05, §12k), rồi tải về bằng `<a download>`: điều hướng tải xuống,
+  không có trình xem nhúng, CSP giữ nguyên từng byte. Tên tệp tải về là tên chung `TepDinhKem-<n>.pdf|jpg`.
+- Tệp sao lưu chở được tệp đính kèm theo định dạng khối của lõi (03 §2.3). Hộp "Tạo tệp sao lưu" ghi số tệp PDF lưu
+  nguyên bản.
+- Riêng tư (R-PRIV-2): tệp đính kèm và tên tệp không bao giờ có trong thẻ nhắc, .ics, màn hình tưởng niệm. Kiểm thử rò
+  rỉ đặt chuỗi canh gác vào tên tệp ảnh, tên tệp PDF và nội dung PDF.
+
+**Hàm dùng chung của core2 trên PWA** (đã có trên `main` từ PR #28):
+- `markBackupSaved` sau khi giao tệp cho trình duyệt tải về: trên web, tải xuống coi là đã lưu.
+- `dueToday` cho thẻ nhắc; `deletePerson(id, {deleteOrphanEvents})`; `icsSummary`; `backupPasswordError`.
+- Tháng nhuận của lõi; tiêu đề sự kiện kèm tên người (`headline_plain` khi tên ghép riêng).
+
+**Ghi chú đa nền tảng** (duyệt thiết kế native, PR #26):
+- Màn hình tưởng niệm: "Ngày giỗ sắp tới: d/m âm lịch, dd/mm/yyyy"; đúng ngày giỗ ghi "<Nhãn> · hôm nay d/m âm lịch"
+  (TKN-X-06).
+- Biểu tượng: ba nén hương cho giỗ, bánh có nến cho sinh nhật, ngôi sao cho sự kiện (TKN-X-07).
+- Hộp .ics có câu "Không gồm thông tin báo tử." (TKN-X-04).
+- Hồ sơ người đang sống: "Sửa" đứng trước "Cập nhật: đã mất" (TKN-X-01).
+
+### 12j. Bổ sung B5 / R14 — nâng cấp không mất dữ liệu (04, PR #31) — bản web
+
+**Chuyển đổi do lõi làm** (PR #28):
+- IndexedDB lên phiên bản 3. Hàm `migrate1to2` (≡ Rust `migrate_1_to_2`) chuyển `certificate_photo_ids` thành
+  `attachments` loại `giay_chung_tu`, giữ nguyên byte ảnh.
+- Bản gốc được giữ trong khóa `legacy` của chính hồ sơ: `certificate_photo_ids` và siêu dữ liệu ảnh.
+- Chuyển đổi lỗi → giao dịch nâng cấp quay lui, kho cũ được mở ở trạng thái `read_only` (`migrationStatus()`); mọi
+  thao tác ghi báo `read_only`; xuất sao lưu vẫn được.
+
+**Giao diện PWA.** Khi `store().migrationStatus().state === "read_only"`, đầu mọi trang Người thân có khung `#ro-banner`:
+"Chưa chuyển được dữ liệu sang bản mới. Dữ liệu cũ vẫn còn nguyên trên máy và đang mở ở chế độ chỉ đọc…". Khung
+hướng dẫn tạo tệp sao lưu và có nút "Đi tới Sao lưu".
+
+**Kiểm thử R14** — `pwa/test/upgrade.mjs`, `npm run test:upgrade`, CI "L7 + PWA" với `fetch-depth: 0`.
+- Bản cũ dựng từ lịch sử git; thay bằng bản mới qua đường cập nhật thật của service worker: thanh cập nhật → "Để sau" →
+  mở lại → "Cập nhật ngay".
+- (a) 0.1.4 (d9650c7): cỡ chữ A++ và giao diện tối giữ nguyên; "Để sau" giữ bản cũ chạy tiếp.
+- (b) 0.2-dev (c4d3128, kho v1): dữ liệu ghi bằng mã của bản cũ — 3 hồ sơ, ảnh chân dung, thông tin báo tử có 2 ảnh
+  giấy báo tử, 2 sự kiện, cài đặt nhắc sao lưu 60 ngày, A+. Sau nâng cấp so **từng byte** với
+  `migrate1to2(tài liệu cũ)` của lõi:
+  - hồ sơ (gồm khóa `legacy`), `attachments`, `photos`: 0 mất, 0 khác;
+  - sha256 ảnh giấy báo tử = tệp đính kèm;
+  - sự kiện, loại sự kiện, cài đặt giữ nguyên;
+  - trang hồ sơ hiện 2 tệp "Giấy chứng tử".
+- (c) chuyển đổi lỗi: móc kiểm thử truyền `forceMigrationFailure` của lõi. Kết quả: `stateHash` trước = sau, kho vẫn
+  v1, ghi báo `read_only`, có khung hướng dẫn.
+- Bộ mẫu đóng băng `released/0.2-dev-before-attachments` và vectơ `supplement-yc05` (ảnh + PDF) được kiểm chéo Rust ↔
+  PWA trong `scripts/check-store.sh` (kiểm thử lưu trữ của lõi). Lần chạy cho PR này: ĐẠT.
+
+**Bản xem trước riêng của chủ dự án** (c4d3128). Chuyển đổi chạy khi bản mới mở kho, không phụ thuộc service worker,
+theo đúng đường (b). Chưa thử trực tiếp trên bản xem trước (không có địa chỉ).
+
+### 12k. Rà soát bảo mật v0.2 (`docs/reviews/RA-SOAT-BAO-MAT-V02.md`, PR #34) và Bổ sung B6 (04, PR #35)
+
+| Mã | Việc |
+|---|---|
+| BM2-03 (chặn) | Đã sửa bằng cách dựng lại PR #30 trên `main` sau PR #28. Định dạng khối tệp đính kèm, chuyển đổi và kiểm tra là của lõi; bỏ toàn bộ phần lưu trữ riêng của PWA (IndexedDB v2 riêng, `legacy_v1`, `ATTACHMENTS_UNSUPPORTED`, hộp "Chưa tạo được tệp sao lưu"). `scripts/check-store.sh` ĐẠT, gồm `supplement-yc05` và `released/0.2-dev-before-attachments` |
+| B6 mục 2 | Kiểm tra chặt khi nhập dùng bộ kiểm của lõi (`pwa/src/store/media.ts` ≡ Rust); PWA không có bộ kiểm riêng |
+| BM2-05 (S10) | Tải tệp đính kèm qua hộp "Tải tệp xuống máy?" + "Tệp có thể chứa thông tin riêng tư." + giải thích thư mục Tải về; PDF thêm câu về thông tin máy quét. "Không tải" có tiêu điểm mặc định. Kiểm thử: "Không tải" → 0 tệp tải xuống |
+| BM2-07 | Theo thiết kế `legacy` của lõi: bản gốc nằm trong chính hồ sơ, nên xóa hồ sơ hay "Thay toàn bộ" thì bản gốc mất cùng hồ sơ. Không còn kho riêng giữ mãi. **Còn cho vai lõi:** 01 §7 "xóa sau 7 ngày" chưa áp cho khóa `legacy` (lõi giữ và chép qua sao lưu), và tệp `lvhv.sqlite.pre-v2.bak` không tự xóa (BM2-06) |
+| BM2-12 (R-PDF-1) | Chọn PDF → hộp "Đính kèm tệp PDF?" (lưu nguyên bản, có thể còn tên máy quét, phần mềm, ngày quét; gợi ý chụp ảnh thay thế); "Không đính kèm" → không thêm. Hộp tạo tệp sao lưu ghi số tệp PDF |
+| B6 mục 3 / BM2-10 (hiển thị) | `drawPhoto` đọc kích thước từ phần đầu tệp. Không rõ kích thước, hoặc > 4096 px mỗi cạnh, hoặc > 16 MP → không giải mã, để khung trống (`data-blocked`). Ảnh trong giới hạn được lấy mẫu xuống ngay khi giải mã. Kiểm thử: "JPEG" khai 20000 × 20000 ghi thẳng vào kho → trang vẫn chạy |
+| BM2-13 (góp ý) | Lúc chọn ảnh, đọc 2 MB đầu để tìm kích thước. Định dạng không nhận ra → "Định dạng ảnh chưa hỗ trợ — hãy chọn ảnh JPEG, PNG, WebP hoặc GIF", không giải mã |

@@ -4,7 +4,7 @@ import * as M from "../../../tsport/src/memorial.ts";
 import { DEFAULT_METHOD } from "../gen/content";
 import { weekday as coreWeekday } from "../../../tsport/src/jd.ts";
 import { WEEKDAY, WEEKDAY_SHORT } from "../format";
-import { openStore, type Store, type JsonObj } from "../store/index";
+import { displayCapitalize, openStore, type Store, type JsonObj } from "../store/index";
 
 export { M };
 export type { JsonObj, Store };
@@ -13,8 +13,14 @@ export type Ymd = M.Ymd;
 let storeP: Promise<Store> | null = null;
 /** Một kết nối kho dùng chung cho cả mô-đun. */
 export function store(): Promise<Store> {
-  return (storeP ??= openStore().catch((e) => { storeP = null; throw e; }));
+  // Móc kiểm thử R14 (ca chuyển đổi lỗi, pwa/test/upgrade.mjs): chỉ trang kiểm thử đặt được cờ này.
+  const forceMigrationFailure = (globalThis as { __lvhvFailMigration?: boolean }).__lvhvFailMigration === true;
+  return (storeP ??= openStore(indexedDB, { forceMigrationFailure }).catch((e) => { storeP = null; throw e; }));
 }
+
+/** Hiển thị `danh_xung` / `quan_he` đã lưu: viết hoa chữ đầu bằng hàm của lõi (`display_capitalize`) — tệp khôi phục
+ *  từ bản cũ giữ nguyên byte nên có thể còn chữ thường. */
+export const dispCap = (s: string): string => displayCapitalize(s);
 
 export const cal = (): M.Cal => M.Cal.get(DEFAULT_METHOD);
 
@@ -84,7 +90,7 @@ export function lunarOf(d: Ymd): string {
 export function displayName(p: JsonObj): string {
   // YC-2026-07: viết hoa chữ đầu khi hiển thị (dữ liệu khôi phục từ tệp cũ giữ nguyên byte) — cùng lõi.
   const dx = (p.danh_xung as string) ?? "";
-  return dx ? `${M.upperFirst(dx)} ${p.ho_ten as string}` : (p.ho_ten as string);
+  return dx ? `${displayCapitalize(dx)} ${p.ho_ten as string}` : (p.ho_ten as string);
 }
 
 export type ItemKind = "gio" | "tt" | "sn" | "ev";

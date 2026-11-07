@@ -3,8 +3,7 @@ import { noticeBlock } from "./notice";
 import { clear, h, svg } from "../dom";
 import {
   M, addDays, cal, daysBetween, displayName, dm, dmy, lunarText, relText, snap, store, today, tuoiText,
-  type JsonObj, type Snap, type Ymd,
-} from "./core";
+  type JsonObj, type Snap, type Ymd, dispCap } from "./core";
 import type { Nav } from "./forms";
 import { eventsInPeriod, nextPeriod, periodBounds, prevPeriod, type PersonFilter as PeriodFilter, type PeriodKind } from "./period";
 import { drawPhoto } from "./photo";
@@ -232,7 +231,7 @@ export async function renderList(root: HTMLElement, nav: Nav): Promise<void> {
       h("div", { class: "plhead" }, h("h2", null, `${label} (${ps.length})`), h("a", { class: "btnlink sm", href: add }, "+ Thêm")),
       ps.length ? h("ul", { class: "plrows" }, ...ps.map((p) => h("li", null, h("button", { type: "button", class: "prow", onclick: () => openPerson(nav)(p.id as string) },
         h("span", { class: "avatar", "aria-hidden": "true" }, [...(p.ho_ten as string).trim().split(/\s+/).pop() ?? "?"][0]?.toUpperCase() ?? "?"),
-        h("span", { class: "pr-main" }, h("span", { class: "pr-name" }, displayName(p)), p.quan_he ? h("span", { class: "pr-sub" }, M.upperFirst(p.quan_he as string)) : null,
+        h("span", { class: "pr-main" }, h("span", { class: "pr-name" }, displayName(p)), p.quan_he ? h("span", { class: "pr-sub" }, dispCap(p.quan_he as string)) : null,
           h("span", { class: "pr-sub" }, personSummary(p, t)))))))
         : h("p", { class: "empty-hint" }, "Chưa có ai."));
   };
@@ -285,6 +284,7 @@ export async function renderPerson(root: HTMLElement, id: string, nav: Nav): Pro
       return a !== null ? `${a}${am !== null ? ` (tuổi âm ${am})` : ""}` : null;
     })()) : null,
     b ? row("Nơi sinh", b.noi_sinh as string) : null,
+    row("Giới tính", ({ nam: "Nam", nu: "Nữ" } as Record<string, string>)[(p.gioi_tinh as string | null | undefined) ?? ""] ?? "Không ghi"),
     row("Tên hiệu / pháp danh", p.ten_hieu as string),
     dead ? row("Nơi an táng", p.noi_an_tang as string) : null,
     dead && mem ? row("Giỗ hết", `năm thứ ${mem.gio_het_nam as number} sau năm mất`) : null,
@@ -325,7 +325,7 @@ export async function renderPerson(root: HTMLElement, id: string, nav: Nav): Pro
   root.append(
     backLink(),
     h("div", { class: "phead" }, canvas,
-      h("div", { class: "phead-t" }, h1, p.quan_he ? h("p", { class: "phead-rel" }, M.upperFirst(p.quan_he as string)) : null,
+      h("div", { class: "phead-t" }, h1, p.quan_he ? h("p", { class: "phead-rel" }, dispCap(p.quan_he as string)) : null,
         h("div", { class: "phead-acts" },
           dead ? h("a", { class: "btnlink main", href: `#/nguoi-than/tuong-niem/${id}`, id: "open-memorial" }, "Tưởng niệm") : null,
           h("a", { class: "btnlink", href: `#/nguoi-than/sua/${id}`, id: "edit-person" }, "Sửa"),
