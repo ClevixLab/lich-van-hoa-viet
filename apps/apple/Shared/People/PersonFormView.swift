@@ -312,11 +312,16 @@ struct PersonFormView: View {
     @State private var confirmDiscard = false
     @State private var photoError: String?
     @State private var noticeOpen: Bool
-    @State private var memorialOpen = false
+    @State private var memorialOpen: Bool
+    @State private var trayBusy = false
+    @State private var trayError: String?
+    private let focusTray: Bool
 
-    init(kind: String, editId: String?, path: Binding<[PRoute]>) {
+    init(kind: String, editId: String?, path: Binding<[PRoute]>, focusTray: Bool = false) {
         self.kind = kind
         self.editId = editId
+        self.focusTray = focusTray
+        _memorialOpen = State(initialValue: focusTray)
         _path = path
         let m = PeopleModel.shared
         var draft = editId.flatMap { m.person($0) }.map { PersonDraft(person: $0, settings: m.settings) }
@@ -347,8 +352,21 @@ struct PersonFormView: View {
     }
 
     var body: some View {
+        ScrollViewReader { proxy in
+            form
+                .onAppear {
+                    guard focusTray else { return }
+                    // Mở từ màn hình tưởng niệm (08 §16.1): cuộn tới mục "Ảnh mâm lễ ngày giỗ".
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                        withAnimation { proxy.scrollTo("form.traySection", anchor: .top) }
+                    }
+                }
+        }
+    }
+
+    private var form: some View {
         let errs = live
-        ScrollView {
+        return ScrollView {
             VStack(alignment: .leading, spacing: 14) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(editId == nil ? (deceased ? "Thêm người đã mất" : "Thêm người đang sống") : "Sửa hồ sơ")
@@ -391,7 +409,9 @@ struct PersonFormView: View {
         .navigationBarBackButtonHidden(true)
         .toolbar {
             ToolbarItem(placement: .cancellationAction) { Button("Hủy") { cancel() } }
-            ToolbarItem(placement: .confirmationAction) { Button("Lưu") { save() }.accessibilityIdentifier("form.saveTop") }
+            ToolbarItem(placement: .confirmationAction) {
+                Button("Lưu") { save() }.disabled(trayBusy).accessibilityIdentifier("form.saveTop")
+            }
         }
         .onChange(of: d) { new in
             touched.formUnion(Self.changed(last, new))
@@ -424,6 +444,7 @@ struct PersonFormView: View {
         if a.sinhNhatAm != b.sinhNhatAm { s.insert("sinh_nhat_am") }
         if a.loiTuongNiem != b.loiTuongNiem { s.insert("loi_tuong_niem") }
         if a.nguong != b.nguong { s.insert("nguong") }
+        if a.trayPhotoId != b.trayPhotoId || a.newTray != b.newTray { s.insert("tray") }
         return s
     }
 
@@ -531,6 +552,7 @@ struct PersonFormView: View {
                     .labelsHidden()
                     PTextField(label: "Lời tưởng niệm", text: $d.loiTuongNiem, error: err("loi_tuong_niem"), multiline: true,
                                id: "form.loiTuongNiem")
+                    traySection.id("form.traySection")
                     LabeledField(label: "Mất trước tuổi này thì bia ghi “hưởng dương” (mất sớm) thay cho “hưởng thọ”",
                                  error: err("nguong")) {
                         NumField(label: "Tuổi", text: $d.nguong, width: 64, id: "form.nguong")
@@ -569,7 +591,7 @@ struct PersonFormView: View {
         HStack(spacing: 12) {
             Spacer()
             Button("Hủy") { cancel() }.buttonStyle(SecondaryButtonStyle())
-            Button("Lưu") { save() }.buttonStyle(PrimaryButtonStyle()).accessibilityIdentifier("form.save")
+            Button("Lưu") { save() }.buttonStyle(PrimaryButtonStyle()).disabled(trayBusy).accessibilityIdentifier("form.save")
         }
         .padding(.top, 4)
     }
@@ -578,14 +600,60 @@ struct PersonFormView: View {
         if d != original { confirmDiscard = true } else if !path.isEmpty { path.removeLast() }
     }
 
+    /// Mục "Ảnh mâm lễ ngày giỗ" (08 §16.2), ngay sau "Lời tưởng niệm".
+    private var traySection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Ảnh mâm lễ ngày giỗ").ps(15, .semibold).foregroundStyle(C.ink).accessibilityAddTraits(.isHeader)
+            if trayBusy {
+                HStack(spacing: 10) {
+                    ProgressView()
+                    Text("Đang xử lý ảnh…").ps(15).foregroundStyle(C.ink2)
+                }
+                .accessibilityElement(children: .combine)
+            } else if d.hasTray {
+                HStack(alignment: .center, spacing: 14) {
+                    PhotoView(photoId: d.trayPhotoId, newPhoto: d.newTray, initials: "", size: CGSize(width: 120, height: 90),
+                              oval: false)
+                        .accessibilityIdentifier("form.tray.thumb")
+                    VStack(alignment: .leading, spacing: 8) {
+                        TrayPickButton(title: "Đổi ảnh", busy: $trayBusy, onPicked: trayPicked)
+                        Button("Bỏ ảnh") { d.trayPhotoId = nil; d.newTray = nil; trayError = nil }
+                            .buttonStyle(SecondaryButtonStyle(destructive: true))
+                            .accessibilityIdentifier("form.tray.remove")
+                    }
+                }
+            } else {
+                Text("Chưa có ảnh. Ngày giỗ chỉ hiện bát hương và nến.").ps(15).foregroundStyle(C.ink2)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("form.tray.none")
+                TrayPickButton(title: "Chọn ảnh mâm lễ…", busy: $trayBusy, onPicked: trayPicked)
+            }
+            FieldError(text: trayError)
+            PFine("Ảnh chỉ lưu trên máy này và trong tệp sao lưu mã hóa. Ứng dụng tự bỏ thông tin vị trí và máy chụp trong ảnh.")
+        }
+    }
+
+    private func trayPicked(_ r: Result<ProcessedPhoto, PhotoError>) {
+        switch r {
+        case .success(let p): d.newTray = p; trayError = nil
+        case .failure(let e): trayError = TrayPhoto.message(e)
+        }
+    }
+
     private func save() {
         submitted = true
-        guard d.validate(today: m.today).isEmpty else { return }
+        guard !trayBusy, d.validate(today: m.today).isEmpty else { return }
         var draft = d
         var addedPhoto: String?
+        var addedTray: String?
         var addedFiles: [String] = []
         do {
             if let np = draft.newPhoto { let id = try m.addPhoto(np); addedPhoto = id; draft.photoId = id; draft.newPhoto = nil }
+            // Ảnh mâm lễ chỉ ghi vào kho lúc Lưu; Hủy thì không có gì để xóa. Ảnh cũ bị thay/bỏ do lõi xóa khi lưu.
+            if draft.deceased, let nt = draft.newTray {
+                let id = try m.addPhoto(nt); addedTray = id; draft.trayPhotoId = id; draft.newTray = nil
+            }
+            if !draft.deceased { draft.trayPhotoId = nil; draft.newTray = nil }
             addedFiles = try PeopleModel.uploadAttachments(&draft.notice)
             let json = draft.build(photoId: draft.photoId, today: m.today)
             let saved = try m.savePerson(json)
@@ -597,6 +665,7 @@ struct PersonFormView: View {
         } catch {
             // Lưu hỏng: xóa ảnh và tệp vừa ghi mà chưa gắn hồ sơ (A-6); dữ liệu đang nhập vẫn trên màn hình.
             if let p = addedPhoto { m.discardPhoto(p) }
+            if let t = addedTray { m.discardPhoto(t) }
             for f in addedFiles { m.discardAttachment(f) }
             saveError = "Chưa lưu được: \(Core.message(error)). Dữ liệu đang nhập vẫn còn trên màn hình."
         }
