@@ -1,0 +1,121 @@
+{
+  "_note": "Bố cục ghép (docs/v0.2/09 §3.2), đơn vị điểm CSS trong khung 360x270. crop = phần ảnh gốc (tỉ lệ 0..1) trước khi cắt nền.",
+  "layers": [
+    {
+      "id": "nen-trai",
+      "photo": "nen-2",
+      "crop": [
+        0.29,
+        0.36,
+        0.39,
+        1.0
+      ],
+      "cx": 30,
+      "bottom": 165,
+      "width": 20,
+      "z": 1,
+      "shadow": false
+    },
+    {
+      "id": "nen-phai",
+      "photo": "nen-1",
+      "crop": [
+        0.45,
+        0.18,
+        0.56,
+        0.75
+      ],
+      "cx": 330,
+      "bottom": 165,
+      "width": 20,
+      "z": 1,
+      "shadow": false
+    },
+    {
+      "id": "dia-hoa-qua",
+      "photo": "hoa-qua-1",
+      "crop": [
+        0.0,
+        0.15,
+        0.99,
+        0.88
+      ],
+      "cx": 92,
+      "bottom": 165,
+      "width": 88,
+      "z": 2
+    },
+    {
+      "id": "bat-huong",
+      "photo": "bat-huong-1",
+      "crop": [
+        0.53,
+        0.22,
+        0.88,
+        0.97
+      ],
+      "cx": 180,
+      "bottom": 168,
+      "width": 78,
+      "z": 3
+    },
+    {
+      "id": "lo-hoa",
+      "photo": "lo-hoa-1",
+      "crop": [
+        0.17,
+        0.08,
+        0.88,
+        1.0
+      ],
+      "cx": 268,
+      "bottom": 165,
+      "width": 88,
+      "z": 4
+    },
+    {
+      "id": "ga-luoc",
+      "photo": "ga-luoc-1",
+      "crop": [
+        0.0,
+        0.27,
+        0.69,
+        0.99
+      ],
+      "cx": 180,
+      "bottom": 236,
+      "width": 128,
+      "z": 7
+    },
+    {
+      "id": "dia-xoi",
+      "photo": "dia-xoi-1",
+      "cx": 92,
+      "bottom": 246,
+      "width": 84,
+      "z": 8
+    },
+    {
+      "id": "bat-com",
+      "photo": "bat-com-1",
+      "cx": 266,
+      "bottom": 246,
+      "width": 60,
+      "z": 9
+    },
+    {
+      "id": "khoanh-gio",
+      "photo": "khoanh-gio-1",
+      "crop": [
+        0.25,
+        0.58,
+        0.48,
+        0.94
+      ],
+      "cx": 160,
+      "bottom": 262,
+      "width": 40,
+      "z": 10
+    }
+  ]
+}
