@@ -316,6 +316,10 @@ jobs:
           Log "Sản phẩm đã cài (cùng UpgradeCode): $($a.Count) ($(($a | ForEach-Object { "$($_.Code) $($_.Version)" }) -join ', '))"
           if ($a.Count -ne 1) { Fail "có $($a.Count) bản cài sau khi nâng cấp" }
           if ($a[0].Code -eq $old[0].Code) { Fail "sản phẩm 0.1.4 chưa bị thay (nâng cấp lớn không chạy)" }
+          # Nâng cấp thật sang số phiên bản mới (08 §10: cùng một số phiên bản thì không tính).
+          if (-not ($a[0].Version -like "$env:VERSION*")) { Fail "sản phẩm sau nâng cấp có phiên bản $($a[0].Version), kỳ vọng $env:VERSION" }
+          if ($a[0].Version -eq $old[0].Version) { Fail "bản cũ và bản mới cùng phiên bản $($a[0].Version) — không phải nâng cấp" }
+          Log "Nâng cấp phiên bản: $($old[0].Version) → $($a[0].Version)"
           if ((Get-FileHash $prog).Hash -ne (Get-FileHash $zexe).Hash) { Fail "LichViet.exe đã cài không phải bản mới" }
           Log "LichViet.exe đã cài là bản mới ($((Get-Item $prog).VersionInfo.FileVersion))"
 
@@ -353,11 +357,53 @@ jobs:
           if (-not (Get-ChildItem $data -Filter 'lvhv.sqlite.pre-v*.bak')) { Fail "R14 (c): không có bản sao trước chuyển đổi" }
           Log "R14 (c) Windows: ĐẠT (gỡ cài đặt giữ nguyên $($before.Count) tệp, có bản sao trước chuyển đổi)"
 
+          # 6b) R14 (d) (04 B5 quy tắc 5–6): bộ mẫu đóng băng của từng bản Windows đã phát hành
+          #    (released/<bản>/windows/, tạo bằng --dong-bang-ban-phat-hanh của chính bản đó). Nếu GitHub Releases có .msi của
+          #    bản đó và bản đó khác bản đang kiểm: cài .msi cũ, chép kho, mở bản cũ, rồi cài .msi mới đè lên (nâng cấp thật).
+          #    Nếu không (bản đang phát hành chính nó): chép kho rồi cài .msi mới. Sau đó mở bản đã cài, kiểm bằng
+          #    --kiem-mau-phat-hanh, gỡ cài đặt, thư mục dữ liệu phải còn nguyên.
+          $rel = (Resolve-Path ..\..\docs\v0.2\schema\test-vectors\released).Path
+          $fixtures = Get-ChildItem $rel -Directory | Where-Object { Test-Path (Join-Path $_.FullName 'windows\manifest.json') }
+          if ($fixtures.Count -eq 0) { Fail "R14 (d): không có bộ mẫu released/<bản>/windows" }
+          foreach ($fx in $fixtures) {
+            $ver = $fx.Name
+            $fdir = Join-Path $fx.FullName 'windows'
+            $fexp = Join-Path $rel "expected\$ver-windows.json"
+            if (-not (Test-Path $fexp)) { Fail "R14 (d): thiếu expected\$ver-windows.json" }
+            Log ""
+            if (Test-Path $data) { Rename-Item $data "$data.truoc-$ver" }
+            $oldMsi = $null
+            if ($ver -ne $env:VERSION) {
+              gh release download "v$ver" -R $env:GITHUB_REPOSITORY -p "LichViet-$ver-x64.msi" -D $r --clobber 2>$null
+              if ($LASTEXITCODE -eq 0) { $oldMsi = Join-Path $r "LichViet-$ver-x64.msi" }
+            }
+            if ($oldMsi) {
+              Msi '/i' $oldMsi "cai-$ver"
+              Copy-Item (Join-Path $fdir 'store') $data -Recurse
+              $p = Start-Process -FilePath $prog -PassThru; Start-Sleep -Seconds 8
+              if ($p.HasExited) { Fail "R14 (d): bản $ver đã cài tự thoát (mã $($p.ExitCode))" }
+              Stop-Process -Id $p.Id -Force; Start-Sleep -Seconds 1
+              Log "R14 (d) ${ver}: đã cài .msi $ver, chép kho của bộ mẫu, mở bản $ver"
+            } else {
+              Copy-Item (Join-Path $fdir 'store') $data -Recurse
+              Log "R14 (d) ${ver}: chép kho của bộ mẫu (không có .msi $ver khác bản đang kiểm để cài trước)"
+            }
+            Msi '/i' (Resolve-Path "dist\LichViet-$env:VERSION-x64.msi").Path "cai-moi-$ver"
+            if ((Arp).Count -ne 1) { Fail "R14 (d) ${ver}: có $((Arp).Count) bản cài sau khi cài .msi mới" }
+            if ((Get-FileHash $prog).Hash -ne (Get-FileHash $zexe).Hash) { Fail "R14 (d) ${ver}: LichViet.exe đã cài không phải bản mới" }
+            Open-App "R14 (d) $ver"
+            if ((Run $chk @('--kiem-mau-phat-hanh', "`"$fdir`"", "`"$fexp`"") "kiem-d-$ver") -ne 0) { Fail "R14 (d) ${ver}: --kiem-mau-phat-hanh báo lỗi (xem trên)" }
+            $before = Hashes $data
+            Msi '/x' (Resolve-Path "dist\LichViet-$env:VERSION-x64.msi").Path "go-d-$ver"
+            if (Compare-Object $before (Hashes $data)) { Fail "R14 (d) ${ver}: thư mục dữ liệu đổi sau khi gỡ" }
+            Log "R14 (d) Windows ${ver}: ĐẠT ($(if ($oldMsi) { "nâng cấp .msi $ver → $env:VERSION" } else { "mở bằng $env:VERSION" }); gỡ cài đặt giữ nguyên $($before.Count) tệp)"
+          }
+
           # 7) Ca lỗi: chuyển đổi lỗi thật trên bản chép của bộ mẫu (một hồ sơ hỏng) → chỉ đọc, kho cũ và bản sao giữ
           #    nguyên, từ chối ghi, vẫn xuất được sao lưu. Chạy bằng lvhv-ci-check.exe trên bản chép trong thư mục tạm.
           Log ""
           if ((Run $chk @('--kiem-chi-doc', "`"$(Join-Path $fix 'store')`"") 'kiem-loi') -ne 0) { Fail "R14 ca lỗi --kiem-chi-doc báo lỗi (xem trên)" }
-          Log "R14 Windows: ĐẠT — (a) 0.1.4 → bản này, (c) bộ mẫu đóng băng, ca lỗi chỉ đọc"
+          Log "R14 Windows: ĐẠT — (a) 0.1.4 → bản này, (c) bộ mẫu đóng băng, (d) bộ mẫu các bản Windows đã phát hành, ca lỗi chỉ đọc"
 
       # MA3C-25-01: LichViet.exe phát hành (bản trong .zip, cũng là bản trong .msi — so băm ở bước R14) không chứa chế độ
       # kiểm thử nào: không có chuỗi cờ của CI, và chạy với một cờ thì chỉ mở giao diện như thường (không tạo tệp).
@@ -374,7 +420,7 @@ jobs:
           $bytes = [IO.File]::ReadAllBytes($exe)
           $text = [Text.Encoding]::UTF8.GetString($bytes)
           # Cờ CI và tên bước chụp màn hình (P62-10: mã chụp, gồm hình mâm vẽ bằng mã, không được vào bản phát hành).
-          $flags = '--chup-man-hinh','--do-bo-nho','--kiem-thong-bao','--tao-du-lieu-mau','--kiem-nang-cap','--kiem-mau-dong-bang','--kiem-chi-doc','nt-25-tuong-niem-anh-mam','nt-25b-sua-anh-mam'
+          $flags = '--chup-man-hinh','--do-bo-nho','--kiem-thong-bao','--tao-du-lieu-mau','--kiem-nang-cap','--kiem-mau-dong-bang','--kiem-chi-doc','--dong-bang-ban-phat-hanh','--kiem-mau-phat-hanh','nt-25-tuong-niem-anh-mam','nt-25b-sua-anh-mam'
           $found = $flags | Where-Object { $text.Contains($_) }
           if ($found) { Write-Host "::error::LichViet.exe phát hành còn chuỗi cờ: $($found -join ', ')"; exit 1 }
           $ci = [Text.Encoding]::UTF8.GetString([IO.File]::ReadAllBytes((Resolve-Path target\release\lvhv-ci-check.exe).Path))
@@ -441,7 +487,16 @@ jobs:
         run: |
           $tag = if ("${{ github.ref }}" -like "refs/tags/v*") { "${{ github.ref_name }}" } else { "v" + (Get-Content VERSION -Raw).Trim() }
           $repo = "${{ github.repository }}"
-          $notes = @"
+          # Ghi chú phát hành: apps/windows/release-notes/<bản>.md nếu có (bắt đầu bằng dấu <!-- windows -->), nếu không thì
+          # câu mặc định. Bản phát hành chung số phiên bản với nền tảng khác có thể đã có sẵn: khi đó nối phần Windows vào
+          # cuối ghi chú (một lần), không ghi đè phần của nền tảng khác.
+          $ver = (Get-Content VERSION -Raw).Trim()
+          $nf = "apps/windows/release-notes/$ver.md"
+          if (Test-Path $nf) {
+            Copy-Item $nf release-notes.md
+          } else {
+            $notes = @"
+          <!-- windows -->
           Bản thử nghiệm Lịch và Văn hóa Việt $tag cho Windows 10/11 (64-bit).
 
           - **LichViet-*-x64.msi**: bộ cài, bấm đúp để cài.
@@ -450,10 +505,17 @@ jobs:
           Bản này **chưa được ký số**, nên Windows có thể hiện "Windows protected your PC". Bấm **More info → Run anyway** để chạy.
           Ứng dụng không kết nối mạng và không thu thập dữ liệu. Thay đổi: xem CHANGELOG.md.
           "@
-          $notes = ($notes -split "`n" | ForEach-Object { $_ -replace '^\s{10}', '' }) -join "`n"
-          Set-Content -Path release-notes.md -Value $notes -Encoding utf8
+            $notes = ($notes -split "`n" | ForEach-Object { $_ -replace '^\s{10}', '' }) -join "`n"
+            Set-Content -Path release-notes.md -Value $notes -Encoding utf8
+          }
           gh release view $tag -R $repo *> $null
           if ($LASTEXITCODE -ne 0) {
             gh release create $tag -R $repo --target "${{ github.sha }}" --prerelease --title "Lịch và Văn hóa Việt $tag" --notes-file release-notes.md
+          } else {
+            $body = gh release view $tag -R $repo --json body --jq .body
+            if (-not ($body -match '<!-- windows -->')) {
+              Set-Content -Path release-notes-all.md -Value (($body -join "`n") + "`n`n" + (Get-Content release-notes.md -Raw)) -Encoding utf8
+              gh release edit $tag -R $repo --notes-file release-notes-all.md
+            }
           }
           gh release upload $tag -R $repo --clobber (Get-ChildItem apps/windows/dist/*.msi).FullName (Get-ChildItem apps/windows/dist/*.zip).FullName

@@ -126,6 +126,137 @@ pub fn state_doc(store: &LvhvStore) -> Result<Value, String> {
     Ok(d)
 }
 
+/// Mật khẩu của tệp sao lưu trong bộ mẫu phát hành (ghi cả trong `manifest.json` của bộ mẫu).
+pub const RELEASE_FIXTURE_PASSWORD: &str = "mật khẩu bộ mẫu Windows";
+
+/// Trạng thái của một kho trống sau khi khôi phục (Thay toàn bộ) tệp sao lưu `bytes`.
+fn restored_state(bytes: Vec<u8>, password: &str, work: &Path) -> Result<Value, String> {
+    let _ = std::fs::remove_dir_all(work);
+    let b = lvhv_ffi::open_backup(bytes, password.into()).map_err(|e| format!("mở tệp sao lưu: {e}"))?;
+    let s = LvhvStore::open(work.to_string_lossy().into_owned()).map_err(|e| e.to_string())?;
+    s.apply_import(b, lvhv_ffi::BackupImportMode::Replace).map_err(|e| format!("khôi phục: {e}"))?;
+    let st = state_doc(&s);
+    drop(s);
+    let _ = std::fs::remove_dir_all(work);
+    st
+}
+
+/// R14 / 04 B5 quy tắc 5–6 — `--dong-bang-ban-phat-hanh <thư mục ra> <tệp kỳ vọng>`: tạo bộ mẫu đóng băng của **chính bản
+/// này** (chạy một lần trước khi phát hành, bằng mã của bản đó): `store/` (kho SQLite + ảnh + tệp đính kèm do lõi ghi),
+/// `backup.lvhv` (tạo như nút "Tạo tệp sao lưu…"), `store-snapshot.json` (`dataset_json`), và tệp kỳ vọng ngoài bộ mẫu
+/// (`state` của kho, `backup_state` sau khi khôi phục tệp sao lưu vào kho trống). `manifest.json` (sha256) ghi sau.
+/// Dữ liệu: dữ liệu mẫu của R14 (a) (5 hồ sơ: âm lịch, tháng nhuận, người đang sống có sinh nhật âm và sự kiện, người
+/// mất có thông tin báo tử + ảnh tin báo tử + PDF giấy chứng tử, ảnh chân dung) + ảnh mâm lễ của gia đình + cài đặt
+/// khác mặc định.
+pub fn freeze(out: &Path, expected: &Path) -> Result<String, String> {
+    if out.exists() {
+        return Err(format!("{} đã có — bộ mẫu đóng băng không bao giờ bị ghi đè", out.display()));
+    }
+    let dir = out.join("store");
+    let store = LvhvStore::open(dir.to_string_lossy().into_owned()).map_err(|e| e.to_string())?;
+    let (a, _, _) = shots::seed_store(&store);
+    let tray = crate::photo::reencode_with(&shots::demo_tray(), crate::people::TRAY_SIDE, crate::photo::MAX_STORED)?;
+    let tid = lvhv_ffi::new_uuid().map_err(|e| e.to_string())?;
+    store
+        .add_photo(tid.clone(), "image/jpeg".into(), tray.width, tray.height, tray.bytes)
+        .map_err(|e| e.to_string())?;
+    let mut pv = jv(&store.person_json(a).map_err(|e| e.to_string())?);
+    pv["memorial"]["tray_photo_id"] = json!(tid);
+    store.save_person_json(pv.to_string()).map_err(|e| e.to_string())?;
+    let mut s = jv(&store.settings_json().map_err(|e| e.to_string())?);
+    s["default_offsets_days"] = json!([0, 1, 7]);
+    s["default_time_local"] = json!("06:30");
+    s["backup_nag_days"] = json!(60);
+    store.put_settings_json(s.to_string()).map_err(|e| e.to_string())?;
+    let backup = store
+        .export_backup(RELEASE_FIXTURE_PASSWORD.into(), update::VERSION.into(), "windows".into())
+        .map_err(|e| e.to_string())?;
+    let state = state_doc(&store)?;
+    let snapshot = jv(&store.dataset_json().map_err(|e| e.to_string())?);
+    // Đọc user_version khi kho còn mở: mở riêng sau khi đóng sẽ tạo lại -wal/-shm trong bộ mẫu.
+    let sv = schema_version(&dir);
+    drop(store);
+    for e in std::fs::read_dir(&dir).map_err(|e| e.to_string())?.flatten() {
+        let n = e.file_name().to_string_lossy().into_owned();
+        if n.ends_with("-wal") || n.ends_with("-shm") || n.ends_with("-journal") {
+            return Err(format!("kho chưa đóng hẳn: còn {n}"));
+        }
+    }
+    std::fs::write(out.join("backup.lvhv"), &backup).map_err(|e| e.to_string())?;
+    std::fs::write(out.join("store-snapshot.json"), serde_json::to_string_pretty(&snapshot).unwrap() + "\n")
+        .map_err(|e| e.to_string())?;
+    let backup_state = restored_state(backup, RELEASE_FIXTURE_PASSWORD, &out.join("..").join(".khoi-phuc-tam"))?;
+    if backup_state != state {
+        return Err("khôi phục tệp sao lưu vào kho trống không ra đúng trạng thái kho".into());
+    }
+    let exp = json!({
+        "fixture": format!("{}/windows", update::VERSION),
+        "schema_version": sv,
+        "state": state,
+        "backup_state": backup_state,
+    });
+    std::fs::write(expected, serde_json::to_string_pretty(&exp).unwrap() + "\n").map_err(|e| e.to_string())?;
+    Ok(format!(
+        "Đã tạo bộ mẫu {} (lược đồ {}): {} hồ sơ, {} sự kiện, {} ảnh, {} tệp đính kèm",
+        out.display(),
+        sv,
+        exp["state"]["persons"].as_array().map_or(0, Vec::len),
+        exp["state"]["events"].as_array().map_or(0, Vec::len),
+        exp["state"]["photos"].as_array().map_or(0, Vec::len),
+        exp["state"]["attachments"].as_array().map_or(0, Vec::len),
+    ))
+}
+
+/// R14 (d) — `--kiem-mau-phat-hanh <bộ mẫu> <expected.json>`: thư mục dữ liệu đang chứa bản chép `store/` của bộ mẫu
+/// một bản Windows đã phát hành, và `LichViet.exe` đã cài (bản đang kiểm) đã mở nó. Kiểm: sha256 từng tệp của bộ mẫu
+/// đúng `manifest.json` (không ai sửa); kho mở được, không ở chế độ chỉ đọc; trạng thái trùng `state` của tệp kỳ vọng
+/// (khi lõi đổi lược đồ thì cập nhật tệp kỳ vọng có duyệt, như 0.2-dev-before-attachments); tệp `backup.lvhv` của bộ
+/// mẫu khôi phục vào kho trống ra đúng `backup_state`; đặt lại được thông báo.
+pub fn check_release_fixture(dir: &Path, fixture: &Path, expected: &Path, t: &dyn toasts::Toasts, now: i64) -> Result<String, String> {
+    let man = jv(&std::fs::read_to_string(fixture.join("manifest.json")).map_err(|e| format!("đọc manifest.json: {e}"))?);
+    let files = man["files"].as_object().ok_or("manifest.json thiếu files")?;
+    for (f, sha) in files {
+        let got = hex(&std::fs::read(fixture.join(f)).map_err(|e| format!("đọc {f}: {e}"))?);
+        if Some(got.as_str()) != sha.as_str() {
+            return Err(format!("{f} của bộ mẫu đã bị sửa (sha256 khác manifest.json)"));
+        }
+    }
+    let want = jv(&std::fs::read_to_string(expected).map_err(|e| format!("đọc tệp kỳ vọng: {e}"))?);
+    let before = schema_version(dir);
+    let store = LvhvStore::open(dir.to_string_lossy().into_owned()).map_err(|e| format!("KHÔNG mở được kho: {e}"))?;
+    let ms = store.migration_status();
+    if !matches!(ms.state.as_str(), "ok" | "migrated") {
+        return Err(format!("trạng thái chuyển đổi {}: {:?}", ms.state, ms.message));
+    }
+    let got = state_doc(&store)?;
+    if got != want["state"] {
+        let keys: Vec<String> = want["state"].as_object().map(|o| o.keys().cloned().collect()).unwrap_or_default();
+        let d: Vec<String> = keys.into_iter().filter(|k| got[k] != want["state"][k]).collect();
+        return Err(format!("trạng thái kho KHÁC tệp kỳ vọng ở: {}", d.join(", ")));
+    }
+    let pw = man["password"].as_str().ok_or("manifest.json thiếu password")?;
+    let bytes = std::fs::read(fixture.join("backup.lvhv")).map_err(|e| e.to_string())?;
+    let work = std::env::temp_dir().join(format!("lvhv-kiem-mau-phat-hanh-{}", std::process::id()));
+    if restored_state(bytes, pw, &work)? != want["backup_state"] {
+        return Err("khôi phục backup.lvhv của bộ mẫu vào kho trống KHÁC tệp kỳ vọng".into());
+    }
+    let r = toasts::sync(t, &store, now, platform::device_zone());
+    if !matches!(r, toasts::SyncResult::Scheduled { .. }) {
+        return Err(format!("chưa đặt lại được thông báo: {r:?}"));
+    }
+    Ok(format!(
+        "R14 (d) bộ mẫu {}: ĐẠT. sha256 {} tệp khớp manifest; lược đồ {before} → {} (trạng thái khi kiểm: {}); trạng thái trùng tệp kỳ vọng ({} hồ sơ, {} sự kiện, {} ảnh, {} tệp đính kèm); khôi phục backup.lvhv vào kho trống khớp; đặt lại thông báo: {r:?}",
+        man["fixture"].as_str().unwrap_or("?"),
+        files.len(),
+        schema_version(dir),
+        ms.state,
+        got["persons"].as_array().map_or(0, Vec::len),
+        got["events"].as_array().map_or(0, Vec::len),
+        got["photos"].as_array().map_or(0, Vec::len),
+        got["attachments"].as_array().map_or(0, Vec::len),
+    ))
+}
+
 /// R14 (c) — `--kiem-mau-dong-bang <expected.json>`: thư mục dữ liệu đang chứa kho của bộ mẫu đóng băng
 /// `0.2-dev-before-attachments` (do bản dựng 0.2 trước YC-2026-07 tạo); mở bằng bản này → lõi chuyển 1 → 2; trạng thái
 /// phải trùng `expected/<bộ mẫu>.json` (cùng tệp mà bản Rust của lõi và bản PWA phải ra), rồi đặt lại thông báo.

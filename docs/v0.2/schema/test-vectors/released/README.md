@@ -22,6 +22,7 @@ Thư mục này giữ dữ liệu **thật** do các bản đã phát hành (ho�
 | Thư mục | Tạo bởi | Nội dung |
 |---|---|---|
 | `0.2-dev-before-attachments/` | bản dựng 0.2 trước YC-2026-07 (commit 7338f04) | Kho phiên bản 1 có `death.notice.certificate_photo_ids` — R14 (c). Chuyển 1 → 2 đổi thành `attachments` loại `giay_chung_tu`; danh sách gốc và bản ghi `Photo` gốc giữ trong `legacy` |
+| `0.2.1/windows/` | bản Windows 0.2.1 (bản Windows phát hành đầu tiên của v0.2), `lvhv-ci-check --dong-bang-ban-phat-hanh` (lõi ghi kho; README trong thư mục) | Kho SQLite lược đồ 2 + ảnh (chân dung, ảnh mâm lễ) + tệp đính kèm (ảnh, PDF), tệp sao lưu, `store-snapshot.json`. Kỳ vọng: `expected/0.2.1-windows.json` (`state`, `backup_state`). Kiểm: CI Windows R14 (d) |
 | `0.2.0/pwa/` | bản web 0.2.0 (bản phát hành đầu tiên của v0.2), qua giao diện của chính bản dựng (`pwa/test/tools/freeze-pwa-release.mjs`) | Kho IndexedDB phiên bản 3 chép nguyên (`indexeddb.json`), tệp sao lưu, ảnh chụp tài liệu. Kỳ vọng: `expected/0.2.0-pwa.json` (stateHash kho; stateHash sau khi khôi phục tệp sao lưu vào kho trống). Kiểm: `pwa/test/upgrade.mjs` ca (d) |
 
 ## Kiểm thử
@@ -30,5 +31,10 @@ Thư mục này giữ dữ liệu **thật** do các bản đã phát hành (ho�
   (quay lui, chỉ đọc, bản sao CSDL cũ còn nguyên, vẫn xuất sao lưu), từ chối kho mới hơn.
 - PWA, bộ mẫu `<bản>/pwa/`: `pwa/test/upgrade.mjs` ca (d) — sha256; dựng lại kho từ `indexeddb.json` rồi mở bằng bản
   đang kiểm; khôi phục `backup.lvhv` vào kho trống; có thẻ `v<bản>` thì nâng cấp thật từ bản dựng của thẻ qua service worker.
+- Windows, bộ mẫu `<bản>/windows/`: CI Windows, bước R14 (d) — với mỗi bộ mẫu: có `.msi` của bản đó trên GitHub Releases
+  (và khác bản đang kiểm) thì cài nó, chép `store/` vào thư mục dữ liệu, mở bản cũ, rồi cài `.msi` mới đè lên; không có
+  thì chép `store/` rồi cài `.msi` mới. Mở `LichViet.exe` đã cài, `lvhv-ci-check --kiem-mau-phat-hanh` (sha256 theo
+  `manifest.json`, trạng thái trùng `state`, khôi phục `backup.lvhv` trùng `backup_state`, đặt lại thông báo), gỡ cài
+  đặt, thư mục dữ liệu còn nguyên.
 - PWA: `pwa/test/store/run.mjs` — dựng kho IndexedDB phiên bản 1 từ `store-snapshot.json` + ảnh, mở bằng bản mới
   (chuyển trong `onupgradeneeded`), so với cùng tệp kỳ vọng; nhập tệp sao lưu cũ; ca lỗi → chỉ đọc.

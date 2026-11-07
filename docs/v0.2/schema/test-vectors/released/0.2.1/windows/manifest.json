@@ -1,0 +1,21 @@
+{
+  "fixture": "0.2.1/windows",
+  "created_by": "lvhv-ci-check --dong-bang-ban-phat-hanh (upgrade::freeze), nhánh release-windows-0.2.1 trên main bdc38e5, VERSION 0.2.1",
+  "created_at": "2026-11-07",
+  "store_version": 2,
+  "password": "mật khẩu bộ mẫu Windows",
+  "expected": "released/expected/0.2.1-windows.json",
+  "description": "Kho SQLite + ảnh + tệp đính kèm và tệp sao lưu của bản Windows 0.2.1, ghi bằng lõi: 5 hồ sơ (ngày mất dương, ngày mất âm, ngày âm không rõ năm, thông tin báo tử + ảnh + PDF, người đang sống có sinh nhật và sự kiện), ảnh chân dung, ảnh mâm lễ của gia đình, cài đặt khác mặc định. Không bao giờ sửa.",
+  "files": {
+    "README.md": "aee7c59f8cbcc4dcf7baafb23b3c94d9e7f3394e4d1bd4482d66ad082d7f670a",
+    "backup.lvhv": "3b099b08b00a2db2f7a2cd8c644d7abb93446b32c29864dee9f0c5b10ff7dd81",
+    "shots.rs.txt": "0877c1d9bb71570147aff53197122f9bd30601db78df249e5b39b416bb00662a",
+    "store-snapshot.json": "66bbd8af771a966871d021f5bd2a66e0cda66b4abea3d04d220a7231b89cb066",
+    "store/attachments/beb357a9-7d7d-4c8b-9738-c367d02b0415.bin": "79370862c6cb54e96ed3125464c11e4ce3e8b08fb5048723695b6b9e9728d701",
+    "store/attachments/f7bf9e80-931f-4e74-bff3-e8ac3af3fd07.bin": "3d56989364e676a69551f4e26296763c26d7216f4619ca545aa05d4d480b13e0",
+    "store/lvhv.sqlite": "762859df19991f5503411fcc5fcccd3c1bbc215fc061cc2675a61b1cf0c97674",
+    "store/photos/d5ed5f36-c1d6-477d-bfd0-af9d364437c8.img": "fb774b9fae223eb9577c9d50c01eb85fb28f99d5740060ab98772a0ee7cbef78",
+    "store/photos/fe873326-5a98-4c90-9c42-1992ffd311af.img": "b1cc520788dd52a5d24b9c2ad689e8b7554ec3acc362edf62ddddeff4921a230",
+    "upgrade.rs.txt": "0774c9c2b1b37fa2f8558851ce9b6e9dcd97f8937e09cbcf97cedba5641cbe23"
+  }
+}
