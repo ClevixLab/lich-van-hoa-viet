@@ -1,0 +1,4 @@
+msiexec /i thoát mã 0
+Lối tắt Start Menu: C:\Users\runneradmin\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Lich va Van hoa Viet.lnk
+--kiem-thong-bao thoát mã 5
+Unavailable("Windows chưa nhận ra ứng dụng để gửi thông báo (0x80070490). Thông báo cần bản cài đặt (.msi), vì bộ cài tạo lối tắt Start Menu mang định danh của ứng dụng."); đặt thông báo lỗi: The size of the developer id for scheduled notification is too large. (0x803E0120)
