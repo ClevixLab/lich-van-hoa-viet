@@ -2,7 +2,7 @@
   "name": "lich-van-hoa-viet-pwa",
   "version": "0.1.0",
   "private": true,
-  "description": "Lịch và Văn hóa Việt — PWA (Clevix Lab), bản 0.1 thử nghiệm nội bộ",
+  "description": "Lịch và Văn hóa Việt — PWA (Clevix Lab)",
   "type": "module",
   "scripts": {
     "build": "node build.mjs",

@@ -930,3 +930,14 @@ details[open] .sum-hint { display: none; }
   :root[data-size="3"] .gtopts { grid-auto-flow: row; }
 }
 
+/* YC-2026-10 (08 §16.1): ảnh mâm lễ dưới hàng bàn thờ — rộng tối đa 480 px, khung 4:3 cắt giữa, bo 12 px, viền vàng đồng. */
+.mem-tray { width: 100%; max-width: 480px; margin: 1.2rem auto 0; display: grid; gap: .35rem; justify-items: center; }
+.mem-tray-img { width: 100%; height: auto; aspect-ratio: 4 / 3; border-radius: 12px; border: 1px solid #b8862f; box-shadow: 0 6px 16px rgba(0,0,0,.4); background: #2a1810; }
+.mem-tray-credit { font-size: .78rem; color: #d9c4a0; margin: 0; text-align: center; }
+.mem-add-tray { margin: .9rem 0 0; text-align: center; }
+.mem-add-tray .textlink { color: #e9cf95; font-size: .9rem; }
+
+/* YC-2026-10 (08 §16.2): mục "Ảnh mâm lễ ngày giỗ" — ảnh thu nhỏ 120 × 90 px. */
+.pf-tray-img { box-sizing: border-box; width: 120px; height: 90px; border-radius: 8px; border: 1px solid var(--gold); background: var(--paper-2); }
+.pf-tray-img[hidden] { display: none; }
+.pf-tray .photo-acts { display: flex; flex-wrap: wrap; gap: .5rem; }

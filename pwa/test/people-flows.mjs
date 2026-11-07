@@ -977,3 +977,250 @@ export async function runSavePicker({ browser, BASE, check }) {
     await ctx.close();
   }
 }
+
+/** Ảnh JPEG 2400 × 1800 (vẽ trong trình duyệt) có thêm đoạn EXIF (APP1) giả chứa "vị trí" — đầu vào cho §16.4 (2). */
+async function trayJpegWithExif(page) {
+  const b64 = await page.evaluate(async () => {
+    const c = new OffscreenCanvas(2400, 1800); const x = c.getContext("2d");
+    const g = x.createLinearGradient(0, 0, 2400, 1800); g.addColorStop(0, "#7a1414"); g.addColorStop(1, "#e2bb6a");
+    x.fillStyle = g; x.fillRect(0, 0, 2400, 1800);
+    x.fillStyle = "#f2c94c"; x.beginPath(); x.ellipse(1200, 1100, 800, 260, 0, 0, Math.PI * 2); x.fill();
+    for (let i = 0; i < 9; i++) { x.fillStyle = ["#e07a12", "#5f8a2a", "#c2185b"][i % 3]; x.beginPath(); x.arc(600 + i * 150, 900 - (i % 2) * 80, 110, 0, Math.PI * 2); x.fill(); }
+    const b = new Uint8Array(await (await c.convertToBlob({ type: "image/jpeg", quality: 0.92 })).arrayBuffer());
+    let s = ""; for (let i = 0; i < b.length; i += 0x8000) s += String.fromCharCode(...b.subarray(i, i + 0x8000)); return btoa(s);
+  });
+  const jpg = Buffer.from(b64, "base64");
+  const exif = Buffer.concat([Buffer.from("Exif\0\0", "binary"), Buffer.from("SENTINEL-GPS-MAMLE 21.0285N 105.8542E", "utf8")]);
+  const app1 = Buffer.concat([Buffer.from([0xff, 0xe1, (exif.length + 2) >> 8, (exif.length + 2) & 255]), exif]);
+  return Buffer.concat([jpg.subarray(0, 2), app1, jpg.subarray(2)]);
+}
+/** JPEG có đoạn APP1 (EXIF/XMP) hay APP13 (IPTC) trước SOS không. */
+function jpegHasMeta(b) {
+  let i = 2;
+  while (i + 4 < b.length && b[i] === 0xff) { const m = b[i + 1]; if (m === 0xda) break; if (m === 0xe1 || m === 0xed) return true; i += 2 + ((b[i + 2] << 8) | b[i + 3]); }
+  return false;
+}
+const newTrayCtx = async (browser) => {
+  const ctx = await browser.newContext({ viewport: { width: 360, height: 780 }, deviceScaleFactor: 2, hasTouch: true, isMobile: true, locale: "vi-VN", timezoneId: "Asia/Ho_Chi_Minh", reducedMotion: "reduce", colorScheme: "light" });
+  // Đường tải về (<a download>); hộp "Lưu tệp" của hệ điều hành có kiểm riêng (runSavePicker).
+  await ctx.addInitScript(() => { Object.defineProperty(window, "showSaveFilePicker", { value: undefined, configurable: true }); });
+  const page = await ctx.newPage();
+  await page.clock.setFixedTime(FIXED);
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  return { ctx, page, errors };
+};
+/** Thêm một người đã mất qua biểu mẫu thật; trả id. */
+async function addDeceased(page, BASE, name) {
+  await page.goto(BASE + "#/nguoi-than/them/da-mat");
+  await page.waitForSelector("#pf-ten", { timeout: 15000 });
+  await page.fill("#pf-ten", name);
+  await page.fill("#pf-death-d", "10"); await page.fill("#pf-death-m", "3"); await page.fill("#pf-death-y", "2024");
+  await page.click(".form-acts .primary");
+  await page.waitForSelector("#person-name", { timeout: 15000 });
+  return /nguoi\/([0-9a-f-]+)/.exec(page.url())[1];
+}
+const memState = (page) => page.evaluate(() => {
+  const fig = document.querySelector(".mem-tray"), altar = document.querySelector(".altar");
+  return { fig: fig ? fig.dataset.src : null, drawn: !!fig?.querySelector("canvas[data-drawn]"), label: fig?.querySelector("canvas")?.getAttribute("aria-label") ?? null,
+    credit: fig?.querySelector(".mem-tray-credit")?.textContent ?? null, below: !!(fig && altar && (altar.compareDocumentPosition(fig) & Node.DOCUMENT_POSITION_FOLLOWING)),
+    add: document.querySelector("#mem-add-tray")?.textContent ?? null, candles: document.querySelectorAll(".altar-row .candle").length,
+    bowl: document.querySelectorAll(".altar-row .bowl").length, vase: document.querySelectorAll(".altar-row .vase").length, drawnTray: document.querySelectorAll("svg.tray").length };
+});
+const openMemorial = async (page, BASE, id, wantFig) => {
+  await page.goto(BASE + `#/nguoi-than/tuong-niem/${id}`); await page.waitForSelector(".bia-name", { timeout: 15000 });
+  if (wantFig) await page.waitForSelector(".mem-tray canvas[data-drawn]", { timeout: 15000 }).catch(() => {});
+};
+/** Ảnh chụp 360/1280 × sáng/tối của màn hình tưởng niệm (08 §16.4). */
+async function memShots(page, SHOTS, name, wantFig) {
+  for (const [w, hgt, tag] of [[360, 780, "360"], [1280, 800, "1280"]]) {
+    for (const scheme of ["light", "dark"]) {
+      await page.setViewportSize({ width: w, height: hgt });
+      await page.emulateMedia({ colorScheme: scheme });
+      await page.reload(); await page.waitForSelector(".bia-name");
+      if (wantFig) await page.waitForSelector(".mem-tray canvas[data-drawn]", { timeout: 15000 }).catch(() => {});
+      await page.evaluate(() => (document.querySelector(".mem-tray") ?? document.querySelector(".altar")).scrollIntoView({ block: "center" }));
+      await page.screenshot({ path: join(SHOTS, `v02-${name}-${tag}-${scheme}.png`), fullPage: false });
+    }
+  }
+  await page.setViewportSize({ width: 360, height: 780 }); await page.emulateMedia({ colorScheme: "light" });
+}
+
+/**
+ * YC-2026-10 (08 §16, 04 R15): ảnh mâm lễ của gia đình — §16.4 (1) không ảnh, (2) thêm ảnh có EXIF, (3) bỏ ảnh, (4) Công
+ * giáo; hủy biểu mẫu không để lại ảnh; ảnh chụp (1)(2)(4) ở 360/1280 sáng/tối. Bản dựng kiểm thử (đọc kho để kiểm byte).
+ */
+export async function runTrayFlow({ browser, BASE, SHOTS, check }) {
+  const { ctx, page, errors } = await newTrayCtx(browser);
+  const store = (fn) => page.evaluate(`(async () => { const S = await window.__lvhv.storage.loadStore(); const s = await S.openStore(); try { return await (${fn})(s); } finally { s.close(); } })()`);
+  try {
+    const id = await addDeceased(page, BASE, "Nguyễn Văn Mâm");
+    const row0 = await page.innerText(".people-body");
+    check(row0.includes("Ảnh mâm lễ\nChưa có"), "YC-2026-10: trang hồ sơ có dòng \"Ảnh mâm lễ: Chưa có\"");
+
+    // (1) không ảnh, gói rỗng
+    await openMemorial(page, BASE, id, false);
+    const m1 = await memState(page);
+    check(m1.fig === null && m1.drawnTray === 0 && m1.candles === 2 && m1.bowl === 1 && m1.vase === 0 && m1.add === "Thêm ảnh mâm lễ của gia đình",
+      `§16.4 (1): không ảnh, gói rỗng → không có mâm; nến · bát hương · nến; có "Thêm ảnh mâm lễ của gia đình" (${JSON.stringify(m1)})`);
+    await memShots(page, SHOTS, "tray-none", false);
+
+    // "Thêm ảnh mâm lễ của gia đình" → biểu mẫu sửa, mục ảnh mâm lễ
+    await openMemorial(page, BASE, id, false);
+    await page.click("#mem-add-tray");
+    await page.waitForSelector("#pf-tray", { timeout: 15000 });
+    const f0 = await page.evaluate(() => ({ open: document.querySelector("#pf-mem").open, label: document.querySelector("#pf-tray .flabel").textContent,
+      empty: document.querySelector("#pf-tray-empty").textContent, pick: document.querySelector("#pf-tray-pick").textContent, focus: document.activeElement?.id,
+      hint: [...document.querySelectorAll("#pf-tray .fine")].map((e) => e.textContent).find((t) => t.startsWith("Ảnh chỉ lưu")),
+      afterLoi: document.querySelector("#pf-loi")?.closest(".field")?.nextElementSibling?.id }));
+    check(f0.open && f0.label === "Ảnh mâm lễ ngày giỗ" && f0.empty === "Chưa có ảnh. Ngày giỗ chỉ hiện bát hương và nến." && f0.pick === "Chọn ảnh mâm lễ…" && f0.focus === "pf-tray-pick" && f0.afterLoi === "pf-tray"
+      && f0.hint === "Ảnh chỉ lưu trên máy này và trong tệp sao lưu mã hóa. Ứng dụng tự bỏ thông tin vị trí và máy chụp trong ảnh.",
+      `§16.2: "Thêm ảnh mâm lễ…" mở biểu mẫu tại mục "Ảnh mâm lễ ngày giỗ" (ngay sau "Lời tưởng niệm"), đúng chữ (${JSON.stringify(f0)})`);
+    await page.setInputFiles("#pf-tray-file", { name: "khong-phai-anh.jpg", mimeType: "image/jpeg", buffer: Buffer.from("không phải ảnh", "utf8") });
+    await page.waitForSelector("#pf-tray-err:not([hidden])");
+    check((await page.innerText("#pf-tray-err")) === "Không đọc được ảnh này. Hãy chọn một ảnh khác.", "§16.2: ảnh hỏng → \"Không đọc được ảnh này. Hãy chọn một ảnh khác.\"");
+    await page.setInputFiles("#pf-tray-file", { name: "qua-lon.jpg", mimeType: "image/jpeg", buffer: Buffer.alloc(25 * 1024 * 1024 + 1) });
+    await page.waitForFunction(() => document.querySelector("#pf-tray-err")?.textContent === "Ảnh quá lớn (tối đa 25 MB).", null, { timeout: 15000 }).catch(() => {});
+    check((await page.innerText("#pf-tray-err")) === "Ảnh quá lớn (tối đa 25 MB).", "§16.2: tệp > 25 MB → \"Ảnh quá lớn (tối đa 25 MB).\"");
+
+    // Hủy biểu mẫu sau khi đã chọn ảnh → không còn gì trong kho
+    const exifJpg = await trayJpegWithExif(page);
+    check(jpegHasMeta(exifJpg) && exifJpg.includes(Buffer.from("SENTINEL-GPS-MAMLE")), "đầu vào thử: JPEG 2400 × 1800 có đoạn EXIF chứa vị trí giả");
+    const photos0 = await store(`async (s) => (await s.photos()).map((x) => x.id)`);
+    await page.setInputFiles("#pf-tray-file", { name: "mam-le.jpg", mimeType: "image/jpeg", buffer: exifJpg });
+    await page.waitForSelector("#pf-tray-img[data-drawn]", { timeout: 30000 });
+    await page.click(".form-acts .btn2");
+    await page.waitForSelector(".pdialog[open] .dbtn.main"); await page.click(".pdialog[open] .dbtn.main");
+    await page.waitForSelector("#person-name");
+    const afterCancel = await store(`async (s) => ({ photos: (await s.photos()).map((x) => x.id), tray: (await s.person("${id}")).memorial.tray_photo_id ?? null })`);
+    check(JSON.stringify(afterCancel.photos) === JSON.stringify(photos0) && afterCancel.tray === null, `§16.2: chọn ảnh rồi hủy biểu mẫu → không có ảnh mới trong kho (${photos0.length} → ${afterCancel.photos.length}), hồ sơ không đổi`);
+
+    // (2) thêm ảnh có EXIF → lưu đã bỏ EXIF, cạnh dài ≤ 1600 px, ≤ 1 MB; ảnh hiện dưới bàn thờ
+    await page.goto(BASE + `#/nguoi-than/sua/${id}/mam-le`); await page.waitForSelector("#pf-tray-pick");
+    await page.setInputFiles("#pf-tray-file", { name: "mam-le.jpg", mimeType: "image/jpeg", buffer: exifJpg });
+    await page.waitForSelector("#pf-tray-img[data-drawn]", { timeout: 30000 });
+    const f1 = await page.evaluate(() => ({ pick: document.querySelector("#pf-tray-pick").textContent, rm: !document.querySelector("#pf-tray-rm").hidden, busy: document.querySelector("#pf-tray-busy").hidden,
+      save: document.querySelector(".form-acts .primary").disabled, w: Math.round(document.querySelector("#pf-tray-img").getBoundingClientRect().width), hh: Math.round(document.querySelector("#pf-tray-img").getBoundingClientRect().height) }));
+    check(f1.pick === "Đổi ảnh" && f1.rm && f1.busy && !f1.save && f1.w === 120 && f1.hh === 90, `§16.2: có ảnh → ảnh thu nhỏ 120 × 90, "Đổi ảnh", "Bỏ ảnh"; xử lý xong thì nút Lưu bật lại (${JSON.stringify(f1)})`);
+    const a11y = await page.evaluate(() => ({ sum: document.querySelector("#pf-mem > summary").textContent, group: document.querySelector("#pf-tray").getAttribute("role"),
+      groupName: document.getElementById(document.querySelector("#pf-tray").getAttribute("aria-labelledby"))?.textContent,
+      trayPick: document.querySelector("#pf-tray-pick").getAttribute("aria-label"), trayRm: document.querySelector("#pf-tray-rm").getAttribute("aria-label"),
+      portraitPick: document.querySelector("#pf-pick").getAttribute("aria-label") }));
+    check(a11y.sum === "Tưởng niệm (giỗ hết, lời tưởng niệm, ảnh mâm lễ)" && a11y.group === "group" && a11y.groupName === "Ảnh mâm lễ ngày giỗ"
+      && a11y.trayPick === "Đổi ảnh mâm lễ" && a11y.trayRm === "Bỏ ảnh mâm lễ" && a11y.portraitPick === "Chọn ảnh chân dung",
+      `NS-01/NS-02 (duyệt #50): nút ảnh mâm lễ và ảnh chân dung có tên riêng cho trình đọc màn hình; mục là nhóm có nhãn; tiêu đề khung có "ảnh mâm lễ" (${JSON.stringify(a11y)})`);
+    await page.locator("#pf-tray").screenshot({ path: join(SHOTS, "v02-form-tray-360.png") });
+    await page.click(".form-acts .primary");
+    await page.waitForSelector("#person-name");
+    check((await page.innerText(".people-body")).includes("Ảnh mâm lễ\nĐã có"), "YC-2026-10: trang hồ sơ có dòng \"Ảnh mâm lễ: Đã có\"");
+    const saved = await store(`async (s) => { const p = await s.person("${id}"); const tid = p.memorial.tray_photo_id; const meta = (await s.photos()).find((x) => x.id === tid);
+      const b = await s.photoBytes(tid); let bin = ""; for (let i = 0; i < b.length; i += 0x8000) bin += String.fromCharCode(...b.subarray(i, i + 0x8000));
+      return { tid, meta, b64: btoa(bin), portrait: p.photo_id }; }`);
+    const tb = Buffer.from(saved.b64, "base64");
+    check(!!saved.tid && saved.meta && saved.meta.mime === "image/jpeg" && Math.max(saved.meta.width, saved.meta.height) === 1600 && saved.meta.width === 1600 && saved.meta.height === 1200
+      && tb.length <= 1024 * 1024 && saved.meta.bytes === tb.length && !jpegHasMeta(tb) && !tb.includes(Buffer.from("SENTINEL-GPS-MAMLE")) && saved.portrait === null,
+      `§16.4 (2): ảnh lưu là JPEG ${saved.meta?.width} × ${saved.meta?.height} (cạnh dài ≤ 1600, không phóng to), ${tb.length} byte ≤ 1 MB, KHÔNG còn EXIF/vị trí; memorial.tray_photo_id trỏ tới ảnh`);
+    await openMemorial(page, BASE, id, true);
+    const m2 = await memState(page);
+    check(m2.fig === "family" && m2.drawn && m2.below && m2.label === "Ảnh mâm lễ của gia đình" && m2.add === null && m2.credit === null && m2.candles === 2 && m2.bowl === 1,
+      `§16.4 (2): ảnh mâm lễ của gia đình hiện DƯỚI hàng bàn thờ, nhãn "Ảnh mâm lễ của gia đình", không còn nút "Thêm ảnh…" (${JSON.stringify(m2)})`);
+    const box = await page.evaluate(() => { const c = document.querySelector(".mem-tray-img"); const r = c.getBoundingClientRect(); return { w: Math.round(r.width), h: Math.round(r.height), vw: innerWidth }; });
+    check(Math.abs(box.w / box.h - 4 / 3) < 0.02 && box.w <= 480, `§16.1: khung ảnh 4:3, rộng ≤ 480 px (${box.w} × ${box.h} ở ${box.vw} px)`);
+    await memShots(page, SHOTS, "tray-family", true);
+
+    // Hồi quy (lõi báo rủi ro): sửa MỘT ô khác của hồ sơ có ảnh mâm lễ, qua biểu mẫu sửa thường (không vào mục ảnh) →
+    // Lưu → ảnh mâm lễ vẫn còn, cùng id, cùng byte; không ảnh nào bị xóa.
+    await page.goto(BASE + `#/nguoi-than/sua/${id}`); await page.waitForSelector("#pf-note");
+    await page.fill("#pf-note", "Sửa ghi chú — không đụng ảnh mâm lễ");
+    await page.click(".form-acts .primary"); await page.waitForSelector("#person-name");
+    const kept = await store(`async (s) => { const p = await s.person("${id}"); const tid = p.memorial.tray_photo_id ?? null; const ids = (await s.photos()).map((x) => x.id);
+      return { tid, has: ids.includes(tid), n: ids.length, bytes: tid ? (await s.photoBytes(tid)).length : 0, note: p.ghi_chu, rev: p.rev }; }`);
+    check(kept.tid === saved.tid && kept.has && kept.bytes === tb.length && kept.note === "Sửa ghi chú — không đụng ảnh mâm lễ" && (await page.innerText(".people-body")).includes("Ảnh mâm lễ\nĐã có"),
+      `Hồi quy YC-2026-10: sửa ô khác (ghi chú) rồi Lưu → ảnh mâm lễ giữ nguyên (cùng id, ${kept.bytes} byte, ${kept.n} ảnh trong kho)`);
+
+    // (3) bỏ ảnh → về (1), không còn tệp
+    await page.goto(BASE + `#/nguoi-than/sua/${id}/mam-le`); await page.waitForSelector("#pf-tray-rm:not([hidden])");
+    await page.click("#pf-tray-rm");
+    check(await page.isVisible("#pf-tray-empty") && (await page.innerText("#pf-tray-pick")) === "Chọn ảnh mâm lễ…", "§16.2: \"Bỏ ảnh\" → về trạng thái chưa có ảnh (có hiệu lực khi Lưu)");
+    await page.click(".form-acts .primary");
+    await page.waitForSelector("#person-name");
+    const gone = await store(`async (s) => { const p = await s.person("${id}"); return { key: "tray_photo_id" in p.memorial, photos: (await s.photos()).map((x) => x.id) }; }`);
+    check(!gone.key && !gone.photos.includes(saved.tid) && JSON.stringify(gone.photos) === JSON.stringify(photos0),
+      `§16.4 (3): bỏ ảnh → khóa tray_photo_id không còn trong hồ sơ, ảnh cũ bị xóa khỏi kho (không ảnh mồ côi; ${gone.photos.length} ảnh như trước)`);
+    await openMemorial(page, BASE, id, false);
+    const m3 = await memState(page);
+    check(m3.fig === null && m3.add === "Thêm ảnh mâm lễ của gia đình" && m3.candles === 2 && m3.bowl === 1, `§16.4 (3): màn hình tưởng niệm về như (1) (${JSON.stringify(m3)})`);
+
+    // MA10-11 (duyệt mã lõi YC-2026-10 vòng 2): Gộp xóa ảnh đã thêm vào kho mà chưa gắn hồ sơ. Bản web không thêm ảnh vào
+    // kho trước khi Lưu (ảnh chờ nằm trong bộ nhớ, lõi ghi cùng giao dịch với hồ sơ) → không bị ảnh hưởng. Kiểm: thẻ A chọn
+    // ảnh mâm lễ (chưa lưu); thẻ B xuất rồi nhập sao lưu kiểu Gộp; thẻ A bấm Lưu → lưu được, ảnh còn.
+    await page.goto(BASE + `#/nguoi-than/sua/${id}/mam-le`); await page.waitForSelector("#pf-tray-pick");
+    await page.setInputFiles("#pf-tray-file", { name: "mam-le.jpg", mimeType: "image/jpeg", buffer: exifJpg });
+    await page.waitForSelector("#pf-tray-img[data-drawn]", { timeout: 30000 });
+    const pendingInStore = await store(`async (s) => (await s.photos()).length`);
+    const tabB = await ctx.newPage();
+    await tabB.clock.setFixedTime(FIXED);
+    await tabB.goto(BASE + "#/nguoi-than/sao-luu"); await tabB.waitForSelector("#bk-export:not([disabled])");
+    await tabB.click("#bk-export");
+    await tabB.fill("#bk-pw1", "nhà có cây bàng"); await tabB.fill("#bk-pw2", "nhà có cây bàng");
+    const dlB = tabB.waitForEvent("download", { timeout: 60000 });
+    await tabB.click(".bk-dialog .dbtn.main");
+    const fileB = readFileSync(await (await dlB).path());
+    await tabB.waitForSelector(".bk-dialog", { state: "detached", timeout: 30000 });
+    await tabB.setInputFiles("#bk-file", { name: "gop.lvhv", mimeType: "application/octet-stream", buffer: fileB });
+    await tabB.fill("#bk-ipw", "nhà có cây bàng");
+    await tabB.click("#bk-open");
+    await tabB.waitForSelector(".imp-dialog[open]", { timeout: 60000 });
+    check(await tabB.isChecked("#bk-mode-merge"), "MA10-11: thẻ B nhập sao lưu kiểu Gộp (mặc định)");
+    await tabB.click(".imp-dialog .dbtn.main");
+    const merged = await tabB.waitForSelector('.toast:has-text("Đã khôi phục")', { timeout: 60000 }).then(() => true, () => false);
+    await tabB.close();
+    await page.click(".form-acts .primary");
+    const savedAfterMerge = await page.waitForSelector("#person-name", { timeout: 15000 }).then(() => true, () => false);
+    const afterMerge = await store(`async (s) => { const p = await s.person("${id}"); const tid = p.memorial.tray_photo_id ?? null; return { tid, has: (await s.photos()).some((x) => x.id === tid) }; }`);
+    check(pendingInStore === 0 && merged && savedAfterMerge && afterMerge.tid && afterMerge.has,
+      `MA10-11: ảnh mâm lễ đang chờ (chưa lưu) không nằm trong kho (${pendingInStore} ảnh) → Gộp ở thẻ khác không xóa được; Lưu sau đó thành công, ảnh còn`);
+    // Trả về trạng thái không ảnh cho ca (4).
+    await page.goto(BASE + `#/nguoi-than/sua/${id}/mam-le`); await page.waitForSelector("#pf-tray-rm:not([hidden])");
+    await page.click("#pf-tray-rm"); await page.click(".form-acts .primary"); await page.waitForSelector("#person-name");
+
+    // (4) Công giáo (chỉ đến từ sao lưu) — ảnh chụp 360/1280 sáng/tối
+    const mem0 = await store(`async (s) => (await s.person("${id}")).memorial`);
+    await store(`async (s) => { const p = await s.person("${id}"); await s.putPerson({ ...p, memorial: { ...p.memorial, tray_style: "cong_giao", incense: false } }); }`);
+    await openMemorial(page, BASE, id, false);
+    const m4 = await memState(page);
+    check(m4.fig === null && m4.vase === 1 && m4.candles === 2 && m4.bowl === 0 && await page.locator(".incense, .smoke").count() === 0, `§16.4 (4): Công giáo → nến · hoa · nến, không hương, không mâm (${JSON.stringify(m4)})`);
+    await memShots(page, SHOTS, "tray-catholic", false);
+    await store(`async (s) => { const p = await s.person("${id}"); await s.putPerson({ ...p, memorial: ${JSON.stringify(mem0)} }); }`);
+    check(errors.length === 0, `YC-2026-10: không có lỗi trang (${errors.join(" | ") || "0"})`);
+  } finally {
+    await ctx.close();
+  }
+}
+
+/**
+ * §16.4 (5): bản dựng có gói thử MỘT ảnh Clevix đã duyệt (CC BY — có dòng ghi công) → ảnh Clevix hiện khi người đó chưa
+ * có ảnh gia đình; thêm ảnh gia đình thì ảnh gia đình thắng. Chỉ qua giao diện (bản dựng chính + gói thử).
+ */
+export async function runTrayPack({ browser, BASE, SHOTS, check }) {
+  const { ctx, page, errors } = await newTrayCtx(browser);
+  try {
+    const id = await addDeceased(page, BASE, "Trần Văn Gói");
+    await openMemorial(page, BASE, id, true);
+    const m5 = await memState(page);
+    check(m5.fig === "clevix" && m5.drawn && m5.below && m5.label === "Ảnh mâm lễ" && m5.credit === "Ảnh: Clevix Lab Thử · CC BY 4.0 (ghi công nguyên văn)" && m5.add === "Thêm ảnh mâm lễ của gia đình",
+      `§16.4 (5): gói có 1 ảnh đã duyệt → ảnh Clevix hiện dưới bàn thờ, nhãn "Ảnh mâm lễ", dòng ghi công; vẫn có "Thêm ảnh mâm lễ của gia đình" (${JSON.stringify(m5)})`);
+    await page.evaluate(() => document.querySelector(".mem-tray").scrollIntoView({ block: "center" }));
+    await page.screenshot({ path: join(SHOTS, "v02-tray-clevix-360-light.png") });
+    await page.click("#mem-add-tray"); await page.waitForSelector("#pf-tray-pick");
+    await page.setInputFiles("#pf-tray-file", { name: "mam-le.jpg", mimeType: "image/jpeg", buffer: await trayJpegWithExif(page) });
+    await page.waitForSelector("#pf-tray-img[data-drawn]", { timeout: 30000 });
+    await page.click(".form-acts .primary"); await page.waitForSelector("#person-name");
+    await openMemorial(page, BASE, id, true);
+    const m6 = await memState(page);
+    check(m6.fig === "family" && m6.drawn && m6.credit === null && m6.add === null, `§16.4 (5): có ảnh gia đình → ảnh gia đình thắng ảnh Clevix (${JSON.stringify(m6)})`);
+    check(errors.length === 0, `§16.4 (5): không có lỗi trang (${errors.join(" | ") || "0"})`);
+  } finally {
+    await ctx.close();
+  }
+}

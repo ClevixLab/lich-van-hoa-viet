@@ -286,6 +286,8 @@ export async function renderPerson(root: HTMLElement, id: string, nav: Nav): Pro
     row("Tên hiệu / pháp danh", p.ten_hieu as string),
     dead ? row("Nơi an táng", p.noi_an_tang as string) : null,
     dead && mem ? row("Giỗ hết", `năm thứ ${mem.gio_het_nam as number} sau năm mất`) : null,
+    // YC-2026-10 (08 §16.2): "Ảnh mâm lễ: Đã có" / "Chưa có".
+    dead && mem ? row("Ảnh mâm lễ", typeof mem.tray_photo_id === "string" ? "Đã có" : "Chưa có") : null,
     row("Ghi chú", p.ghi_chu as string));
 
   const events = sn.events.filter((e) => (e.person_ids as string[]).includes(id))
