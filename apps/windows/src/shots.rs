@@ -338,7 +338,7 @@ fn steps(ui: &AppWindow, st: Rc<RefCell<State>>) -> Vec<Step> {
         p.invoke_edit_person();
         p.set_n_open(true);
     })));
-    screens.push(("nt-09b-sua-tep-dinh-kem", Rc::new(|ui: &AppWindow| People::get(ui).set_scroll_frac(0.62))));
+    screens.push(("nt-09b-sua-tep-dinh-kem", Rc::new(|ui: &AppWindow| People::get(ui).set_scroll_frac(0.86))));
     screens.push(("_nt-09c-ve", Rc::new(|ui: &AppWindow| People::get(ui).invoke_cancel_form())));
     {
         let ids = ids.clone();

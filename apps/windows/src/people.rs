@@ -354,13 +354,30 @@ pub fn store_open_message(e: &lvhv_ffi::LvhvDataError) -> String {
     }
 }
 
-/// Câu của khung chỉ đọc: thông báo của lõi + hướng dẫn xuất sao lưu.
+/// Câu của khung chỉ đọc (01 §7.1): lời của lõi, hướng dẫn xuất sao lưu, và dòng chi tiết kỹ thuật rút gọn (lõi gói cả
+/// câu lỗi SQL dài vào `message`; chỉ giữ dòng đầu, tối đa 100 ký tự).
 pub fn read_only_message(ms: &lvhv_ffi::MigrationStatus) -> String {
-    format!(
-        "{} Bấm \u{201c}Tạo tệp sao lưu\u{201d} để giữ toàn bộ dữ liệu trong một tệp có mật khẩu; khi có bản sửa, tệp này \
-         khôi phục được. Lịch và lời nhắc vẫn dùng bình thường; tạm thời chưa thêm hay sửa được hồ sơ.",
-        ms.message.clone().unwrap_or_else(|| "Chưa nâng cấp được dữ liệu. Dữ liệu cũ vẫn còn nguyên; ứng dụng đang ở chế độ chỉ đọc.".into())
-    )
+    let raw = ms.message.clone().unwrap_or_default();
+    let detail = raw
+        .split_once('(')
+        .map(|(_, r)| r.rsplit_once("). ").map_or(r, |(d, _)| d))
+        .unwrap_or("")
+        .lines()
+        .next()
+        .unwrap_or("")
+        .trim()
+        .trim_end_matches(" in")
+        .chars()
+        .take(100)
+        .collect::<String>();
+    let mut m = "Chưa nâng cấp được dữ liệu Người thân sang bản này. Dữ liệu cũ vẫn còn nguyên; ứng dụng đang ở chế độ chỉ đọc. \
+                 Bấm \u{201c}Tạo tệp sao lưu\u{201d} để giữ toàn bộ dữ liệu trong một tệp có mật khẩu; khi có bản sửa, tệp \
+                 này khôi phục được. Lịch và lời nhắc vẫn dùng bình thường; tạm thời chưa thêm hay sửa được hồ sơ."
+        .to_string();
+    if !detail.is_empty() {
+        m += &format!(" (Chi tiết kỹ thuật: {detail})");
+    }
+    m
 }
 
 pub fn ensure_store(ui: &AppWindow, ps: &mut PState) -> bool {

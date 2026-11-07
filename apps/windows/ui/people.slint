@@ -1014,31 +1014,37 @@ component AttLine inherits Rectangle {
     in property <int> index;
     in property <bool> editable;
     property <[string]> kinds: ["Ảnh tin báo tử", "Giấy chứng tử", "Khác"];
+    background: Theme.paper;
     border-width: 1px; border-color: Theme.rule; border-radius: 10px;
-    HorizontalLayout {
-        padding: 10px; spacing: 12px;
-        Rectangle {
-            width: 72px; height: 90px; border-radius: 6px; clip: true; background: Theme.paper2;
-            if root.item.has-thumb: Image { width: parent.width; height: parent.height; source: root.item.thumb; image-fit: contain; }
-            if root.item.pdf: T { text: "PDF"; size: 16; font-weight: 700; color: Theme.ink2; horizontal-alignment: center; vertical-alignment: center; }
-        }
-        VerticalLayout {
-            spacing: 6px; alignment: start; horizontal-stretch: 1;
-            T { text: root.item.name != "" ? root.item.name : (root.item.pdf ? "Tệp PDF" : "Ảnh"); size: 15; font-weight: 600; wrap: word-wrap; }
-            if !root.editable: T { text: root.kinds[root.item.kind] + (root.item.pdf ? " · Tệp PDF được lưu nguyên bản" : ""); size: 14; color: Theme.ink2; }
-            if root.editable: Choice {
-                items: root.kinds; current: root.item.kind; group: "Loại tệp " + (root.index + 1);
-                picked(k) => { People.set-att-kind(root.index, k); }
-            }
-            if root.editable && root.item.pdf: T { text: "Tệp PDF được lưu nguyên bản"; size: 14; color: Theme.ink3; }
-            HorizontalLayout {
-                spacing: 8px; alignment: start;
-                if root.item.pdf: Btn {
-                    text: "Mở bằng ứng dụng xem PDF"; kind: "outline"; size: 14;
-                    accessible-label: "Mở tệp đính kèm " + (root.index + 1);
-                    clicked => { if (root.editable) { People.open-attachment(root.index); } else { People.open-v-attachment(root.index); } }
+    VerticalLayout {
+        HorizontalLayout {
+            padding: 10px; spacing: 12px;
+            VerticalLayout {
+                alignment: start;
+                Rectangle {
+                    width: 72px; height: 90px; border-radius: 6px; clip: true; background: Theme.paper2;
+                    if root.item.has-thumb: Image { width: parent.width; height: parent.height; source: root.item.thumb; image-fit: contain; }
+                    if root.item.pdf: Text { text: "PDF"; font-size: 16px * Theme.scale; font-weight: 700; color: Theme.ink2; width: parent.width; height: parent.height; horizontal-alignment: center; vertical-alignment: center; }
                 }
-                if root.editable: Btn { text: "Bỏ tệp"; size: 14; accessible-label: "Bỏ tệp đính kèm " + (root.index + 1); clicked => { People.drop-attachment(root.index); } }
+            }
+            VerticalLayout {
+                spacing: 6px; alignment: start; horizontal-stretch: 1; min-width: 240px;
+                T { text: root.item.name != "" ? root.item.name : (root.item.pdf ? "Tệp PDF" : "Ảnh"); size: 15; font-weight: 600; }
+                if !root.editable: T { text: root.kinds[root.item.kind] + (root.item.pdf ? " · Tệp PDF được lưu nguyên bản" : ""); size: 14; color: Theme.ink2; }
+                if root.editable: Choice {
+                    items: root.kinds; current: root.item.kind; group: "Loại tệp " + (root.index + 1);
+                    picked(k) => { People.set-att-kind(root.index, k); }
+                }
+                if root.editable && root.item.pdf: T { text: "Tệp PDF được lưu nguyên bản"; size: 14; color: Theme.ink3; }
+                HorizontalLayout {
+                    spacing: 8px; alignment: start;
+                    if root.item.pdf: Btn {
+                        text: "Mở bằng ứng dụng xem PDF"; kind: "outline"; size: 14;
+                        accessible-label: "Mở tệp đính kèm " + (root.index + 1);
+                        clicked => { if (root.editable) { People.open-attachment(root.index); } else { People.open-v-attachment(root.index); } }
+                    }
+                    if root.editable: Btn { text: "Bỏ tệp"; size: 14; accessible-label: "Bỏ tệp đính kèm " + (root.index + 1); clicked => { People.drop-attachment(root.index); } }
+                }
             }
         }
     }
