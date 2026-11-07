@@ -58,6 +58,17 @@ pub(crate) fn count_label(ui: &AppWindow, label: &str) -> usize {
     ElementHandle::find_by_accessible_label(ui, label).count()
 }
 
+/// Số phần tử có nhãn trợ năng bắt đầu bằng `prefix`.
+pub(crate) fn ui_find_prefix(ui: &AppWindow, prefix: &str) -> usize {
+    use i_slint_backend_testing::ElementRoot;
+    let prefix = prefix.to_string();
+    ui.root_element()
+        .query_descendants()
+        .match_predicate(move |e| e.accessible_label().is_some_and(|l| l.starts_with(prefix.as_str())))
+        .find_all()
+        .len()
+}
+
 /// Cuộn tờ lịch/trang đang mở sao cho phần tử nằm trong khung nhìn (như người dùng cuộn chuột).
 pub(crate) fn scroll_into_view(ui: &AppWindow, label: &str) {
     for n in 0..80 {
@@ -314,6 +325,17 @@ fn all_clickables_work() {
     // --- Giới thiệu: nút cập nhật gọi callback; Nguồn quy tắc và quay lại ---
     click(&ui, &by_label(&ui, "Giới thiệu"));
     assert_eq!(ui.get_tab(), 3);
+    // Nội dung như bản web 0.2.1: ba tiêu đề nhỏ, 8 mục "Ứng dụng giúp bạn", 6 bước, mẹo về thông báo của Windows.
+    for h in ["Ứng dụng giúp bạn", "Bắt đầu trong một phút", "Mẹo để không lỡ ngày nào"] {
+        assert_eq!(count_label(&ui, h), 1, "{h}");
+    }
+    for t in ["Tờ lịch mỗi ngày", "Chọn ngày tốt", "Đổi ngày", "Người thân", "Nhắc trước", "Xem cả nhà có việc gì", "Trang tưởng niệm ngày giỗ", "Thông tin báo tử"] {
+        assert!(count_label(&ui, t) >= 1, "mục {t}");
+    }
+    for start in ["Mở mục Người thân, chọn Hồ sơ", "Nhập họ tên, cách gọi", "Chọn nhắc trước mấy ngày", "Mở Sắp tới để xem", "Đúng ngày giỗ, bấm", "Vào Sao lưu để cất"] {
+        assert_eq!(ui_find_prefix(&ui, start), 1, "bước: {start}");
+    }
+    assert_eq!(ui_find_prefix(&ui, "Mỗi lần bạn mở ứng dụng, các lời nhắc sắp tới (tối đa 64)"), 1);
     let called = std::rc::Rc::new(std::cell::Cell::new(false));
     let c2 = called.clone();
     g.on_check_update(move || c2.set(true));
