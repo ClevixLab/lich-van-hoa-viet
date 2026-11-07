@@ -46,6 +46,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -81,7 +82,7 @@ private val INK_SOFT = Color(0xFFE9DDD0)
 const val SMOKE_MS = 120_000L
 
 /**
- * Màn hình tưởng niệm (08 §3.9, R8, R9): bia, ảnh, mâm lễ đơn giản, ba nén hương có khói nhẹ. Không âm thanh,
+ * Màn hình tưởng niệm (08 §3.9, R8, R9): bia, ảnh, nến và bát hương ba nén có khói nhẹ (không mâm vẽ — 08 §16). Không âm thanh,
  * không chia sẻ. Không đọc thông tin báo tử (R-PRIV-2). Giảm chuyển động → khói tĩnh, không có nút.
  */
 @Composable
@@ -199,15 +200,23 @@ private fun Stele(quanHe: String, hoTen: String, displayName: String, tenHieu: S
     }
 }
 
-/** Bàn thờ: ba nén hương + khói (hoặc nến, hoa khi Công giáo), bát hương, mâm ngũ quả, hai nến. Vẽ trong mã. */
+/** Nhãn trợ năng của hàng bàn thờ (08 §16.1) — kiểm thử dựa vào đây để khẳng định không có mâm. */
+const val ALTAR_DESC = "Bàn thờ với hai cây nến và bát hương ba nén hương"
+const val ALTAR_DESC_NO_INCENSE = "Bàn thờ với hai cây nến và bát hương"
+const val ALTAR_DESC_CATHOLIC = "Bàn thờ với hai cây nến và bình hoa"
+
+/**
+ * Hàng bàn thờ dưới bia (08 §16.1, YC-2026-10): nến · bát hương ba nén (có khói) · nến; Công giáo: nến · hoa · nến, không
+ * hương. **Không** vẽ mâm quả hay lọ hoa — mâm chỉ hiện khi có ảnh mâm lễ (của gia đình hoặc gói ảnh Clevix đã duyệt).
+ */
 @Composable
 private fun Altar(incense: Boolean, catholic: Boolean, animate: Boolean) {
     val phase = if (animate) {
         val t = rememberInfiniteTransition(label = "khoi")
         t.animateFloat(0f, 1f, infiniteRepeatable(tween(4000, easing = LinearEasing), RepeatMode.Restart), label = "pha").value
     } else 0.35f
-    val desc = if (catholic) "Bàn thờ với hai cây nến và bình hoa" else "Bàn thờ với bát hương ba nén hương, mâm ngũ quả và hai cây nến"
-    Canvas(Modifier.fillMaxWidth().widthIn(max = 420.dp).height(220.dp).semantics { contentDescription = desc }) {
+    val desc = when { catholic -> ALTAR_DESC_CATHOLIC; incense -> ALTAR_DESC; else -> ALTAR_DESC_NO_INCENSE }
+    Canvas(Modifier.fillMaxWidth().widthIn(max = 420.dp).height(220.dp).testTag("altar").semantics { contentDescription = desc }) {
         val w = size.width
         val h = size.height
         val cx = w / 2f
@@ -215,8 +224,8 @@ private fun Altar(incense: Boolean, catholic: Boolean, animate: Boolean) {
         // Mặt bàn gỗ.
         drawRoundRect(WOOD, Offset(w * 0.04f, tableY), Size(w * 0.92f, h * 0.09f), CornerRadius(6f, 6f))
         drawRect(WOOD_DARK, Offset(w * 0.1f, tableY + h * 0.09f), Size(w * 0.8f, h * 0.06f))
-        // Hai cây nến.
-        for (fx in listOf(0.12f, 0.88f)) candle(Offset(w * fx, tableY), h)
+        // Hai cây nến hai bên, cân đối quanh bát hương (hoặc bình hoa).
+        for (fx in listOf(0.24f, 0.76f)) candle(Offset(w * fx, tableY), h)
         if (catholic) {
             // Bình hoa.
             drawRoundRect(BRASS, Offset(cx - 18f, tableY - 46f), Size(36f, 46f), CornerRadius(8f, 8f))
@@ -225,12 +234,6 @@ private fun Altar(incense: Boolean, catholic: Boolean, animate: Boolean) {
             }
             return@Canvas
         }
-        // Mâm ngũ quả bên phải.
-        val tx = w * 0.68f
-        drawOval(BRASS, Offset(tx - 52f, tableY - 14f), Size(104f, 18f))
-        val fruits = listOf(Color(0xFFD9822B), Color(0xFF7FA34A), Color(0xFFE0B13A), Color(0xFFC0463A), Color(0xFF9DBB55))
-        fruits.forEachIndexed { i, c -> drawCircle(c, 15f, Offset(tx - 34f + i * 17f, tableY - 22f - (if (i % 2 == 1) 10f else 0f))) }
-        drawCircle(Color(0xFFE0B13A), 15f, Offset(tx, tableY - 44f))
         // Bát hương ở giữa.
         val bowlTop = tableY - 40f
         drawRoundRect(BRASS, Offset(cx - 40f, bowlTop), Size(80f, 40f), CornerRadius(14f, 14f))
