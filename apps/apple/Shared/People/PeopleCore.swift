@@ -85,7 +85,25 @@ enum PeoplePaths {
             v.isExcludedFromBackup = true
             if (try? u.setResourceValues(v)) != nil { done.append(u) }
         }
+        protectPhotos(dir)
         return done
+    }
+
+    /// Ảnh (và sau này tệp đính kèm) chỉ đọc khi ứng dụng đang mở → lớp bảo vệ `.complete` (BM2-20). Giữ mặc định cho
+    /// `lvhv.sqlite` vì lập lịch lại thông báo có thể chạy khi máy còn khóa.
+    static func protectPhotos(_ dir: URL) {
+        #if os(iOS)
+        let fm = FileManager.default
+        for sub in ["photos", "attachments"] {
+            let d = dir.appendingPathComponent(sub, isDirectory: true)
+            guard fm.fileExists(atPath: d.path) else { continue }
+            try? fm.setAttributes([.protectionKey: FileProtectionType.complete], ofItemAtPath: d.path)
+            for f in (try? fm.contentsOfDirectory(atPath: d.path)) ?? [] {
+                try? fm.setAttributes([.protectionKey: FileProtectionType.complete],
+                                      ofItemAtPath: d.appendingPathComponent(f).path)
+            }
+        }
+        #endif
     }
 }
 

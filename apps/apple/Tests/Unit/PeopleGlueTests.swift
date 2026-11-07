@@ -326,6 +326,25 @@ final class PeopleGlueTests: XCTestCase {
         }
     }
 
+    /// BM2-10: ảnh khổng lồ không được giải mã đầy đủ; ảnh thường được lấy mẫu xuống ≤ 2048.
+    func testDisplayDecodeIsPixelBounded() {
+        let big = jpegWithMetadata(width: 13_000, height: 40)
+        XCTAssertNil(PhotoProcessor.cgImage(big), "quá 12 000 px → không giải mã")
+        let normal = jpegWithMetadata(width: 4000, height: 3000)
+        let img = PhotoProcessor.cgImage(normal)
+        XCTAssertNotNil(img)
+        XCTAssertLessThanOrEqual(max(img?.width ?? 0, img?.height ?? 0), 2048)
+    }
+
+    /// §5.3: tệp tạm của Quick Look có tên chung và bị xóa.
+    func testAttachmentTempFileIsNeutralAndCleared() throws {
+        let u = try AttachmentTemp.write(Data("%PDF-1.4\n%%EOF".utf8), pdf: true)
+        XCTAssertEqual(u.lastPathComponent, "TepDinhKem.pdf")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: u.path))
+        AttachmentTemp.clear()
+        XCTAssertFalse(FileManager.default.fileExists(atPath: u.path))
+    }
+
     func testIcsPreviewLines() {
         let ics = "BEGIN:VCALENDAR\r\nBEGIN:VEVENT\r\nDTSTART;VALUE=DATE:20260728\r\nSUMMARY:Giỗ đầu Ông\r\n  Nguyễn Văn A\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n"
         XCTAssertEqual(IcsPreview.lines(ics), ["28/07/2026 — Giỗ đầu Ông Nguyễn Văn A"])

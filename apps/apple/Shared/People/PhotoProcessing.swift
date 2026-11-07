@@ -82,9 +82,25 @@ enum PhotoProcessor {
         return out as Data
     }
 
-    static func cgImage(_ data: Data) -> CGImage? {
-        guard let src = CGImageSourceCreateWithData(data as CFData, nil) else { return nil }
-        return CGImageSourceCreateImageAtIndex(src, 0, nil)
+    /// Giải mã để hiển thị, có trần điểm ảnh (BM2-10, B6 mục 3): đọc kích thước từ phần đầu tệp, từ chối ảnh khổng
+    /// lồ, rồi lấy mẫu xuống bằng ImageIO (không giải mã đầy đủ ảnh gốc).
+    static func cgImage(_ data: Data, maxPixel: Int = 2048) -> CGImage? {
+        guard let src = CGImageSourceCreateWithData(data as CFData, [kCGImageSourceShouldCache: false] as CFDictionary),
+              CGImageSourceGetCount(src) > 0 else { return nil }
+        if let props = CGImageSourceCopyPropertiesAtIndex(src, 0, nil) as? [CFString: Any] {
+            let w = (props[kCGImagePropertyPixelWidth] as? NSNumber)?.intValue ?? 0
+            let h = (props[kCGImagePropertyPixelHeight] as? NSNumber)?.intValue ?? 0
+            if w <= 0 || h <= 0 || w > 12_000 || h > 12_000 || w * h > 50_000_000 { return nil }
+        } else {
+            return nil
+        }
+        let opts: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceThumbnailMaxPixelSize: maxPixel,
+            kCGImageSourceShouldCacheImmediately: true,
+        ]
+        return CGImageSourceCreateThumbnailAtIndex(src, 0, opts as CFDictionary)
     }
 }
 
@@ -146,4 +162,21 @@ final class PhotoCache {
         cache.setObject(CGImageBox(img), forKey: id as NSString)
         return img
     }
+}
+
+/// Tệp tạm để xem tệp đính kèm bằng Quick Look (RA-SOAT-BAO-MAT-V02 §5.3): thư mục `tmp/att/` của hộp cát, tên chung
+/// (`TepDinhKem.pdf` / `.jpg`), không lộ tên người hay tên gốc; xóa khi đóng xem trước và khi mở ứng dụng.
+/// TODO(core2): nối vào khối "Tệp đính kèm" khi lõi có `attachments` (YC-2026-07, PR #28).
+enum AttachmentTemp {
+    static var dir: URL { FileManager.default.temporaryDirectory.appendingPathComponent("att", isDirectory: true) }
+
+    static func write(_ data: Data, pdf: Bool) throws -> URL {
+        clear()
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let u = dir.appendingPathComponent(pdf ? "TepDinhKem.pdf" : "TepDinhKem.jpg")
+        try data.write(to: u, options: [.atomic])
+        return u
+    }
+
+    static func clear() { try? FileManager.default.removeItem(at: dir) }
 }

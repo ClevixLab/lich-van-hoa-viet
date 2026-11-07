@@ -10,6 +10,7 @@ struct LichVietApp: App {
         #endif
         // Chạm vào thông báo nhắc → mở "Người thân" và lập lịch lại (02 §7.4).
         UNUserNotificationCenter.current().delegate = NotificationDelegate.shared
+        AttachmentTemp.clear() // tệp tạm xem tệp đính kèm còn sót từ lần trước (§5.3)
     }
 
     var body: some Scene {

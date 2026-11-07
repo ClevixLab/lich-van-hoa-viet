@@ -90,9 +90,11 @@ struct RootView: View {
         .background(C.wall.ignoresSafeArea())
         .environment(\.textScale, scales[min(max(size, 1), 3) - 1])
         .preferredColorScheme(scheme)
-        .tint(C.redInk) // chữ màu nhấn đủ tương phản ở sáng và tối (TKN-I-01); redDeep chỉ làm nền nút đặc
+        .tint(C.redInk)
+        .privacyCover() // chữ màu nhấn đủ tương phản ở sáng và tối (TKN-I-01); redDeep chỉ làm nền nút đặc
         .sheet(isPresented: $monthOpen) {
             MonthSheet(selected: date, today: today, onPick: { d in monthOpen = false; openDay(d) }, onClose: { monthOpen = false })
+                .privacyCover()
                 .environment(\.textScale, scales[min(max(size, 1), 3) - 1])
                 .preferredColorScheme(scheme)
                 #if os(macOS)

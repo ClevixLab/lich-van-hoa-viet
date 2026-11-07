@@ -112,7 +112,7 @@ struct BackupSection: View {
             }
         }
         .sheet(isPresented: $icsOpen) {
-            IcsConfirmSheet().frameForMac()
+            IcsConfirmSheet().frameForMac().privacyCover()
         }
         .sheet(isPresented: $exportOpen) {
             BackupExportSheet { data in
@@ -121,6 +121,7 @@ struct BackupSection: View {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { exporting = true }
             }
             .frameForMac()
+            .privacyCover()
         }
         .fileExporter(isPresented: $exporting, document: exportDoc, contentType: .data,
                       defaultFilename: "LichVanHoaViet-saoluu-\(m.today.iso).lvhv") { r in
@@ -153,6 +154,7 @@ struct BackupSection: View {
                 importPassword = ""
             }
             .frameForMac()
+            .privacyCover()
         }
     }
 
@@ -202,6 +204,7 @@ struct BackupSection: View {
             } catch {
                 importError = Core.message(error)
             }
+            importPassword = "" // BM2-17: không giữ mật khẩu sau khi dùng, kể cả khi lỗi
             opening = false
         }
     }
@@ -600,7 +603,8 @@ extension View {
     @ViewBuilder
     func passwordContent() -> some View {
         #if os(iOS)
-        self.textContentType(.password).textInputAutocapitalization(.never).autocorrectionDisabled(true)
+        // Không đặt textContentType(.password): hệ điều hành sẽ đề nghị lưu mật khẩu vào Keychain (BM2-14, BK-I5).
+        self.textInputAutocapitalization(.never).autocorrectionDisabled(true)
         #else
         self.autocorrectionDisabled(true)
         #endif

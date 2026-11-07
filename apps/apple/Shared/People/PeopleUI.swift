@@ -665,3 +665,30 @@ struct OccIconView: View {
         }
     }
 }
+
+// MARK: - Che nội dung trong ảnh đa nhiệm (BM2-04)
+
+/// Khi ứng dụng không còn ở tiền cảnh (`inactive` / `background`), phủ một lớp nền + tên ứng dụng lên nội dung, để
+/// ảnh chụp của bộ chuyển ứng dụng (và `Library/Caches/Snapshots`) không chứa thông tin báo tử, ảnh giấy tờ hay ô mật
+/// khẩu. Áp cho cửa sổ chính và từng tấm (sheet) vì tấm nằm ở lớp riêng.
+struct PrivacyCover: ViewModifier {
+    @Environment(\.scenePhase) private var phase
+    func body(content: Content) -> some View {
+        content.overlay {
+            if phase != .active {
+                ZStack {
+                    C.wall.ignoresSafeArea()
+                    VStack(spacing: 10) {
+                        Image(systemName: "calendar").font(.system(size: 44, weight: .semibold)).foregroundStyle(C.redInk)
+                        Text("Lịch và Văn hóa Việt").serif(22, .semibold).foregroundStyle(C.ink)
+                    }
+                }
+                .accessibilityHidden(true)
+            }
+        }
+    }
+}
+
+extension View {
+    func privacyCover() -> some View { modifier(PrivacyCover()) }
+}
