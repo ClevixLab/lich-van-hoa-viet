@@ -1,20 +1,40 @@
 // Dữ liệu và cách diễn đạt của mô-đun Người thân (docs/v0.2/08). Mọi tính toán giỗ/sinh nhật/nhắc/.ics gọi lõi
 // tsport (memorial*), không viết lại thuật toán ở giao diện (08 §8.1). Mô-đun này chỉ được nạp lười.
+import { testFlag } from "../testhooks";
 import * as M from "../../../tsport/src/memorial.ts";
 import { DEFAULT_METHOD } from "../gen/content";
 import { weekday as coreWeekday } from "../../../tsport/src/jd.ts";
 import { WEEKDAY, WEEKDAY_SHORT } from "../format";
-import { openStore, type Store, type JsonObj } from "../store/index";
+import { displayCapitalize, openStore, type Store, type JsonObj } from "../store/index";
 
 export { M };
 export type { JsonObj, Store };
 export type Ymd = M.Ymd;
 
 let storeP: Promise<Store> | null = null;
+
+// TKN3-P-01: chế độ chỉ đọc (04 B5 mục 3 — chuyển đổi lỗi). index.ts đặt cờ từ `migrationStatus()` trước mỗi lần dựng
+// trang; các trang ẩn mọi việc ghi (thêm, sửa, xóa, "Cập nhật: đã mất", khôi phục, cài đặt nhắc) — như Android và
+// Windows. Vẫn xem được, tạo tệp sao lưu và xuất .ics được.
+let readOnlyMode = false;
+export function setReadOnly(v: boolean): void { readOnlyMode = v; }
+export function isReadOnly(): boolean { return readOnlyMode; }
+// MA3C-30-02: bản dựng kiểm thử cho kiểm thử R14 dùng ĐÚNG kho mà mô-đun Người thân đang dùng (không tự dựng Store).
+if (__LVHV_TEST_HOOKS__) (globalThis as { __lvhvTest?: unknown }).__lvhvTest = { peopleStore: () => store() };
+
+/** Phần tử ghi dữ liệu: ở chế độ chỉ đọc thì không dựng. */
+export function w<T>(el: T): T | null { return readOnlyMode ? null : el; }
 /** Một kết nối kho dùng chung cho cả mô-đun. */
 export function store(): Promise<Store> {
-  return (storeP ??= openStore().catch((e) => { storeP = null; throw e; }));
+  // Móc kiểm thử R14 (ca chuyển đổi lỗi, pwa/test/upgrade.mjs) — CHỈ ở bản dựng kiểm thử (LVHV_TEST_HOOKS=1,
+  // src/testhooks.ts). Bản dựng chính: __LVHV_TEST_HOOKS__ = false → esbuild bỏ hẳn, trang không đặt được cờ nào.
+  const opts = __LVHV_TEST_HOOKS__ ? { forceMigrationFailure: testFlag("__lvhvFailMigration") } : {};
+  return (storeP ??= openStore(indexedDB, opts).catch((e) => { storeP = null; throw e; }));
 }
+
+/** Hiển thị `danh_xung` / `quan_he` đã lưu: viết hoa chữ đầu bằng hàm của lõi (`display_capitalize`) — tệp khôi phục
+ *  từ bản cũ giữ nguyên byte nên có thể còn chữ thường. */
+export const dispCap = (s: string): string => displayCapitalize(s);
 
 export const cal = (): M.Cal => M.Cal.get(DEFAULT_METHOD);
 
@@ -83,8 +103,10 @@ export function lunarOf(d: Ymd): string {
 
 export function displayName(p: JsonObj): string {
   // YC-2026-07: viết hoa chữ đầu khi hiển thị (dữ liệu khôi phục từ tệp cũ giữ nguyên byte) — cùng lõi.
-  const dx = (p.danh_xung as string) ?? "";
-  return dx ? `${M.upperFirst(dx)} ${p.ho_ten as string}` : (p.ho_ten as string);
+  // #38: cắt khoảng trắng khi hiển thị (lõi cắt lúc lưu; tệp khôi phục từ bản cũ có thể còn khoảng trắng).
+  const dx = displayCapitalize((p.danh_xung as string) ?? "");
+  const ten = ((p.ho_ten as string) ?? "").normalize("NFC").trim();
+  return dx ? `${dx} ${ten}` : ten;
 }
 
 export type ItemKind = "gio" | "tt" | "sn" | "ev";

@@ -1,6 +1,6 @@
 // Biểu mẫu: thêm/sửa người đã mất (08 §3.4), người đang sống (08 §3.5), sự kiện (08 §3.7).
 import { append, clear, h } from "../dom";
-import { buildPerson, danhXungSuggestions, normalizePersonNames, quanHeSuggestions, validate } from "../store/index";
+import { buildPerson, capitalizeFirst, danhXungSuggestions, normalizePersonNames, quanHeSuggestions, validate } from "../store/index";
 import { M, cal, clean, cpLen, displayName, lunarText, nowTs, snap, store, today, tuoiText, uuid, type JsonObj, type Ymd } from "./core";
 import { drawPhoto, processPhoto, type Processed } from "./photo";
 import { noticeSection } from "./notice";
@@ -108,15 +108,19 @@ export async function renderPersonForm(root: HTMLElement, kindIn: "deceased" | "
   const fillDx = () => { clear(dl); for (const x of danhXungSuggestions(dead, gt)) dl.append(h("option", { value: x })); };
   fillDx();
   const fDx = textField("pf-dx", "Cách gọi (đứng trước tên)", (old?.danh_xung as string) ?? "", 40, { list: "pf-dx-list", hint: dead ? "ví dụ: Ông, Bà, Cụ, Bác" : "ví dụ: Anh, Chị, Cô, Chú", what: "Cách gọi" });
-  const gtGroup = h("fieldset", { class: "field radios", id: "pf-gt" }, h("legend", null, "Giới tính"),
-    ...([["nam", "Nam"], ["nu", "Nữ"], ["", "Không ghi"]] as const).map(([v, t]) => {
+  // TKN3-P-02: một hàng nút viên thuốc như "Nhập theo dương lịch / âm lịch", vẫn là nhóm `radio` thật (trợ năng, phím mũi
+  // tên); bỏ viền `fieldset` mặc định.
+  const gtGroup = h("fieldset", { class: "field gtseg", id: "pf-gt" }, h("legend", null, "Giới tính"),
+    h("div", { class: "gtopts" }, ...([["nam", "Nam"], ["nu", "Nữ"], ["", "Không ghi"]] as const).flatMap(([v, t]) => {
       const r = h("input", { type: "radio", name: "pf-gt", id: `pf-gt-${v || "none"}`, value: v, checked: (gt ?? "") === v }) as HTMLInputElement;
       r.addEventListener("change", () => { if (r.checked) { gt = v || null; fillDx(); } });
-      return h("label", { class: "check", for: `pf-gt-${v || "none"}` }, r, h("span", null, t));
-    }));
+      return [h("span", { class: "gtopt" }, r, h("label", { for: `pf-gt-${v || "none"}` }, t))];
+    })));
   const fTen = textField("pf-ten", "Họ và tên", (old?.ho_ten as string) ?? "", 120, { required: true, what: "Họ tên" });
   const fHieu = textField("pf-hieu", "Tên hiệu / pháp danh", (old?.ten_hieu as string) ?? "", 120, { what: "Tên hiệu" });
   const fQh = textField("pf-qh", "Quan hệ với bạn", (old?.quan_he as string) ?? "", 120, { list: "pf-qh-list", hint: dead ? "ví dụ: Ông nội, Bà ngoại, Bố" : "ví dụ: Con trai, Em gái", what: "Quan hệ" });
+  // YC-2026-07: viết hoa chữ cái đầu ngay khi rời ô (hàm của lõi; lưu cũng chuẩn hóa như vậy).
+  for (const f of [fDx, fQh]) f.input.addEventListener("blur", () => { const v = capitalizeFirst(f.input.value); if (v !== f.input.value) f.input.value = v; });
   const qhList = h("datalist", { id: "pf-qh-list" }, ...quanHeSuggestions(dead).map((x) => h("option", { value: x })));
   const fNote = textField("pf-note", "Ghi chú", (old?.ghi_chu as string) ?? "", 2000, { multiline: true });
 
