@@ -1,0 +1,5 @@
+msiexec /i thoát mã 0
+Lối tắt Start Menu: C:\Users\runneradmin\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Lich va Van hoa Viet.lnk
+Giao thức lichviet: "C:\Users\runneradmin\AppData\Local\Programs\LichVanHoaViet\LichViet.exe" "%1"
+--kiem-thong-bao thoát mã 0
+Thông báo đặt lịch: ĐẶT ĐƯỢC, XOAY VÒNG ỔN ĐỊNH. Trạng thái Unknown("0x80070490"); lvhv:kiem-thu:co-dong-phu: đọc lại đúng ("Kiểm thử\nThông báo thử của Lịch Việt"); lvhv:kiem-thu:khong-dong-phu: đọc lại đúng ("Kiểm thử"); Lần 1: Scheduled { pending: 23, added: 23, removed: 0, confirmed: false }; Lần 2: Scheduled { pending: 23, added: 0, removed: 0, confirmed: false }
