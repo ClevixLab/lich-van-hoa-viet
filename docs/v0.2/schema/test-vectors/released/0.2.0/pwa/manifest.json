@@ -1,0 +1,16 @@
+{
+  "fixture": "0.2.0/pwa",
+  "created_by": "PWA 0.2.0 (VERSION 0.2.0, build bf03033-dirty) — tạo qua giao diện của chính bản dựng phát hành, commit bf03033; pwa/test/tools/freeze-pwa-release.mjs",
+  "created_at": "2026-11-07",
+  "idb_version": 3,
+  "password": "mật khẩu thử nghiệm",
+  "persons": 4,
+  "has_tray_photo": false,
+  "description": "Kho IndexedDB thật của bản web: A người đã mất (ảnh chân dung, lời tưởng niệm), B người đã mất nhập âm lịch, C người đang sống (sinh nhật âm, 2 sự kiện), D người đang sống → đã mất (thông tin báo tử, tệp ảnh + PDF); nhắc sao lưu 60 ngày; tệp sao lưu tạo bằng nút của giao diện. Không bao giờ sửa.",
+  "files": {
+    "indexeddb.json": "388212b3f9431adaa4eb4d7aa5fca65df14267f8b8bd3ad8fe0a169539fbcb95",
+    "backup.lvhv": "af7b111e783e42896fbe52733be222be9d644f8e94dd0d3922c38979e74a81f6",
+    "store-snapshot.json": "f7b5c7b158559559da1fdd3b6d92b2558e1fc9a77c0d4c5b88748511d20156e7",
+    "README.md": "0f5b850754b6ebf0e3f0ca2cbc595656a357180403763c54dc3bce23e396006e"
+  }
+}
