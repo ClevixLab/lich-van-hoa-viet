@@ -362,7 +362,23 @@ export async function runPeople({ browser, BASE, ORIGIN, ROOT, SHOTS, check, met
     check(!(await page.title()).includes("Nguyễn"), "O-9: tiêu đề tab tưởng niệm không có tên người");
     check(await page.locator(".mem-scene.lit").count() === 0 && await page.locator("#mem-toggle").isHidden(), "R8 (d): giảm chuyển động → khói tĩnh, không có nút");
     await page.waitForSelector(".mem-photo canvas[data-drawn]");
+    // YC-2026-10 (08 §16.1, §16.4 (1)): không ảnh mâm lễ, gói Clevix rỗng → không có phần tử mâm; nến · bát hương · nến.
+    const altar1 = await page.evaluate(() => ({ tray: document.querySelectorAll(".tray, .mem-tray, .altar-row svg.tray").length, vase: document.querySelectorAll(".altar .vase").length,
+      candles: document.querySelectorAll(".altar-row .candle").length, bowl: document.querySelectorAll(".altar-row .bowl").length,
+      order: [...document.querySelector(".altar-row").children].map((e) => e.getAttribute("class")) }));
+    check(altar1.tray === 0 && altar1.vase === 0 && altar1.candles === 2 && altar1.bowl === 1 && JSON.stringify(altar1.order) === JSON.stringify(["candle", "bowl-wrap", "candle"]),
+      `YC-2026-10 (1): không có mâm, không lọ hoa; hàng bàn thờ = nến · bát hương · nến (${JSON.stringify(altar1)})`);
     await shot("memorial-360");
+    // YC-2026-10 (4): Công giáo (tray_style = cong_giao, chỉ đến từ sao lưu) → nến · hoa · nến, không hương, không mâm.
+    const memB = await store(`async (s) => (await s.person("${idB}")).memorial`);
+    await store(`async (s) => { const p = await s.person("${idB}"); await s.putPerson({ ...p, memorial: { ...p.memorial, tray_style: "cong_giao", incense: false } }); }`);
+    await go(`#/nguoi-than/tuong-niem/${idB}`, ".bia-name");
+    const altar4 = await page.evaluate(() => ({ tray: document.querySelectorAll(".tray, .mem-tray").length, vase: document.querySelectorAll(".altar-row .vase").length,
+      candles: document.querySelectorAll(".altar-row .candle").length, incense: document.querySelectorAll(".incense, .bowl, .smoke").length }));
+    check(altar4.tray === 0 && altar4.vase === 1 && altar4.candles === 2 && altar4.incense === 0, `YC-2026-10 (4): Công giáo → nến · hoa · nến, không hương, không mâm (${JSON.stringify(altar4)})`);
+    await page.evaluate(() => document.querySelector(".altar").scrollIntoView({ block: "center" }));
+    await shot("memorial-catholic-360", false);
+    await store(`async (s) => { const p = await s.person("${idB}"); await s.putPerson({ ...p, memorial: ${JSON.stringify(memB)} }); }`);
 
     // ---------- L8: .ics ----------
     await go("#/nguoi-than/sao-luu", "#ics-open");

@@ -20,20 +20,6 @@ const BOWL = `<svg viewBox="0 0 120 74"><defs>
 <circle cx="60" cy="44" r="7" fill="none" stroke="#e2bb6a" stroke-width="1.5" opacity=".75"/>
 <path d="M56 44h8M60 40v8" stroke="#e2bb6a" stroke-width="1.3" opacity=".75"/></svg>`;
 
-const TRAY = `<svg viewBox="0 0 150 104"><defs>
-<radialGradient id="mpo" cx=".35" cy=".35"><stop offset="0" stop-color="#b9d77a"/><stop offset="1" stop-color="#5f8a2a"/></radialGradient>
-<radialGradient id="mor" cx=".35" cy=".35"><stop offset="0" stop-color="#ffc46b"/><stop offset="1" stop-color="#e07a12"/></radialGradient>
-<radialGradient id="mdr" cx=".35" cy=".35"><stop offset="0" stop-color="#ff7aa8"/><stop offset="1" stop-color="#c2185b"/></radialGradient>
-<linearGradient id="mpl" x1="0" x2="1"><stop offset="0" stop-color="#7a1414"/><stop offset=".5" stop-color="#c0392b"/><stop offset="1" stop-color="#7a1414"/></linearGradient></defs>
-<path d="M58 84h34l8 16H50z" fill="#7a1414"/><rect x="66" y="74" width="18" height="12" fill="#5e0f0f"/>
-<path d="M22 50q53 42 106 0" fill="#f2c94c" stroke="#a37b12" stroke-width="1.5"/>
-<path d="M30 54q45 30 90 0" fill="none" stroke="#a37b12" stroke-width="1.2" opacity=".6"/>
-<circle cx="75" cy="38" r="21" fill="url(#mpo)"/>
-<circle cx="46" cy="50" r="12" fill="url(#mor)"/><circle cx="104" cy="50" r="12" fill="url(#mor)"/>
-<circle cx="58" cy="26" r="9" fill="url(#mor)"/><circle cx="93" cy="27" r="10" fill="url(#mdr)"/>
-<path d="M72 17q3-6 8-6" stroke="#4d6b1f" stroke-width="2" fill="none"/>
-<ellipse cx="75" cy="72" rx="58" ry="8" fill="url(#mpl)"/></svg>`;
-
 const CANDLE = `<svg viewBox="0 0 30 110"><defs><linearGradient id="mcs" x1="0" x2="1"><stop offset="0" stop-color="#7a4d1c"/><stop offset=".5" stop-color="#e2bb6a"/><stop offset="1" stop-color="#7a4d1c"/></linearGradient>
 <radialGradient id="mfl" cx=".5" cy=".6"><stop offset="0" stop-color="#fff6c8"/><stop offset=".55" stop-color="#ffc24a"/><stop offset="1" stop-color="#ff7a1a" stop-opacity="0"/></radialGradient></defs>
 <ellipse cx="15" cy="14" rx="9" ry="13" fill="url(#mfl)" opacity=".85"/><path d="M15 6q-4 8 0 14q4-6 0-14z" fill="#fff3b0"/>
@@ -104,11 +90,11 @@ export async function renderMemorial(root: HTMLElement, id: string): Promise<voi
       h("p", { class: "bia-years" }, ...years),
       age ? h("p", { class: "bia-age" }, age) : null),
     h("div", { class: "altar", "aria-hidden": "true" },
-      h("div", { class: "altar-row" },
+      // YC-2026-10 (08 §16.1): không vẽ mâm quả, không lọ hoa — nến · bát hương ba nén · nến. Ảnh mâm lễ (của gia đình,
+      // hay ảnh Clevix đã duyệt) nằm dưới hàng bàn thờ. Công giáo: nến · hoa · nến, không hương.
+      h("div", { class: `altar-row${catholic ? " catholic" : ""}` },
         svg(CANDLE, "candle"),
-        catholic ? svg(VASE, "vase") : svg(TRAY, "tray"),
-        catholic ? null : h("div", { class: "bowl-wrap" }, sticks, svg(BOWL, "bowl")),
-        svg(VASE, "vase"),
+        catholic ? svg(VASE, "vase") : h("div", { class: "bowl-wrap" }, sticks, svg(BOWL, "bowl")),
         svg(CANDLE, "candle")),
       h("div", { class: "altar-table" })),
     ((mem.loi_tuong_niem as string) ?? "").trim() ? h("blockquote", { class: "mem-loi" }, (mem.loi_tuong_niem as string).normalize("NFC").trim()) : null);

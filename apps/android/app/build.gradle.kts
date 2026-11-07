@@ -44,6 +44,24 @@ val appBuildDate: String = System.getenv("LVHV_BUILD_DATE")?.takeIf { it.isNotBl
 if (!Regex("""^\d{4}-\d{2}-\d{2}$""").matches(appBuildDate)) throw GradleException("LVHV_BUILD_DATE phải có dạng YYYY-MM-DD")
 if (!Regex("""^\d+$""").matches(appBuildNumber)) throw GradleException("LVHV_BUILD_NUMBER phải là số")
 
+// libjnidispatch bản máy tính lấy từ jar JNA cho kiểm thử JVM (bản AAR chỉ có .so Android).
+val jnaHost: Configuration by configurations.creating
+val jnaHostDir: String = run {
+    val os = System.getProperty("os.name").lowercase()
+    val arch = System.getProperty("os.arch").lowercase()
+    val a = if (arch == "aarch64" || arch == "arm64") "aarch64" else "x86-64"
+    if (os.contains("mac")) "darwin-$a" else "linux-$a"
+}
+val extractJnaHost by tasks.registering(Copy::class) {
+    from(provider { jnaHost.files.map { zipTree(it) } }) {
+        include("com/sun/jna/$jnaHostDir/libjnidispatch.*")
+        eachFile { path = name }
+        includeEmptyDirs = false
+    }
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    into(layout.buildDirectory.dir("jna-host"))
+}
+
 android {
     namespace = "vn.clevix.lichviet"
     compileSdk = 35
@@ -117,6 +135,35 @@ android {
         }
     }
 
+    testOptions {
+        unitTests {
+            // Robolectric (Compose UI, ảnh chụp màn hình) cần tài nguyên Android.
+            isIncludeAndroidResources = true
+            all { t ->
+                // Kiểm thử JVM gọi lõi Rust thật: thư viện của máy dựng (target/release/liblvhv_ffi.so, do
+                // build-rust.sh hoặc bước "host" của CI tạo) + libjnidispatch của JNA bản máy tính.
+                t.systemProperty("jna.library.path", rootProject.file("../../target/release").absolutePath)
+                t.systemProperty("jna.boot.library.path", layout.buildDirectory.dir("jna-host").get().asFile.absolutePath)
+                t.systemProperty("jna.nosys", "true")
+                // Ảnh chụp màn hình (Roborazzi) ghi thẳng vào apps/android/screenshots/.
+                t.systemProperty("roborazzi.test.record", "true")
+                t.systemProperty("lvhv.screenshots.dir", rootProject.file("screenshots").absolutePath)
+                t.maxHeapSize = "3g"
+                // Biến thể release không có ui-test-manifest: chạy mọi kiểm thử trừ kiểm thử giao diện Compose.
+                if (t.name.contains("Release")) t.exclude("**/ui/people/**")
+                // Mã UniFFI (android = true) dùng android.system.SystemCleaner khi API ≥ 33; dưới Robolectric lớp này
+                // gọi jdk.internal.ref.CleanerFactory của JDK — cần mở gói cho kiểm thử.
+                t.jvmArgs("--add-exports=java.base/jdk.internal.ref=ALL-UNNAMED", "--add-opens=java.base/jdk.internal.ref=ALL-UNNAMED")
+                t.testLogging {
+                    events("failed", "skipped")
+                    exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+                    showStandardStreams = false
+                }
+                t.dependsOn("extractJnaHost")
+            }
+        }
+    }
+
     lint {
         abortOnError = true
         checkReleaseBuilds = true
@@ -144,7 +191,16 @@ val checkRustArtifacts by tasks.registering {
         }
     }
 }
-tasks.named("preBuild") { dependsOn(checkRustArtifacts) }
+// -Plvhv.hostOnly=true (CI, job "ui"): chỉ có thư viện Rust bản máy tính cho kiểm thử JVM, không có .so Android.
+if (!project.hasProperty("lvhv.hostOnly")) {
+    tasks.named("preBuild") { dependsOn(checkRustArtifacts) }
+}
+
+// S11 / BM2-09: khóa phụ thuộc. CI chạy `:app:dependencies --write-locks` để sinh app/gradle.lockfile (đồ thị đã phân giải,
+// gồm phụ thuộc bắc cầu) rồi quét lỗ hổng bằng osv-scanner. Khi tệp khóa được commit, mọi lần dựng phải khớp nó.
+dependencyLocking {
+    lockAllConfigurations()
+}
 
 dependencies {
     // Compose BOM 2024.12.01 (Compose 1.7.6, Material3 1.3.1).
@@ -164,4 +220,12 @@ dependencies {
     implementation("net.java.dev.jna:jna:5.17.0@aar")
 
     testImplementation("junit:junit:4.13.2")
+    // Kiểm thử giao diện trên JVM (Robolectric) + ảnh chụp màn hình (Roborazzi 1.40.1, Robolectric 4.14.1).
+    testImplementation("org.robolectric:robolectric:4.14.1")
+    testImplementation(composeBom)
+    testImplementation("androidx.compose.ui:ui-test-junit4")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
+    testImplementation("io.github.takahirom.roborazzi:roborazzi:1.40.1")
+    testImplementation("io.github.takahirom.roborazzi:roborazzi-compose:1.40.1")
+    jnaHost("net.java.dev.jna:jna:5.17.0")
 }

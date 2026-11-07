@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- CHỈ bản debug (không có trong APK phát hành): màn tự kiểm R14 cho job "upgrade" của CI
+     (cài bản cũ → tạo dữ liệu → adb install -r bản mới → kiểm dữ liệu còn nguyên). -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <activity
+            android:name=".debug.SelfCheckActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+    </application>
+</manifest>

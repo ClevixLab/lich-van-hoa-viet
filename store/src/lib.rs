@@ -399,6 +399,9 @@ impl Store {
         let mut conn = Connection::open(dir.join(DB_FILE))?;
         conn.pragma_update(None, "foreign_keys", true)?;
         conn.pragma_update(None, "journal_mode", "WAL")?;
+        // BM2-11 (01 §4.2): nội dung bị xóa được ghi đè bằng 0 trong trang của CSDL (thiết lập theo kết nối, không lưu
+        // trong tệp). Sau các thao tác xóa, `checkpoint_truncate` đưa trang đã ghi đè vào tệp chính và làm rỗng WAL.
+        conn.pragma_update(None, "secure_delete", true)?;
         let ver: i64 = conn.query_row("PRAGMA user_version", [], |r| r.get(0))?;
         // 01 §7: kho của bản mới hơn → từ chối, không cố đọc một phần.
         if ver > migrate::STORE_VERSION {
@@ -983,6 +986,7 @@ impl Store {
         let pv = parse_col(&pj)?;
         let refs = validate::person_photo_refs(&pv);
         let att_refs = validate::person_attachment_refs(&pv);
+        let legacy_refs = legacy_certificate_ids(&pv);
         let ev: Vec<String> = {
             let mut st = tx.prepare("SELECT event_id FROM event_person WHERE person_id = ?1")?;
             let r = st
@@ -1012,14 +1016,18 @@ impl Store {
         // Ảnh / tệp đính kèm còn được hồ sơ khác dùng thì giữ.
         let gone = gc_photos(&tx, refs)?;
         let gone_att = gc_attachments(&tx, att_refs)?;
+        // BM3-01: tệp ảnh gốc giấy báo tử đã chuyển sang tệp đính kèm (giữ để quay lui trong 7 ngày) — hồ sơ bị xóa
+        // thì không còn gì cần quay lui cho nó.
+        let gone_moved = prune_moved_photos(&tx, legacy_refs)?;
         Self::mark_changed(&tx, &now)?;
         tx.commit()?;
-        for pid in gone {
-            let _ = std::fs::remove_file(self.photo_path(&pid));
+        for pid in gone.iter().chain(&gone_moved) {
+            let _ = std::fs::remove_file(self.photo_path(pid));
         }
         for aid in gone_att {
             let _ = std::fs::remove_file(self.attachment_path(&aid));
         }
+        checkpoint_truncate(&self.conn);
         Ok(removed_events)
     }
 
@@ -1399,6 +1407,113 @@ fn gc_photos(tx: &rusqlite::Transaction<'_>, mut candidates: Vec<String>) -> Res
     Ok(gone)
 }
 
+/// BM2-11: gộp WAL vào tệp chính rồi cắt WAL về 0 byte, để trang đã ghi đè (`secure_delete`) thay bản cũ còn trong
+/// WAL. Lỗi (ví dụ có kết nối đọc khác) bỏ qua: SQLite tự gộp ở lần sau và khi đóng kết nối cuối.
+fn checkpoint_truncate(conn: &Connection) {
+    let _ = conn.execute_batch("PRAGMA wal_checkpoint(TRUNCATE)");
+}
+
+/// Khóa `meta` giữ id các ảnh giấy báo tử đã chuyển sang tệp đính kèm mà tệp `photos/<id>.img` gốc còn giữ (để quay
+/// lui bằng bản sao CSDL trong 7 ngày) — BM3-01. Mảng JSON id, sắp, không lặp.
+const MOVED_PHOTOS_KEY: &str = "migration_moved_photos";
+
+/// id dùng được làm tên tệp (UUID: chữ, số, `-`).
+fn safe_file_id(id: &str) -> bool {
+    !id.is_empty() && id.len() <= 64 && id.bytes().all(|c| c.is_ascii_alphanumeric() || c == b'-')
+}
+
+fn moved_photos(conn: &Connection) -> Result<Vec<String>> {
+    let v: Option<String> = conn
+        .query_row(
+            "SELECT value FROM meta WHERE key = ?1",
+            params![MOVED_PHOTOS_KEY],
+            |r| r.get(0),
+        )
+        .optional()?;
+    Ok(v.and_then(|t| serde_json::from_str::<Vec<String>>(&t).ok())
+        .unwrap_or_default())
+}
+
+fn set_moved_photos(tx: &rusqlite::Transaction<'_>, mut ids: Vec<String>) -> Result<()> {
+    ids.sort();
+    ids.dedup();
+    if ids.is_empty() {
+        tx.execute("DELETE FROM meta WHERE key = ?1", params![MOVED_PHOTOS_KEY])?;
+    } else {
+        tx.execute(
+            "INSERT OR REPLACE INTO meta(key, value) VALUES (?1, ?2)",
+            params![
+                MOVED_PHOTOS_KEY,
+                serde_json::to_string(&ids).unwrap_or_default()
+            ],
+        )?;
+    }
+    Ok(())
+}
+
+/// Thêm `ids` (ảnh vừa chuyển trong giao dịch `tx`) vào danh sách [`MOVED_PHOTOS_KEY`].
+fn record_moved_photos(tx: &rusqlite::Transaction<'_>, ids: &[String]) -> Result<()> {
+    if ids.is_empty() {
+        return Ok(());
+    }
+    let mut cur = moved_photos(tx)?;
+    cur.extend(ids.iter().cloned());
+    set_moved_photos(tx, cur)
+}
+
+/// `legacy.certificate_photo_ids` của một hồ sơ (danh sách gốc trước chuyển đổi).
+fn legacy_certificate_ids(p: &Value) -> Vec<String> {
+    p["legacy"]["certificate_photo_ids"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|x| x.as_str().map(str::to_owned))
+        .collect()
+}
+
+/// BM3-01: trong các ảnh ở danh sách [`MOVED_PHOTOS_KEY`] cộng `extra` (id gốc lấy từ `legacy` vừa bỏ hoặc của hồ sơ
+/// vừa xóa — cũng phủ kho đã chuyển trước khi có danh sách), chọn những ảnh **không còn bản ghi `photo`** và **không
+/// còn hồ sơ nào giữ trong `legacy`** (không còn gì cần quay lui); bỏ chúng khỏi danh sách và trả id để xóa tệp
+/// `photos/<id>.img` sau khi giao dịch xong.
+fn prune_moved_photos(tx: &rusqlite::Transaction<'_>, extra: Vec<String>) -> Result<Vec<String>> {
+    let listed = moved_photos(tx)?;
+    let mut cand: Vec<String> = listed.iter().cloned().chain(extra).collect();
+    cand.sort();
+    cand.dedup();
+    if cand.is_empty() {
+        return Ok(cand);
+    }
+    let mut held: std::collections::HashSet<String> = Default::default();
+    {
+        let mut st = tx.prepare("SELECT json FROM person")?;
+        let rows = st.query_map([], |r| r.get::<_, String>(0))?;
+        for r in rows {
+            held.extend(legacy_certificate_ids(&parse_col(&r?)?));
+        }
+    }
+    let mut gone = Vec::new();
+    let mut keep = Vec::new();
+    for pid in cand {
+        let has_record = tx
+            .query_row(
+                "SELECT 1 FROM photo WHERE id = ?1",
+                params![pid],
+                |_| Ok(()),
+            )
+            .optional()?
+            .is_some();
+        if has_record || held.contains(&pid) {
+            if listed.contains(&pid) {
+                keep.push(pid);
+            }
+        } else if safe_file_id(&pid) {
+            gone.push(pid);
+        }
+    }
+    set_moved_photos(tx, keep)?;
+    Ok(gone)
+}
+
 /// Ghi lại rằng kho vừa nhận khóa `legacy` (chuyển đổi khi lưu, hoặc nhập tài liệu đã chuyển): bắt đầu (lại) đếm
 /// 7 ngày tới lúc dọn (BM2-07).
 fn note_legacy(tx: &rusqlite::Transaction<'_>, now: &str) -> Result<()> {
@@ -1438,12 +1553,16 @@ fn post_migration_cleanup(conn: &mut Connection, dir: &Path, now: &str) -> Resul
             .collect::<core::result::Result<_, _>>()?;
         r
     };
+    let mut legacy_ids = Vec::new();
     for r in rows {
         let mut p = parse_col(&r)?;
+        legacy_ids.extend(legacy_certificate_ids(&p));
         if p.as_object_mut().and_then(|o| o.remove("legacy")).is_some() {
             upsert_person(&tx, &p)?;
         }
     }
+    // BM3-01: hết hạn quay lui → xóa tệp ảnh gốc giấy báo tử đã chuyển (không còn bản ghi `photo` nào trỏ tới).
+    let gone_moved = prune_moved_photos(&tx, legacy_ids)?;
     tx.execute(
         "DELETE FROM meta WHERE key IN ('migrated_at', 'migration_backup')",
         [],
@@ -1453,17 +1572,22 @@ fn post_migration_cleanup(conn: &mut Connection, dir: &Path, now: &str) -> Resul
         params![now],
     )?;
     tx.commit()?;
+    for pid in gone_moved {
+        let _ = std::fs::remove_file(dir.join(PHOTO_DIR).join(format!("{pid}.img")));
+    }
     if let Some(b) =
         backup.filter(|b| b.starts_with(DB_FILE) && b.ends_with(".bak") && !b.contains('/'))
     {
         let _ = std::fs::remove_file(dir.join(format!("{b}-wal")));
         let _ = std::fs::remove_file(dir.join(b));
     }
+    checkpoint_truncate(conn);
     Ok(())
 }
 
 /// Bước dữ liệu của chuyển đổi kho 1 → 2 (YC-2026-07): đọc hồ sơ, ảnh, tệp đính kèm; áp
-/// [`migrate::migrate_1_to_2`]; chép byte ảnh sang tệp đính kèm (không xóa tệp ảnh nào); ghi lại trong giao dịch `tx`.
+/// [`migrate::migrate_1_to_2`]; chép byte ảnh sang tệp đính kèm (chưa xóa tệp ảnh nào — tệp gốc của ảnh đã chuyển
+/// được ghi ở [`MOVED_PHOTOS_KEY`] và xóa sau 7 ngày hoặc khi xóa hồ sơ, BM3-01); ghi lại trong giao dịch `tx`.
 fn migrate_data_1_to_2(
     tx: &rusqlite::Transaction<'_>,
     dir: &Path,
@@ -1524,6 +1648,7 @@ fn migrate_data_1_to_2(
     for pid in &m.moved_photos {
         tx.execute("DELETE FROM photo WHERE id = ?1", params![pid])?;
     }
+    record_moved_photos(tx, &m.moved_photos)?;
     Ok(())
 }
 
@@ -1586,6 +1711,7 @@ fn migrate_person_in_tx(
     for pid in &m.moved_photos {
         tx.execute("DELETE FROM photo WHERE id = ?1", params![pid])?;
     }
+    record_moved_photos(tx, &m.moved_photos)?;
     for (aid, b) in blobs {
         // Ghi trước khi giao dịch được xác nhận; người gọi xóa các tệp này nếu giao dịch quay lui (báo cáo PR #36).
         let f = dir.join(ATTACHMENT_DIR).join(format!("{aid}.bin"));

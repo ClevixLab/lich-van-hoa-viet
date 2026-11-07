@@ -532,3 +532,132 @@ fn failed_migration_leaves_folder_unchanged_and_copy_is_byte_identical() {
         let _ = std::fs::remove_dir_all(dir);
     }
 }
+
+/// Tên các tệp `photos/*.img` (không đuôi) và id các bản ghi `photo`.
+fn img_files(dir: &Path) -> std::collections::BTreeSet<String> {
+    std::fs::read_dir(dir.join("photos"))
+        .unwrap()
+        .flatten()
+        .filter_map(|e| {
+            e.file_name()
+                .to_string_lossy()
+                .strip_suffix(".img")
+                .map(str::to_owned)
+        })
+        .collect()
+}
+fn photo_records(s: &Store) -> std::collections::BTreeSet<String> {
+    s.photos()
+        .unwrap()
+        .iter()
+        .map(|p| p["id"].as_str().unwrap().to_owned())
+        .collect()
+}
+
+/// Rà soát bảo mật vòng 2, BM3-01: tệp ảnh gốc giấy báo tử đã chuyển sang tệp đính kèm (`photos/<id>.img`) giữ để quay
+/// lui trong 7 ngày, rồi bị xóa khi dọn sau 7 ngày; xóa hồ sơ (trong 7 ngày) cũng xóa nó khi không còn hồ sơ nào giữ
+/// ảnh đó trong `legacy`. Cuối cùng không còn tệp `.img` nào không có bản ghi.
+#[test]
+fn moved_certificate_photos_removed_after_7_days_and_on_delete() {
+    let fix = released().join(FIX);
+    let t0 = lvhv_store::unix_from_rfc3339("2026-11-10T00:00:00Z").unwrap();
+    let day = 86_400;
+    // (a) Chuyển → trong 7 ngày tệp gốc còn (quay lui được) → +8 ngày: chỉ còn tệp có bản ghi → xóa hết hồ sơ: 0 tệp.
+    let dir = tmpdir("moved-7d");
+    copy_dir(&fix.join("store"), &dir);
+    let before = img_files(&dir);
+    let s = open_at(&dir, t0, false);
+    assert_eq!(s.migration_status().state, "migrated");
+    let moved: Vec<String> = before.difference(&photo_records(&s)).cloned().collect();
+    assert!(
+        !moved.is_empty(),
+        "bộ mẫu có ảnh giấy báo tử được chuyển hẳn"
+    );
+    assert_eq!(
+        img_files(&dir),
+        before,
+        "trong 7 ngày: tệp gốc còn để quay lui"
+    );
+    drop(s);
+    let s = open_at(&dir, t0 + 7 * day - 3600, false);
+    assert_eq!(img_files(&dir), before);
+    drop(s);
+    let mut s = open_at(&dir, t0 + 8 * day, false);
+    assert_eq!(
+        img_files(&dir),
+        photo_records(&s),
+        "sau 7 ngày: không còn tệp ảnh mồ côi"
+    );
+    for p in s.persons().unwrap() {
+        s.delete_person(p["id"].as_str().unwrap()).unwrap();
+    }
+    assert!(img_files(&dir).is_empty() && photo_records(&s).is_empty());
+    assert!(s.attachments().unwrap().is_empty());
+    drop(s);
+    let _ = std::fs::remove_dir_all(&dir);
+
+    // (b) Trong 7 ngày, xóa hồ sơ: ảnh giấy báo tử dùng chung (5e0c của 5e01 và 5e02) còn tới khi hồ sơ cuối cùng giữ
+    // nó trong `legacy` bị xóa; xóa hết → 0 tệp `.img`, ngay cả trước hạn 7 ngày.
+    let dir = tmpdir("moved-delete");
+    copy_dir(&fix.join("store"), &dir);
+    let mut s = open_at(&dir, t0, false);
+    let shared = "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e0c";
+    assert!(moved.iter().any(|m| m == shared));
+    assert!(img_files(&dir).contains(shared));
+    s.delete_person("0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e01")
+        .unwrap();
+    assert!(
+        img_files(&dir).contains(shared),
+        "hồ sơ 5e02 còn giữ ảnh này trong legacy"
+    );
+    s.delete_person("0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e02")
+        .unwrap();
+    assert!(!img_files(&dir).contains(shared));
+    for p in s.persons().unwrap() {
+        s.delete_person(p["id"].as_str().unwrap()).unwrap();
+    }
+    assert!(img_files(&dir).is_empty(), "{:?}", img_files(&dir));
+    drop(s);
+    // Mở lại sau 8 ngày: dọn không lỗi khi tệp đã bị xóa trước.
+    let s = open_at(&dir, t0 + 8 * day, false);
+    assert_eq!(s.migration_status().state, "ok");
+    assert!(img_files(&dir).is_empty());
+    drop(s);
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+/// BM2-11 (01 §4.2): `secure_delete` bật — chuỗi của hồ sơ đã xóa không còn trong `lvhv.sqlite` hay `-wal`.
+#[test]
+fn deleted_person_text_not_left_in_database_files() {
+    let dir = tmpdir("secure-delete");
+    let mut s = Store::open(&dir).unwrap();
+    let marker = "Chuỗi-đánh-dấu-xóa-an-toàn-7f3a";
+    let ex: Value =
+        serde_json::from_slice(&std::fs::read(released().join("../example-v1.json")).unwrap())
+            .unwrap();
+    let mut p = ex["persons"][0].clone();
+    let id = p["id"].as_str().unwrap().to_owned();
+    p["photo_id"] = Value::Null;
+    p["ho_ten"] = json!(marker);
+    p["ghi_chu"] = json!(marker);
+    s.put_person(&p).unwrap();
+    let find = |dir: &Path| -> bool {
+        ["lvhv.sqlite", "lvhv.sqlite-wal"].iter().any(|f| {
+            std::fs::read(dir.join(f))
+                .map(|b| b.windows(marker.len()).any(|w| w == marker.as_bytes()))
+                .unwrap_or(false)
+        })
+    };
+    assert!(
+        find(&dir),
+        "đối chứng: chuỗi có trong tệp CSDL trước khi xóa"
+    );
+    s.delete_person(&id).unwrap();
+    assert!(
+        !find(&dir),
+        "sau khi xóa: chuỗi không còn trong lvhv.sqlite / -wal"
+    );
+    drop(s);
+    assert!(!find(&dir));
+    let _ = std::fs::remove_dir_all(dir);
+}
