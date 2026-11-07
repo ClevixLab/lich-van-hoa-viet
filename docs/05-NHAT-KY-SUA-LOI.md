@@ -349,8 +349,7 @@ xong trước khi nhấn Esc thì Esc không chạm hộp nào. Đây là lỗi 
 (`Esc [{"busy":"true","prevented":false}], hộp mở 0`). Trả lại chốt chặn → ĐẠT.
 
 **Còn lại trong bản phát hành.**
-- `window.__lvhv` (số đo thời gian dựng trang và lối vào mô-đun lưu trữ): các bộ kiểm thử đọc trên bản dựng chính.
-  Đây không phải móc làm đổi hành vi, nhưng là lối vào dữ liệu từ trang. Muốn bỏ thì phải chuyển các kiểm thử đó sang
-  bản dựng kiểm thử. Chưa làm.
+- ~~`window.__lvhv`~~ — đã chuyển sau `__LVHV_TEST_HOOKS__` (08 §12l). Smoke 1c/1d/1e chạy trên bản dựng kiểm thử;
+  `upgrade.mjs` ca (b) (bản dựng chính) tự nạp mã lưu trữ vào trang để đo.
 - Tên tùy chọn `forceMigrationFailure` trong mã lưu trữ của lõi (`store/db.ts`, dùng cho `store-tool`). Ứng dụng
   luôn truyền `{}` nên trang không chạm tới được.

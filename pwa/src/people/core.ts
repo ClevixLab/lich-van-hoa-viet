@@ -12,6 +12,18 @@ export type { JsonObj, Store };
 export type Ymd = M.Ymd;
 
 let storeP: Promise<Store> | null = null;
+
+// TKN3-P-01: chế độ chỉ đọc (04 B5 mục 3 — chuyển đổi lỗi). index.ts đặt cờ từ `migrationStatus()` trước mỗi lần dựng
+// trang; các trang ẩn mọi việc ghi (thêm, sửa, xóa, "Cập nhật: đã mất", khôi phục, cài đặt nhắc) — như Android và
+// Windows. Vẫn xem được, tạo tệp sao lưu và xuất .ics được.
+let readOnlyMode = false;
+export function setReadOnly(v: boolean): void { readOnlyMode = v; }
+export function isReadOnly(): boolean { return readOnlyMode; }
+// MA3C-30-02: bản dựng kiểm thử cho kiểm thử R14 dùng ĐÚNG kho mà mô-đun Người thân đang dùng (không tự dựng Store).
+if (__LVHV_TEST_HOOKS__) (globalThis as { __lvhvTest?: unknown }).__lvhvTest = { peopleStore: () => store() };
+
+/** Phần tử ghi dữ liệu: ở chế độ chỉ đọc thì không dựng. */
+export function w<T>(el: T): T | null { return readOnlyMode ? null : el; }
 /** Một kết nối kho dùng chung cho cả mô-đun. */
 export function store(): Promise<Store> {
   // Móc kiểm thử R14 (ca chuyển đổi lỗi, pwa/test/upgrade.mjs) — CHỈ ở bản dựng kiểm thử (LVHV_TEST_HOOKS=1,

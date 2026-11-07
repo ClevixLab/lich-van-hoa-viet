@@ -108,12 +108,14 @@ export async function renderPersonForm(root: HTMLElement, kindIn: "deceased" | "
   const fillDx = () => { clear(dl); for (const x of danhXungSuggestions(dead, gt)) dl.append(h("option", { value: x })); };
   fillDx();
   const fDx = textField("pf-dx", "Cách gọi (đứng trước tên)", (old?.danh_xung as string) ?? "", 40, { list: "pf-dx-list", hint: dead ? "ví dụ: Ông, Bà, Cụ, Bác" : "ví dụ: Anh, Chị, Cô, Chú", what: "Cách gọi" });
-  const gtGroup = h("fieldset", { class: "field radios", id: "pf-gt" }, h("legend", null, "Giới tính"),
-    ...([["nam", "Nam"], ["nu", "Nữ"], ["", "Không ghi"]] as const).map(([v, t]) => {
+  // TKN3-P-02: một hàng nút viên thuốc như "Nhập theo dương lịch / âm lịch", vẫn là nhóm `radio` thật (trợ năng, phím mũi
+  // tên); bỏ viền `fieldset` mặc định.
+  const gtGroup = h("fieldset", { class: "field gtseg", id: "pf-gt" }, h("legend", null, "Giới tính"),
+    h("div", { class: "gtopts" }, ...([["nam", "Nam"], ["nu", "Nữ"], ["", "Không ghi"]] as const).flatMap(([v, t]) => {
       const r = h("input", { type: "radio", name: "pf-gt", id: `pf-gt-${v || "none"}`, value: v, checked: (gt ?? "") === v }) as HTMLInputElement;
       r.addEventListener("change", () => { if (r.checked) { gt = v || null; fillDx(); } });
-      return h("label", { class: "check", for: `pf-gt-${v || "none"}` }, r, h("span", null, t));
-    }));
+      return [h("span", { class: "gtopt" }, r, h("label", { for: `pf-gt-${v || "none"}` }, t))];
+    })));
   const fTen = textField("pf-ten", "Họ và tên", (old?.ho_ten as string) ?? "", 120, { required: true, what: "Họ tên" });
   const fHieu = textField("pf-hieu", "Tên hiệu / pháp danh", (old?.ten_hieu as string) ?? "", 120, { what: "Tên hiệu" });
   const fQh = textField("pf-qh", "Quan hệ với bạn", (old?.quan_he as string) ?? "", 120, { list: "pf-qh-list", hint: dead ? "ví dụ: Ông nội, Bà ngoại, Bố" : "ví dụ: Con trai, Em gái", what: "Quan hệ" });

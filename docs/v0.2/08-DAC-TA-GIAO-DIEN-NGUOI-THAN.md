@@ -943,7 +943,7 @@ lõi (`pwa/src/store/*`, `tsport`). PWA chỉ thêm giao diện và kiểm thử
 **Giới tính.** Có ở cả hai biểu mẫu người. Trên hồ sơ có dòng "Giới tính: Nam / Nữ / Không ghi".
 
 **Tệp đính kèm báo tử** (lõi: `putPerson(p, newPhoto?, newAttachments)`, `attachments()`, `attachmentBytes()`):
-- Tối đa 6 tệp. Loại tệp chọn trước khi thêm: Ảnh tin báo tử / Giấy chứng tử (ảnh hoặc bản quét PDF) / Khác.
+- Tối đa 6 tệp. Loại tệp chọn trước khi thêm: Tin báo tử / Giấy chứng tử / Tệp khác (một bộ tên chung, §12l TKN3-X-01).
 - Ảnh: vẽ lại bằng canvas (≤ 2048 px, ≤ 2 MB). PDF: lưu nguyên bản; chọn PDF thì phải qua hộp xác nhận (BM2-12, §12k).
 - Gỡ một tệp khỏi danh sách rồi lưu → lõi tự xóa tệp. Xóa hồ sơ → lõi xóa các tệp của hồ sơ đó.
 - Trang hồ sơ: mỗi tệp hiện loại, tên gốc, dung lượng; với PDF có câu "Tệp PDF được lưu nguyên bản". Nút
@@ -1014,3 +1014,20 @@ theo đúng đường (b). Chưa thử trực tiếp trên bản xem trước (k
 | BM2-12 (R-PDF-1) | Chọn PDF → hộp "Đính kèm tệp PDF?" (lưu nguyên bản, có thể còn tên máy quét, phần mềm, ngày quét; gợi ý chụp ảnh thay thế); "Không đính kèm" → không thêm. Hộp tạo tệp sao lưu ghi số tệp PDF |
 | B6 mục 3 / BM2-10 (hiển thị) | `drawPhoto` đọc kích thước từ phần đầu tệp. Không rõ kích thước, hoặc > 4096 px mỗi cạnh, hoặc > 16 MP → không giải mã, để khung trống (`data-blocked`). Ảnh trong giới hạn được lấy mẫu xuống ngay khi giải mã. Kiểm thử: "JPEG" khai 20000 × 20000 ghi thẳng vào kho → trang vẫn chạy |
 | BM2-13 (góp ý) | Lúc chọn ảnh, đọc 2 MB đầu để tìm kích thước. Định dạng không nhận ra → "Định dạng ảnh chưa hỗ trợ — hãy chọn ảnh JPEG, PNG, WebP hoặc GIF", không giải mã |
+
+### 12l. Sau duyệt thiết kế vòng cuối (PR #40) và duyệt mã vòng cuối (PR #42) — bản web, PR #30
+
+| Mã | Việc |
+|---|---|
+| TKN3-P-01 (nên sửa) | Chế độ chỉ đọc ẩn mọi việc ghi, như Android và Windows: "+ Thêm", "Sửa", "Xóa hồ sơ", "Cập nhật: đã mất", "+ Thêm sự kiện", sửa/xóa sự kiện, khối "Khôi phục từ tệp sao lưu", "Nhắc sao lưu" và nút "Đã hiểu" của cảnh báo lưu trữ. Vẫn xem được hồ sơ, tạo tệp sao lưu, xuất .ics. Mở thẳng địa chỉ Thêm / Sửa / Cập nhật: đã mất / sự kiện → không dựng biểu mẫu, chỉ có câu "Đang ở chế độ chỉ đọc nên chưa thêm hay sửa được…" |
+| TKN3-P-02 (góp ý) | "Giới tính" là một hàng nút viên thuốc (cùng kiểu chọn lịch), vẫn là nhóm `radio` thật, không viền `fieldset` |
+| TKN3-P-03 (góp ý) | Câu riêng tư của hộp .ics nằm trong thẻ lưu ý vàng như hộp sao lưu, không in đỏ như lỗi |
+| TKN3-X-01 | Tên loại tệp đính kèm chung: **Tin báo tử**, **Giấy chứng tử**, **Tệp khác** (mỗi loại có thể là ảnh hay bản quét PDF) |
+| TKN3-X-02 | Mọi ô ngày dùng một cặp chữ "Nhập theo dương lịch" / "Nhập theo âm lịch" (cả ô ngày sinh, ngày sự kiện) |
+| TKN3-X-03 | Câu chuẩn của khung chỉ đọc cho mọi nền tảng (bản web đang dùng): "**Chưa chuyển được dữ liệu sang bản mới.** Dữ liệu cũ vẫn còn nguyên trên máy và đang mở ở chế độ chỉ đọc: xem được, nhưng chưa thêm hay sửa được." + "Hãy tạo ngay một tệp sao lưu để giữ dữ liệu: vào Sao lưu → “Tạo tệp sao lưu…”, rồi cất tệp ở nơi an toàn. Sau đó thử tải lại trang; nếu vẫn thấy thông báo này, hãy báo cho Clevix Lab kèm tệp sao lưu." + nút "Đi tới Sao lưu". Không hiện mã lỗi kỹ thuật |
+| MA3C-30-01 (nên sửa) | Chế độ chỉ đọc: tạo tệp sao lưu → hộp đóng, báo "Đã tạo tệp sao lưu…"; không gọi `markBackupSaved` (lõi sẽ báo `read_only`), không ghi gì vào kho cũ. Kiểm: `upgrade.mjs` ca (c) xuất từ chế độ chỉ đọc rồi khôi phục tệp đó vào kho trống của bản mới (3 hồ sơ, 2 tệp "Giấy chứng tử") |
+| MA3C-30-02 (nên sửa) | R14 ca (c) thử ghi trên **kho của chính ứng dụng** (`store()` của mô-đun Người thân, chỉ lộ ra ở bản dựng kiểm thử): lưu cài đặt, lưu hồ sơ, xóa hồ sơ, ghi nhận sao lưu đều bị lõi từ chối, stateHash không đổi |
+| MA3C-30-03 (góp ý) | Có hộp "Lưu tệp" của hệ điều hành (`showSaveFilePicker`, Chromium trên máy tính): hỏi nơi lưu trước khi mã hóa; chỉ ghi nhận "đã sao lưu" sau khi ghi xong. Đóng hộp hay ghi lỗi → hộp sao lưu báo rõ, không ghi nhận. **Giới hạn của nền web:** trình duyệt không có hộp này (Safari, Firefox, Chrome trên Android) thì tải về như cũ, và trang không biết người dùng có hủy hộp lưu của trình duyệt hay không — "đã sao lưu" được ghi khi giao tệp cho trình duyệt |
+| MA3C-30-04 (góp ý) | Cờ giao diện trong kho `meta` (`ui_persist_notice_hidden_at`, `ui_restored_from`, `persist`) ghi qua `Store.putUiMeta` — chế độ chỉ đọc thì bỏ qua. Tùy chọn cỡ chữ / sáng tối (`localStorage`, không thuộc kho) vẫn đổi được |
+| §6.1 (góp ý) | `window.__lvhv` chỉ có ở bản dựng kiểm thử; thời gian dựng tờ lịch đo bằng `performance.measure("lvhv:render")`. Smoke quét mọi tệp `dist/` không có `__lvhv`, tên cổng, cờ. `OpenOptions.forceMigrationFailure` ghi rõ "chỉ để kiểm định" (giữ tên như Rust `force_migration_failure`) |
+

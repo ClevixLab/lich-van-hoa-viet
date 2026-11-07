@@ -2,7 +2,7 @@
 // Mật mã nằm trong mô-đun tải lười của lớp lưu trữ (store/backup-crypto, chỉ nạp khi xuất/nhập — P6).
 import { clear, h } from "../dom";
 import { APP_VERSION } from "../gen/content";
-import { M, cal, dmy, nowTs, snap, store, today, type JsonObj } from "./core";
+import { M, cal, dmy, isReadOnly, nowTs, snap, store, today, type JsonObj } from "./core";
 import { confirmDialog, itemTitle, toast } from "./ui";
 import { openBackup, type VerifiedBackup } from "../store/index";
 import { testGate } from "../testhooks";
@@ -23,6 +23,19 @@ function localDmy(ts: string): string {
 }
 
 /** Tải một tệp qua thẻ <a download> (không gửi mạng). blob: chỉ dùng cho điều hướng tải xuống, không cho ảnh. */
+/**
+ * MA3C-30-03 / MA3N-23-01: hộp "Lưu tệp" của hệ điều hành (File System Access, `showSaveFilePicker` — Chromium trên máy
+ * tính). Có thì dùng, và chỉ ghi nhận "đã sao lưu" sau khi ghi xong (`close()` thành công). Trình duyệt không có (Safari,
+ * Firefox, Chrome Android): tải về như cũ — trang KHÔNG biết người dùng có hủy hộp lưu của trình duyệt hay không (08 §12l).
+ * Phải gọi ngay trong lượt bấm của người dùng (trước khi mã hóa), vì hộp này cần "user activation".
+ */
+type SaveHandle = { createWritable(): Promise<{ write(d: BlobPart): Promise<void>; close(): Promise<void>; abort?(): Promise<void> }> };
+type SavePicker = (o: { suggestedName: string; types: { description: string; accept: Record<string, string[]> }[] }) => Promise<SaveHandle>;
+export function savePicker(): SavePicker | null {
+  const f = (globalThis as { showSaveFilePicker?: unknown }).showSaveFilePicker;
+  return typeof f === "function" ? (f as SavePicker).bind(globalThis) : null;
+}
+
 export function download(name: string, bytes: Uint8Array | string, type: string): void {
   const blob = new Blob([bytes as BlobPart], { type });
   const url = URL.createObjectURL(blob);
@@ -49,7 +62,7 @@ export async function openIcsDialog(): Promise<void> {
   const ok = await confirmDialog({
     title: "Xuất tệp lịch", ok: "Tải tệp .ics", cls: "ics-dialog",
     body: [
-      h("p", { class: "pd-privacy" }, sum.privacy_text),
+      h("p", { class: "notice pd-note pd-privacy", id: "ics-privacy" }, sum.privacy_text), // TKN3-P-03: thẻ lưu ý vàng như hộp sao lưu (TK-14), không đỏ như lỗi
       // TKN-X-04 (duyệt thiết kế native): mọi nền tảng nói rõ .ics không gồm thông tin báo tử (R-PRIV-2).
       h("p", { class: "fine", id: "ics-no-notice" }, "Không gồm thông tin báo tử."),
       h("p", null, `Gồm ${sum.events} ngày trong 10 năm tới (từ ${dmy(sum.from)} đến ${dmy(sum.to)}), mỗi ngày có lời nhắc như đã đặt.`),
@@ -113,13 +126,28 @@ export async function renderBackup(root: HTMLElement, rerender: () => void): Pro
         if (e1m) { mark(pw1, e1, e1m); pw1.focus(); return false; }
         const e2m = M.backupPasswordError(a, b);
         if (e2m) { mark(pw2, e2, e2m); pw2.focus(); return false; }
+        const name = `LichVanHoaViet-saoluu-${iso(today())}.lvhv`;
+        // MA3C-30-03: có hộp "Lưu tệp" của hệ điều hành → hỏi nơi lưu TRƯỚC khi mã hóa (cần lượt bấm của người dùng).
+        const picker = savePicker();
+        let handle: SaveHandle | null = null;
+        if (picker) {
+          try { handle = await picker({ suggestedName: name, types: [{ description: "Tệp sao lưu Lịch Việt", accept: { "application/octet-stream": [".lvhv"] } }] }); }
+          catch (e) { return (e as Error)?.name === "AbortError" ? "Chưa lưu tệp — bạn đã đóng hộp chọn nơi lưu. Bấm “Tạo và tải tệp” để thử lại." : "Không mở được hộp chọn nơi lưu tệp."; }
+        }
         prog.hidden = false; progTxt.hidden = false;
         if (__LVHV_TEST_HOOKS__) await testGate("backup-encrypt"); // chỉ bản dựng kiểm thử: giữ bước mã hóa tới khi kiểm thử cho chạy (MA3-15-03)
         const bytes = await s.exportBackup(a, { version: APP_VERSION, platform: "pwa" }, (x) => { prog.value = x; });
         pw1.value = ""; pw2.value = ""; // MA3-15-08: không giữ mật khẩu trong ô sau khi xuất
-        download(`LichVanHoaViet-saoluu-${iso(today())}.lvhv`, bytes, "application/octet-stream");
-        // MA3N-23-01: chỉ ghi nhận "đã sao lưu" sau khi đã giao tệp cho trình duyệt tải về.
-        await s.markBackupSaved(nowTs());
+        if (handle) {
+          // Ghi xong (close() thành công) mới là "đã lưu". Lỗi ghi (đầy ổ, mất quyền) → báo, không ghi nhận.
+          try { const wr = await handle.createWritable(); await wr.write(bytes as BlobPart); await wr.close(); }
+          catch { bytes.fill(0); return "Chưa lưu được tệp vào nơi đã chọn (ổ đầy hoặc không có quyền ghi). Hãy thử lại hoặc chọn nơi khác."; }
+        } else {
+          download(name, bytes, "application/octet-stream");
+        }
+        // MA3N-23-01 / MA3C-30-01: ghi nhận "đã sao lưu" — trừ chế độ chỉ đọc (TKN3-P-01, B5 mục 3): tệp vẫn tạo và lưu
+        // được, hộp báo thành công, nhưng không ghi gì vào kho cũ (markBackupSaved của lõi sẽ báo "read_only").
+        if (s.migrationStatus().state !== "read_only") await s.markBackupSaved(nowTs());
         return true;
       },
     });
@@ -173,13 +201,7 @@ export async function renderBackup(root: HTMLElement, rerender: () => void): Pro
         }
         if (__LVHV_TEST_HOOKS__) await testGate("backup-restore"); // chỉ bản dựng kiểm thử: giữ bước khôi phục (MA3-15-03)
         try { await s.applyImport(v, mode); } catch { return "Chưa khôi phục được — dữ liệu trên máy giữ nguyên."; }
-        if (mode === "replace") {
-          await new Promise<void>((done) => {
-            const tx = s.db.transaction("meta", "readwrite");
-            tx.objectStore("meta").put(pv.exported_at, "ui_restored_from");
-            tx.oncomplete = () => done(); tx.onerror = () => done();
-          });
-        }
+        if (mode === "replace") await s.putUiMeta("ui_restored_from", pv.exported_at).catch(() => false); // MA3C-30-04
         return true;
       },
     });
@@ -202,7 +224,7 @@ export async function renderBackup(root: HTMLElement, rerender: () => void): Pro
         restoredFrom ? h("p", { id: "bk-restored", class: "fine" }, `Dữ liệu được khôi phục từ bản sao lưu ngày ${localDmy(restoredFrom)}.`) : null,
         h("p", { class: "fine" }, "Tệp sao lưu được mã hóa bằng mật khẩu của bạn và chỉ nằm ở nơi bạn cất. Ứng dụng không gửi dữ liệu đi đâu."),
         expBtn)),
-    h("div", { class: "pcol-side" },
+    isReadOnly() ? null : h("div", { class: "pcol-side" },
       h("section", { class: "panel", id: "bk-in" }, h("h2", null, "Khôi phục từ tệp sao lưu"),
         h("div", { class: "field" }, h("span", { class: "flabel" }, "Tệp sao lưu (.lvhv)"), fileIn, h("button", { type: "button", class: "btn2 filebtn", id: "bk-file-btn", onclick: () => fileIn.click() }, "Chọn tệp sao lưu…"), fileName),
         h("div", { class: "field" }, h("label", { for: "bk-ipw" }, "Mật khẩu của tệp"), pwIn),

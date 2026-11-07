@@ -33,9 +33,11 @@ const state = {
 declare global {
   interface Window { __lvhv?: { renderMs: number[]; mock: boolean; storage: typeof storage } }
 }
-// `storage`: API lưu trữ (đợt 2, chỉ hàm; giao diện ở đợt 3) — kiểm thử khói gọi qua đây.
+// `storage`: API lưu trữ (đợt 2, chỉ hàm; giao diện ở đợt 3) — kiểm thử gọi qua đây. CHỈ ở bản dựng kiểm thử
+// (LVHV_TEST_HOOKS=1, src/testhooks.ts): bản phát hành không có `window.__lvhv` (BM2 vòng 2, smoke quét dist/).
+// Thời gian dựng tờ lịch đo bằng Performance API (`performance.measure("lvhv:render")`) — đọc được ở cả bản phát hành.
 const metrics = { renderMs: [] as number[], mock: IS_MOCK, storage };
-window.__lvhv = metrics;
+if (__LVHV_TEST_HOOKS__) window.__lvhv = metrics;
 
 function clamp(d: SolarDate): SolarDate {
   if (d.y < MIN_YEAR) return { y: MIN_YEAR, m: 1, d: 1 };
@@ -232,6 +234,10 @@ function renderDay(): void {
   window.scrollTo(0, keepScroll);
   metrics.renderMs.push(+(performance.now() - t0).toFixed(2));
   if (metrics.renderMs.length > 50) metrics.renderMs.shift();
+  try {
+    if (performance.getEntriesByName("lvhv:render").length >= 200) performance.clearMeasures("lvhv:render");
+    performance.measure("lvhv:render", { start: t0 });
+  } catch { /* trình duyệt cũ không có measure(name, {start}) */ }
 }
 
 function renderSide(): void {

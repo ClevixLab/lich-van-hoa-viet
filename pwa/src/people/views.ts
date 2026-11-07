@@ -3,7 +3,7 @@ import { noticeBlock } from "./notice";
 import { clear, h, svg } from "../dom";
 import {
   M, addDays, cal, daysBetween, displayName, dm, dmy, lunarText, relText, snap, store, today, tuoiText,
-  type JsonObj, type Snap, type Ymd, dispCap } from "./core";
+  type JsonObj, type Snap, type Ymd, dispCap, isReadOnly, w } from "./core";
 import type { Nav } from "./forms";
 import { eventsInPeriod, nextPeriod, periodBounds, prevPeriod, type PersonFilter as PeriodFilter, type PeriodKind } from "./period";
 import { drawPhoto } from "./photo";
@@ -15,7 +15,7 @@ export function welcome(): HTMLElement {
   return h("section", { class: "panel welcome" },
     h("h2", null, "Chưa có ai trong sổ"),
     h("p", null, "Thêm ông bà, cha mẹ đã khuất để được nhắc ngày giỗ theo âm lịch; thêm người đang sống để nhớ sinh nhật và ngày kỷ niệm."),
-    addButtons());
+    w(addButtons()));
 }
 export function addButtons(): HTMLElement {
   return h("div", { class: "addrow" },
@@ -51,13 +51,10 @@ export async function storageNotices(sn: Snap): Promise<HTMLElement[]> {
       h("p", null, "Trình duyệt có thể xóa dữ liệu khi máy thiếu chỗ — hãy sao lưu. Trên iPhone, thêm ứng dụng vào Màn hình chính để giữ dữ liệu lâu hơn."),
       h("div", { class: "notice-acts" },
         h("a", { class: "btnlink main sm", href: "#/nguoi-than/sao-luu" }, "Sao lưu ngay"),
-        h("button", { type: "button", class: "btn2 sm", id: "persist-ok", onclick: async () => {
+        isReadOnly() ? null : h("button", { type: "button", class: "btn2 sm", id: "persist-ok", onclick: async () => {
           box.remove();
-          await new Promise<void>((ok) => {
-            const tx = s.db.transaction("meta", "readwrite");
-            tx.objectStore("meta").put(new Date().toISOString().slice(0, 19) + "Z", "ui_persist_notice_hidden_at");
-            tx.oncomplete = () => ok(); tx.onerror = () => ok();
-          });
+          // MA3C-30-04: cờ giao diện qua lõi — chế độ chỉ đọc thì không ghi.
+          await s.putUiMeta("ui_persist_notice_hidden_at", new Date().toISOString().slice(0, 19) + "Z").catch(() => false);
         } }, "Đã hiểu")));
     out.push(box);
   }
@@ -129,7 +126,7 @@ export async function renderUpcoming(root: HTMLElement, nav: Nav, openIcs: () =>
           h("h2", null, "30 ngày tới"),
           items.length ? list : h("p", { class: "empty-hint" }, "Trong 30 ngày tới không có ngày giỗ, sinh nhật hay sự kiện nào. ",
             h("a", { class: "textlink", href: "#/nguoi-than/theo-ky" }, "Xem theo tháng, quý, năm")))),
-      h("div", { class: "pcol-side" }, webLimitPanel(openIcs), h("section", { class: "panel" }, h("h2", null, "Thêm vào sổ"), addButtons()))));
+      h("div", { class: "pcol-side" }, webLimitPanel(openIcs), w(h("section", { class: "panel" }, h("h2", null, "Thêm vào sổ"), addButtons())))));
 }
 
 // ---------------- Theo kỳ (R13) ----------------
@@ -228,7 +225,7 @@ export async function renderList(root: HTMLElement, nav: Nav): Promise<void> {
   const box = (kind: "deceased" | "living", label: string, add: string) => {
     const ps = sorted.filter((p) => p.kind === kind);
     return h("section", { class: "panel plbox", id: `list-${kind}` },
-      h("div", { class: "plhead" }, h("h2", null, `${label} (${ps.length})`), h("a", { class: "btnlink sm", href: add }, "+ Thêm")),
+      h("div", { class: "plhead" }, h("h2", null, `${label} (${ps.length})`), w(h("a", { class: "btnlink sm", href: add }, "+ Thêm"))),
       ps.length ? h("ul", { class: "plrows" }, ...ps.map((p) => h("li", null, h("button", { type: "button", class: "prow", onclick: () => openPerson(nav)(p.id as string) },
         h("span", { class: "avatar", "aria-hidden": "true" }, [...(p.ho_ten as string).trim().split(/\s+/).pop() ?? "?"][0]?.toUpperCase() ?? "?"),
         h("span", { class: "pr-main" }, h("span", { class: "pr-name" }, displayName(p)), dispCap((p.quan_he as string) ?? "") ? h("span", { class: "pr-sub" }, dispCap(p.quan_he as string)) : null,
@@ -296,7 +293,7 @@ export async function renderPerson(root: HTMLElement, id: string, nav: Nav): Pro
   const typeName = (e: JsonObj) => (e.tieu_de as string) || ((sn.types.find((x) => x.id === e.type_id)?.ten as string) ?? "Sự kiện");
   const evList = events.length ? h("ul", { class: "evrows" }, ...events.map((e) => h("li", { class: "evrow" },
     h("span", { class: "ev-main" }, h("b", null, typeName(e)), h("span", null, ` · ${dvText(e.date as JsonObj)} · ${e.recurring ? "hằng năm" : "một lần"}`)),
-    h("span", { class: "ev-acts" },
+    isReadOnly() ? null : h("span", { class: "ev-acts" },
       h("a", { class: "btn2 sm", href: `#/nguoi-than/su-kien/${id}/${e.id as string}` }, "Sửa"),
       h("button", { type: "button", class: "btn2 sm danger", onclick: async () => {
         if (await confirmDialog({ title: "Xóa sự kiện?", body: [`Xóa sự kiện “${typeName(e)}”? Không hoàn tác được.`], ok: "Xóa sự kiện", cancel: "Giữ lại", danger: true, focusCancel: true, onOk: async () => { await s.deleteEvent(e.id as string); } })) {
@@ -329,8 +326,8 @@ export async function renderPerson(root: HTMLElement, id: string, nav: Nav): Pro
       h("div", { class: "phead-t" }, h1, dispCap((p.quan_he as string) ?? "") ? h("p", { class: "phead-rel" }, dispCap(p.quan_he as string)) : null,
         h("div", { class: "phead-acts" },
           dead ? h("a", { class: "btnlink main", href: `#/nguoi-than/tuong-niem/${id}`, id: "open-memorial" }, "Tưởng niệm") : null,
-          h("a", { class: "btnlink", href: `#/nguoi-than/sua/${id}`, id: "edit-person" }, "Sửa"),
-          !dead ? h("a", { class: "btnlink", href: `#/nguoi-than/bao-tu/${id}`, id: "convert-person" }, "Cập nhật: đã mất") : null))),
+          w(h("a", { class: "btnlink", href: `#/nguoi-than/sua/${id}`, id: "edit-person" }, "Sửa")),
+          !dead ? w(h("a", { class: "btnlink", href: `#/nguoi-than/bao-tu/${id}`, id: "convert-person" }, "Cập nhật: đã mất")) : null))),
     h("div", { class: "pcols" },
       // TK-08: "Lần tới" ngay dưới đầu trang (trước "Thông tin"); mục chỉ để xem, không phải nút.
       h("div", { class: "pcol-main" },
@@ -340,9 +337,9 @@ export async function renderPerson(root: HTMLElement, id: string, nav: Nav): Pro
         noticeBlock(p)),
       h("div", { class: "pcol-side" },
         h("section", { class: "panel", id: "event-box" },
-          h("div", { class: "plhead" }, h("h2", null, "Sự kiện"), h("a", { class: "btnlink sm", href: `#/nguoi-than/su-kien/${id}/moi`, id: "add-event" }, "+ Thêm sự kiện")), evList,
+          h("div", { class: "plhead" }, h("h2", null, "Sự kiện"), w(h("a", { class: "btnlink sm", href: `#/nguoi-than/su-kien/${id}/moi`, id: "add-event" }, "+ Thêm sự kiện"))), evList,
           b4Note),
         h("section", { class: "panel" }, h("h2", null, "Nhắc"), remBox),
-        h("div", { class: "delrow" }, del))));
+        w(h("div", { class: "delrow" }, del)))));
   h1.focus();
 }

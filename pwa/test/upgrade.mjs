@@ -14,6 +14,7 @@ import { existsSync, mkdirSync, readFileSync, rmSync, statSync, symlinkSync, wri
 import { dirname, extname, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright-core";
+import { buildSync } from "esbuild";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const REPO = join(ROOT, "..");
@@ -79,6 +80,15 @@ async function controlled(page) {
   if (!(await page.evaluate(() => !!navigator.serviceWorker.controller))) await page.reload({ waitUntil: "load" });
   await page.waitForFunction(() => !!navigator.serviceWorker.controller, null, { timeout: 15000 });
 }
+/**
+ * Mã lưu trữ hiện tại (src/store/index.ts) đóng gói IIFE để kiểm thử nạp vào trang bằng page.evaluate (qua giao thức gỡ
+ * lỗi — không phải script trên trang, CSP không đổi). Dùng ở ca (b): bản mới là bản dựng CHÍNH, không có `window.__lvhv`
+ * (chỉ bản dựng kiểm thử có), nên kiểm thử tự mang mã đọc kho — cùng mã nguồn với ứng dụng, cùng IndexedDB của trang.
+ */
+const STORE_LIB = buildSync({ entryPoints: [join(ROOT, "src", "store", "index.ts")], bundle: true, format: "iife", globalName: "__testStoreLib",
+  write: false, target: "es2020", platform: "browser", logLevel: "silent" }).outputFiles[0].text;
+const withStoreLib = (page) => page.evaluate(`${STORE_LIB}\n;window.__testStoreLib = __testStoreLib; true`);
+
 /** Chờ service worker của bản mới cài xong và ở trạng thái chờ (trang vẫn do bản cũ điều khiển). */
 async function newWorkerWaiting(page) {
   await page.evaluate(async () => {
@@ -206,8 +216,9 @@ try {
     await releaseNew(page, "#/nguoi-than");
     await page.goto(BASE + `#/nguoi-than/nguoi/${old.A}`);
     await page.waitForSelector("#notice-box", { timeout: 30000 });
+    await withStoreLib(page);
     const got = await page.evaluate(async (o) => {
-      const S = await window.__lvhv.storage.loadStore(); const s = await S.openStore();
+      const S = window.__testStoreLib; const s = await S.openStore();
       const doc = await s.snapshot({ version: "0.1.4", platform: "pwa" }, "2026-07-20T01:00:00Z");
       const hex = async (b) => [...new Uint8Array(await crypto.subtle.digest("SHA-256", b))].map((x) => x.toString(16).padStart(2, "0")).join("");
       const att = {}; for (const a of doc.attachments ?? []) att[a.id] = { sha: a.sha256, real: await hex(await s.attachmentBytes(a.id)) };
@@ -250,15 +261,23 @@ try {
     check(Object.entries(JSON.parse(ui)).every(([k, x]) => uiAfter[k] === x) && uiAfter.size === "2", `R14: tùy chọn giao diện (A+) giữ nguyên — chỉ có thể thêm khóa, không đổi khóa cũ (${ui} → ${JSON.stringify(uiAfter)})`);
     await page.click("#notice-box > summary");
     const nb = await page.innerText("#notice-box");
-    check((nb.match(/Giấy chứng tử \(ảnh hoặc bản quét PDF\)/g) ?? []).length === 2 && nb.includes("Chị Lê Thị C"), "R14: trang hồ sơ hiện 2 tệp đính kèm \"Giấy chứng tử\" và thông tin báo tử cũ");
+    check((nb.match(/Giấy chứng tử/g) ?? []).length === 2 && nb.includes("Chị Lê Thị C"), "R14: trang hồ sơ hiện 2 tệp đính kèm \"Giấy chứng tử\" và thông tin báo tử cũ");
     await page.goto(BASE + "#/nguoi-than");
     await page.waitForSelector(".people-body > *", { timeout: 30000 });
-    const remind = await page.evaluate(async () => { const S = await window.__lvhv.storage.loadStore(); const s = await S.openStore(); const p = await s.persons(); s.close(); return p.filter((x) => x.reminders.gio || x.reminders.sinh_nhat).length; });
+    await withStoreLib(page);
+    const remind = await page.evaluate(async () => { const S = window.__testStoreLib; const s = await S.openStore(); const p = await s.persons(); s.close(); return p.filter((x) => x.reminders.gio || x.reminders.sinh_nhat).length; });
     check(remind === 3, "R14: lịch nhắc của cả 3 hồ sơ còn nguyên (quy tắc nhắc giữ trong hồ sơ)");
+    // Đối chứng cho TKN3-P-01: ở chế độ thường cùng bộ chọn tìm thấy nút ghi (phép đếm 0 ở ca (c) không rỗng nghĩa).
+    await page.goto(BASE + "#/nguoi-than/ho-so"); await page.waitForSelector("#list-deceased");
+    const wList = await page.locator('a[href*="/nguoi-than/them/"]').count();
+    await page.goto(BASE + `#/nguoi-than/nguoi/${old.A}`); await page.waitForSelector("#person-name");
+    const wPerson = await page.locator("#edit-person, #del-person, #add-event").count();
+    check(wList === 2 && wPerson === 3, `(b) chế độ thường: có nút ghi (danh sách ${wList} "+ Thêm", trang hồ sơ ${wPerson}: Sửa, Xóa hồ sơ, + Thêm sự kiện)`);
     // #38 (core3, 01 §7, BM2-07): 7 ngày sau chuyển đổi, mở kho thì `legacy` được dọn khỏi mọi hồ sơ (không đổi rev,
     // updated_at); trước 7 ngày thì còn. Đồng hồ của lõi (`OpenOptions.now`) đặt sau mốc `migrated_at` 6 và 8 ngày.
+    await withStoreLib(page);
     const pr = await page.evaluate(async () => {
-      const S = await window.__lvhv.storage.loadStore();
+      const S = window.__testStoreLib;
       const iso = (ms) => new Date(ms).toISOString().replace(/\.\d+Z$/, "Z");
       let s = await S.openStore(); const at = await s.meta("migrated_at"); const before = await s.persons(); s.close();
       s = await S.openStore(indexedDB, { now: iso(Date.parse(at) + 6 * 86400000) }); const d6 = (await s.persons()).filter((p) => "legacy" in p).length; s.close();
@@ -273,7 +292,7 @@ try {
     await page.goto(BASE + `#/nguoi-than/nguoi/${old.A}`); await page.reload();
     await page.waitForSelector("#notice-box", { timeout: 30000 });
     await page.click("#notice-box > summary");
-    check(((await page.innerText("#notice-box")).match(/Giấy chứng tử \(ảnh hoặc bản quét PDF\)/g) ?? []).length === 2, "#38: sau khi dọn legacy, hồ sơ vẫn hiện 2 tệp đính kèm \"Giấy chứng tử\"");
+    check(((await page.innerText("#notice-box")).match(/Giấy chứng tử/g) ?? []).length === 2, "#38: sau khi dọn legacy, hồ sơ vẫn hiện 2 tệp đính kèm \"Giấy chứng tử\"");
     check(errors.length === 0, `(b) không có lỗi trang (${errors.join(" | ") || "0"})`);
     await page.screenshot({ path: join(SHOTS, "v02-upgrade-02dev-360.png"), fullPage: true });
     await ctx.close();
@@ -288,23 +307,101 @@ try {
     await controlled(page);
     const old = await page.evaluate(SEED);
     await page.addInitScript(() => { globalThis.__lvhvFailMigration = true; });
+    // Đường tải về (<a download>): tắt hộp "Lưu tệp" của hệ điều hành (showSaveFilePicker) — có kiểm riêng ở smoke.
+    await page.addInitScript(() => { Object.defineProperty(window, "showSaveFilePicker", { value: undefined, configurable: true }); });
     await releaseNew(page, "#/ngay/2026-07-25", buildNewTest()); // bản mới dựng kiểm thử: chỉ bản này có móc
     await page.goto(BASE + "#/nguoi-than/ho-so");
     await page.waitForSelector("#ro-banner", { timeout: 30000 });
     const st = await page.evaluate(async () => {
-      // Mở kho ĐANG CÓ (không nâng phiên bản, không chạy lại chuyển đổi) để đo: phiên bản, stateHash; và một kho ở
-      // trạng thái read_only của lõi để thử ghi.
+      // Mở kho ĐANG CÓ (không nâng phiên bản, không chạy lại chuyển đổi) để đo phiên bản và stateHash. Việc thử ghi
+      // làm trên kho của chính ứng dụng (MA3C-30-02, bên dưới).
       const S = await window.__lvhv.storage.loadStore();
       const db = await new Promise((ok, ko) => { const r = indexedDB.open("lvhv"); r.onsuccess = () => ok(r.result); r.onerror = () => ko(r.error); });
       const s = new S.Store(db, { state: "read_only", from_version: db.version, to_version: db.version, error: null });
-      const r = { hash: await s.stateHash(), v: db.version, ro: true, persons: (await s.persons()).length };
-      let w = ""; try { await s.putSettings(await s.settings()); } catch (e) { w = e.code; }
-      r.write = w; db.close(); return r;
+      const r = { hash: await s.stateHash(), v: db.version, persons: (await s.persons()).length };
+      db.close(); return r;
     });
     const banner = await page.innerText("#ro-banner");
     check(st.hash === old.hash && st.v === 1 && st.persons === 3, `R14 ca lỗi: chuyển đổi lỗi → kho v1 còn nguyên (stateHash trước = sau, ${st.persons} hồ sơ)`);
-    check(st.ro && st.write === "read_only" && banner.includes("chế độ chỉ đọc") && banner.includes("Tạo tệp sao lưu"), "R14 ca lỗi: mở chỉ đọc, ghi bị chặn, khung hướng dẫn xuất sao lưu");
+    // MA3C-30-02: ghi bị chặn trên ĐÚNG kho mà mô-đun Người thân đang dùng (`store()` của ứng dụng, lộ ra chỉ ở bản dựng
+    // kiểm thử) — không phải một Store do kiểm thử tự dựng.
+    const app = await page.evaluate(async (pid) => {
+      const s = await window.__lvhvTest.peopleStore();
+      const code = async (f) => { try { await f(); return "ok"; } catch (e) { return e.code ?? String(e); } };
+      const p = (await s.persons()).find((x) => x.id === pid);
+      const r = { state: s.migrationStatus().state, v: s.db.version,
+        settings: await code(async () => s.putSettings(await s.settings())),
+        person: await code(() => s.putPerson({ ...p, ghi_chu: "thử ghi" })),
+        del: await code(() => s.deletePerson(pid)),
+        saved: await code(() => s.markBackupSaved("2026-07-25T00:00:00Z")),
+        ui: await s.putUiMeta("ui_test_flag", "x") };
+      r.hash = await s.stateHash(); r.uiFlag = (await s.meta("ui_test_flag")) ?? null;
+      return r;
+    }, old.A);
+    check(app.state === "read_only" && app.v === 1 && app.settings === "read_only" && app.person === "read_only" && app.del === "read_only" && app.saved === "read_only" && app.hash === old.hash
+      && banner.includes("chế độ chỉ đọc") && banner.includes("Tạo tệp sao lưu"),
+      `R14 ca lỗi (MA3C-30-02): kho của ứng dụng ở chế độ chỉ đọc — lưu cài đặt, lưu hồ sơ, xóa hồ sơ, ghi nhận sao lưu đều bị lõi từ chối; stateHash không đổi; có khung hướng dẫn (${JSON.stringify(app)})`);
+    check(app.ui === false && app.uiFlag === null, "MA3C-30-04: chế độ chỉ đọc → cờ giao diện (putUiMeta) không được ghi vào kho cũ");
     check((await page.innerText(".people-body")).includes("Nguyễn Văn Nâng"), "R14 ca lỗi: vẫn xem được hồ sơ cũ");
+    // TKN3-P-01: chế độ chỉ đọc ẩn MỌI việc ghi (như Android, Windows); vẫn xem, tạo tệp sao lưu, xuất .ics được.
+    const WRITE = 'a[href*="/nguoi-than/them/"], a[href*="/nguoi-than/sua/"], a[href*="/nguoi-than/bao-tu/"], a[href*="/nguoi-than/su-kien/"], #edit-person, #convert-person, #del-person, #add-event, .ev-acts, #bk-in, #bk-open, #bk-file-btn, #bk-nag, #persist-ok';
+    const roPages = [];
+    const living = old.doc.persons.find((p) => p.kind === "living"), dead = old.doc.persons.find((p) => p.kind === "deceased");
+    for (const [hash, sel] of [["#/nguoi-than", ".people-body > *"], ["#/nguoi-than/ho-so", "#list-deceased"], ["#/nguoi-than/theo-ky", ".people-body > *"],
+      [`#/nguoi-than/nguoi/${dead.id}`, "#person-name"], [`#/nguoi-than/nguoi/${living.id}`, "#person-name"], ["#/nguoi-than/sao-luu", "#bk-export"]]) {
+      await page.goto(BASE + hash); await page.waitForSelector(sel, { timeout: 30000 });
+      roPages.push({ hash, write: await page.locator(WRITE).count(), banner: await page.locator("#ro-banner").count() });
+    }
+    const keep = { exp: await page.locator("#bk-export:not([disabled])").count(), ics: await page.locator("#ics-open").count() };
+    check(roPages.every((x) => x.write === 0 && x.banner === 1) && keep.exp === 1 && keep.ics === 1,
+      `TKN3-P-01: chỉ đọc → 0 nút ghi ở Sắp tới, Hồ sơ, Theo kỳ, trang người đã mất, người đang sống, Sao lưu; còn "Tạo tệp sao lưu…" và "Xuất tệp lịch" (${JSON.stringify(roPages.map((x) => x.write))}, ${JSON.stringify(keep)})`);
+    await page.goto(BASE + "#/nguoi-than/them/da-mat");
+    await page.waitForSelector("#ro-noform", { timeout: 30000 });
+    const noForm = await page.locator("#pf-ten").count() === 0 && (await page.innerText("#ro-noform")).includes("chế độ chỉ đọc");
+    await page.goto(BASE + `#/nguoi-than/sua/${dead.id}`);
+    await page.waitForSelector("#ro-noform", { timeout: 30000 });
+    check(noForm && await page.locator("#pf-ten").count() === 0, "TKN3-P-01: mở thẳng địa chỉ Thêm / Sửa ở chế độ chỉ đọc → không dựng biểu mẫu, có câu giải thích");
+    // Vẫn tạo được tệp sao lưu, không lỗi, và kho cũ không đổi (không ghi "đã sao lưu").
+    await page.goto(BASE + "#/nguoi-than/sao-luu"); await page.waitForSelector("#bk-export");
+    await page.click("#bk-export");
+    await page.fill("#bk-pw1", "nhà có cây bàng"); await page.fill("#bk-pw2", "nhà có cây bàng");
+    const roDl = page.waitForEvent("download", { timeout: 60000 });
+    await page.click(".bk-dialog .dbtn.main");
+    const roFile = await roDl.then((d) => d.path()).then((f) => readFileSync(f)).catch(() => null);
+    await page.waitForSelector(".bk-dialog", { state: "detached", timeout: 30000 }).catch(() => {});
+    const roToast = await page.locator(".toast").first().innerText().catch(() => "");
+    const roErr = await page.locator(".bk-dialog .ferr:not([hidden])").count();
+    const roHash = await page.evaluate(async () => {
+      const S = await window.__lvhv.storage.loadStore();
+      const db = await new Promise((ok, ko) => { const r = indexedDB.open("lvhv"); r.onsuccess = () => ok(r.result); r.onerror = () => ko(r.error); });
+      const s = new S.Store(db, { state: "read_only", from_version: db.version, to_version: db.version, error: null });
+      const r = { hash: await s.stateHash(), v: db.version }; db.close(); return r;
+    });
+    check(!!roFile && roFile.subarray(0, 7).toString() === "LVHVBAK" && await page.locator(".bk-dialog").count() === 0 && roErr === 0 && roToast.startsWith("Đã tạo tệp sao lưu") && roHash.hash === old.hash && roHash.v === 1,
+      `MA3C-30-01 / TKN3-P-01: chỉ đọc vẫn tạo được tệp sao lưu (${roFile ? roFile.length : 0} byte), hộp đóng, báo "${roToast.split(".")[0]}", không lỗi; kho cũ không đổi (stateHash, v${roHash.v})`);
+    // MA3C-30-01: tệp xuất từ chế độ chỉ đọc khôi phục được vào kho TRỐNG của bản mới (bản dựng chính, ngữ cảnh mới).
+    {
+      serveDir = DIST;
+      const fresh = await newPage();
+      await fresh.page.goto(BASE + "#/nguoi-than/sao-luu");
+      await fresh.page.waitForSelector("#bk-file", { state: "attached", timeout: 30000 });
+      await fresh.page.setInputFiles("#bk-file", { name: "tu-che-do-chi-doc.lvhv", mimeType: "application/octet-stream", buffer: roFile ?? Buffer.alloc(0) });
+      await fresh.page.fill("#bk-ipw", "nhà có cây bàng");
+      await fresh.page.click("#bk-open");
+      await fresh.page.waitForSelector(".imp-dialog[open]", { timeout: 60000 });
+      await fresh.page.click(".imp-dialog .dbtn.main");
+      const restored = await fresh.page.waitForSelector('.toast:has-text("Đã khôi phục: 3 người")', { timeout: 60000 }).then(() => true, () => false);
+      await fresh.page.goto(BASE + "#/nguoi-than/ho-so"); await fresh.page.waitForSelector("#list-deceased");
+      const rows = await fresh.page.locator(".prow").count();
+      await fresh.page.goto(BASE + `#/nguoi-than/nguoi/${old.A}`); await fresh.page.waitForSelector("#notice-box");
+      await fresh.page.click("#notice-box > summary");
+      const certs = ((await fresh.page.innerText("#notice-box")).match(/Giấy chứng tử/g) ?? []).length;
+      const fv = await fresh.page.evaluate(async () => (await indexedDB.databases()).find((d) => d.name === "lvhv")?.version);
+      check(restored && rows === 3 && certs === 2 && fv === 3 && fresh.errors.length === 0,
+        `MA3C-30-01: tệp sao lưu tạo ở chế độ chỉ đọc khôi phục vào kho trống của bản mới — 3 hồ sơ, 2 ảnh giấy báo tử thành tệp đính kèm "Giấy chứng tử", kho v${fv} (${fresh.errors.join(" | ") || "0 lỗi trang"})`);
+      await fresh.ctx.close();
+    }
+    await page.goto(BASE + "#/nguoi-than/ho-so"); await page.waitForSelector("#list-deceased");
     await page.screenshot({ path: join(SHOTS, "v02-upgrade-readonly-360.png"), fullPage: true });
     await ctx.close();
   }

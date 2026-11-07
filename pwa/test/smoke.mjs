@@ -112,7 +112,7 @@ async function newCtx(vp, opts = {}) {
   check(await page.locator(".lnum").innerText() === "27", "ngày âm 27");
   check((await page.locator(".bignum").innerText()) === "5", "số ngày lớn = 5");
   check(await page.locator(".foot .mock").count() === 0, "không có nhãn MOCK (lõi thật tsport)");
-  check(await page.evaluate(() => window.__lvhv.mock === false), "window.__lvhv.mock = false");
+  check(await page.evaluate(() => window.__lvhv === undefined), "bản phát hành không có window.__lvhv (chỉ bản dựng kiểm thử)");
 
   // Ngọc Hạp 2026-11-05 — đối chiếu trang lịch công khai (content/ngochap/rules.md §5)
   const tags = async (sel) => (await page.locator(sel).allTextContents()).map((t) => t.trim());
@@ -137,9 +137,10 @@ async function newCtx(vp, opts = {}) {
   await cdp.send("HeapProfiler.collectGarbage");
   const heap = await cdp.send("Runtime.getHeapUsage");
   // Render: chuyển 20 ngày bằng phím
-  await page.evaluate(() => { window.__lvhv.renderMs.length = 0; });
+  // Thời gian dựng tờ lịch: Performance API (performance.measure "lvhv:render"), không qua biến toàn cục.
+  await page.evaluate(() => { performance.clearMeasures("lvhv:render"); });
   for (let i = 0; i < 20; i++) await page.keyboard.press("ArrowRight");
-  const renderMs = await page.evaluate(() => window.__lvhv.renderMs.slice());
+  const renderMs = await page.evaluate(() => performance.getEntriesByName("lvhv:render").map((e) => +e.duration.toFixed(2)));
   check(renderMs.length === 20, "phím mũi tên đổi ngày (20 lần)");
   const maxRender = Math.max(...renderMs);
   check(maxRender < 16, `render tờ lịch < 16 ms (max ${maxRender.toFixed(2)} ms, bao gồm lõi tsport)`);
@@ -368,6 +369,14 @@ async function newCtx(vp, opts = {}) {
   await ctx.close();
 }
 
+// ---------- Bản dựng kiểm thử (LVHV_TEST_HOOKS=1) cho 1c, 1d, 1e ----------
+// Các mục cần lối vào lớp lưu trữ (`window.__lvhv`) hay cổng kiểm thử chạy trên bản dựng kiểm thử, dựng vào thư mục tạm.
+// Bản phát hành dist/ không có móc nào (kiểm ở 1e) — mục 1, 1b, 2, 3 chạy trên dist/.
+const TMP_T = mkdtempSync(join(tmpdir(), "lvhv-t-"));
+const DIST_T = join(TMP_T, "dist");
+execFileSync(process.execPath, [join(ROOT, "build.mjs")], { cwd: ROOT, env: { ...process.env, LVHV_TEST_HOOKS: "1", LVHV_OUT_DIR: DIST_T }, stdio: "ignore" });
+const LAZY_T = JSON.parse(readFileSync(join(DIST_T, "lazy-manifest.json"), "utf8"));
+
 // ---------- 1c. Lưu trữ và sao lưu v0.2 (đợt 2): tải lười, CSP không đổi, IndexedDB, Argon2id trong Chromium ----------
 const LAZY = JSON.parse(readFileSync(join(DIST, "lazy-manifest.json"), "utf8"));
 {
@@ -378,6 +387,7 @@ const LAZY = JSON.parse(readFileSync(join(DIST, "lazy-manifest.json"), "utf8"));
   check(LAZY.lazy_js.every((f) => !metrics.viewports["360x780"].first_load_paths.includes("/" + f)), "P6: lần tải đầu không yêu cầu tệp lưu trữ/mật mã");
 
   bytesSent = 0; served.length = 0;
+  serveDir = DIST_T; // cần window.__lvhv.storage
   const { ctx, page, errors, external } = await newCtx({ width: 360, height: 780 }, { touch: true });
   const csp = [];
   page.on("console", (m) => { if (/Content.Security.Policy|CSP/i.test(m.text())) csp.push(m.text()); });
@@ -424,7 +434,7 @@ const LAZY = JSON.parse(readFileSync(join(DIST, "lazy-manifest.json"), "utf8"));
   check(r.wrong === "Sai mật khẩu hoặc tệp bị hỏng", `Chromium: sai mật khẩu → "${r.wrong}"`);
   check(r.rustPersons === 3, "Chromium: mở được tệp mẫu do Rust tạo (example-v1.lvhv)");
   check(typeof r.persist === "boolean", `navigator.storage.persist() đã gọi khi lưu hồ sơ đầu tiên (kết quả ${r.persist})`);
-  check(LAZY.lazy_js.every((f) => lazyServed.includes("/" + f)), `tệp tải lười được nạp khi dùng (${lazyServed.join(", ")})`);
+  check(LAZY_T.lazy_js.every((f) => lazyServed.includes("/" + f)), `tệp tải lười được nạp khi dùng (${lazyServed.join(", ")})`);
   check(csp.length === 0, `0 vi phạm CSP khi chạy Argon2id/XChaCha20 (${csp.join(" | ") || "0"})`);
   check(r.dbs.includes("lvhv") && r.ls.every((k) => k === "lvhv.ui"), "dữ liệu chỉ ở IndexedDB 'lvhv'; localStorage chỉ lvhv.ui (S4')");
   check(errors.length === 0, `không lỗi console (lưu trữ) ${errors.join(" | ")}`);
@@ -444,29 +454,29 @@ const LAZY = JSON.parse(readFileSync(join(DIST, "lazy-manifest.json"), "utf8"));
     persist_granted_headless: r.persist, roundtrip_identical: r.same, csp_violations: csp,
   };
   await ctx.close();
+  serveDir = DIST;
 }
 
 // ---------- 1d. Mô-đun Người thân (v0.2 đợt 3, docs/v0.2/08): luồng người dùng thật, R13, ảnh chụp ----------
 {
   const { runPeople } = await import("./people-flows.mjs");
+  serveDir = DIST_T; // luồng Người thân đọc kho qua window.__lvhv.storage (chỉ bản dựng kiểm thử)
   try {
     await runPeople({ browser, BASE, ORIGIN, ROOT, SHOTS, check, metrics });
   } catch (e) {
     console.log(e.message);
     check(false, `Người thân: luồng kiểm thử dừng giữa chừng (${e.message.split("\n")[0]})`);
   }
+  serveDir = DIST;
 }
 
 // ---------- 1e. MA3-15-03 tất định: bản dựng kiểm thử có cổng giữ bước mã hóa (LVHV_TEST_HOOKS=1) ----------
 {
-  const TMP_T = mkdtempSync(join(tmpdir(), "lvhv-t-"));
   // Mọi tên móc kiểm thử (src/testhooks.ts và nơi gọi): cổng, cờ, tên hàm. Chỉ được có ở bản dựng LVHV_TEST_HOOKS=1.
-  const HOOK_NAMES = /__lvhvGates|__lvhvFailMigration|backup-encrypt|backup-restore|testGate|testFlag|__LVHV_TEST_HOOKS__/;
-  const DIST_T = join(TMP_T, "dist");
+  const HOOK_NAMES = /__lvhv|backup-encrypt|backup-restore|testGate|testFlag|__LVHV_TEST_HOOKS__/;
   const hooksIn = (d) => (function list(x) { return readdirSync(x).flatMap((n) => { const p = join(x, n); return statSync(p).isDirectory() ? list(p) : [p]; }); })(d)
     .filter((f) => HOOK_NAMES.test(readFileSync(f, "latin1"))).length;
   check(hooksIn(DIST) === 0, `bản dựng chính dist/ (mọi tệp) không chứa tên móc kiểm thử (${HOOK_NAMES.source})`);
-  execFileSync(process.execPath, [join(ROOT, "build.mjs")], { cwd: ROOT, env: { ...process.env, LVHV_TEST_HOOKS: "1", LVHV_OUT_DIR: DIST_T }, stdio: "ignore" });
   check(hooksIn(DIST_T) > 0, "bản dựng kiểm thử (LVHV_TEST_HOOKS=1) có móc kiểm thử");
   serveDir = DIST_T;
   const { runEscGate } = await import("./people-flows.mjs");
@@ -475,6 +485,14 @@ const LAZY = JSON.parse(readFileSync(join(DIST, "lazy-manifest.json"), "utf8"));
   serveDir = DIST;
   rmSync(TMP_T, { recursive: true, force: true });
   rmSync(DIST_T + ".gen", { recursive: true, force: true });
+}
+
+// ---------- 1f. MA3C-30-03: hộp "Lưu tệp" của hệ điều hành — bản dựng chính ----------
+{
+  serveDir = DIST;
+  const { runSavePicker } = await import("./people-flows.mjs");
+  try { await runSavePicker({ browser, BASE, check }); }
+  catch (e) { console.log(e.message); check(false, `MA3C-30-03: kiểm thử dừng giữa chừng (${e.message.split("\n")[0]})`); }
 }
 
 // ---------- 1b. Phiên bản và cập nhật (bản A → bản B), ngoại tuyến ----------

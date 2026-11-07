@@ -13,7 +13,8 @@ import { backLink, confirmDialog, dateInput, ruleSummary, toast, type DateValueJ
 /** Tối đa 6 tệp đính kèm (01 §3.2a, YC-2026-07). */
 export const MAX_ATTACHMENTS = 6;
 const MAX_PDF = 10 * 1024 * 1024;
-export const ATTACHMENT_KIND_TEXT: Record<string, string> = { tin_bao_tu: "Ảnh tin báo tử", giay_chung_tu: "Giấy chứng tử (ảnh hoặc bản quét PDF)", khac: "Khác" };
+// TKN3-X-01: một bộ tên loại cho cả bốn nền tảng (08 §12l) — mỗi loại có thể là ảnh hay bản quét PDF.
+export const ATTACHMENT_KIND_TEXT: Record<string, string> = { tin_bao_tu: "Tin báo tử", giay_chung_tu: "Giấy chứng tử", khac: "Tệp khác" };
 const sizeText = (n: number) => (n >= 1048576 ? `${(n / 1048576).toFixed(1).replace(".", ",")} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
 
 /** Một tệp đính kèm trong biểu mẫu: `id` của phần tử danh sách, `file_id` của bản ghi Attachment. */

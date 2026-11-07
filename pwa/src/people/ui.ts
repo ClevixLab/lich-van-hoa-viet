@@ -169,7 +169,7 @@ export function dateInput(idp: string, legend: string, mode: DateMode, required:
   const listeners: (() => void)[] = [];
   const fire = () => { sync(); listeners.forEach((f) => f()); };
   const calSel = { v: "solar" as "solar" | "lunar" };
-  const calGroup = pressGroup<"solar" | "lunar">(mode === "death" ? "Nhập ngày mất theo" : "Lịch", [["solar", mode === "death" ? "Nhập theo dương lịch" : "Dương lịch"], ["lunar", mode === "death" ? "Nhập theo âm lịch" : "Âm lịch"]], "solar", (v) => { calSel.v = v; fire(); }, "pseg two");
+  const calGroup = pressGroup<"solar" | "lunar">(mode === "death" ? "Nhập ngày mất theo" : "Nhập ngày theo", [["solar", "Nhập theo dương lịch"], ["lunar", "Nhập theo âm lịch"]], "solar", (v) => { calSel.v = v; fire(); }, "pseg two");
   calGroup.id = `${idp}-cal`;
   if (mode === "notice") calGroup.hidden = true; // ngày nhận tin: chỉ dương lịch (01 §3.2a)
   const num = (id: string, label: string, max: number) => {

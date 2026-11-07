@@ -15,6 +15,8 @@ export async function runPeople({ browser, BASE, ORIGIN, ROOT, SHOTS, check, met
   const ctx = await browser.newContext({ viewport: { width: 360, height: 780 }, deviceScaleFactor: 2, hasTouch: true, isMobile: true, locale: "vi-VN", timezoneId: "Asia/Ho_Chi_Minh", reducedMotion: "reduce", colorScheme: "light" });
   const page = await ctx.newPage();
   await page.clock.setFixedTime(FIXED);
+  // Đường tải về (<a download>): tắt hộp "Lưu tệp" của hệ điều hành (showSaveFilePicker); đường đó kiểm ở runSavePicker().
+  await page.addInitScript(() => { Object.defineProperty(window, "showSaveFilePicker", { value: undefined, configurable: true }); });
   const errors = [], external = [], csp = [];
   page.on("console", (m) => { if (m.type() === "error" || m.type() === "warning") errors.push(`${m.type()}: ${m.text()}`); if (/Content.Security.Policy/i.test(m.text())) csp.push(m.text()); });
   page.on("pageerror", (e) => errors.push(`pageerror: ${e.message}`));
@@ -680,7 +682,7 @@ export async function runPeople({ browser, BASE, ORIGIN, ROOT, SHOTS, check, met
     await page.click("#notice-box > summary");
     await page.waitForSelector("#notice-box .cert-thumb[data-drawn]");
     const nbTxt = await text("#notice-box");
-    check(nbTxt.includes(SEN.reason) && nbTxt.includes("18/07/2024") && nbTxt.includes("Ảnh tin báo tử") && nbTxt.includes("Giấy chứng tử (ảnh hoặc bản quét PDF)") && nbTxt.includes("Tệp PDF được lưu nguyên bản"),
+    check(nbTxt.includes(SEN.reason) && nbTxt.includes("18/07/2024") && nbTxt.includes("Tin báo tử") && nbTxt.includes("Giấy chứng tử") && nbTxt.includes("Tệp PDF được lưu nguyên bản"),
       "Trang hồ sơ: mở khối thì thấy lý do, ngày nhận tin, hai tệp đính kèm theo loại");
     // S10 / BM2-05: tải tệp đính kèm phải qua hộp xác nhận; "Không tải" → không có tệp nào được tải.
     let dlCount = 0; const onDl = () => { dlCount++; }; page.on("download", onDl);
@@ -803,6 +805,8 @@ export async function runEscGate({ browser, BASE, check }) {
   await page.clock.setFixedTime(FIXED);
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
+  // Đường tải về (<a download>): tắt hộp "Lưu tệp" của hệ điều hành (showSaveFilePicker); đường đó kiểm ở runSavePicker().
+  await page.addInitScript(() => { Object.defineProperty(window, "showSaveFilePicker", { value: undefined, configurable: true }); });
   await page.addInitScript(() => {
     window.__gate = { reached: 0, release: null, restoreReached: 0, restoreRelease: null };
     window.__lvhvGates = {
@@ -867,6 +871,92 @@ export async function runEscGate({ browser, BASE, check }) {
     const restored = await page.waitForSelector('.toast:has-text("Đã khôi phục: 1 người")', { timeout: 30000 }).then(() => true, () => false);
     check(restored && await page.locator(".pdialog[open]").count() === 0, "MA3-15-03: sau khi khôi phục xong — có thông báo \"Đã khôi phục\", không còn hộp mở");
     check(errors.length === 0, `MA3-15-03: không có lỗi trang (${errors.join(" | ") || "0"})`);
+  } finally {
+    await ctx.close();
+  }
+}
+
+/**
+ * MA3C-30-03: hộp "Lưu tệp" của hệ điều hành (showSaveFilePicker, Chromium trên máy tính). Chỉ ghi nhận "đã sao lưu"
+ * sau khi ghi xong; hủy hộp hay ghi lỗi → hộp sao lưu báo rõ, không ghi nhận. Chạy trên bản dựng CHÍNH (dist/); hộp của
+ * hệ điều hành được thay bằng bản giả trong trang (kiểm thử không bấm được hộp thật).
+ */
+export async function runSavePicker({ browser, BASE, check }) {
+  const ctx = await browser.newContext({ viewport: { width: 360, height: 780 }, deviceScaleFactor: 2, hasTouch: true, isMobile: true, locale: "vi-VN", timezoneId: "Asia/Ho_Chi_Minh" });
+  const page = await ctx.newPage();
+  await page.clock.setFixedTime(FIXED);
+  const errors = [], downloads = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  page.on("download", (d) => downloads.push(d.suggestedFilename()));
+  await page.addInitScript(() => {
+    window.__pick = { mode: "ok", calls: [], saved: [] };
+    window.showSaveFilePicker = async (o) => {
+      window.__pick.calls.push(o.suggestedName);
+      if (window.__pick.mode === "cancel") throw new DOMException("Người dùng đóng hộp", "AbortError");
+      const parts = [];
+      return { createWritable: async () => ({
+        write: async (d) => { parts.push(new Uint8Array(await new Blob([d]).arrayBuffer())); },
+        close: async () => {
+          if (window.__pick.mode === "fail") throw new DOMException("Ổ đầy", "QuotaExceededError");
+          const n = parts.reduce((a, b) => a + b.length, 0), all = new Uint8Array(n); let i = 0;
+          for (const b of parts) { all.set(b, i); i += b.length; }
+          window.__pick.saved.push({ head: String.fromCharCode(...all.slice(0, 7)), bytes: n });
+        },
+      }) };
+    };
+  });
+  try {
+    await page.goto(BASE + "#/nguoi-than/them/dang-song");
+    await page.waitForSelector("#pf-ten", { timeout: 15000 });
+    await page.fill("#pf-ten", "Phạm Văn Lưu");
+    await page.fill("#pf-birth-d", "2"); await page.fill("#pf-birth-m", "3"); await page.fill("#pf-birth-y", "1985");
+    await page.click(".form-acts .primary");
+    await page.waitForSelector("#person-name", { timeout: 15000 });
+    const openBackup = async () => {
+      await page.goto(BASE + "#/nguoi-than/sao-luu"); await page.waitForSelector("#bk-export:not([disabled])", { timeout: 15000 });
+      await page.click("#bk-export");
+      await page.fill("#bk-pw1", "nhà có cây bàng"); await page.fill("#bk-pw2", "nhà có cây bàng");
+    };
+    const lastTxt = async () => (await page.innerText("#bk-last")).trim();
+    const last0 = await (async () => { await page.goto(BASE + "#/nguoi-than/sao-luu"); await page.waitForSelector("#bk-last"); return lastTxt(); })();
+
+    // 1. Hủy hộp chọn nơi lưu → không mã hóa, không ghi nhận, hộp sao lưu vẫn mở và nói rõ.
+    await openBackup();
+    await page.evaluate(() => { window.__pick.mode = "cancel"; });
+    await page.click(".bk-dialog .dbtn.main");
+    await page.waitForSelector(".bk-dialog .ferr:not([hidden])", { timeout: 15000 });
+    const cancelMsg = await page.innerText(".bk-dialog .ferr:not([hidden])");
+    const cancelOpen = await page.locator(".bk-dialog[open]").count();
+    await page.click(".bk-dialog .dbtn:not(.main)");
+    await page.waitForSelector(".bk-dialog", { state: "detached" });
+    const lastAfterCancel = await (async () => { await page.goto(BASE + "#/nguoi-than/sao-luu"); await page.waitForSelector("#bk-last"); return lastTxt(); })();
+    check(cancelOpen === 1 && cancelMsg.startsWith("Chưa lưu tệp") && lastAfterCancel === last0,
+      `MA3C-30-03: đóng hộp chọn nơi lưu → hộp sao lưu vẫn mở, báo "${cancelMsg.split("—")[0].trim()}", không ghi nhận đã sao lưu ("${lastAfterCancel}")`);
+
+    // 2. Ghi lỗi (ổ đầy) → báo lỗi, không ghi nhận.
+    await openBackup();
+    await page.evaluate(() => { window.__pick.mode = "fail"; });
+    await page.click(".bk-dialog .dbtn.main");
+    await page.waitForSelector(".bk-dialog .ferr:not([hidden])", { timeout: 60000 });
+    const failMsg = await page.innerText(".bk-dialog .ferr:not([hidden])");
+    await page.click(".bk-dialog .dbtn:not(.main)");
+    await page.waitForSelector(".bk-dialog", { state: "detached" });
+    const lastAfterFail = await (async () => { await page.goto(BASE + "#/nguoi-than/sao-luu"); await page.waitForSelector("#bk-last"); return lastTxt(); })();
+    check(failMsg.startsWith("Chưa lưu được tệp") && lastAfterFail === last0, `MA3C-30-03: ghi tệp lỗi → báo "${failMsg.split("(")[0].trim()}", không ghi nhận đã sao lưu`);
+
+    // 3. Lưu xong → có tệp đúng định dạng, thông báo thành công, "Lần sao lưu gần nhất" cập nhật; không có tải về.
+    await openBackup();
+    await page.evaluate(() => { window.__pick.mode = "ok"; });
+    await page.click(".bk-dialog .dbtn.main");
+    await page.waitForSelector(".bk-dialog", { state: "detached", timeout: 60000 });
+    const toast = await page.locator(".toast").first().innerText().catch(() => "");
+    await page.waitForSelector('#bk-last:has-text("Lần sao lưu gần nhất")', { timeout: 15000 }).catch(() => {});
+    const pick = await page.evaluate(() => window.__pick);
+    const lastOk = await lastTxt();
+    check(pick.saved.length === 1 && pick.saved[0].head === "LVHVBAK" && pick.calls.every((n) => n === `LichVanHoaViet-saoluu-${TODAY}.lvhv`) && toast.startsWith("Đã tạo tệp sao lưu")
+      && lastOk === `Lần sao lưu gần nhất: ${TODAY.slice(8, 10)}/${TODAY.slice(5, 7)}/${TODAY.slice(0, 4)}` && downloads.length === 0,
+      `MA3C-30-03: lưu qua hộp "Lưu tệp" → tệp ${pick.saved[0]?.bytes ?? 0} byte, ghi nhận sau khi ghi xong ("${lastOk}"), không dùng tải về (${downloads.length})`);
+    check(errors.length === 0, `MA3C-30-03: không có lỗi trang (${errors.join(" | ") || "0"})`);
   } finally {
     await ctx.close();
   }
