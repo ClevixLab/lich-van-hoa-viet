@@ -145,18 +145,12 @@ struct CheckedDate: Equatable {
 enum DateCheck {
     private static var leapCache: [Int: Int?] = [:]
 
-    /// Tháng nhuận của năm âm `y` (nil = không có, hoặc năm ngoài miền đổi lịch 1899–3000). Hỏi lõi.
+    /// Tháng nhuận của năm âm `y` (nil = không có, hoặc năm ngoài 1899–3000) — `lunar_leap_month` của lõi.
     static func leapMonth(ofLunarYear y: Int) -> Int? {
         if let c = leapCache[y] { return c }
-        var found: Int?
-        if (1899...3000).contains(y) {
-            for m in 1...12 {
-                let v: JV = ["calendar": "lunar", "precision": "day", "year": .i(y), "month": .i(m), "day": 1, "leap": true]
-                if (try? saveDeathJson(dateValueJson: v.text)) != nil { found = m; break }
-            }
-        }
-        leapCache[y] = found
-        return found
+        let r: Int? = (1899...3000).contains(y) ? ((try? lunarLeapMonth(year: Int32(y))) ?? nil).map { Int($0) } : nil
+        leapCache[y] = r
+        return r
     }
 
     /// Ngày mất (02 §1): đổi lịch, kiểm tồn tại, không sau hôm nay.
@@ -360,18 +354,51 @@ struct RuleDraft: Equatable {
     }
 }
 
-// MARK: - Thông tin báo tử (01 §3.2a)
+// MARK: - Thông tin báo tử (01 §3.2a) và tệp đính kèm (01 §3.8a, YC-2026-07)
+
+/// Loại tệp đính kèm.
+enum AttKind: String, CaseIterable {
+    case tinBaoTu = "tin_bao_tu", giayChungTu = "giay_chung_tu", khac = "khac"
+    var title: String {
+        switch self {
+        case .tinBaoTu: return "Ảnh tin báo tử"
+        case .giayChungTu: return "Giấy chứng tử"
+        case .khac: return "Khác"
+        }
+    }
+    static func title(_ code: String) -> String { AttKind(rawValue: code)?.title ?? "Khác" }
+}
+
+/// Tệp mới chọn, chưa ghi vào kho: ảnh đã mã hóa lại (S9) hoặc PDF nguyên bản.
+struct NewAttachment: Equatable {
+    let data: Data
+    let mime: String
+    let fileName: String?
+    var isPdf: Bool { mime == "application/pdf" }
+}
+
+/// Một mục trong `death.notice.attachments`.
+struct AttDraft: Equatable, Identifiable {
+    var id: String
+    var kind: String
+    /// Id tệp trong kho (đã có, hoặc vừa ghi).
+    var fileId: String?
+    /// Tệp mới chưa ghi.
+    var new: NewAttachment?
+
+    static func make(_ n: NewAttachment, kind: AttKind) -> AttDraft {
+        AttDraft(id: (try? FFI.uuid()) ?? UUID().uuidString.lowercased(), kind: kind.rawValue, fileId: nil, new: n)
+    }
+}
 
 struct NoticeDraft: Equatable {
+    static let maxAttachments = 6
     var reportedBy = ""
     var place = ""
     var reason = ""
     var note = ""
     var date = DateDraft()
-    /// Ảnh đã có (id trong kho).
-    var photoIds: [String] = []
-    /// Ảnh mới chọn, chưa ghi.
-    var newPhotos: [ProcessedPhoto] = []
+    var attachments: [AttDraft] = []
 
     init() {}
     init(_ n: JV) {
@@ -381,14 +408,17 @@ struct NoticeDraft: Equatable {
         reason = n["reason"].string
         note = n["note"].string
         date = DateDraft(n["notice_date"])
-        photoIds = n["certificate_photo_ids"].array.compactMap(\.str)
+        attachments = n["attachments"].array.compactMap { a in
+            guard let id = a["id"].str, let f = a["file_id"].str else { return nil }
+            return AttDraft(id: id, kind: a["kind"].str ?? "khac", fileId: f, new: nil)
+        }
     }
 
-    var photoCount: Int { photoIds.count + newPhotos.count }
+    var attachmentCount: Int { attachments.count }
 
     var isEmpty: Bool {
         Text1.clean(reportedBy).isEmpty && Text1.clean(place).isEmpty && Text1.clean(reason).isEmpty
-            && Text1.clean(note).isEmpty && date.isEmpty && photoCount == 0
+            && Text1.clean(note).isEmpty && date.isEmpty && attachments.isEmpty
     }
 
     func validate(today: CivilDate) -> FieldErrors {
@@ -397,23 +427,27 @@ struct NoticeDraft: Equatable {
         if Text1.count(place) > 200 { e.set("notice.place", "Nơi mất tối đa 200 ký tự") }
         if !date.isEmpty, let m = DateCheck.notice(date, today: today).error { e.set("notice.date", m) }
         if Text1.count(reason) > 500 { e.set("notice.reason", "Lý do tối đa 500 ký tự") }
-        if photoCount > 4 { e.set("notice.photos", "Tối đa 4 ảnh giấy báo tử") }
+        if attachments.count > Self.maxAttachments { e.set("notice.attachments", "Tối đa 6 tệp đính kèm") }
         if Text1.count(note) > 2000 { e.set("notice.note", "Ghi chú tối đa 2000 ký tự") }
         return e
     }
 
-    /// JSON `DeathNotice`, hoặc nil khi không có gì.
-    func json(photoIds ids: [String], today: CivilDate) -> JV? {
-        if isEmpty && ids.isEmpty { return nil }
+    /// JSON `DeathNotice` (chỉ các tệp đã có trong kho), hoặc nil khi không có gì.
+    func json(today: CivilDate) -> JV? {
+        if isEmpty { return nil }
         let opt = { (s: String, ml: Bool) -> JV in let c = Text1.clean(s, multiline: ml); return c.isEmpty ? .null : .s(c) }
         let nd = date.isEmpty ? JV.null : DateCheck.notice(date, today: today).value
+        let atts: [JV] = attachments.compactMap { a in
+            guard let f = a.fileId else { return nil }
+            return ["id": .s(a.id), "kind": .s(a.kind), "file_id": .s(f)]
+        }
         return ["reported_by": opt(reportedBy, false), "place": opt(place, false), "reason": opt(reason, true),
-                "notice_date": nd, "certificate_photo_ids": .array(ids.map { JV.s($0) }), "note": opt(note, true)]
+                "notice_date": nd, "attachments": .array(atts), "note": opt(note, true)]
     }
 
     /// Mô tả ngắn cho hộp xác nhận (không đọc ra nội dung).
     var summaryLine: String? {
-        isEmpty ? nil : "Lưu thông tin báo tử\(photoCount > 0 ? " (gồm \(photoCount) ảnh giấy báo tử)" : "") — chỉ hiện trên trang hồ sơ."
+        isEmpty ? nil : "Lưu thông tin báo tử\(attachments.isEmpty ? "" : " (gồm \(attachments.count) tệp đính kèm)") — chỉ hiện trên trang hồ sơ."
     }
 }
 
@@ -445,6 +479,8 @@ struct PersonDraft: Equatable {
     var photoId: String?
     var newPhoto: ProcessedPhoto?
     var notice = NoticeDraft()
+    /// Giới tính (YC-2026-07): "nam" | "nu" | nil (Không ghi).
+    var gioiTinh: String?
 
     var deceased: Bool { kind == "deceased" }
     var isNew: Bool { base["id"].str == nil }
@@ -482,6 +518,7 @@ struct PersonDraft: Equatable {
         feb29 = p["feb29_rule"].str ?? "feb28"
         photoId = p["photo_id"].str
         notice = NoticeDraft(p["death"]["notice"])
+        gioiTinh = p["gioi_tinh"].str
     }
 
     var birthFullDay: Bool { !birth.isEmpty && !birth.yearOnly }
@@ -536,7 +573,7 @@ struct PersonDraft: Equatable {
     }
 
     /// Person JSON để gửi `save_person_json` (lõi tính phần dẫn xuất, gắn id/rev).
-    func build(photoId pid: String?, noticePhotoIds: [String], today: CivilDate) -> JV {
+    func build(photoId pid: String?, today: CivilDate) -> JV {
         var p = base.isObject ? base : JV.object([:])
         p["kind"] = .s(kind)
         p["danh_xung"] = .s(Text1.capFirst(Text1.clean(danhXung)))
@@ -545,6 +582,7 @@ struct PersonDraft: Equatable {
         p["quan_he"] = .s(Text1.capFirst(Text1.clean(quanHe)))
         p["ghi_chu"] = .s(Text1.clean(ghiChu, multiline: true))
         p["photo_id"] = .opt(pid)
+        p["gioi_tinh"] = .opt(gioiTinh)
         p["feb29_rule"] = .s(isFeb29 ? feb29 : (base["feb29_rule"].str ?? "feb28"))
         if birth.isEmpty {
             p["birth"] = .null
@@ -559,7 +597,7 @@ struct PersonDraft: Equatable {
                 let ng = Int(nguong) ?? 60
                 d["tuoi"] = ["value": .i(v), "label": .s(v < ng ? "huong_duong" : "huong_tho"), "manual": true, "approx": false]
             }
-            if let n = notice.json(photoIds: noticePhotoIds, today: today) { d["notice"] = n }
+            if let n = notice.json(today: today) { d["notice"] = n }
             p["death"] = d
             p["noi_an_tang"] = .s(Text1.clean(noiAnTang))
             var mem: JV = base["memorial"].isObject ? base["memorial"]
@@ -590,7 +628,7 @@ struct PersonDraft: Equatable {
         guard deceased else { return nil }
         let d = DateCheck.death(death, today: today)
         guard d.ok else { return nil }
-        let p = build(photoId: nil, noticePhotoIds: [], today: today)
+        let p = build(photoId: nil, today: today)
         var noNotice = p
         noNotice["death"] = p["death"].removing("notice")
         guard let j = try? derivePersonJson(json: noNotice.text), let dp = JV.parse(j),

@@ -41,12 +41,16 @@ final class PeopleUpgradeTests: XCTestCase {
         Thread.sleep(forTimeInterval: 2)
         let r0 = report.label
         print("R14 trước khi cấp quyền:\n\(r0)")
-        XCTAssertEqual(value(r0, "migration"), "ok", r0)
+        XCTAssertTrue(["migrated", "ok"].contains(value(r0, "migration") ?? ""), r0)
         XCTAssertEqual(value(r0, "persons"), "5", r0)
         XCTAssertEqual(value(r0, "events"), "1", r0)
         XCTAssertEqual(value(r0, "notices"), "1", r0)
         XCTAssertEqual(value(r0, "photos"), value(r0, "photos_ok"), r0)
-        XCTAssertEqual(value(r0, "photos"), "2", r0)
+        XCTAssertEqual(value(r0, "photos"), "1", "ảnh chân dung: \(r0)")
+        // 01 §7.1: ảnh giấy báo tử của bản 0.2-dev → tệp đính kèm loại giấy chứng tử, đọc lại được; khóa `legacy` giữ bản gốc.
+        XCTAssertEqual(value(r0, "attachments"), "1", r0)
+        XCTAssertEqual(value(r0, "attachments_ok"), "1", r0)
+        XCTAssertEqual(value(r0, "legacy"), "1", r0)
         XCTAssertEqual(value(r0, "same_as_before"), "1", "dữ liệu sau nâng cấp phải giống hệt bản chép trước khi cài đè: \(r0)")
         // Lịch nhắc được đặt lại sau nâng cấp: cho phép thông báo (hộp của hệ thống) → lập lịch lại.
         let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
@@ -70,5 +74,30 @@ final class PeopleUpgradeTests: XCTestCase {
         app.buttons["diag.refresh"].tap()
         Thread.sleep(forTimeInterval: 2)
         XCTAssertEqual(value(report.label, "pending"), value(r1, "pending"), report.label)
+    }
+
+    /// R14 ca lỗi: ảnh giấy báo tử của kho cũ bị hỏng → lõi không chuyển, mở chỉ đọc, dữ liệu cũ còn nguyên.
+    func testFailedMigrationIsReadOnly() throws {
+        guard ProcessInfo.processInfo.environment["LVHV_UPGRADE_FAIL"] == "1" else { throw XCTSkip("Chỉ chạy trong job upgrade") }
+        let app = XCUIApplication()
+        app.launchArguments = ["-lvhvScreen", "diag", "-lvhvToday", "2026-11-07"]
+        app.launch()
+        let report = app.staticTexts["diag.report"]
+        XCTAssertTrue(report.waitForExistence(timeout: 20))
+        Thread.sleep(forTimeInterval: 2)
+        app.buttons["diag.refresh"].tap()
+        Thread.sleep(forTimeInterval: 1)
+        let r = report.label
+        print("R14 ca lỗi:\n\(r)")
+        XCTAssertEqual(value(r, "migration"), "read_only", r)
+        XCTAssertEqual(value(r, "persons"), "5", "dữ liệu cũ vẫn xem được: \(r)")
+        XCTAssertTrue(app.otherElements["people.readOnly"].exists || app.staticTexts["Đang ở chế độ chỉ đọc"].exists)
+        shot("upgrade-readonly-diag")
+        app.terminate()
+        app.launchArguments = ["-lvhvScreen", "profiles", "-lvhvToday", "2026-11-07"]
+        app.launch()
+        Thread.sleep(forTimeInterval: 3)
+        shot("upgrade-readonly-profiles")
+        XCTAssertFalse(app.buttons["profiles.add.deceased"].isEnabled, "chỉ đọc: không thêm được hồ sơ")
     }
 }

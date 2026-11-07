@@ -95,4 +95,32 @@ grep -q "Test Case '-\[LichVietUITests_iOS.PeopleUpgradeTests testDataSurvivesUp
   || { echo "::error::R14 ca B KHÔNG ĐẠT"; tail -80 "$T/upgrade-test.log"; exit 1; }
 AS="$(container)/Library/Application Support"
 test -f "$AS/LichVanHoaViet/lvhv.sqlite" || { echo "::error::kho mất sau nâng cấp"; exit 1; }
-echo "R14 (Apple, mô phỏng): ĐẠT ca A và ca B"
+ls -la "$AS/LichVanHoaViet"
+
+echo "== Ca C: 0.2-dev có ảnh giấy báo tử hỏng → mới: chuyển đổi lỗi, chỉ đọc, không mất dữ liệu"
+xcrun simctl uninstall "$UDID" "$BID" || true
+xcrun simctl install "$UDID" "$OLD2_APP"
+xcrun simctl launch "$UDID" "$BID" -lvhvSeed demo -lvhvToday 2026-11-07 -lvhvNoNotif 1 -lvhvScreen profiles
+sleep 20
+xcrun simctl terminate "$UDID" "$BID" || true
+AS="$(container)/Library/Application Support"
+# Làm hỏng byte mọi ảnh (ảnh giấy báo tử phải qua kiểm B6 khi chuyển 1 → 2).
+for f in "$AS/LichVanHoaViet/photos/"*; do printf '<html>khong phai anh</html>' > "$f"; done
+NPH=$(ls "$AS/LichVanHoaViet/photos" | wc -l | tr -d ' ')
+SUM_BEFORE=$(shasum "$AS/LichVanHoaViet/lvhv.sqlite" | cut -d' ' -f1)
+(cd "$A" && TEST_RUNNER_LVHV_UPGRADE_FAIL=1 TEST_RUNNER_SCREENSHOT_DIR="$SHOTS" \
+  xcodebuild -project LichVanHoaViet.xcodeproj -scheme LichViet-iOS -configuration Debug \
+    -destination "id=$UDID" -derivedDataPath "$T/dd-new" -resultBundlePath "$T/upgrade-fail.xcresult" \
+    -only-testing:LichVietUITests-iOS/PeopleUpgradeTests/testFailedMigrationIsReadOnly \
+    CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO test-without-building) 2>&1 | tee "$T/upgrade-fail.log" \
+  | grep -E "R14|persons=|migration=|Test Case|error:|Executed" || true
+grep -q "testFailedMigrationIsReadOnly\]' passed" "$T/upgrade-fail.log" \
+  || { echo "::error::R14 ca C KHÔNG ĐẠT"; tail -80 "$T/upgrade-fail.log"; exit 1; }
+AS="$(container)/Library/Application Support"
+ls -la "$AS/LichVanHoaViet" "$AS/LichVanHoaViet/photos"
+test -f "$AS/LichVanHoaViet/lvhv.sqlite" || { echo "::error::ca C: kho mất"; exit 1; }
+[ "$(ls "$AS/LichVanHoaViet/photos" | wc -l | tr -d ' ')" = "$NPH" ] || { echo "::error::ca C: tệp ảnh bị xóa"; exit 1; }
+ls "$AS/LichVanHoaViet" | grep -q "pre-v2.bak" && echo "Có bản sao trước chuyển đổi" || echo "::warning::không thấy lvhv.sqlite.pre-v2.bak"
+SUM_AFTER=$(shasum "$AS/LichVanHoaViet/lvhv.sqlite" | cut -d' ' -f1)
+echo "sha1 kho trước/sau ca lỗi: $SUM_BEFORE / $SUM_AFTER"
+echo "R14 (Apple, mô phỏng): ĐẠT ca A, B và C"

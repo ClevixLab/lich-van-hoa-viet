@@ -1,25 +1,23 @@
 // Biểu mẫu thêm/sửa người đã mất (08 §3.4), người đang sống (§3.5) và "Cập nhật: đã mất" (§12g, US-M-07).
 import PhotosUI
+import QuickLook
 import SwiftUI
+import UniformTypeIdentifiers
 
-/// Gợi ý từ thường ngày (quyết định của chủ dự án: không dùng từ Hán-Việt cổ, không có ô "dòng đầu bia").
+/// Gợi ý cách gọi / quan hệ lấy từ lõi (YC-2026-07): đã viết hoa chữ đầu; người đang sống không có Cụ, Kỵ, Ông Tổ họ,
+/// Bà Cô Tổ họ, Bé đỏ; theo giới tính thì từ hợp giới tính lên trước.
 enum Suggest {
-    /// Cách gọi (01 §3.1, YC-2026-07): viết hoa chữ cái đầu; người đang sống không có Cụ, Kỵ, Ông Tổ họ, Bà Cô Tổ họ, Bé đỏ.
-    /// TODO(core2): lấy hai danh sách từ lõi khi PR #28 có hàm gợi ý.
-    static let danhXungDeceased = ["Ông", "Bà", "Cụ", "Kỵ", "Bác", "Cô", "Chú", "Dì", "Cậu", "Mợ", "Thím", "Anh", "Chị",
-                                   "Em", "Cháu", "Con", "Bạn", "Bố", "Mẹ", "Ông Tổ họ", "Bà Cô Tổ họ", "Bé đỏ"]
-    static let deceasedOnly: Set<String> = ["Cụ", "Kỵ", "Ông Tổ họ", "Bà Cô Tổ họ", "Bé đỏ"]
-    static let danhXungLiving = danhXungDeceased.filter { !deceasedOnly.contains($0) }
-    static let quanHeDeceased = ["Bố", "Mẹ", "Ông nội", "Bà nội", "Ông ngoại", "Bà ngoại", "Cụ ông", "Cụ bà", "Kỵ ông",
-                                 "Kỵ bà", "Ông cố", "Bà cố", "Ông sơ", "Bà sơ", "Bác", "Chú", "Thím", "Cô", "Dì", "Cậu",
-                                 "Mợ", "Anh", "Chị", "Em", "Chồng", "Vợ", "Con"]
-    static let quanHeLiving = ["Bố", "Mẹ", "Ông nội", "Bà nội", "Ông ngoại", "Bà ngoại", "Bác", "Chú", "Thím", "Cô", "Dì",
-                               "Cậu", "Mợ", "Anh", "Chị", "Em", "Chồng", "Vợ", "Con trai", "Con gái", "Cháu"]
+    static func danhXung(deceased: Bool, gioiTinh: String?) -> [String] {
+        danhXungSuggestions(deceased: deceased, gioiTinh: gioiTinh)
+    }
+    static func quanHe(deceased: Bool) -> [String] { quanHeSuggestions(deceased: deceased) }
 }
 
 /// Nút chọn ảnh (PhotosPicker — không cần quyền thư viện ảnh); ảnh được xử lý S9 ở luồng nền.
 struct PhotoPickButton: View {
     let title: String
+    var maxSide: Int = PhotoProcessor.maxSide
+    var maxBytes: Int = PhotoProcessor.maxStoredBytes
     var onPicked: (Result<ProcessedPhoto, PhotoError>) -> Void
     @State private var item: PhotosPickerItem?
     @State private var busy = false
@@ -35,9 +33,10 @@ struct PhotoPickButton: View {
             busy = true
             Task {
                 let data = try? await it.loadTransferable(type: Data.self)
+                let side = maxSide, cap = maxBytes
                 let r: Result<ProcessedPhoto, PhotoError> = await Task.detached(priority: .userInitiated) {
                     guard let data else { return .failure(PhotoError.unreadable) }
-                    do { return .success(try PhotoProcessor.process(data)) }
+                    do { return .success(try PhotoProcessor.process(data, maxSide: side, maxBytes: cap)) }
                     catch let e as PhotoError { return .failure(e) }
                     catch { return .failure(PhotoError.unreadable) }
                 }.value
@@ -49,12 +48,14 @@ struct PhotoPickButton: View {
     }
 }
 
-/// Khối "Thông tin báo tử (không bắt buộc)" — 01 §3.2a.
+/// Khối "Thông tin báo tử (không bắt buộc)" — 01 §3.2a, tệp đính kèm 01 §3.8a (YC-2026-07).
 struct NoticeEditor: View {
     @Binding var n: NoticeDraft
     var errors: FieldErrors
     let today: CivilDate
-    @State private var photoError: String?
+    @State private var fileError: String?
+    @State private var pickingPdf = false
+    @State private var preview: URL?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -66,42 +67,131 @@ struct NoticeEditor: View {
                               today: today, idPrefix: "notice.date")
             }
             PTextField(label: "Lý do", text: $n.reason, error: errors["notice.reason"], multiline: true, id: "notice.reason")
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Ảnh giấy báo tử (tối đa 4)").ps(15, .semibold).foregroundStyle(C.ink)
-                FlowLayout(spacing: 10) {
-                    ForEach(n.photoIds, id: \.self) { pid in
-                        thumb(PhotoView(photoId: pid, initials: "", size: CGSize(width: 96, height: 120), oval: false)) {
-                            n.photoIds.removeAll { $0 == pid }
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Tệp đính kèm (tối đa 6)").ps(15, .semibold).foregroundStyle(C.ink)
+                ForEach($n.attachments) { $a in
+                    AttachmentRow(att: $a, onView: { open(a) }, onRemove: { n.attachments.removeAll { $0.id == a.id } })
+                }
+                if n.attachments.count < NoticeDraft.maxAttachments {
+                    FlowLayout(spacing: 10) {
+                        PhotoPickButton(title: "Thêm ảnh", maxSide: 2048, maxBytes: 2 * 1024 * 1024) { r in
+                            switch r {
+                            case .success(let p):
+                                n.attachments.append(.make(NewAttachment(data: p.jpeg, mime: "image/jpeg", fileName: nil),
+                                                           kind: n.attachments.isEmpty ? .tinBaoTu : .giayChungTu))
+                                fileError = nil
+                            case .failure(let e): fileError = e.message
+                            }
                         }
-                    }
-                    ForEach(Array(n.newPhotos.enumerated()), id: \.offset) { i, p in
-                        thumb(PhotoView(newPhoto: p, initials: "", size: CGSize(width: 96, height: 120), oval: false)) {
-                            if n.newPhotos.indices.contains(i) { n.newPhotos.remove(at: i) }
-                        }
+                        Button("Thêm tệp PDF…") { pickingPdf = true }
+                            .buttonStyle(SecondaryButtonStyle())
+                            .accessibilityIdentifier("notice.addPdf")
                     }
                 }
-                if n.photoCount < 4 {
-                    PhotoPickButton(title: "Thêm ảnh giấy báo tử") { r in
-                        switch r {
-                        case .success(let p): n.newPhotos.append(p); photoError = nil
-                        case .failure(let e): photoError = e.message
-                        }
-                    }
-                }
-                FieldError(text: photoError ?? errors["notice.photos"])
-                PFine("Ảnh chỉ lưu trong ứng dụng trên máy này, đã bỏ thông tin vị trí và máy chụp.")
-                // Tạm thời tới khi lõi dọn ảnh không còn dùng (TKN-I-08, A-7).
-                PFine("“Bỏ ảnh” gỡ ảnh khỏi hồ sơ; ảnh được xóa hẳn khỏi máy khi xóa hồ sơ.")
+                FieldError(text: fileError ?? errors["notice.attachments"])
+                PFine("Ảnh được nén lại và bỏ thông tin vị trí, máy chụp. Tệp PDF được lưu nguyên bản (có thể còn thông tin của máy quét). Tệp chỉ lưu trong ứng dụng trên máy này.")
             }
             PTextField(label: "Ghi chú", text: $n.note, error: errors["notice.note"], multiline: true, id: "notice.note")
         }
+        .fileImporter(isPresented: $pickingPdf, allowedContentTypes: [.pdf]) { r in
+            if case .success(let u) = r { Task { await addPdf(u) } }
+        }
+        .quickLookPreview($preview)
+        .onChange(of: preview) { u in if u == nil { AttachmentTemp.clear() } }
     }
 
-    private func thumb(_ v: PhotoView, remove: @escaping () -> Void) -> some View {
-        VStack(spacing: 6) {
-            v
-            Button("Bỏ ảnh", action: remove).buttonStyle(SecondaryButtonStyle(destructive: true))
+    /// PDF: kiểm cỡ (≤ 10 MB) **trước** khi đọc, rồi chữ ký `%PDF-`; lưu nguyên byte (RA-SOAT §5.3, B6).
+    private func addPdf(_ url: URL) async {
+        let r: Result<NewAttachment, UIMessage> = await Task.detached(priority: .userInitiated) {
+            let scoped = url.startAccessingSecurityScopedResource()
+            defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+            let size = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+            guard size > 0, size <= 10 * 1024 * 1024 else { return .failure(UIMessage(text: "Tệp PDF lớn hơn 10 MB — hãy chọn tệp nhỏ hơn")) }
+            guard let d = try? Data(contentsOf: url) else { return .failure(UIMessage(text: "Không đọc được tệp này")) }
+            guard d.starts(with: Array("%PDF-".utf8)) else { return .failure(UIMessage(text: "Tệp này không phải PDF")) }
+            let name = String(url.lastPathComponent.prefix(120))
+            return .success(NewAttachment(data: d, mime: "application/pdf", fileName: name))
+        }.value
+        switch r {
+        case .success(let a): n.attachments.append(.make(a, kind: .giayChungTu)); fileError = nil
+        case .failure(let m): fileError = m.text
         }
+    }
+
+    private func open(_ a: AttDraft) {
+        let m = PeopleModel.shared
+        let data = a.new?.data ?? a.fileId.flatMap { m.attachmentData($0) }
+        let pdf = a.new?.isPdf ?? (a.fileId.flatMap { m.attachmentsMeta[$0]?["mime"].str } == "application/pdf")
+        guard let data else { return }
+        preview = try? AttachmentTemp.write(data, pdf: pdf)
+    }
+}
+
+/// Câu báo lỗi dùng làm `Error`.
+struct UIMessage: Error { let text: String }
+
+/// Một tệp đính kèm trong biểu mẫu: ảnh nhỏ / biểu tượng PDF, chọn loại, Xem (Quick Look), Bỏ.
+struct AttachmentRow: View {
+    @Binding var att: AttDraft
+    var onView: () -> Void
+    var onRemove: () -> Void
+    @ObservedObject private var m = PeopleModel.shared
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .top, spacing: 12) {
+                AttachmentThumb(att: att)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title).ps(15, .semibold).foregroundStyle(C.ink).fixedSize(horizontal: false, vertical: true)
+                    if isPdf { PFine("Tệp PDF được lưu nguyên bản") }
+                }
+                Spacer(minLength: 0)
+            }
+            SegmentChips(options: AttKind.allCases.map { SegOpt($0.rawValue, $0.title) }, selection: $att.kind,
+                         idPrefix: "notice.att.kind")
+            HStack(spacing: 10) {
+                Button("Xem", action: onView).buttonStyle(SecondaryButtonStyle())
+                Button("Bỏ", action: onRemove).buttonStyle(SecondaryButtonStyle(destructive: true))
+            }
+        }
+        .padding(12)
+        .background(C.paper2, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+
+    private var isPdf: Bool {
+        att.new?.isPdf ?? (att.fileId.flatMap { m.attachmentsMeta[$0]?["mime"].str } == "application/pdf")
+    }
+    private var title: String {
+        let name = att.new?.fileName ?? att.fileId.flatMap { m.attachmentsMeta[$0]?["file_name"].str }
+        return name ?? (isPdf ? "Tệp PDF" : "Ảnh")
+    }
+}
+
+/// Ảnh nhỏ của tệp đính kèm (giải mã có trần điểm ảnh); PDF không bao giờ được hiển thị trong ứng dụng.
+struct AttachmentThumb: View {
+    let att: AttDraft
+    var size = CGSize(width: 72, height: 90)
+    @ObservedObject private var m = PeopleModel.shared
+
+    var body: some View {
+        Group {
+            if let img = image {
+                Image(decorative: img, scale: 1).resizable().scaledToFill()
+            } else {
+                Image(systemName: "doc.text").font(.system(size: 28)).foregroundStyle(C.ink2)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity).background(C.paper)
+            }
+        }
+        .frame(width: size.width, height: size.height)
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(C.rule))
+        .accessibilityHidden(true)
+    }
+
+    private var image: CGImage? {
+        if let n = att.new { return n.isPdf ? nil : PhotoProcessor.cgImage(n.data, maxPixel: 400) }
+        guard let f = att.fileId, m.attachmentsMeta[f]?["mime"].str != "application/pdf" else { return nil }
+        return PhotoCache.shared.image("att:" + f) { m.attachmentData(f) }
     }
 }
 
@@ -239,8 +329,13 @@ struct PersonFormView: View {
     private var identityCard: some View {
         PCard {
             PHeading(deceased ? "Người đã mất" : "Người đang sống")
+            LabeledField(label: "Giới tính") {
+                SegmentChips(options: [SegOpt("nam", "Nam"), SegOpt("nu", "Nữ"), SegOpt("", "Không ghi")],
+                             selection: Binding(get: { d.gioiTinh ?? "" }, set: { d.gioiTinh = $0.isEmpty ? nil : $0 }),
+                             idPrefix: "form.gioiTinh")
+            }
             PTextField(label: "Cách gọi (đứng trước tên)", text: $d.danhXung, error: err("danh_xung"),
-                       suggestions: deceased ? Suggest.danhXungDeceased : Suggest.danhXungLiving, id: "form.danhXung")
+                       suggestions: Suggest.danhXung(deceased: deceased, gioiTinh: d.gioiTinh), id: "form.danhXung")
             PTextField(label: "Họ và tên *", text: $d.hoTen, error: err("ho_ten"), id: "form.hoTen")
             if deceased {
                 PTextField(label: "Tên hiệu / pháp danh", text: $d.tenHieu, error: err("ten_hieu"), id: "form.tenHieu")
@@ -248,7 +343,7 @@ struct PersonFormView: View {
             PTextField(label: "Quan hệ với bạn", text: $d.quanHe,
                        hint: deceased ? "Trang tưởng niệm ghi quan hệ này phía trên tên, ví dụ “Ông nội”, “Mẹ”. Để trống thì chỉ ghi tên." : nil,
                        error: err("quan_he"),
-                       suggestions: deceased ? Suggest.quanHeDeceased : Suggest.quanHeLiving, id: "form.quanHe")
+                       suggestions: Suggest.quanHe(deceased: deceased), id: "form.quanHe")
             PTextField(label: "Ghi chú", text: $d.ghiChu, error: err("ghi_chu"), multiline: true, id: "form.ghiChu")
         }
     }
@@ -385,19 +480,23 @@ struct PersonFormView: View {
     private func save() {
         submitted = true
         guard d.validate(today: m.today).isEmpty else { return }
+        var draft = d
+        var addedPhoto: String?
+        var addedFiles: [String] = []
         do {
-            if let np = d.newPhoto { d.photoId = try m.addPhoto(np); d.newPhoto = nil }
-            while let np = d.notice.newPhotos.first {
-                d.notice.photoIds.append(try m.addPhoto(np))
-                d.notice.newPhotos.removeFirst()
-            }
-            let json = d.build(photoId: d.photoId, noticePhotoIds: d.notice.photoIds, today: m.today)
+            if let np = draft.newPhoto { let id = try m.addPhoto(np); addedPhoto = id; draft.photoId = id; draft.newPhoto = nil }
+            addedFiles = try PeopleModel.uploadAttachments(&draft.notice)
+            let json = draft.build(photoId: draft.photoId, today: m.today)
             let saved = try m.savePerson(json)
+            d = draft
             let id = saved["id"].string
             original = d
             if !path.isEmpty { path.removeLast() }
             if editId == nil && !id.isEmpty { path.append(.person(id)) }
         } catch {
+            // Lưu hỏng: xóa ảnh và tệp vừa ghi mà chưa gắn hồ sơ (A-6); dữ liệu đang nhập vẫn trên màn hình.
+            if let p = addedPhoto { m.discardPhoto(p) }
+            for f in addedFiles { m.discardAttachment(f) }
             saveError = "Chưa lưu được: \(Core.message(error)). Dữ liệu đang nhập vẫn còn trên màn hình."
         }
     }
@@ -512,7 +611,7 @@ struct MarkDeceasedView: View {
         let rule = m.person(id)?["reminders"]["gio"].isObject == true ? m.person(id)!["reminders"]["gio"]
             : ["offsets_days": m.settings["default_offsets_days"], "time_local": m.settings["default_time_local"]]
         let offs = PFmt.offsets(rule).lowercased()
-        lines.append("Bắt đầu nhắc ngày giỗ hằng năm vào \(PFmt.lunarText(c.derived["lunar"])) (\(offs), lúc \(rule["time_local"].string)).")
+        lines.append("Bắt đầu nhắc ngày giỗ hằng năm vào \(PFmt.gioText(c.derived["lunar"])) (\(offs), lúc \(rule["time_local"].string)).")
         lines.append("Họ tên, ảnh, ngày sinh và sự kiện vẫn được giữ trong hồ sơ.")
         if let s = notice.summaryLine { lines.append(s) }
         return lines
@@ -521,14 +620,15 @@ struct MarkDeceasedView: View {
     private func apply() {
         let c = DateCheck.death(death, today: m.today)
         guard c.ok else { return }
+        var n = notice
+        var added: [String] = []
         do {
-            while let np = notice.newPhotos.first {
-                notice.photoIds.append(try m.addPhoto(np))
-                notice.newPhotos.removeFirst()
-            }
-            _ = try m.markDeceased(id: id, death: c.value, notice: notice.json(photoIds: notice.photoIds, today: m.today))
+            added = try PeopleModel.uploadAttachments(&n)
+            _ = try m.markDeceased(id: id, death: c.value, notice: n.json(today: m.today))
+            notice = n
             if !path.isEmpty { path.removeLast() }
         } catch {
+            for f in added { m.discardAttachment(f) }
             saveError = "Chưa lưu được: \(Core.message(error)). Dữ liệu đang nhập vẫn còn trên màn hình."
         }
     }

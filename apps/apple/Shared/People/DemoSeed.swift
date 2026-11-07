@@ -85,30 +85,38 @@ enum DemoSeed {
         a.notice.date.day = "8"; a.notice.date.month = "8"; a.notice.date.year = "2025"
         a.notice.note = "Gia đình đã báo cho họ hàng."
         let pA = portrait(0).flatMap { try? m.addPhoto($0) }
-        let cert = portrait(0.8).flatMap { try? m.addPhoto($0) }
-        ids["A"] = (try? m.savePerson(a.build(photoId: pA, noticePhotoIds: cert.map { [$0] } ?? [], today: today)))?["id"].str
+        a.gioiTinh = "nam"
+        // Tệp đính kèm mẫu: một ảnh "giấy chứng tử" (giả, vẽ trong mã) và một PDF nhỏ hợp lệ.
+        if let img = portrait(0.8) {
+            a.notice.attachments.append(.make(NewAttachment(data: img.jpeg, mime: "image/jpeg", fileName: nil), kind: .giayChungTu))
+        }
+        let pdf = Data("%PDF-1.4\n1 0 obj << /Type /Catalog >> endobj\ntrailer << /Root 1 0 R >>\n%%EOF\n".utf8)
+        a.notice.attachments.append(.make(NewAttachment(data: pdf, mime: "application/pdf", fileName: "giay-bao-tu.pdf"),
+                                          kind: .tinBaoTu))
+        _ = try? PeopleModel.uploadAttachments(&a.notice)
+        ids["A"] = (try? m.savePerson(a.build(photoId: pA, today: today)))?["id"].str
 
         // B — bà ngoại, giỗ đúng hôm nay (ngày âm của hôm nay, năm 2019).
         var b = PersonDraft(kind: "deceased", settings: m.settings)
-        b.danhXung = "Bà"; b.hoTen = "Trần Thị B"; b.quanHe = "Bà ngoại"
+        b.danhXung = "Bà"; b.hoTen = "Trần Thị B"; b.quanHe = "Bà ngoại"; b.gioiTinh = "nu"
         if let l = Lich.lunar(today) {
             b.death.cal = .lunar; b.death.day = "\(l.d)"; b.death.month = "\(l.m)"; b.death.year = "2019"
         }
         b.birth.yearOnly = true; b.birth.year = "1935"
-        ids["B"] = (try? m.savePerson(b.build(photoId: nil, noticePhotoIds: [], today: today)))?["id"].str
+        ids["B"] = (try? m.savePerson(b.build(photoId: nil, today: today)))?["id"].str
 
         // E — cụ ông, không rõ năm mất.
         var e = PersonDraft(kind: "deceased", settings: m.settings)
         e.danhXung = "Cụ"; e.hoTen = "Đỗ Văn E"; e.quanHe = "Cụ ông"
         e.death.cal = .lunar; e.death.unknownYear = true; e.death.day = "10"; e.death.month = "3"
-        ids["E"] = (try? m.savePerson(e.build(photoId: nil, noticePhotoIds: [], today: today)))?["id"].str
+        ids["E"] = (try? m.savePerson(e.build(photoId: nil, today: today)))?["id"].str
 
         // C — con trai, có sinh nhật âm và sự kiện tốt nghiệp.
         var c = PersonDraft(kind: "living", settings: m.settings)
         c.hoTen = "Lê Văn C"; c.quanHe = "Con trai"
         c.birth.day = "20"; c.birth.month = "1"; c.birth.year = "1990"
         c.sinhNhatAmOn = true
-        let cId = (try? m.savePerson(c.build(photoId: nil, noticePhotoIds: [], today: today)))?["id"].str
+        let cId = (try? m.savePerson(c.build(photoId: nil, today: today)))?["id"].str
         ids["C"] = cId
         if let cId {
             var ev = EventDraft(personId: cId, types: m.eventTypes, settings: m.settings)
@@ -122,7 +130,7 @@ enum DemoSeed {
         let bd = today.adding(5)
         d.danhXung = "Chị"; d.hoTen = "Phạm Thị D"; d.quanHe = "Chị"
         d.birth.day = "\(bd.d)"; d.birth.month = "\(bd.m)"; d.birth.year = "1985"
-        ids["D"] = (try? m.savePerson(d.build(photoId: nil, noticePhotoIds: [], today: today)))?["id"].str
+        ids["D"] = (try? m.savePerson(d.build(photoId: nil, today: today)))?["id"].str
         m.toast = nil
     }
 
@@ -201,13 +209,15 @@ struct UpgradeDiagView: View {
         let cur = normalized(ds)
         lines.append("persons=\(m.persons.count)")
         lines.append("events=\(m.events.count)")
-        var ids: [String] = []
-        for p in m.persons {
-            if let id = p["photo_id"].str { ids.append(id) }
-            for c in p["death"]["notice"]["certificate_photo_ids"].array { if let id = c.str { ids.append(id) } }
-        }
-        let readable = ids.filter { (try? st.photoBytes(id: $0)) != nil }.count
-        lines.append("photos=\(ids.count) photos_ok=\(readable)")
+        let ms = st.migrationStatus()
+        lines[0] = "migration=\(ms.state) from=\(ms.fromVersion) to=\(ms.toVersion) backup=\(ms.backupPath == nil ? 0 : 1)"
+        let photoIds = m.persons.compactMap { $0["photo_id"].str }
+        let readable = photoIds.filter { (try? st.photoBytes(id: $0)) != nil }.count
+        lines.append("photos=\(photoIds.count) photos_ok=\(readable)")
+        let attIds = m.persons.flatMap { NoticeDraft($0["death"]["notice"]).attachments.compactMap(\.fileId) }
+        let attOk = attIds.filter { (try? st.attachmentBytes(id: $0)) != nil }.count
+        lines.append("attachments=\(attIds.count) attachments_ok=\(attOk)")
+        lines.append("legacy=\(m.persons.filter { $0["legacy"].isObject }.count)")
         lines.append("notices=\(m.persons.filter { $0["death"]["notice"].isObject }.count)")
         let beforeDir = PeoplePaths.storeDir().deletingLastPathComponent().appendingPathComponent("LichVanHoaViet-before")
         if FileManager.default.fileExists(atPath: beforeDir.path),

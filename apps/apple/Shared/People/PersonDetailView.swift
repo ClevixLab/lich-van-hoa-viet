@@ -1,4 +1,5 @@
 // Hồ sơ một người (08 §3.6, §12f, §12g): Lần tới, Thông tin, Thông tin báo tử (chỉ ở đây), Sự kiện, Nhắc, Xóa.
+import QuickLook
 import SwiftUI
 
 struct PersonDetailView: View {
@@ -9,6 +10,7 @@ struct PersonDetailView: View {
     @State private var deleteEvent: JV?
     @State private var error: String?
     @State private var noticeOpen = PersonDetailView.expandDefault
+    @State private var preview: URL?
 
     private static var expandDefault: Bool {
         #if DEBUG
@@ -30,6 +32,8 @@ struct PersonDetailView: View {
                 .pageWidth()
             }
         }
+        .quickLookPreview($preview)
+        .onChange(of: preview) { u in if u == nil { AttachmentTemp.clear() } }
         .navigationTitle("Hồ sơ")
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
@@ -106,7 +110,7 @@ struct PersonDetailView: View {
         VStack(alignment: .leading, spacing: 4) {
             Text(name).serif(26, .semibold).foregroundStyle(C.ink).fixedSize(horizontal: false, vertical: true)
                 .accessibilityAddTraits(.isHeader).accessibilityIdentifier("person.name")
-            if !p["quan_he"].string.isEmpty { Text(Text1.capFirst(p["quan_he"].string)).ps(16).foregroundStyle(C.ink2) }
+            if !p["quan_he"].string.isEmpty { Text(PFmt.cap(p["quan_he"].string)).ps(16).foregroundStyle(C.ink2) }
             if !p["ten_hieu"].string.isEmpty { Text("Tên hiệu: \(p["ten_hieu"].string)").ps(15).foregroundStyle(C.ink2) }
         }
     }
@@ -119,9 +123,11 @@ struct PersonDetailView: View {
             }
             NavigationLink(value: PRoute.edit(id)) { Text("Sửa") }
                 .buttonStyle(SecondaryButtonStyle()).accessibilityIdentifier("person.edit")
+                .disabled(m.readOnly)
             if !deceased {
                 NavigationLink(value: PRoute.markDeceased(id)) { Text("Cập nhật: đã mất") }
                     .buttonStyle(SecondaryButtonStyle()).accessibilityIdentifier("person.markDeceased")
+                    .disabled(m.readOnly)
             }
         }
     }
@@ -172,6 +178,7 @@ struct PersonDetailView: View {
                 InfoRow(label: "Tuổi", value: "\(t)" + (s?.tuoi_am.map { " (tuổi âm \($0))" } ?? ""))
             }
             if deceased { InfoRow(label: "Nơi an táng", value: p["noi_an_tang"].string) }
+            InfoRow(label: "Giới tính", value: p["gioi_tinh"].str == "nam" ? "Nam" : p["gioi_tinh"].str == "nu" ? "Nữ" : "Không ghi")
             InfoRow(label: "Ghi chú", value: p["ghi_chu"].string)
             if !deceased && !b.isObject && p["ghi_chu"].string.isEmpty { PBody("Chưa có ngày sinh.") }
         }
@@ -190,12 +197,22 @@ struct PersonDetailView: View {
                         if n["notice_date"].isObject { InfoRow(label: "Ngày nhận tin", value: PFmt.dateValue(n["notice_date"])) }
                         InfoRow(label: "Lý do", value: n["reason"].string)
                         InfoRow(label: "Ghi chú", value: n["note"].string)
-                        let ids = n["certificate_photo_ids"].array.compactMap(\.str)
-                        if !ids.isEmpty {
-                            Text("Ảnh giấy báo tử").ps(15).foregroundStyle(C.ink2)
-                            FlowLayout(spacing: 10) {
-                                ForEach(ids, id: \.self) { pid in
-                                    PhotoView(photoId: pid, initials: "", size: CGSize(width: 140, height: 180), oval: false)
+                        let atts = NoticeDraft(n).attachments
+                        if !atts.isEmpty {
+                            Text("Tệp đính kèm").ps(15).foregroundStyle(C.ink2)
+                            ForEach(atts) { a in
+                                HStack(alignment: .top, spacing: 12) {
+                                    AttachmentThumb(att: a, size: CGSize(width: 96, height: 120))
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(AttKind.title(a.kind)).ps(15, .semibold).foregroundStyle(C.ink)
+                                        if let f = a.fileId, let name = m.attachmentsMeta[f]?["file_name"].str {
+                                            Text(name).ps(14).foregroundStyle(C.ink2).fixedSize(horizontal: false, vertical: true)
+                                        }
+                                        if let f = a.fileId, m.attachmentsMeta[f]?["mime"].str == "application/pdf" {
+                                            PFine("Tệp PDF được lưu nguyên bản")
+                                        }
+                                        Button("Xem") { open(a) }.buttonStyle(SecondaryButtonStyle())
+                                    }
                                 }
                             }
                         }
@@ -217,6 +234,7 @@ struct PersonDetailView: View {
                 Spacer()
                 NavigationLink(value: PRoute.event(id, nil)) { Text("+ Thêm sự kiện") }
                     .buttonStyle(SecondaryButtonStyle()).accessibilityIdentifier("person.addEvent")
+                    .disabled(m.readOnly)
             }
             if evs.isEmpty { PBody("Chưa có sự kiện nào.") }
             ForEach(evs, id: \.self) { e in
@@ -254,10 +272,17 @@ struct PersonDetailView: View {
         }
     }
 
+    /// Quick Look trên bản chép tạm có tên chung, xóa khi đóng (RA-SOAT-BAO-MAT-V02 §5.3).
+    private func open(_ a: AttDraft) {
+        guard let f = a.fileId, let data = m.attachmentData(f) else { return }
+        preview = try? AttachmentTemp.write(data, pdf: m.attachmentsMeta[f]?["mime"].str == "application/pdf")
+    }
+
     private func deleteCard(_ name: String) -> some View {
         HStack {
             Button("Xóa hồ sơ") { confirmDelete = true }
                 .buttonStyle(SecondaryButtonStyle(destructive: true))
+                .disabled(m.readOnly)
                 .accessibilityIdentifier("person.delete")
             Spacer()
         }

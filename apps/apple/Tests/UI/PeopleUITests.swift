@@ -53,7 +53,7 @@ final class PeopleUITests: XCTestCase {
         ("form-deceased", 4), ("form-living", 2), ("event", 1), ("event-deceased", 1), ("mark", 2), ("memorial", 2),
         ("memorial-a", 2), ("settings", 2),
         ("form-am-nhuan", 2), ("form-duong", 3), ("form-loi", 2), ("form-living-am", 3),
-        ("upcoming-denied", 1), ("store-error", 1), ("backup-nag", 1),
+        ("upcoming-denied", 1), ("store-error", 1), ("backup-nag", 1), ("form-edit", 4),
     ]
 
     private func shoot(variant: String, dark: Bool, big: Bool, screens: [(String, Int)]) {

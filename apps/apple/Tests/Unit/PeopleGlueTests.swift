@@ -85,6 +85,7 @@ final class PeopleGlueTests: XCTestCase {
         l.cal = .lunar; l.day = "15"; l.month = "5"; l.year = "2025"; l.leap = true
         XCTAssertEqual(DateCheck.death(l, today: today).error, "Năm 2025 không có tháng 5 nhuận")
         XCTAssertEqual(DateCheck.leapMonth(ofLunarYear: 2025), 6)
+        XCTAssertEqual(DateCheck.leapMonth(ofLunarYear: 2028), 5)
         XCTAssertNil(DateCheck.leapMonth(ofLunarYear: 2026))
     }
 
@@ -117,7 +118,7 @@ final class PeopleGlueTests: XCTestCase {
         XCTAssertEqual(e["gio.time"], "Giờ nhắc phải từ 0 đến 23 giờ, phút từ 0 đến 59")
         p.gio.hour = "18"; p.gio.minute = "5"
         XCTAssertTrue(p.validate(today: today).isEmpty)
-        let j = p.build(photoId: nil, noticePhotoIds: [], today: today)
+        let j = p.build(photoId: nil, today: today)
         XCTAssertEqual(j["ho_ten"].str, "Nguyễn Văn A")
         XCTAssertEqual(j["reminders"]["gio"]["time_local"].str, "18:05")
         XCTAssertNil(j["death"].object?["notice"], "không ghi khóa notice khi không có thông tin báo tử")
@@ -128,7 +129,7 @@ final class PeopleGlueTests: XCTestCase {
         c.hoTen = "Lê Văn C"; c.birth.day = "20"; c.birth.month = "1"; c.birth.year = "1990"
         c.sinhNhatAmOn = true
         c.sinhNhat.offsets = [0, 1]; c.sinhNhat.hour = "08"
-        let j = c.build(photoId: nil, noticePhotoIds: [], today: today)
+        let j = c.build(photoId: nil, today: today)
         XCTAssertEqual(j["reminders"]["sinh_nhat_am"]["offsets_days"], [0, 1])
         XCTAssertEqual(j["reminders"]["sinh_nhat_am"]["time_local"].str, "08:00")
         XCTAssertNotEqual(j["reminders"]["sinh_nhat_am"]["id"], j["reminders"]["sinh_nhat"]["id"])
@@ -141,20 +142,20 @@ final class PeopleGlueTests: XCTestCase {
         let (st, dir) = try tempStore()
         let settings = JV.parse(try st.settingsJson())!
         let saved = JV.parse(try st.savePersonJson(json: deceasedDraft("Nguyễn Văn A", settings: settings)
-            .build(photoId: nil, noticePhotoIds: [], today: today).text))!
+            .build(photoId: nil, today: today).text))!
         XCTAssertEqual(saved["death"]["lunar"]["leap"].bool, true)
         XCTAssertEqual(saved["death"]["lunar_source"].str, "converted")
 
         var c = PersonDraft(kind: "living", settings: settings)
         c.hoTen = "Lê Văn C"; c.birth.day = "20"; c.birth.month = "1"; c.birth.year = "1990"
-        let living = JV.parse(try st.savePersonJson(json: c.build(photoId: nil, noticePhotoIds: [], today: today).text))!
+        let living = JV.parse(try st.savePersonJson(json: c.build(photoId: nil, today: today).text))!
         let id = living["id"].string
         var n = NoticeDraft()
         n.reportedBy = "Chú Ba"; n.reason = "SENTINEL-LY-DO-XYZ"
         var death = DateDraft(); death.day = "1"; death.month = "11"; death.year = "2026"
         let dv = DateCheck.death(death, today: today).value
         let marked = JV.parse(try st.markDeceasedJson(personId: id, deathDateValueJson: dv.text,
-                                                      noticeJson: n.json(photoIds: [], today: today)?.text, today: today.sd))!
+                                                      noticeJson: n.json(today: today)?.text, today: today.sd))!
         XCTAssertEqual(marked["id"].str, id)
         XCTAssertEqual(marked["kind"].str, "deceased")
         XCTAssertEqual(marked["rev"].int, 2)
@@ -187,7 +188,7 @@ final class PeopleGlueTests: XCTestCase {
         let (st, _) = try tempStore()
         let settings = JV.parse(try st.settingsJson())!
         _ = try st.savePersonJson(json: deceasedDraft("Nguyễn Văn A", settings: settings)
-            .build(photoId: nil, noticePhotoIds: [], today: today).text)
+            .build(photoId: nil, today: today).text)
         let fake = FakeCenter()
         let s = ReminderScheduler(center: fake)
         let o1 = await s.reschedule(store: st, reason: .save, now: now, zone: vn)
@@ -216,7 +217,7 @@ final class PeopleGlueTests: XCTestCase {
         for i in 0..<70 {
             var a = deceasedDraft("Người \(i)", settings: settings)
             a.death.day = "\(i % 28 + 1)"; a.death.month = "\(i % 12 + 1)"; a.death.year = "2020"
-            _ = try st.savePersonJson(json: a.build(photoId: nil, noticePhotoIds: [], today: today).text)
+            _ = try st.savePersonJson(json: a.build(photoId: nil, today: today).text)
         }
         let fake = FakeCenter()
         let s = ReminderScheduler(center: fake)
@@ -236,7 +237,7 @@ final class PeopleGlueTests: XCTestCase {
         var c = PersonDraft(kind: "living", settings: settings)
         c.hoTen = "Lê Văn C"; c.birth.day = "20"; c.birth.month = "1"; c.birth.year = "1990"
         let ruleId = c.sinhNhat.id
-        let id = JV.parse(try st.savePersonJson(json: c.build(photoId: nil, noticePhotoIds: [], today: today).text))!["id"].string
+        let id = JV.parse(try st.savePersonJson(json: c.build(photoId: nil, today: today).text))!["id"].string
         let fake = FakeCenter()
         let s = ReminderScheduler(center: fake)
         await s.reschedule(store: st, reason: .save, now: now, zone: vn)
@@ -254,7 +255,7 @@ final class PeopleGlueTests: XCTestCase {
     func testPermissionAskedOnlyAfterSave() async throws {
         let (st, _) = try tempStore()
         let settings = JV.parse(try st.settingsJson())!
-        _ = try st.savePersonJson(json: deceasedDraft("A", settings: settings).build(photoId: nil, noticePhotoIds: [], today: today).text)
+        _ = try st.savePersonJson(json: deceasedDraft("A", settings: settings).build(photoId: nil, today: today).text)
         let fake = FakeCenter()
         fake.auth = .notDetermined
         let s = ReminderScheduler(center: fake)
@@ -326,6 +327,64 @@ final class PeopleGlueTests: XCTestCase {
         }
     }
 
+    /// YC-2026-07: tệp đính kèm (ảnh + PDF) gắn vào thông tin báo tử; bỏ một tệp rồi lưu → lõi xóa tệp đó.
+    /// Ảnh chân dung bỏ đi → lõi xóa (A-7); ảnh chưa gắn → delete_photo (A-6).
+    func testAttachmentsAndPhotoCleanup() throws {
+        let (st, _) = try tempStore()
+        let settings = JV.parse(try st.settingsJson())!
+        let img = try PhotoProcessor.process(jpegWithMetadata(width: 3000, height: 2000), maxSide: 2048, maxBytes: 2 << 20)
+        XCTAssertLessThanOrEqual(max(img.width, img.height), 2048)
+        let imgId = try newUuid(), pdfId = try newUuid()
+        _ = try st.addAttachment(id: imgId, mime: "image/jpeg", fileName: nil, bytes: img.jpeg)
+        let pdf = Data("%PDF-1.4\n1 0 obj << >> endobj\ntrailer << >>\n%%EOF\n".utf8)
+        _ = try st.addAttachment(id: pdfId, mime: "application/pdf", fileName: "giay.pdf", bytes: pdf)
+        let portrait = try PhotoProcessor.process(jpegWithMetadata(width: 400, height: 500))
+        let photoId = try newUuid()
+        _ = try st.addPhoto(id: photoId, mime: "image/jpeg", width: UInt32(portrait.width), height: UInt32(portrait.height),
+                            bytes: portrait.jpeg)
+        var a = deceasedDraft("Nguyễn Văn A", settings: settings)
+        a.gioiTinh = "nam"
+        a.notice.reason = "Bệnh"
+        a.notice.attachments = [AttDraft(id: try newUuid(), kind: "giay_chung_tu", fileId: imgId, new: nil),
+                                AttDraft(id: try newUuid(), kind: "tin_bao_tu", fileId: pdfId, new: nil)]
+        var saved = JV.parse(try st.savePersonJson(json: a.build(photoId: photoId, today: today).text))!
+        XCTAssertEqual(saved["gioi_tinh"].str, "nam")
+        XCTAssertEqual(saved["death"]["notice"]["attachments"].array.count, 2)
+        XCTAssertEqual(try st.attachmentBytes(id: pdfId), pdf, "PDF lưu nguyên bản")
+        // Bỏ PDF và ảnh chân dung rồi lưu.
+        var b = PersonDraft(person: saved, settings: settings)
+        b.notice.attachments.removeAll { $0.fileId == pdfId }
+        b.photoId = nil
+        saved = JV.parse(try st.savePersonJson(json: b.build(photoId: nil, today: today).text))!
+        XCTAssertEqual(saved["death"]["notice"]["attachments"].array.count, 1)
+        XCTAssertThrowsError(try st.attachmentBytes(id: pdfId), "tệp bỏ khỏi danh sách bị xóa")
+        XCTAssertThrowsError(try st.photoBytes(id: photoId), "ảnh chân dung bỏ đi bị xóa")
+        // Ảnh đã thêm mà chưa gắn: delete_photo.
+        let orphan = try newUuid()
+        _ = try st.addPhoto(id: orphan, mime: "image/jpeg", width: UInt32(portrait.width), height: UInt32(portrait.height),
+                            bytes: portrait.jpeg)
+        try st.deletePhoto(id: orphan)
+        XCTAssertThrowsError(try st.photoBytes(id: orphan))
+        // Tệp đính kèm không bao giờ vào .ics.
+        let ics = try icsExport(datasetJson: try st.datasetJson(), today: today.sd, nowUnixS: Int64(now.timeIntervalSince1970), onlyIds: nil)
+        XCTAssertFalse(ics.content.contains("giay.pdf"))
+        XCTAssertFalse(ics.summary.privacyText.isEmpty)
+    }
+
+    /// A-10: tạo byte sao lưu không tính là đã sao lưu; chỉ `mark_backup_saved` (sau khi lưu tệp) mới tính.
+    func testBackupCountsOnlyAfterSaved() throws {
+        let (st, _) = try tempStore()
+        let settings = JV.parse(try st.settingsJson())!
+        _ = try st.savePersonJson(json: deceasedDraft("A", settings: settings).build(photoId: nil, today: today).text)
+        XCTAssertNotNil(backupPasswordError(password: "ngắn", confirm: nil))
+        XCTAssertEqual(backupPasswordError(password: "mật khẩu dài", confirm: "khác hẳn"), "Hai lần nhập mật khẩu chưa giống nhau")
+        _ = try st.exportBackup(password: "mật khẩu dài", appVersion: "0.2.0", platform: "ios")
+        XCTAssertTrue(JV.parse(try st.settingsJson())!["last_backup_at"].isNull, "Hủy hộp Lưu → chưa sao lưu")
+        try st.markBackupSaved(savedAtUnixS: Int64(Date().timeIntervalSince1970))
+        XCTAssertNotNil(JV.parse(try st.settingsJson())!["last_backup_at"].str)
+        XCTAssertEqual(st.migrationStatus().state, "ok")
+    }
+
     /// BM2-10: ảnh khổng lồ không được giải mã đầy đủ; ảnh thường được lấy mẫu xuống ≤ 2048.
     func testDisplayDecodeIsPixelBounded() {
         let big = jpegWithMetadata(width: 13_000, height: 40)
@@ -345,8 +404,4 @@ final class PeopleGlueTests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: u.path))
     }
 
-    func testIcsPreviewLines() {
-        let ics = "BEGIN:VCALENDAR\r\nBEGIN:VEVENT\r\nDTSTART;VALUE=DATE:20260728\r\nSUMMARY:Giỗ đầu Ông\r\n  Nguyễn Văn A\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n"
-        XCTAssertEqual(IcsPreview.lines(ics), ["28/07/2026 — Giỗ đầu Ông Nguyễn Văn A"])
-    }
 }

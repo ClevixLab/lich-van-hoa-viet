@@ -280,7 +280,7 @@ enum PFmt {
     }
 
     static func displayName(_ p: JV) -> String {
-        let dx = Text1.capFirst(p["danh_xung"].string), ten = p["ho_ten"].string
+        let dx = displayCapitalize(text: p["danh_xung"].string), ten = p["ho_ten"].string
         return dx.isEmpty ? ten : "\(dx) \(ten)"
     }
 
@@ -292,6 +292,9 @@ enum PFmt {
         guard let f = s.first else { return "" }
         return f.uppercased() + s.dropFirst()
     }
+
+    /// Cách gọi / quan hệ khi hiển thị: chữ đầu viết hoa (lõi `display_capitalize`, YC-2026-07).
+    static func cap(_ s: String) -> String { displayCapitalize(text: s) }
 
     static func initials(_ name: String) -> String {
         let w = name.split(separator: " ")
@@ -324,6 +327,11 @@ final class PeopleModel: ObservableObject {
     @Published private(set) var summaries: [String: PersonSummary] = [:]
     @Published private(set) var todayReminders: [InAppReminder] = []
     @Published private(set) var showNames = false
+    /// Bản ghi tệp đính kèm theo id (từ `dataset_json`): mime, tên gốc…
+    @Published private(set) var attachmentsMeta: [String: JV] = [:]
+    /// Trạng thái chuyển đổi khi mở kho (01 §7.1, B5): `ok` / `migrated` / `read_only`.
+    @Published private(set) var migration: MigrationStatus?
+    var readOnly: Bool { migration?.state == "read_only" }
     @Published private(set) var backupDue = false
     @Published var toast: String?
     /// Tăng mỗi lần dữ liệu đổi (để màn hình "Theo kỳ" tính lại).
@@ -342,8 +350,14 @@ final class PeopleModel: ObservableObject {
             #if DEBUG
             DemoSeed.prepareStoreErrorIfRequested(dir)
             #endif
-            store = try LvhvStore.open(dir: dir.path)
+            let st = try LvhvStore.open(dir: dir.path)
+            store = st
             PeoplePaths.excludeFromBackup(dir)
+            let ms = st.migrationStatus()
+            migration = ms
+            if ms.state == "migrated" {
+                toast = "Đã nâng cấp dữ liệu lên phiên bản mới. Bản sao dữ liệu cũ được giữ trên máy."
+            }
             opened = true
             openError = nil
             reload()
@@ -359,6 +373,11 @@ final class PeopleModel: ObservableObject {
             events = JV.parse(try st.eventsJson())?.array ?? []
             eventTypes = JV.parse(try st.eventTypesJson())?.array ?? []
             settings = JV.parse(try st.settingsJson()) ?? .null
+            var meta: [String: JV] = [:]
+            for a in (JV.parse(try st.datasetJson())?["attachments"].array ?? []) {
+                if let id = a["id"].str { meta[id] = a }
+            }
+            attachmentsMeta = meta
             showNames = (try? st.lockScreenNames()) ?? false
             backupDue = (try? st.backupReminderDue()) ?? false
             let t = today
@@ -381,17 +400,11 @@ final class PeopleModel: ObservableObject {
         }
     }
 
-    /// Lời nhắc có giờ nhắc rơi vào hôm nay (thẻ trong ứng dụng, 08 §5.5). Văn bản có tên — chỉ hiện trong ứng dụng.
+    /// Thẻ nhắc trong ứng dụng hôm nay (08 §5.5, 02 §7.5) — `due_today_json` của lõi (tiêu đề có tên).
     private func loadTodayReminders() -> [InAppReminder] {
-        guard let st = store, let ds = try? st.datasetJson() else { return [] }
-        let t = today
-        var c = DateComponents(); c.year = t.y; c.month = t.m; c.day = t.d
-        let midnight = Calendar(identifier: .gregorian).date(from: c) ?? Date()
-        let now = Int64(midnight.timeIntervalSince1970) - 60
-        guard let j = try? remindersJson(datasetJson: ds, nowUnixS: now, zone: DeviceZones.current(at: midnight),
-                                         horizonDays: 2, showNames: true),
-              let list = Core.decode([InAppReminder].self, j) else { return [] }
-        return list.filter { $0.fire_local.hasPrefix(t.iso) }
+        guard let st = store, let j = try? st.dueTodayJson(today: today.sd, zone: DeviceZones.current(at: PeopleClock.now()))
+        else { return [] }
+        return Core.decode([InAppReminder].self, j) ?? []
     }
 
     // MARK: Tra cứu
@@ -460,9 +473,8 @@ final class PeopleModel: ObservableObject {
     /// Xóa hồ sơ; xóa luôn sự kiện chỉ còn gắn với người này (08 §3.10).
     func deletePerson(_ id: String) throws {
         guard let st = store else { return }
-        let orphans = events.filter { $0["person_ids"].array == [.string(id)] }.compactMap { $0["id"].str }
-        try st.deletePerson(id: id)
-        for e in orphans { try? st.deleteEvent(id: e) }
+        // Cùng giao dịch: xóa người và các sự kiện chỉ gắn người này (08 §3.10).
+        _ = try st.deletePersonAndOrphanEvents(id: id)
         after("Đã xóa hồ sơ.")
     }
 
@@ -499,6 +511,48 @@ final class PeopleModel: ObservableObject {
     }
 
     func photoData(_ id: String) -> Data? { try? store?.photoBytes(id: id) }
+
+    /// Xóa ảnh đã thêm mà chưa gắn hồ sơ (lưu hỏng / hủy) — `delete_photo` của lõi.
+    func discardPhoto(_ id: String) { try? store?.deletePhoto(id: id) }
+
+    /// Thêm tệp đính kèm (ảnh đã mã hóa lại hoặc PDF nguyên bản). Trả id tệp.
+    func addAttachment(_ a: NewAttachment) throws -> String {
+        guard let st = store else { throw LvhvDataError.Storage(message: "Chưa mở được dữ liệu trên máy.") }
+        let id = try FFI.uuid()
+        _ = try st.addAttachment(id: id, mime: a.mime, fileName: a.fileName, bytes: a.data)
+        PeoplePaths.excludeFromBackup(PeoplePaths.storeDir())
+        return id
+    }
+
+    /// Ghi các tệp đính kèm mới của bản nháp vào kho, gán `fileId`. Trả id các tệp vừa ghi (để dọn nếu lưu hỏng).
+    static func uploadAttachments(_ n: inout NoticeDraft) throws -> [String] {
+        var added: [String] = []
+        do {
+            for i in n.attachments.indices {
+                guard let new = n.attachments[i].new else { continue }
+                let f = try shared.addAttachment(new)
+                added.append(f)
+                n.attachments[i].fileId = f
+                n.attachments[i].new = nil
+            }
+        } catch {
+            for f in added { shared.discardAttachment(f) }
+            throw error
+        }
+        return added
+    }
+
+    /// Xóa tệp đính kèm chưa gắn hồ sơ (lưu hỏng).
+    func discardAttachment(_ id: String) { try? store?.deleteAttachment(id: id) }
+
+    func attachmentData(_ id: String) -> Data? { try? store?.attachmentBytes(id: id) }
+
+    /// Ghi nhận tệp sao lưu đã được lưu (chỉ gọi khi hộp "Lưu" của hệ thống báo thành công — 03 §2.4).
+    func markBackupSaved() {
+        guard let st = store else { return }
+        try? st.markBackupSaved(savedAtUnixS: Int64(Date().timeIntervalSince1970))
+        reload()
+    }
 
     /// Lời nhắc kế tiếp đúng như sẽ hiện trên màn hình khóa (văn bản của lõi, theo tùy chọn O-9 của máy).
     func nextLockScreenText() -> (title: String, body: String, fireLocal: String)? {

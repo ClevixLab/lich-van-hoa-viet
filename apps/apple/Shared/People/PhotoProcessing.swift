@@ -24,7 +24,7 @@ enum PhotoError: Error, Equatable {
         case .tooLarge: return "Ảnh lớn hơn 25 MB — hãy chọn ảnh nhỏ hơn"
         case .unreadable: return "Không đọc được ảnh này (định dạng không hỗ trợ)"
         case .tooManyPixels(let w, let h): return "Ảnh quá lớn (\(w) × \(h) điểm ảnh) — hãy chọn ảnh nhỏ hơn"
-        case .stillTooBig: return "Ảnh quá chi tiết, chưa nén được dưới 1 MB"
+        case .stillTooBig: return "Ảnh quá chi tiết, chưa nén được đủ nhỏ"
         }
     }
 }
@@ -34,7 +34,8 @@ enum PhotoProcessor {
     static let maxStoredBytes = 1_048_576
     static let maxSide = 1024
 
-    static func process(_ data: Data, maxSide: Int = PhotoProcessor.maxSide) throws -> ProcessedPhoto {
+    static func process(_ data: Data, maxSide: Int = PhotoProcessor.maxSide,
+                        maxBytes: Int = PhotoProcessor.maxStoredBytes) throws -> ProcessedPhoto {
         if data.count > maxInputBytes { throw PhotoError.tooLarge }
         let srcOpts = [kCGImageSourceShouldCache: false] as CFDictionary
         guard let src = CGImageSourceCreateWithData(data as CFData, srcOpts), CGImageSourceGetCount(src) > 0 else {
@@ -68,7 +69,7 @@ enum PhotoProcessor {
         for q in [0.85, 0.75, 0.6, 0.45, 0.3] {
             if let d = encode(flat, quality: q) {
                 let clean = JPEGSanitizer.strip(d)
-                if clean.count <= maxStoredBytes { return ProcessedPhoto(jpeg: clean, width: w, height: h) }
+                if clean.count <= maxBytes { return ProcessedPhoto(jpeg: clean, width: w, height: h) }
             }
         }
         throw PhotoError.stillTooBig

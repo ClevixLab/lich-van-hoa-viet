@@ -15,31 +15,6 @@ struct BackupDocument: FileDocument {
     func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper { FileWrapper(regularFileWithContents: data) }
 }
 
-/// Xem trước .ics: vài dòng "28/07/2026 — Giỗ đầu Ông Nguyễn Văn A" đọc từ tệp lõi đã sinh.
-enum IcsPreview {
-    static func lines(_ ics: String, limit: Int = 2) -> [String] {
-        // Gỡ dòng gập (RFC 5545 §3.1): CRLF + khoảng trắng.
-        let unfolded = ics.replacingOccurrences(of: "\r\n ", with: "").replacingOccurrences(of: "\r\n\t", with: "")
-        var out: [String] = []
-        var date: String?
-        for raw in unfolded.components(separatedBy: "\r\n") {
-            if raw.hasPrefix("BEGIN:VEVENT") { date = nil }
-            if raw.hasPrefix("DTSTART"), let v = raw.split(separator: ":").last, v.count >= 8 {
-                let s = String(v.prefix(8))
-                date = "\(s.dropFirst(6).prefix(2))/\(s.dropFirst(4).prefix(2))/\(s.prefix(4))"
-            }
-            if raw.hasPrefix("SUMMARY"), let i = raw.firstIndex(of: ":"), let d = date {
-                let summary = String(raw[raw.index(after: i)...])
-                    .replacingOccurrences(of: "\\,", with: ",").replacingOccurrences(of: "\\;", with: ";")
-                    .replacingOccurrences(of: "\\\\", with: "\\")
-                out.append("\(d) — \(summary)")
-                if out.count >= limit { break }
-            }
-        }
-        return out
-    }
-}
-
 struct BackupSection: View {
     @ObservedObject private var m = PeopleModel.shared
     @State private var icsOpen = false
@@ -95,7 +70,7 @@ struct BackupSection: View {
                 }
                 Button(opening ? "Đang mở tệp…" : "Mở tệp") { openFile() }
                     .buttonStyle(SecondaryButtonStyle())
-                    .disabled(picked == nil || importPassword.isEmpty || opening)
+                    .disabled(picked == nil || importPassword.isEmpty || opening || m.readOnly)
             }
             PCard {
                 PHeading("Nhắc sao lưu")
@@ -126,6 +101,7 @@ struct BackupSection: View {
         .fileExporter(isPresented: $exporting, document: exportDoc, contentType: .data,
                       defaultFilename: "LichVanHoaViet-saoluu-\(m.today.iso).lvhv") { r in
             if case .success = r {
+                m.markBackupSaved() // chỉ khi hệ thống báo đã lưu tệp (03 §2.4, A-10)
                 restoredFrom = ""
                 m.toast = "Đã tạo tệp sao lưu. Hãy cất tệp ở nơi an toàn (ổ đám mây, USB) — tệp không tự gửi đi đâu."
             }
@@ -185,15 +161,28 @@ struct BackupSection: View {
         let limit = Self.maxBackupBytes
         Task {
             // Đọc tệp (tới 128 MiB) và giải mã ở luồng nền (MA3N-23-02); chỉ cập nhật giao diện trên luồng chính.
-            let data: Data? = await Task.detached(priority: .userInitiated) { () -> Data? in
+            // Kiểm phần đầu tệp (72 byte) và kích thước bằng lõi trước khi đọc cả tệp (03 §2.2).
+            let read: Result<Data, UIMessage> = await Task.detached(priority: .userInitiated) {
                 let scoped = url.startAccessingSecurityScopedResource()
                 defer { if scoped { url.stopAccessingSecurityScopedResource() } }
                 let size = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
-                guard size <= limit else { return nil }
-                return try? Data(contentsOf: url)
+                guard size > 0, size <= limit, let h = try? FileHandle(forReadingFrom: url) else {
+                    return .failure(UIMessage(text: "Sai mật khẩu hoặc tệp bị hỏng"))
+                }
+                let head = (try? h.read(upToCount: 72)) ?? Data()
+                try? h.close()
+                do { try backupHeaderCheck(head: head, fileLen: UInt64(size)) } catch {
+                    return .failure(UIMessage(text: Core.message(error)))
+                }
+                guard let d = try? Data(contentsOf: url) else { return .failure(UIMessage(text: "Không đọc được tệp này")) }
+                return .success(d)
             }.value
-            guard let data else {
-                importError = "Sai mật khẩu hoặc tệp bị hỏng"
+            let data: Data
+            switch read {
+            case .success(let d): data = d
+            case .failure(let e):
+                importError = e.text
+                importPassword = ""
                 opening = false
                 return
             }
@@ -240,14 +229,15 @@ struct IcsConfirmSheet: View {
                         if ics.events == 0 {
                             PBody("Chưa có hồ sơ nào bật nhắc.")
                         } else {
-                            let to = m.today.adding(3652 - 1)
-                            PBody("Tệp này chứa tên, ngày giỗ, sinh nhật và sự kiện của \(ics.persons) người. Bất kỳ ai có tệp đều đọc được. Không gồm thông tin báo tử.")
-                            PBody("Gồm \(ics.events) ngày trong 10 năm tới (từ \(m.today.dmy) đến \(to.dmy)), mỗi ngày có lời nhắc như đã đặt.")
+                            // Câu riêng tư, cửa sổ 10 năm và dòng xem trước: `IcsExport.summary` của lõi (S10).
+                            let sm = ics.summary
+                            PBody(sm.privacyText + " Không gồm thông tin báo tử.")
+                            PBody("Gồm \(sm.events) ngày trong 10 năm tới (từ \(CivilDate(sm.from).dmy) đến \(CivilDate(sm.to).dmy)), mỗi ngày có lời nhắc như đã đặt.")
                             Text("Xem trước:").ps(15, .semibold).foregroundStyle(C.ink)
-                            ForEach(IcsPreview.lines(ics.content), id: \.self) { l in
+                            ForEach(sm.preview, id: \.self) { l in
                                 Text("• \(l)").ps(15).foregroundStyle(C.ink).fixedSize(horizontal: false, vertical: true)
                             }
-                            if ics.events > 2 { PFine("… và \(ics.events - 2) ngày khác") }
+                            if Int(sm.events) > sm.preview.count { PFine("… và \(Int(sm.events) - sm.preview.count) ngày khác") }
                             PFine("Mở tệp bằng ứng dụng Lịch của điện thoại hoặc máy tính để nhập.")
                         }
                     } else {
@@ -303,25 +293,21 @@ struct BackupExportSheet: View {
     @State private var busy = false
     @State private var error: String?
 
-    private var photoCount: Int {
-        var ids = Set<String>()
-        for p in m.persons {
-            if let id = p["photo_id"].str { ids.insert(id) }
-            for c in p["death"]["notice"]["certificate_photo_ids"].array { if let id = c.str { ids.insert(id) } }
-        }
-        return ids.count
-    }
+    private var photoCount: Int { Set(m.persons.compactMap { $0["photo_id"].str }).count }
+    private var hasPdf: Bool { m.attachmentsMeta.values.contains { $0["mime"].str == "application/pdf" } }
     private var hasNotice: Bool { m.persons.contains { $0["death"]["notice"].isObject } }
-    private var pwError: String? { pw.count < 8 ? "Mật khẩu cần ít nhất 8 ký tự" : nil }
-    private var pw2Error: String? { pw != pw2 ? "Hai lần nhập mật khẩu chưa giống nhau" : nil }
+    /// Quy tắc mật khẩu của lõi (03 §2.4: ≥ 8 điểm mã sau NFC; hai lần nhập giống nhau sau NFC).
+    private var pwError: String? { backupPasswordError(password: pw, confirm: nil) }
+    private var pw2Error: String? { pwError == nil ? backupPasswordError(password: pw, confirm: pw2) : nil }
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
-                    PBody("Tệp sẽ chứa \(m.persons.count) người, \(m.events.count) sự kiện, \(photoCount) ảnh — đã mã hóa bằng mật khẩu.")
+                    PBody("Tệp sẽ chứa \(m.persons.count) người, \(m.events.count) sự kiện, \(photoCount) ảnh, \(m.attachmentsMeta.count) tệp đính kèm — đã mã hóa bằng mật khẩu.")
                     if hasNotice {
-                        PBody("Tệp gồm cả thông tin báo tử (người báo tin, nơi mất, lý do, ảnh giấy báo tử) — chỉ ai biết mật khẩu mới đọc được.")
+                        PBody("Tệp gồm cả thông tin báo tử (người báo tin, nơi mất, lý do, tệp đính kèm) — chỉ ai biết mật khẩu mới đọc được.")
+                        if hasPdf { PFine("Tệp PDF đính kèm được giữ nguyên bản, có thể còn thông tin của máy quét (R-PDF-1).") }
                     }
                     LabeledField(label: "Mật khẩu (ít nhất 8 ký tự)", error: submitted ? pwError : nil) {
                         SecureField("", text: $pw).pfield().ps(17).passwordContent()

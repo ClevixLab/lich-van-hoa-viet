@@ -66,6 +66,7 @@ struct PeopleView: View {
                 SegmentChips(options: PSection.allCases.map { SegOpt($0, $0.rawValue) }, selection: $section,
                              idPrefix: "people.sections")
                 ToastBar(text: $m.toast)
+                if m.readOnly { readOnlyBanner }
                 if let e = m.openError {
                     PCard {
                         Text("Không mở được dữ liệu trên máy: \(e). Lịch vẫn dùng được bình thường.")
@@ -87,6 +88,22 @@ struct PeopleView: View {
             .pageWidth(960)
         }
         .background(C.wall)
+    }
+
+    /// Chuyển đổi dữ liệu lỗi (01 §7.1, B5): dữ liệu cũ còn nguyên, chỉ xem và xuất sao lưu.
+    private var readOnlyBanner: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label { Text("Đang ở chế độ chỉ đọc").ps(17, .semibold) } icon: { Image(systemName: "lock.fill") }
+                .foregroundStyle(C.redInk)
+            Text(m.migration?.message ?? "Chưa nâng cấp được dữ liệu. Dữ liệu cũ vẫn còn nguyên; hãy xuất sao lưu.")
+                .ps(15).foregroundStyle(C.ink).fixedSize(horizontal: false, vertical: true)
+            Button("Xuất sao lưu") { section = .backup }.buttonStyle(PrimaryButtonStyle())
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(C.redTint, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("people.readOnly")
     }
 
     @ViewBuilder
@@ -200,9 +217,11 @@ struct UpcomingSection: View {
             NavigationLink(value: PRoute.add("deceased")) { Text("+ Thêm người đã mất") }
                 .buttonStyle(PrimaryButtonStyle())
                 .accessibilityIdentifier("people.addDeceased")
+                .disabled(m.readOnly)
             NavigationLink(value: PRoute.add("living")) { Text("+ Thêm người đang sống") }
                 .buttonStyle(SecondaryButtonStyle())
                 .accessibilityIdentifier("people.addLiving")
+                .disabled(m.readOnly)
         }
     }
 
@@ -405,6 +424,7 @@ struct ProfilesSection: View {
                 Spacer()
                 NavigationLink(value: PRoute.add(kind)) { Text("+ Thêm") }
                     .buttonStyle(SecondaryButtonStyle())
+                    .disabled(m.readOnly)
                     .accessibilityLabel("Thêm \(title.lowercased())")
                     .accessibilityIdentifier("profiles.add.\(kind)")
             }
@@ -428,7 +448,7 @@ struct ProfilesSection: View {
                 .frame(width: 44, height: 44).background(C.paper2, in: Circle()).accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text(name).ps(17, .semibold).foregroundStyle(C.ink).fixedSize(horizontal: false, vertical: true)
-                if !p["quan_he"].string.isEmpty { Text(Text1.capFirst(p["quan_he"].string)).ps(14).foregroundStyle(C.ink2) }
+                if !p["quan_he"].string.isEmpty { Text(PFmt.cap(p["quan_he"].string)).ps(14).foregroundStyle(C.ink2) }
                 Text(summary(p, id)).ps(14).foregroundStyle(C.ink3).fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: 0)
