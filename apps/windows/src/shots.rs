@@ -588,12 +588,10 @@ fn steps(ui: &AppWindow, st: Rc<RefCell<State>>) -> Vec<Step> {
         v.push(("nt-25-tuong-niem-anh-mam-toi".to_string(), Box::new(|ui: &AppWindow| theme(ui, true))));
         v.push(("_nt-25b-chuan-bi".to_string(), Box::new(|ui: &AppWindow| {
             theme(ui, false);
-            let p = People::get(ui);
-            p.invoke_back();
-            p.invoke_edit_person();
-            p.set_f_mem_open(true);
+            // Đường của người dùng: nút "Thêm ảnh mâm lễ của gia đình" / biểu mẫu sửa, nhóm Tưởng niệm mở.
+            People::get(ui).invoke_add_tray_from_memorial();
         })));
-        v.push(("nt-25b-sua-anh-mam-sang".to_string(), Box::new(|ui: &AppWindow| People::get(ui).set_scroll_frac(1.0))));
+        v.push(("nt-25b-sua-anh-mam-sang".to_string(), Box::new(|_: &AppWindow| {})));
         v.push(("nt-25b-sua-anh-mam-toi".to_string(), Box::new(|ui: &AppWindow| theme(ui, true))));
         v.push(("_nt-25c-ve".to_string(), Box::new(|ui: &AppWindow| People::get(ui).invoke_cancel_form())));
     }

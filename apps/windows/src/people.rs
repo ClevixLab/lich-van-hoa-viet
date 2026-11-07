@@ -3662,7 +3662,14 @@ pub fn wire(ui: &AppWindow, ps: Ps) {
             open_person_form(ui, ps, true, Some(v));
             let p = People::get(ui);
             p.set_f_mem_open(true);
-            p.set_scroll_frac(1.0);
+            // Trang biểu mẫu mới chỉ được tạo ở khung hình sau: cuộn khi nội dung đã dàn xong (đặt ngay thì PPage chưa có
+            // để nhận thay đổi của scroll-frac).
+            let w = ui.as_weak();
+            Timer::single_shot(Duration::from_millis(60), move || {
+                if let Some(ui) = w.upgrade() {
+                    People::get(&ui).set_scroll_frac(1.0);
+                }
+            });
         }
     }));
     p.on_drop_photo(cb0!(|ui: &AppWindow, ps: &mut PState| {
