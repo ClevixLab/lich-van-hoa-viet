@@ -155,6 +155,8 @@ jobs:
           xcodebuild -project LichVanHoaViet.xcodeproj -scheme LichViet-iOS -configuration Debug \
             -destination "id=$IPAD" -derivedDataPath build/ddt -resultBundlePath build/ipad-tests.xcresult \
             -only-testing:LichVietUITests-iOS/PeopleUITests/testScreenshotsLight \
+            -only-testing:LichVietUITests-iOS/PeopleUITests/testMemorialAltar \
+            -only-testing:LichVietUITests-iOS/PeopleUITests/testTrayPhoto \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO test-without-building | tee build/ipad-tests.log
 
       - name: Ghi ảnh chụp vào nhánh PR (apps/apple/screenshots/)

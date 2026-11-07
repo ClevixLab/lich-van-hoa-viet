@@ -112,11 +112,22 @@ struct MemorialView: View {
                           size: CGSize(width: 128, height: 160), dark: true)
                 stele(p)
                 altar
+                // YC-2026-10 (08 §16.1): ảnh gia đình → ảnh Clevix cùng kiểu mâm → không có mâm.
+                let tray = TrayResolve.choose(person: p, model: m)
+                if let tray { TrayImageView(choice: tray, border: MC.brass) }
                 let loi = p["memorial"]["loi_tuong_niem"].string
                 if !loi.isEmpty {
                     Text("“\(loi)”").serif(18).foregroundStyle(MC.ink).multilineTextAlignment(.center)
                         .fixedSize(horizontal: false, vertical: true)
                         .padding(.horizontal, 12)
+                }
+                if tray?.family != true && !m.readOnly {
+                    NavigationLink(value: PRoute.editTray(id)) {
+                        Text("Thêm ảnh mâm lễ của gia đình").ps(14).underline().foregroundStyle(MC.gold)
+                            .frame(minHeight: 44)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("memorial.addTray")
                 }
             }
             .padding(.vertical, 20)
@@ -183,27 +194,30 @@ struct MemorialView: View {
         return "Mất năm \(Lich.canChi(year: dy)) (\(dy))"
     }
 
+    /// Hàng bàn thờ dưới bia (08 §16.1, YC-2026-10): nến · bát hương ba nén · nến; Công giáo: nến · hoa · nến.
+    /// Không còn mâm quả và lọ hoa vẽ — mâm chỉ hiện khi có ảnh (bước sau, `tray_photo_id`).
     private var altar: some View {
         VStack(spacing: 0) {
-            HStack(alignment: .bottom, spacing: 22) {
-                candle
+            HStack(alignment: .bottom, spacing: 28) {
+                candle.accessibilityElement().accessibilityIdentifier("memorial.candle")
                 if incense {
                     VStack(spacing: 0) {
                         sticks
                         bowl
                     }
+                    .accessibilityElement().accessibilityIdentifier("memorial.incense")
                 } else {
-                    flowers
+                    flowers.accessibilityElement().accessibilityIdentifier("memorial.flowers")
                 }
-                fruit
-                candle
+                candle.accessibilityElement().accessibilityIdentifier("memorial.candle")
             }
             Rectangle().fill(MC.woodLight).frame(height: 10)
             Rectangle().fill(MC.wood).frame(height: 26)
         }
         .frame(maxWidth: 380)
-        .accessibilityElement()
-        .accessibilityLabel(incense ? "Bàn thờ: bát hương với ba nén hương, mâm ngũ quả, hai cây nến" : "Bàn thờ: hoa, mâm quả, hai cây nến")
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(incense ? "Bàn thờ: hai cây nến và bát hương với ba nén hương" : "Bàn thờ: hoa và hai cây nến")
+        .accessibilityIdentifier("memorial.altar")
     }
 
     private var sticks: some View {
@@ -253,21 +267,6 @@ struct MemorialView: View {
             Ellipse().fill(Color.yellow.opacity(0.9)).frame(width: 8, height: 14)
             Rectangle().fill(Color(red: 0.86, green: 0.2, blue: 0.16)).frame(width: 12, height: 46)
             Rectangle().fill(MC.brass).frame(width: 22, height: 6)
-        }
-    }
-
-    private var fruit: some View {
-        VStack(spacing: -6) {
-            HStack(spacing: -4) {
-                Circle().fill(Color(red: 0.95, green: 0.6, blue: 0.15)).frame(width: 20, height: 20)
-                Circle().fill(Color(red: 0.45, green: 0.65, blue: 0.25)).frame(width: 20, height: 20)
-            }
-            HStack(spacing: -4) {
-                Circle().fill(Color(red: 0.85, green: 0.25, blue: 0.2)).frame(width: 20, height: 20)
-                Circle().fill(Color(red: 0.98, green: 0.82, blue: 0.3)).frame(width: 20, height: 20)
-                Circle().fill(Color(red: 0.95, green: 0.6, blue: 0.15)).frame(width: 20, height: 20)
-            }
-            Ellipse().fill(MC.brass).frame(width: 78, height: 14)
         }
     }
 
