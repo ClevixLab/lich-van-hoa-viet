@@ -219,7 +219,8 @@
         "bia_tieu_de": { "allOf": [{ "$ref": "#/$defs/text" }, { "maxLength": 60 }] },
         "loi_tuong_niem": { "allOf": [{ "$ref": "#/$defs/multiline" }, { "maxLength": 2000 }] },
         "gio_het_nam": { "enum": [2, 3] },
-        "huong_duong_duoi": { "type": "integer", "minimum": 1, "maximum": 150 }
+        "huong_duong_duoi": { "type": "integer", "minimum": 1, "maximum": 150 },
+        "tray_photo_id": { "$comment": "YC-2026-10 — khóa tùy chọn, thiếu ≡ null; không ghi khi null", "oneOf": [{ "$ref": "#/$defs/uuid" }, { "type": "null" }] }
       },
       "if": { "properties": { "tray_style": { "const": "cong_giao" } } },
       "then": { "properties": { "incense": { "const": false } } }

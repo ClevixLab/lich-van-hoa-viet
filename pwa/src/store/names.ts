@@ -59,5 +59,8 @@ export function normalizePersonNames(p: JsonObj): JsonObj {
   }
   for (const k of ["danh_xung", "quan_he"] as const) if (typeof out[k] === "string") out[k] = capitalizeFirst(out[k] as string);
   if (Object.prototype.hasOwnProperty.call(out, "gioi_tinh") && out.gioi_tinh === null) delete out.gioi_tinh;
+  // YC-2026-10: `memorial.tray_photo_id: null` → bỏ khóa (như Rust).
+  const m = out.memorial;
+  if (m && typeof m === "object" && !Array.isArray(m) && Object.prototype.hasOwnProperty.call(m, "tray_photo_id") && (m as JsonObj).tray_photo_id === null) delete (m as JsonObj).tray_photo_id;
   return out;
 }

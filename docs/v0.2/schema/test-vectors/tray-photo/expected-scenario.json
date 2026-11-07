@@ -1,0 +1,216 @@
+{
+ "command": "scenario",
+ "ok": true,
+ "result": {
+  "c_add_photo": {
+   "exif": "input",
+   "ok": "ok",
+   "over_1mib": "invalid V1 /photo/bytes"
+  },
+  "d_round_trip": {
+   "crafted": {
+    "control": {
+     "open_backup": "ok",
+     "verify": "ok"
+    },
+    "dangling_tray": {
+     "open_backup": "backup",
+     "verify": "invalid V3 /persons/0/memorial/tray_photo_id"
+    },
+    "shared_tray": {
+     "open_backup": "backup",
+     "verify": "invalid V3 /persons/0/memorial/tray_photo_id"
+    },
+    "tray_too_large": {
+     "open_backup": "backup",
+     "verify": "invalid V1 /persons/0/memorial/tray_photo_id"
+    },
+    "tray_with_exif": {
+     "open_backup": "backup",
+     "verify": "invalid PHOTO /photos"
+    }
+   },
+   "explicit_null": {
+    "import": "ok",
+    "reexport_has_null": false,
+    "store_has_null": false,
+    "tray_d2": "absent"
+   },
+   "merge_empty": {
+    "import": "ok",
+    "photos": {
+     "ids": [
+      "0b8e4f52-3c1a-4d2e-9f60-0000000000a1",
+      "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09"
+     ],
+     "orphan_files": 0,
+     "orphan_records": 0
+    },
+    "sha_equal": true,
+    "tray_d1": "0b8e4f52-3c1a-4d2e-9f60-0000000000a1"
+   },
+   "merge_over_old": {
+    "import": "ok",
+    "photos": {
+     "ids": [
+      "0b8e4f52-3c1a-4d2e-9f60-0000000000a1",
+      "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09"
+     ],
+     "orphan_files": 0,
+     "orphan_records": 0
+    },
+    "sha_equal": true,
+    "tray_d1": "0b8e4f52-3c1a-4d2e-9f60-0000000000a1"
+   },
+   "merge_replaces_local_tray": {
+    "import": "ok",
+    "old_tray_in_store": false,
+    "photos": {
+     "ids": [
+      "0b8e4f52-3c1a-4d2e-9f60-0000000000a1",
+      "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09"
+     ],
+     "orphan_files": 0,
+     "orphan_records": 0
+    },
+    "setup": [
+     "ok",
+     "ok",
+     "ok"
+    ],
+    "tray_d1": "0b8e4f52-3c1a-4d2e-9f60-0000000000a1"
+   },
+   "merge_shared_tray": {
+    "import": "backup",
+    "photos": {
+     "ids": [
+      "0b8e4f52-3c1a-4d2e-9f60-0000000000a1",
+      "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09"
+     ],
+     "orphan_files": 0,
+     "orphan_records": 0
+    },
+    "setup": [
+     "ok",
+     "ok"
+    ],
+    "unchanged": true
+   },
+   "replace": {
+    "import": "ok",
+    "photos": {
+     "ids": [
+      "0b8e4f52-3c1a-4d2e-9f60-0000000000a1",
+      "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09"
+     ],
+     "orphan_files": 0,
+     "orphan_records": 0
+    },
+    "sha_equal": true,
+    "tray_d1": "0b8e4f52-3c1a-4d2e-9f60-0000000000a1"
+   }
+  },
+  "e_old_backup": {
+   "has_tray_key": false,
+   "import": "ok",
+   "tray_d1": "absent",
+   "unchanged": true
+  },
+  "f_cleanup": {
+   "delete_person": {
+    "delete": "ok",
+    "photos": {
+     "ids": [
+      "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09"
+     ],
+     "orphan_files": 0,
+     "orphan_records": 0
+    },
+    "set": "ok"
+   },
+   "remove": {
+    "photos": {
+     "ids": [
+      "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09"
+     ],
+     "orphan_files": 0,
+     "orphan_records": 0
+    },
+    "save": "ok",
+    "tray_d1": "absent"
+   },
+   "replace": {
+    "photos": {
+     "ids": [
+      "0b8e4f52-3c1a-4d2e-9f60-0000000000a2",
+      "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09"
+     ],
+     "orphan_files": 0,
+     "orphan_records": 0
+    },
+    "save": "ok"
+   },
+   "to_living": {
+    "photos": {
+     "ids": [
+      "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09"
+     ],
+     "orphan_files": 0,
+     "orphan_records": 0
+    },
+    "save": "ok",
+    "set": "ok",
+    "tray_d1": "no_memorial"
+   },
+   "webp": {
+    "add_photo": "ok",
+    "photos": {
+     "ids": [
+      "0b8e4f52-3c1a-4d2e-9f60-0000000000a6",
+      "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09"
+     ],
+     "orphan_files": 0,
+     "orphan_records": 0
+    },
+    "save": "ok",
+    "tray_d2": "0b8e4f52-3c1a-4d2e-9f60-0000000000a6"
+   }
+  },
+  "g_rules": {
+   "double_dangling": "invalid V3 /person/photo_id",
+   "photos": {
+    "ids": [
+     "0b8e4f52-3c1a-4d2e-9f60-0000000000a1",
+     "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09"
+    ],
+    "orphan_files": 0,
+    "orphan_records": 0
+   },
+   "tray_1601": {
+    "add_photo": "ok",
+    "delete_photo": "ok",
+    "save": "invalid V1 /person/memorial/tray_photo_id"
+   }
+  },
+  "set": {
+   "photos": {
+    "ids": [
+     "0b8e4f52-3c1a-4d2e-9f60-0000000000a1",
+     "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09"
+    ],
+    "orphan_files": 0,
+    "orphan_records": 0
+   },
+   "save": "ok",
+   "tray_d1": "0b8e4f52-3c1a-4d2e-9f60-0000000000a1",
+   "v3": {
+    "dangling": "invalid V3 /person/memorial/tray_photo_id",
+    "portrait_is_other_tray": "invalid V3 /person/photo_id",
+    "shared_tray": "invalid V3 /person/memorial/tray_photo_id",
+    "tray_is_other_portrait": "invalid V3 /person/memorial/tray_photo_id",
+    "tray_is_own_portrait": "invalid V3 /person/memorial/tray_photo_id"
+   }
+  }
+ },
+ "scenario": "tray_photo"
+}

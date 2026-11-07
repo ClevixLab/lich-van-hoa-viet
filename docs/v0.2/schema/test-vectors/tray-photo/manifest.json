@@ -1,0 +1,11 @@
+{
+ "description": "YC-2026-10: ảnh cho kịch bản tray_photo; expected-scenario.json là kết quả chuẩn hóa mà bản Rust và bản TS của lvhv-store-tool phải in.",
+ "files": {
+  "tray-1601x1200.jpg": {
+   "sha256": "44fe05733c1a1ea20756aba73d8152f8dc689d456609e58c85e24d1c392eb10a",
+   "width": 1601,
+   "height": 1200,
+   "mime": "image/jpeg"
+  }
+ }
+}
