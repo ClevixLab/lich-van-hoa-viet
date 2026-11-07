@@ -1,0 +1,11 @@
+# cargo audit — cùng ngoại lệ với deny.toml (S11, rà soát bảo mật BM2-09).
+[advisories]
+# basic-toml không còn bảo trì; chỉ dùng lúc dựng qua uniffi_bindgen (feature bindgen-cli), không vào ứng dụng.
+# Ghi 2026-11-07; xem lại khi nâng uniffi hoặc 2027-02.
+ignore = ["RUSTSEC-2026-0374"]
+# Cảnh báo không bảo trì / bị rút khác vẫn làm lệnh thất bại.
+informational_warnings = ["unmaintained", "unsound", "notice"]
+
+[output]
+deny = ["warnings"]
+quiet = false

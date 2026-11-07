@@ -97,10 +97,20 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      # deny.toml [graph] all-features = true: xét cả phụ thuộc lúc dựng chỉ đến qua tính năng không mặc định
+      # (bindgen-cli). Mọi cảnh báo RustSec chưa có ngoại lệ ghi lý do trong deny.toml → job lỗi.
+      - name: S11 — đồ thị cargo-deny phủ mọi gói của Cargo.lock (workspace gốc)
+        run: python3 scripts/check-lock-coverage.py
       - uses: EmbarkStudios/cargo-deny-action@v2
         with:
           command: check advisories bans
           arguments: --workspace
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-audit
+      - name: S11 — cargo audit trên toàn Cargo.lock (không tỉa theo tính năng; ngoại lệ ở .cargo/audit.toml)
+        run: cargo audit
       # BM2-09: workspace riêng của ứng dụng Windows (Slint, image, windows…), cấu hình apps/windows/deny.toml (chỉ
       # phụ thuộc của bản Windows; ngoại lệ có lý do và ngày).
       - name: S11 — cargo-deny cho apps/windows
@@ -137,6 +147,8 @@ jobs:
         run: npm ci
       - name: vector tất định + R6 phía PWA (gồm lật bit 65 536 biến thể) + kiểm chéo Rust ↔ PWA
         run: scripts/check-store.sh
+      - name: công cụ hộp đen lvhv-store-tool (Rust + TS) trên test-vectors (docs/v0.2/10)
+        run: scripts/check-store-tool.sh
       - uses: actions/upload-artifact@v4
         if: always()
         with:
