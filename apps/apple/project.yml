@@ -65,6 +65,12 @@ targets:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.reference
         SUPPORTS_MACCATALYST: NO
+    # Lược đồ dùng chung (xcodebuild -scheme LichViet-iOS): dựng app; kiểm thử đơn vị + giao diện (bản Debug, mô phỏng).
+    scheme:
+      testTargets:
+        - LichVietTests-iOS
+        - LichVietUITests-iOS
+      gatherCoverageData: false
   LichViet-macOS:
     type: application
     platform: macOS
@@ -103,3 +109,31 @@ targets:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ENABLE_HARDENED_RUNTIME: YES
         COMBINE_HIDPI_IMAGES: YES
+    scheme: {}
+  # Kiểm thử đơn vị lớp nối (JSON, lập lịch thông báo với bản giả, xử lý ảnh S9, S5) — chạy trong app iOS mô phỏng.
+  LichVietTests-iOS:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: Tests/Unit
+    dependencies:
+      - target: LichViet-iOS
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: vn.clevix.lichviet.tests
+        TARGETED_DEVICE_FAMILY: "1,2"
+  # Kiểm thử giao diện (XCUITest): luồng chính và ảnh chụp mọi màn hình mới của mô-đun "Người thân".
+  LichVietUITests-iOS:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: Tests/UI
+    dependencies:
+      - target: LichViet-iOS
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: vn.clevix.lichviet.uitests
+        TEST_TARGET_NAME: LichViet-iOS
+        TARGETED_DEVICE_FAMILY: "1,2"
