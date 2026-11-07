@@ -234,6 +234,111 @@ fn nguoi_da_mat_tuong_niem_sua() {
     let _ = std::fs::remove_dir_all(&tmp);
 }
 
+/// YC-2026-10, 08 §16.4 ca 2, 3, 5: ảnh mâm lễ của gia đình (thêm có EXIF → hiện dưới bàn thờ, ảnh lưu không còn EXIF,
+/// cạnh dài ≤ 1600 px; bỏ → không còn tệp) và gói Clevix (ảnh đã duyệt hiện khi chưa có ảnh gia đình; ảnh gia đình thắng).
+#[test]
+fn anh_mam_le() {
+    let (ui, _st, ps, tmp, save_to, open_from, day0) = fixture("t");
+    let p = People::get(&ui);
+    let _ = (&save_to, &open_from, day0);
+    // Ảnh chọn từ hộp thoại: 2400 × 1800 có EXIF + APP13.
+    std::fs::write(tmp.join("chan-dung.jpg"), crate::photo::tests::jpeg_with_exif(2400, 1800)).unwrap();
+    click(&ui, &by_label(&ui, "Người thân"));
+    press(&ui, "+ Thêm người đã mất");
+    p.set_f_ho_ten("Nguyễn Văn An".into());
+    p.set_dd_d("3".into());
+    p.set_dd_m("4".into());
+    p.set_dd_y("2020".into());
+    p.invoke_form_changed();
+    // Mục "Ảnh mâm lễ ngày giỗ" (§16.2) nằm trong nhóm Tưởng niệm.
+    p.set_f_mem_open(true);
+    assert_eq!(p.get_f_tray_state(), 0);
+    assert_eq!(count_label(&ui, "Chưa có ảnh. Ngày giỗ chỉ hiện bát hương và nến."), 1);
+    press(&ui, "Chọn ảnh mâm lễ…");
+    assert_eq!(p.get_f_tray_state(), 2, "{}", p.get_e_tray());
+    assert_eq!(count_label(&ui, "Ảnh mâm lễ đã chọn"), 1);
+    assert_eq!(count_label(&ui, "Đổi ảnh mâm lễ"), 1);
+    // MA10-11: ảnh chỉ ghi vào kho khi bấm Lưu — trước đó kho không có ảnh chờ gắn nào (nhập sao lưu Gộp lúc này không
+    // xóa mất ảnh của biểu mẫu).
+    assert_eq!(std::fs::read_dir(tmp.join("photos")).map_or(0, |d| d.count()), 0, "chưa ghi ảnh trước khi Lưu");
+    press(&ui, "Lưu");
+    assert_eq!(page(&ui), "nguoi");
+    let store = ps.borrow().store.clone().unwrap();
+    let id = v(&store.persons_json().unwrap())[0]["id"].as_str().unwrap().to_string();
+    let pv = v(&store.person_json(id.clone()).unwrap());
+    let tid = pv["memorial"]["tray_photo_id"].as_str().expect("có tray_photo_id").to_string();
+    // Ca 2: ảnh lưu không còn siêu dữ liệu, cạnh dài ≤ 1600 px, ≤ 1 MB.
+    let bytes = store.photo_bytes(tid.clone()).unwrap();
+    assert!(!crate::photo::has_metadata_segments(&bytes), "không còn APP1/APP13");
+    assert!(!bytes.windows(10).any(|w| w == b"GPS-BI-MAT"));
+    assert!(bytes.len() <= 1024 * 1024);
+    let img = image::load_from_memory(&bytes).unwrap();
+    // Ảnh thử mang EXIF hướng 6: được xoay thẳng rồi mới bỏ EXIF, nên thành dọc 1200 × 1600.
+    assert_eq!((img.width(), img.height()), (1200, 1600));
+    assert!(p.get_v_info().iter().any(|kv| kv.k == "Ảnh mâm lễ" && kv.v == "Đã có"));
+    // Gói thử có một ảnh đã duyệt cùng kiểu mâm (ca 5): ảnh gia đình thắng.
+    let pack = std::fs::read(concat!(env!("CARGO_MANIFEST_DIR"), "/../../content/memorial/trays/test/04-dat/a.jpg")).unwrap();
+    crate::trays::TEST_PACK.with(|t| *t.borrow_mut() = Some(vec![("truyen_thong".into(), pack, "Ảnh: Clevix Lab · CC BY 4.0".into())]));
+    p.invoke_open_memorial(id.as_str().into());
+    assert_eq!(page(&ui), "tuong-niem");
+    assert_eq!(p.get_m_tray_kind(), 1);
+    assert_eq!(count_label(&ui, "Ảnh mâm lễ của gia đình"), 1);
+    assert_eq!(count_label(&ui, "Thêm ảnh mâm lễ của gia đình"), 0, "có ảnh gia đình thì không có nút thêm");
+    assert_eq!(p.get_m_tray_credit(), "");
+    assert_eq!(count_label(&ui, "Nến"), 2);
+    assert_eq!(count_label(&ui, "Bát hương với ba nén hương"), 1);
+    press(&ui, "‹ Về hồ sơ");
+
+    // Ca 3: bỏ ảnh → lưu → không còn khóa, không còn tệp.
+    press(&ui, "Sửa hồ sơ");
+    p.set_f_mem_open(true);
+    assert_eq!(p.get_f_tray_state(), 2, "biểu mẫu sửa nạp ảnh đã có");
+    press(&ui, "Bỏ ảnh mâm lễ");
+    assert_eq!(p.get_f_tray_state(), 0);
+    press(&ui, "Lưu");
+    assert_eq!(page(&ui), "nguoi");
+    let pv = v(&store.person_json(id.clone()).unwrap());
+    assert!(pv["memorial"].get("tray_photo_id").is_none(), "{}", pv["memorial"]);
+    assert!(store.photo_bytes(tid.clone()).is_err(), "ảnh đã bỏ bị xóa khỏi kho");
+    assert!(!tmp.join("photos").join(format!("{tid}.img")).exists(), "không còn tệp");
+    assert!(p.get_v_info().iter().any(|kv| kv.k == "Ảnh mâm lễ" && kv.v == "Chưa có"));
+    // Ca 5: chưa có ảnh gia đình → ảnh Clevix, có dòng ghi công và nút thêm ảnh gia đình.
+    p.invoke_open_memorial(id.as_str().into());
+    assert_eq!(p.get_m_tray_kind(), 2);
+    assert_eq!(count_label(&ui, "Ảnh mâm lễ"), 1);
+    assert_eq!(count_label(&ui, "Ảnh mâm lễ của gia đình"), 0);
+    assert_eq!(p.get_m_tray_credit(), "Ảnh: Clevix Lab · CC BY 4.0");
+    // Gói của kiểu mâm khác không được dùng.
+    crate::trays::TEST_PACK.with(|t| t.borrow_mut().as_mut().unwrap()[0].0 = "phat_giao".into());
+    p.invoke_open_memorial(id.as_str().into());
+    assert_eq!(p.get_m_tray_kind(), 0);
+    // Gói rỗng (như bản phát hành hiện nay) → về ca 1: không có mâm.
+    crate::trays::TEST_PACK.with(|t| *t.borrow_mut() = Some(vec![]));
+    assert_eq!(crate::trays::pack_len(), 0, "gói nhúng lúc dựng hiện rỗng");
+    p.invoke_open_memorial(id.as_str().into());
+    assert_eq!(p.get_m_tray_kind(), 0);
+    assert_eq!(count_label(&ui, "Ảnh mâm lễ"), 0);
+    assert_eq!(count_label(&ui, "Nến"), 2);
+    assert_eq!(count_label(&ui, "Bát hương với ba nén hương"), 1);
+    // Nút "Thêm ảnh mâm lễ của gia đình" → biểu mẫu sửa, nhóm Tưởng niệm mở.
+    press(&ui, "Thêm ảnh mâm lễ của gia đình");
+    assert_eq!(page(&ui), "form");
+    assert!(p.get_f_mem_open());
+    assert!(count_label(&ui, "Chọn ảnh mâm lễ…") >= 1);
+    // Ảnh hỏng → câu lỗi §16.2, không đổi trạng thái.
+    std::fs::write(tmp.join("chan-dung.jpg"), b"khong phai anh").unwrap();
+    press(&ui, "Chọn ảnh mâm lễ…");
+    assert_eq!(p.get_f_tray_state(), 0);
+    assert_eq!(p.get_e_tray(), "Không đọc được ảnh này. Hãy chọn một ảnh khác.");
+    p.invoke_cancel_form();
+
+    crate::trays::TEST_PACK.with(|t| *t.borrow_mut() = None);
+    platform::set_fake_now(None);
+    platform::set_fake_offset(None);
+    platform::set_dialog_override(None);
+    let _ = std::fs::remove_dir_all(&tmp);
+}
+
 /// L3 người đang sống + sinh nhật âm, L4 sự kiện, US-M-07 cập nhật đã mất + thông tin báo tử, B4.
 #[test]
 fn nguoi_dang_song_su_kien_bao_tu() {

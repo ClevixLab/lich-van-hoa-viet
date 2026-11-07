@@ -258,6 +258,17 @@ export global People {
     in-out property <image> m-photo;
     in-out property <bool> m-incense: true;
     in-out property <bool> m-catholic: false;
+    // YC-2026-10 (08 §16): ảnh mâm lễ. m-tray-kind: 0 không có mâm, 1 ảnh của gia đình, 2 ảnh Clevix đã duyệt.
+    in-out property <int> m-tray-kind;
+    in-out property <image> m-tray-img;
+    in-out property <string> m-tray-credit;
+    // Biểu mẫu: 0 chưa có, 1 đang xử lý, 2 có ảnh.
+    in-out property <int> f-tray-state;
+    in-out property <image> f-tray-img;
+    in-out property <string> e-tray;
+    callback pick-tray();
+    callback drop-tray();
+    callback add-tray-from-memorial();
     in-out property <bool> m-smoke: true;
 
     // Hộp thoại: "" | xac-nhan | ics | tao-sao-luu | khoi-phuc | thay-toan-bo | bo-thay-doi
@@ -1172,7 +1183,8 @@ component PersonPage inherits PPage {
 component FormButtons inherits HorizontalLayout {
     alignment: end; spacing: 10px; padding-top: 4px;
     Btn { text: "Hủy"; kind: "outline"; clicked => { People.cancel-form(); } }
-    Btn { text: "Lưu"; kind: "primary"; clicked => { People.save-form(); } }
+    // 08 §16.2: không lưu khi ảnh mâm lễ đang xử lý.
+    Btn { text: "Lưu"; kind: "primary"; enabled: People.f-tray-state != 1; clicked => { People.save-form(); } }
 }
 
 component NoticeBlock inherits Group {
@@ -1358,6 +1370,29 @@ component PersonFormPage inherits PPage {
             T { text: "Giỗ hết (giỗ lần cuối của thời gian để tang) vào"; size: 15; font-weight: 600; color: Theme.ink2; }
             Choice { items: ["Năm thứ 2 sau năm mất", "Năm thứ 3 sau năm mất"]; current: People.f-gio-het - 2; group: "Giỗ hết"; picked(i) => { People.f-gio-het = i + 2; People.form-changed(); } }
             Field { label: "Lời tưởng niệm"; text <=> People.f-loi; multiline: true; edited => { People.form-changed(); } }
+            // 08 §16.2: ảnh mâm lễ ngày giỗ, ngay sau "Lời tưởng niệm".
+            VerticalLayout {
+                spacing: 6px;
+                T { text: "Ảnh mâm lễ ngày giỗ"; size: 15; font-weight: 600; color: Theme.ink2; }
+                if People.f-tray-state == 0: T { text: "Chưa có ảnh. Ngày giỗ chỉ hiện bát hương và nến."; size: 15; }
+                if People.f-tray-state == 1: T { text: "Đang xử lý ảnh…"; size: 15; color: Theme.ink2; accessible-role: AccessibleRole.text; accessible-label: "Đang xử lý ảnh…"; }
+                if People.f-tray-state == 2: HorizontalLayout {
+                    alignment: start;
+                    Rectangle {
+                        width: 120px; height: 90px; border-radius: 6px; clip: true; border-width: 1px; border-color: Theme.rule;
+                        accessible-role: AccessibleRole.text; accessible-label: "Ảnh mâm lễ đã chọn";
+                        Image { width: parent.width; height: parent.height; source: People.f-tray-img; image-fit: cover; }
+                    }
+                }
+                HorizontalLayout {
+                    alignment: start; spacing: 8px;
+                    if People.f-tray-state == 0: Btn { text: "Chọn ảnh mâm lễ…"; kind: "outline"; clicked => { People.pick-tray(); } }
+                    if People.f-tray-state == 2: Btn { text: "Đổi ảnh"; kind: "outline"; accessible-label: "Đổi ảnh mâm lễ"; clicked => { People.pick-tray(); } }
+                    if People.f-tray-state == 2: Btn { text: "Bỏ ảnh"; accessible-label: "Bỏ ảnh mâm lễ"; clicked => { People.drop-tray(); } }
+                }
+                if People.e-tray != "": T { text: People.e-tray; size: 15; color: Theme.red-ink; font-weight: 600; accessible-role: AccessibleRole.text; accessible-label: People.e-tray; }
+                T { text: "Ảnh chỉ lưu trên máy này và trong tệp sao lưu mã hóa. Ứng dụng tự bỏ thông tin vị trí và máy chụp trong ảnh."; size: 14; color: Theme.ink3; }
+            }
             NumBox { label: "Mất trước tuổi này thì ghi “hưởng dương” (mất sớm) thay cho “hưởng thọ”"; text <=> People.f-nguong; w: 96px; edited => { People.form-changed(); } }
             if People.e-nguong != "": T { text: People.e-nguong; size: 15; color: Theme.red-ink; font-weight: 600; }
         }
@@ -1569,7 +1604,32 @@ component MemorialPage inherits Rectangle {
                             Rectangle { x: 80px; y: 190px; width: 260px; height: 20px; background: #4a2a14; }
                         }
                     }
+                    // 08 §16.1: ảnh mâm lễ nằm dưới hàng bàn thờ — rộng tối đa 480 px, khung 4:3 cắt giữa, bo 12 px, viền
+                    // vàng đồng mảnh. Không có ảnh → không có mâm.
+                    if People.m-tray-kind != 0: HorizontalLayout {
+                        alignment: center;
+                        Rectangle {
+                            width: 480px; height: 360px;
+                            border-radius: 12px; clip: true; border-width: 1px; border-color: #b8893a;
+                            accessible-role: AccessibleRole.text;
+                            accessible-label: People.m-tray-kind == 1 ? "Ảnh mâm lễ của gia đình" : "Ảnh mâm lễ";
+                            Image { width: parent.width; height: parent.height; source: People.m-tray-img; image-fit: cover; }
+                        }
+                    }
+                    if People.m-tray-credit != "": Text { text: People.m-tray-credit; color: #b9a48a; font-family: Theme.sans; font-size: 13px * Theme.scale; horizontal-alignment: center; wrap: word-wrap; }
                     if People.m-loi != "": Text { text: "“" + People.m-loi + "”"; color: #e8dccb; font-family: Theme.serif; font-italic: true; font-size: 17px * Theme.scale; horizontal-alignment: center; wrap: word-wrap; }
+                    // Chưa có ảnh của gia đình → nút chữ nhỏ mở biểu mẫu tới mục ảnh mâm lễ.
+                    if People.m-tray-kind != 1 && !People.read-only: HorizontalLayout {
+                        alignment: center;
+                        Rectangle {
+                            min-height: 40px; min-width: tl.preferred-width + 8px;
+                            accessible-role: button; accessible-label: "Thêm ảnh mâm lễ của gia đình";
+                            accessible-action-default => { People.add-tray-from-memorial(); }
+                            tl := Text { text: "Thêm ảnh mâm lễ của gia đình"; color: #e8c67a; font-family: Theme.sans; font-size: 14px * Theme.scale; vertical-alignment: center; }
+                            Rectangle { y: parent.height - 8px; height: 1px; background: #8a6a3a; }
+                            TouchArea { clicked => { People.add-tray-from-memorial(); } mouse-cursor: pointer; }
+                        }
+                    }
                 }
             }
         }

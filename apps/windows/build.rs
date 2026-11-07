@@ -91,6 +91,54 @@ fn main() {
         }
     }
     println!("cargo:rerun-if-changed=assets/icon.ico");
+    embed_tray_pack();
+}
+
+/// Gói ảnh mâm lễ Clevix (YC-2026-10, 08 §16.3): chỉ nhúng mục `trang_thai = "duyet"`; mục đã duyệt mà thiếu tệp, sai
+/// `sha256` hay sai mime thì dừng dựng (cùng quy tắc với scripts/check-tray-pack.py). Không bao giờ nhúng `test/`.
+fn embed_tray_pack() {
+    use sha2::{Digest, Sha256};
+    let dir = std::path::Path::new("../../content/memorial/trays");
+    let man = dir.join("manifest.json");
+    println!("cargo:rerun-if-changed={}", man.display());
+    let mut code = String::from("pub static PACK: &[PackItem] = &[\n");
+    if let Ok(text) = fs::read_to_string(&man) {
+        let v: serde_json::Value = serde_json::from_str(&text).expect("manifest.json của gói ảnh mâm lễ không hợp lệ");
+        for it in v["items"].as_array().into_iter().flatten() {
+            if it["trang_thai"] != "duyet" {
+                continue;
+            }
+            let s = |k: &str| it[k].as_str().unwrap_or_default().to_string();
+            let file = dir.join(s("file"));
+            assert!(!s("file").contains('/') && !s("file").contains('\\'), "tệp ảnh mâm lễ phải nằm ngay trong thư mục gói");
+            let bytes = fs::read(&file).unwrap_or_else(|_| panic!("thiếu tệp ảnh mâm lễ đã duyệt {}", file.display()));
+            let hex: String = Sha256::digest(&bytes).iter().map(|b| format!("{b:02x}")).collect();
+            assert_eq!(hex, s("sha256"), "sai sha256 của {}", file.display());
+            let mime_ok = match s("mime").as_str() {
+                "image/jpeg" => bytes.starts_with(&[0xFF, 0xD8, 0xFF]),
+                "image/webp" => bytes.len() > 12 && &bytes[0..4] == b"RIFF" && &bytes[8..12] == b"WEBP",
+                _ => false,
+            };
+            assert!(mime_ok, "tệp {} không đúng mime {}", file.display(), s("mime"));
+            let credit = if it["ghi_cong"].is_null() {
+                String::new()
+            } else {
+                format!("Ảnh: {} · {}", s("tac_gia"), s("giay_phep"))
+            };
+            println!("cargo:rerun-if-changed={}", file.display());
+            let abs = fs::canonicalize(&file).unwrap();
+            code += &format!(
+                "    PackItem {{ id: {:?}, tray_style: {:?}, bytes: include_bytes!({:?}), credit: {:?} }},\n",
+                s("id"),
+                s("tray_style"),
+                abs.to_string_lossy(),
+                credit
+            );
+        }
+    }
+    code += "];\n";
+    let out = std::path::PathBuf::from(std::env::var("OUT_DIR").unwrap()).join("trays.rs");
+    fs::write(out, code).unwrap();
 }
 
 /// Ngày hôm nay (UTC) dạng YYYY-MM-DD, không cần thư viện ngoài.

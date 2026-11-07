@@ -277,6 +277,8 @@ pub struct PState {
     form: FormKind,
     photo: PhotoSel,
     atts: Vec<AttItem>,
+    /// Ảnh mâm lễ ngày giỗ trên biểu mẫu (YC-2026-10, 08 §16.2) — như ảnh chân dung: ảnh mới chỉ ghi khi bấm Lưu.
+    tray: PhotoSel,
     /// Bản sao tạm mở gần nhất (kiểm thử).
     pub last_opened: Option<PathBuf>,
     /// Tệp đính kèm của trang hồ sơ đang xem (để "Mở").
@@ -313,6 +315,7 @@ impl PState {
             form: FormKind::None,
             photo: PhotoSel::Keep(None),
             atts: vec![],
+            tray: PhotoSel::Keep(None),
             last_opened: None,
             view_atts: vec![],
             offs: HashMap::new(),
@@ -1242,6 +1245,11 @@ fn render_person(ui: &AppWindow, ps: &mut PState, id: &str) {
             kv("Dương lịch", format!("{}, {}", WEEKDAY[dd.weekday()], dd.dmy()));
         }
         kv("Tuổi", st(&sum["tuoi_mat_text"]));
+        // 08 §16.2: dòng "Ảnh mâm lễ: Đã có / Chưa có".
+        kv(
+            "Ảnh mâm lễ",
+            if v["memorial"]["tray_photo_id"].is_string() { "Đã có" } else { "Chưa có" }.into(),
+        );
     }
     kv("Giới tính", gender_text(&v).to_string());
     if b.is_object() {
@@ -1447,6 +1455,28 @@ fn open_memorial(ui: &AppWindow, ps: &mut PState, id: &str) {
     let catholic = v["memorial"]["tray_style"] == "cong_giao";
     p.set_m_incense(!catholic && v["memorial"]["incense"] != false);
     p.set_m_catholic(catholic);
+    // 08 §16.1: ảnh mâm lễ — của gia đình → ảnh Clevix đã duyệt cùng kiểu mâm → không có mâm.
+    let style = v["memorial"]["tray_style"].as_str().unwrap_or("truyen_thong").to_string();
+    let family = v["memorial"]["tray_photo_id"].as_str().and_then(|t| photo_image(ps, t));
+    match family {
+        Some(img) => {
+            p.set_m_tray_kind(1);
+            p.set_m_tray_img(img);
+            p.set_m_tray_credit(ss(""));
+        }
+        None => match crate::trays::pick(&style) {
+            Some((img, credit)) => {
+                p.set_m_tray_kind(2);
+                p.set_m_tray_img(img);
+                p.set_m_tray_credit(ss(credit));
+            }
+            None => {
+                p.set_m_tray_kind(0);
+                p.set_m_tray_img(Image::default());
+                p.set_m_tray_credit(ss(""));
+            }
+        },
+    }
     // Dòng ngày (§3.9): lấy lần giỗ kế tiếp từ lõi.
     let up = jv(&ps
         .s()
@@ -2018,6 +2048,12 @@ fn open_person_form(ui: &AppWindow, ps: &mut PState, dead: bool, base: Option<Va
         .unwrap_or_default()));
     p.set_f_noi_an_tang(ss(st(&b["noi_an_tang"])));
     ps.photo = PhotoSel::Keep(b["photo_id"].as_str().map(String::from));
+    let tray_id = b["memorial"]["tray_photo_id"].as_str().map(String::from);
+    let tray_img = tray_id.as_deref().and_then(|t| photo_image(ps, t));
+    p.set_f_tray_state(if tray_img.is_some() { 2 } else { 0 });
+    p.set_f_tray_img(tray_img.unwrap_or_default());
+    p.set_e_tray(ss(""));
+    ps.tray = PhotoSel::Keep(tray_id);
     let img = b["photo_id"].as_str().and_then(|i| photo_image(ps, i));
     p.set_f_has_photo(img.is_some());
     p.set_f_photo(img.unwrap_or_default());
@@ -2522,6 +2558,7 @@ fn save_form(ui: &AppWindow, ps: &mut PState) {
                 return;
             };
             let mut new_photo: Option<String> = None;
+            let mut new_tray: Option<String> = None;
             let mut added: Vec<String> = vec![];
             let res = (|| -> Result<String, String> {
                 match &ps.photo {
@@ -2535,10 +2572,29 @@ fn save_form(ui: &AppWindow, ps: &mut PState) {
                 if dead && v["death"]["notice"].is_object() {
                     v["death"]["notice"]["attachments"] = json!(save_atts(&store, &ps.atts, &mut added)?);
                 }
+                // Ảnh mâm lễ (01 §3.7 `memorial.tray_photo_id`): ảnh cũ bị thay hay bỏ thì lõi tự xóa khi lưu.
+                if dead && v["memorial"].is_object() {
+                    match &ps.tray {
+                        PhotoSel::Keep(Some(id)) => v["memorial"]["tray_photo_id"] = json!(id),
+                        PhotoSel::Keep(None) => {
+                            if let Some(m) = v["memorial"].as_object_mut() {
+                                m.remove("tray_photo_id");
+                            }
+                        }
+                        PhotoSel::New(e) => {
+                            let id = save_photo(&store, e)?;
+                            new_tray = Some(id.clone());
+                            v["memorial"]["tray_photo_id"] = json!(id);
+                        }
+                    }
+                }
                 store.save_person_json(v.to_string()).map_err(|e| e.to_string())
             })();
             if res.is_err() {
                 rollback_files(&store, new_photo, &added);
+                if let Some(t) = new_tray {
+                    let _ = store.delete_photo(t);
+                }
             }
             match res {
                 Ok(j) => {
@@ -3107,6 +3163,23 @@ fn bg<T: Send + 'static>(
     }
 }
 
+/// Ảnh mâm lễ (08 §16.2): như ảnh chân dung nhưng cạnh dài ≤ 1600 px; câu lỗi theo §16.2.
+pub(crate) const TRAY_SIDE: u32 = 1600;
+fn load_tray(path: std::path::PathBuf) -> Result<photo::Encoded, String> {
+    let len = std::fs::metadata(&path).map_err(|_| "Không đọc được ảnh này. Hãy chọn một ảnh khác.".to_string())?.len();
+    if len > photo::MAX_INPUT as u64 {
+        return Err("Ảnh quá lớn (tối đa 25 MB).".into());
+    }
+    let bytes = std::fs::read(&path).map_err(|_| "Không đọc được ảnh này. Hãy chọn một ảnh khác.".to_string())?;
+    photo::reencode_with(&bytes, TRAY_SIDE, photo::MAX_STORED).map_err(|e| {
+        if e.contains("quá lớn") {
+            "Ảnh quá lớn (tối đa 25 MB).".to_string()
+        } else {
+            "Không đọc được ảnh này. Hãy chọn một ảnh khác.".to_string()
+        }
+    })
+}
+
 /// Đọc + mã hóa lại một ảnh; kiểm 25 MB **trước** khi đọc tệp (MA3N-25-07).
 fn load_photo(path: std::path::PathBuf) -> Result<photo::Encoded, String> {
     let len = std::fs::metadata(&path).map_err(|e| e.to_string())?.len();
@@ -3551,6 +3624,46 @@ pub fn wire(ui: &AppWindow, ps: Ps) {
                 Err(e) => p.set_e_photo(ss(e)),
             }
         });
+    }));
+    // 08 §16.2: ảnh mâm lễ — chọn, xử lý ở luồng phụ (≤ 1600 px, ≤ 1 MB, bỏ siêu dữ liệu), đổi, bỏ.
+    p.on_pick_tray(cb0!(|ui: &AppWindow, ps: &mut PState| {
+        let Some(path) = platform::pick(platform::hwnd_of(ui.window()), Dialog::OpenImage) else { return };
+        let p = People::get(ui);
+        let before = p.get_f_tray_state();
+        p.set_f_tray_state(1);
+        p.set_e_tray(ss(""));
+        bg(ui, ps, move || (before, load_tray(path)), |ui, ps, (before, r)| {
+            let p = People::get(ui);
+            match r {
+                Ok(e) => {
+                    p.set_f_tray_img(photo::to_slint(&e.bytes).unwrap_or_default());
+                    p.set_f_tray_state(2);
+                    ps.tray = PhotoSel::New(e);
+                    ps.dirty = true;
+                }
+                Err(e) => {
+                    p.set_f_tray_state(before);
+                    p.set_e_tray(ss(e));
+                }
+            }
+        });
+    }));
+    p.on_drop_tray(cb0!(|ui: &AppWindow, ps: &mut PState| {
+        let p = People::get(ui);
+        ps.tray = PhotoSel::Keep(None);
+        p.set_f_tray_state(0);
+        p.set_f_tray_img(Image::default());
+        p.set_e_tray(ss(""));
+        ps.dirty = true;
+    }));
+    // Trang tưởng niệm → "Thêm ảnh mâm lễ của gia đình": mở biểu mẫu sửa, mở nhóm Tưởng niệm, cuộn tới mục ảnh.
+    p.on_add_tray_from_memorial(cb0!(|ui: &AppWindow, ps: &mut PState| {
+        if let Some(v) = ps.person.clone().and_then(|id| person(ps, &id)) {
+            open_person_form(ui, ps, true, Some(v));
+            let p = People::get(ui);
+            p.set_f_mem_open(true);
+            p.set_scroll_frac(1.0);
+        }
     }));
     p.on_drop_photo(cb0!(|ui: &AppWindow, ps: &mut PState| {
         let p = People::get(ui);
