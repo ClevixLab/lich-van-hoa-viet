@@ -14,6 +14,8 @@ pub mod media;
 pub mod migrate;
 pub mod model;
 pub mod names;
+#[cfg(feature = "test-hooks")]
+pub mod test_hooks;
 pub mod validate;
 
 use lvhv_backup::{BackupError, PhotoBlob};
@@ -475,6 +477,12 @@ impl Store {
             for r in rows {
                 validate::attachment(&parse_col(&r)?, "/attachment")?;
             }
+        }
+        #[cfg(feature = "test-hooks")]
+        if ver > 0 && test_hooks::force_migration_failure() {
+            return Err(StoreError::Input(
+                "lỗi chuyển đổi ép buộc (test-hooks, --force-migration-failure)".into(),
+            ));
         }
         tx.commit()?;
         Ok(())

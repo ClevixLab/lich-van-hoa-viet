@@ -21,6 +21,8 @@ required-features = ["bindgen-cli"]
 [features]
 # Bật nhị phân uniffi-bindgen (chỉ dùng lúc sinh mã Kotlin/Swift, không vào ứng dụng).
 bindgen-cli = ["uniffi/cli"]
+# Móc kiểm thử của lvhv-store (lvhv-store-tool open --force-migration-failure, docs/v0.2/10). Không bật khi dựng ứng dụng.
+test-hooks = ["lvhv-store/test-hooks"]
 
 [dependencies]
 lvhv-core = { path = "../core" }

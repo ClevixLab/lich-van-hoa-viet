@@ -18,3 +18,8 @@ unicode-normalization = { version = "=0.1.26" }
 getrandom = { version = "=0.4.3" }
 
 [dev-dependencies]
+
+[features]
+# Móc kiểm thử cho công cụ kiểm định hộp đen (`lvhv-store-tool open --force-migration-failure`, docs/v0.2/10).
+# Không bật trong bản dựng ứng dụng. Xem store/src/test_hooks.rs.
+test-hooks = []
