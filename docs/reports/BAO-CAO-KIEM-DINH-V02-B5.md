@@ -41,12 +41,12 @@ Hai bản cho cùng kết quả ở **mọi** ca. Số liệu: `oracle/v02/out/b
 
 ### 0.3 Quan sát về hai khiếm khuyết bên xây dựng đang sửa (không chờ bản sửa)
 
-1. **Tệp đính kèm mồ côi khi chuyển đổi lỗi.** Sau ca lỗi, thư mục `attachments/` còn tệp ở 5 kho có ảnh giấy chứng
-   tử: bộ mẫu đóng băng (2 tệp), M01 (3), M02, M06 (3, là ca lỗi thật chứ không phải buộc lỗi) và M10 (2).
+1. **Tệp đính kèm mồ côi khi chuyển đổi lỗi.** Ở ca buộc lỗi, thư mục `attachments/` còn tệp ở 6/11 kho: bộ mẫu
+   đóng băng (2 tệp), M01 (3), M02 (4), M03 (1), M06 (3) và M10 (2). Ca lỗi thật M06 (không buộc) cũng để lại 3 tệp.
    - Các tệp này là bản chép của ảnh giấy chứng tử. CSDL đã quay lui, không trỏ tới chúng.
    - Không mất dữ liệu. Nhưng thư mục đã không còn "như trước khi mở", và có thêm bản chép của dữ liệu nhạy cảm (R-PRIV-2).
-   - M09 không có tệp mồ côi.
-2. **`.pre-v2.bak` không giống từng byte tệp CSDL gốc** ở 11/11 kho. Bên kiểm định đọc bản sao ở chế độ chỉ đọc: mọi
+   - Các kho không có ảnh giấy chứng tử (M04, M05, M07, M08) và M09 không có tệp mồ côi.
+2. **`.pre-v2.bak` không giống từng byte tệp CSDL gốc** ở 11/11 kho, cả ca thường lẫn ca lỗi. Bên kiểm định đọc bản sao ở chế độ chỉ đọc: mọi
    bảng và mọi hàng, cùng `user_version` 1, giống hệt bản gốc ở 11/11 kho. Như vậy không mất dữ liệu, chỉ khác byte.
    Ghi chú phương pháp: việc đọc bản sao bằng `sqlite3` ở chế độ chỉ đọc tạo thêm `-shm`/`-wal` cạnh `.bak`. Hai tệp đó
    do bên kiểm định sinh ra, không phải do lõi.
