@@ -423,6 +423,36 @@ pub fn apply_plan(remove: &[String], add: &[PendingToastNew]) -> Result<usize, S
     }
 }
 
+/// Tự kiểm (CI, R-WIN-1): đặt một thông báo thử sau 1 giờ, đọc lại từ danh sách chờ của Windows, gỡ đi.
+pub fn self_test_toast() -> Result<String, String> {
+    let state = toast_state();
+    #[cfg(windows)]
+    {
+        let id = "lvhv:kiem-thu-thong-bao".to_string();
+        let at = now_unix() + 3600;
+        let before = toast_os::pending().map_err(|e| format!("{state:?}; đọc danh sách chờ lỗi: {e}"))?.len();
+        toast_os::add(&id, at, "Kiểm thử", "Thông báo thử của Lịch Việt")
+            .map_err(|e| format!("{state:?}; đặt thông báo lỗi: {e}"))?;
+        let list = toast_os::pending().map_err(|e| format!("{state:?}; đọc lại lỗi: {e}"))?;
+        let found = list.iter().find(|p| p.id == id).cloned();
+        toast_os::remove(&[id]).map_err(|e| format!("gỡ lỗi: {e}"))?;
+        let after = toast_os::pending().map(|l| l.len()).unwrap_or(usize::MAX);
+        match found {
+            Some(p) if (p.at_unix_s - at).abs() <= 1 => Ok(format!(
+                "Thông báo đặt lịch: ĐẶT ĐƯỢC. Trạng thái {state:?}; chờ trước {before}, sau khi đặt {}, sau khi gỡ {after}; nội dung đọc lại: {:?}",
+                list.len(),
+                p.content
+            )),
+            Some(p) => Err(format!("đọc lại sai thời điểm: {} ≠ {at}", p.at_unix_s)),
+            None => Err(format!("{state:?}; đã đặt nhưng không thấy trong danh sách chờ")),
+        }
+    }
+    #[cfg(not(windows))]
+    {
+        Err(format!("{state:?}"))
+    }
+}
+
 /// Một thông báo cần đặt (từ `add` hoặc `replace` của `reschedule_json`).
 #[derive(Clone, Debug)]
 pub struct PendingToastNew {
@@ -445,5 +475,8 @@ mod tests {
         assert_eq!(c, "Còn 3 ngày: <Giỗ> & \"x\"\nThứ Ba, 28/07/2026");
         assert_eq!(short_id("lvhv:sentinel").len(), 16);
         assert_ne!(short_id("a"), short_id("b"));
+        // Lối tắt Start Menu của bộ cài mang đúng AUMID này (R-WIN-1).
+        assert!(include_str!("../wix/main.wxs")
+            .contains(&format!("Key='System.AppUserModel.ID' Value='{AUMID}'")));
     }
 }

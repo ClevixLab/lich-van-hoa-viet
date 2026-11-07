@@ -62,7 +62,11 @@
             </Directory>
             <Directory Id='ProgramMenuFolder'>
                 <Component Id='StartMenuShortcut' Guid='6B1D2C5E-7A0F-4C8B-9E3D-2F4A6B8C1D12'>
-                    <Shortcut Id='AppShortcut' Name='Lich va Van hoa Viet' Target='[APPLICATIONFOLDER]LichViet.exe' WorkingDirectory='APPLICATIONFOLDER' Icon='ProductICO'/>
+                    <!-- AppUserModelID trên lối tắt: ứng dụng chưa đóng gói (MSI, không MSIX) cần định danh này để Windows
+                         nhận thông báo đặt lịch (02 §7.5, R-WIN-1). Phải trùng platform::AUMID trong src/platform.rs. -->
+                    <Shortcut Id='AppShortcut' Name='Lich va Van hoa Viet' Target='[APPLICATIONFOLDER]LichViet.exe' WorkingDirectory='APPLICATIONFOLDER' Icon='ProductICO'>
+                        <ShortcutProperty Key='System.AppUserModel.ID' Value='ClevixLab.LichVanHoaViet'/>
+                    </Shortcut>
                     <RegistryValue Root='HKCU' Key='Software\Clevix\LichVanHoaViet' Name='shortcut' Type='integer' Value='1' KeyPath='yes'/>
                 </Component>
             </Directory>

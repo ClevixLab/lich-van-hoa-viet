@@ -689,6 +689,21 @@ fn main() -> Result<(), slint::PlatformError> {
     // với dữ liệu mẫu rồi đứng yên (CI đọc Working Set). Hai chế độ dùng kho tạm, không chạm dữ liệu thật.
     let args: Vec<String> = std::env::args().skip(1).collect();
     let mode = args.first().cloned().unwrap_or_default();
+    // `--kiem-thong-bao`: tự kiểm thông báo đặt lịch (R-WIN-1) — đặt một thông báo thử sau 1 giờ, đọc lại danh
+    // sách chờ của Windows, gỡ nó, in kết quả. Không mở cửa sổ, không đụng dữ liệu người dùng. Dùng trong CI.
+    if mode == "--kiem-thong-bao" {
+        platform::init_app_identity();
+        match platform::self_test_toast() {
+            Ok(msg) => {
+                println!("{msg}");
+                std::process::exit(0);
+            }
+            Err(msg) => {
+                eprintln!("{msg}");
+                std::process::exit(5);
+            }
+        }
+    }
     let demo = mode == "--chup-man-hinh" || mode == "--do-bo-nho";
     if demo {
         let dir = std::env::temp_dir().join(format!("lvhv-demo-{}", std::process::id()));

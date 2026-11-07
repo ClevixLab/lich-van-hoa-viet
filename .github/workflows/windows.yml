@@ -75,21 +75,34 @@ jobs:
           $p = Start-Process -FilePath target\release\LichViet.exe -PassThru
           Start-Sleep -Seconds 8
           $p.Refresh()
-          "Working set: {0:N1} MB; Private: {1:N1} MB" -f ($p.WorkingSet64/1MB), ($p.PrivateMemorySize64/1MB) | Tee-Object -FilePath $env:RUNNER_TEMP\mem.txt
+          "Tờ lịch (khởi động): Working set {0:N1} MB; Private {1:N1} MB" -f ($p.WorkingSet64/1MB), ($p.PrivateMemorySize64/1MB) | Tee-Object -FilePath $env:RUNNER_TEMP\mem.txt
+          Stop-Process -Id $p.Id -Force
+          # Mô-đun Người thân với dữ liệu mẫu (kho tạm): Sắp tới, Theo kỳ năm, hồ sơ có ảnh, trang tưởng niệm.
+          $p = Start-Process -FilePath target\release\LichViet.exe -ArgumentList '--do-bo-nho' -PassThru
+          Start-Sleep -Seconds 12
+          $p.Refresh()
+          "Người thân + tưởng niệm (5 hồ sơ, 2 ảnh): Working set {0:N1} MB; Private {1:N1} MB; đỉnh Working set {2:N1} MB" -f ($p.WorkingSet64/1MB), ($p.PrivateMemorySize64/1MB), ($p.PeakWorkingSet64/1MB) | Tee-Object -FilePath $env:RUNNER_TEMP\mem.txt -Append
           Stop-Process -Id $p.Id -Force
 
-      # Chạy bản release ở chế độ chụp màn hình: mở lần lượt các màn hình chính, chụp bằng chính renderer
-      # của ứng dụng (Window::take_snapshot) rồi tự thoát. Ảnh đính kèm trong artifact "windows-screens".
-      - name: Chụp màn hình các trang chính
+      # Chạy bản release ở chế độ chụp màn hình: mở lần lượt các màn hình (v0.1 và mô-đun Người thân, sáng và tối),
+      # chụp bằng chính renderer của ứng dụng (Window::take_snapshot, Skia) rồi tự thoát. Hai lần: tỉ lệ 1× và 2×
+      # (SLINT_SCALE_FACTOR=2). Ảnh đính kèm trong artifact "windows-screens" và được commit vào nhánh của PR
+      # (apps/windows/screenshots/) ở bước cuối.
+      - name: Chụp màn hình (1× và 2×, sáng và tối)
         working-directory: apps/windows
         run: |
           $out = Join-Path $env:RUNNER_TEMP 'screens'
-          $p = Start-Process -FilePath target\release\LichViet.exe -ArgumentList '--chup-man-hinh', $out -PassThru
-          if (-not $p.WaitForExit(120000)) { Stop-Process -Id $p.Id -Force; Write-Host "::error::Chụp màn hình quá 120 giây"; exit 1 }
+          foreach ($sf in @('1', '2')) {
+            $env:SLINT_SCALE_FACTOR = $sf
+            $p = Start-Process -FilePath target\release\LichViet.exe -ArgumentList '--chup-man-hinh', $out -PassThru
+            if (-not $p.WaitForExit(240000)) { Stop-Process -Id $p.Id -Force; Write-Host "::error::Chụp màn hình ($sf×) quá 240 giây"; exit 1 }
+            if ($p.ExitCode -ne 0) { Write-Host "::error::LichViet.exe --chup-man-hinh ($sf×) thoát mã $($p.ExitCode)"; exit 1 }
+          }
+          Remove-Item Env:SLINT_SCALE_FACTOR
+          Add-Type -AssemblyName System.Drawing
           $shots = Get-ChildItem $out -Filter *.png -ErrorAction SilentlyContinue
-          $shots | ForEach-Object { "{0}  {1:N0} byte" -f $_.Name, $_.Length }
-          if ($p.ExitCode -ne 0) { Write-Host "::error::LichViet.exe --chup-man-hinh thoát mã $($p.ExitCode)"; exit 1 }
-          if ($shots.Count -lt 11) { Write-Host "::error::Chỉ có $($shots.Count)/11 ảnh"; exit 1 }
+          $shots | ForEach-Object { $i = [System.Drawing.Image]::FromFile($_.FullName); "{0}  {1}x{2}  {3:N0} byte" -f $_.Name, $i.Width, $i.Height, $_.Length; $i.Dispose() }
+          if ($shots.Count -lt 110) { Write-Host "::error::Chỉ có $($shots.Count)/110 ảnh"; exit 1 }
           $small = $shots | Where-Object { $_.Length -lt 20000 }
           if ($small) { Write-Host "::error::Ảnh quá nhỏ (có thể trống): $($small.Name -join ', ')"; exit 1 }
 
@@ -155,6 +168,27 @@ jobs:
           Write-Host "msi: ProductVersion=$pv"
           if ($pv -ne $v) { Write-Host "::error::ProductVersion của MSI ($pv) khác VERSION $v"; exit 1 }
 
+      # R-WIN-1: thông báo đặt lịch của ứng dụng chưa đóng gói cần lối tắt Start Menu mang AppUserModelID. Cài .msi
+      # (theo người dùng) rồi chạy bản đã cài với --kiem-thong-bao: đặt một thông báo thử sau 1 giờ, đọc lại danh
+      # sách chờ của Windows, gỡ nó. Máy CI là Windows Server chạy dịch vụ, có thể không có nền tảng thông báo —
+      # kết quả chỉ để tham khảo, R5 Windows vẫn phải thử trên máy thật.
+      - name: Thử thông báo đặt lịch sau khi cài .msi (R-WIN-1)
+        working-directory: apps/windows
+        continue-on-error: true
+        run: |
+          $msi = (Resolve-Path "dist\LichViet-$env:VERSION-x64.msi").Path
+          $log = Join-Path $env:RUNNER_TEMP 'msi.log'
+          $i = Start-Process msiexec.exe -ArgumentList '/i', "`"$msi`"", '/qn', '/l*v', "`"$log`"" -Wait -PassThru
+          "msiexec /i thoát mã $($i.ExitCode)" | Tee-Object -FilePath $env:RUNNER_TEMP\toast.txt
+          $lnk = Get-ChildItem "$env:APPDATA\Microsoft\Windows\Start Menu\Programs" -Filter 'Lich va Van hoa Viet.lnk' -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+          "Lối tắt Start Menu: $($lnk.FullName)" | Tee-Object -FilePath $env:RUNNER_TEMP\toast.txt -Append
+          $exe = Join-Path $env:LOCALAPPDATA 'Programs\LichVanHoaViet\LichViet.exe'
+          $o = Join-Path $env:RUNNER_TEMP 'toast-out.txt'; $e = Join-Path $env:RUNNER_TEMP 'toast-err.txt'
+          $t = Start-Process -FilePath $exe -ArgumentList '--kiem-thong-bao' -Wait -PassThru -RedirectStandardOutput $o -RedirectStandardError $e
+          "--kiem-thong-bao thoát mã $($t.ExitCode)" | Tee-Object -FilePath $env:RUNNER_TEMP\toast.txt -Append
+          Get-Content $o, $e | Tee-Object -FilePath $env:RUNNER_TEMP\toast.txt -Append
+          Start-Process msiexec.exe -ArgumentList '/x', "`"$msi`"", '/qn' -Wait | Out-Null
+
       - uses: actions/upload-artifact@v4
         with:
           name: windows-x64
@@ -162,7 +196,34 @@ jobs:
             apps/windows/dist/*.zip
             apps/windows/dist/*.msi
             ${{ runner.temp }}/mem.txt
+            ${{ runner.temp }}/toast.txt
           retention-days: 30
+
+      # Tải tạo phẩm bị chặn trong môi trường duyệt, nên ảnh chụp (và số đo bộ nhớ, kết quả thử thông báo) được
+      # commit vào chính nhánh của PR (apps/windows/screenshots/). Chỉ với PR từ nhánh trong kho; commit có
+      # "[skip ci]" để không chạy lại.
+      - name: Commit ảnh chụp vào nhánh của PR
+        if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        continue-on-error: true
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          $wt = Join-Path $env:RUNNER_TEMP 'shots-wt'
+          git fetch --depth=1 origin "$env:HEAD_REF"
+          git worktree add --detach $wt FETCH_HEAD
+          $dst = Join-Path $wt 'apps\windows\screenshots'
+          if (Test-Path $dst) { Remove-Item $dst -Recurse -Force }
+          New-Item -ItemType Directory -Force $dst | Out-Null
+          Copy-Item (Join-Path $env:RUNNER_TEMP 'screens\*.png') $dst
+          if (Test-Path (Join-Path $env:RUNNER_TEMP 'mem.txt')) { Copy-Item (Join-Path $env:RUNNER_TEMP 'mem.txt') (Join-Path $dst 'bo-nho.txt') }
+          if (Test-Path (Join-Path $env:RUNNER_TEMP 'toast.txt')) { Copy-Item (Join-Path $env:RUNNER_TEMP 'toast.txt') (Join-Path $dst 'thong-bao.txt') }
+          git -C $wt add -A apps/windows/screenshots
+          git -C $wt diff --cached --quiet
+          if ($LASTEXITCODE -eq 0) { Write-Host "Ảnh không đổi"; exit 0 }
+          git -C $wt commit -q -m "Ảnh chụp Windows từ CI (run ${{ github.run_number }}) [skip ci]"
+          git -C $wt push origin "HEAD:refs/heads/$env:HEAD_REF"
 
       # Chỉ khi đẩy thẻ phiên bản (v*): tạo bản phát hành (pre-release) trên GitHub và đính kèm .msi/.zip.
       - name: Đăng lên GitHub Releases
