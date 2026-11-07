@@ -95,9 +95,11 @@ seed_store() {
 say "Ca chuyển đổi dữ liệu 0.2-dev (phiên bản 1) → bản mới: bộ mẫu thật"
 seed_store "$FIX/store"
 put "$EXPECTED" files/r14-expected.json
-run_main   # mở ứng dụng như người dùng: kho được chuyển đổi khi mở
+# Lần mở kho đầu tiên là màn tự kiểm (để thấy trạng thái "migrated"; lần mở sau trạng thái là "ok").
 R="$(self_check verify-migrated)"; echo "$R"
 case "$R" in OK*) ;; *) fail "chuyển đổi 1 → 2: $R" ;; esac
+run_main   # rồi mở ứng dụng như người dùng trên kho đã chuyển
+adb logcat -d -s AndroidRuntime:E | grep -q "vn.clevix.lichviet" && fail "ứng dụng lỗi khi mở kho đã chuyển"
 end
 
 say "Ca chuyển đổi lỗi: quay lui, chế độ chỉ đọc, vẫn xuất sao lưu"
