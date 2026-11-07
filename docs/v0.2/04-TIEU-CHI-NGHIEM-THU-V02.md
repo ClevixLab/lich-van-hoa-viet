@@ -330,3 +330,16 @@ Quyết định của điều phối viên, theo ủy quyền của chủ dự �
    đủ (BM2-10).
 4. Bổ sung vào bộ kiểm thử của S9 và S12 các tệp độc hại sau: ảnh khổng lồ, ảnh sai nhãn, ảnh còn EXIF, "ảnh" thực chất
    là HTML, PDF giả. Ngưỡng của S9 và S12 giữ nguyên.
+
+## Bổ sung B7 — bộ dữ liệu R6 dùng ảnh thật (2026-11-07, SAU KHI ĐÃ THẤY KẾT QUẢ)
+
+Lý do: không thể bật đầy đủ kiểm tra ảnh khi nhập sao lưu theo B6 (BM2-01). Bộ dữ liệu R6 đã khóa (`dataset-r6.json` và
+tệp có salt cố định) chứa 20 "ảnh" chỉ là byte giả, không có phần đầu ảnh hợp lệ, trong đó 10 tệp còn mang nhãn
+`image/webp`. Bật kiểm tra thì chính bộ R6 bị từ chối. Bỏ kiểm tra ảnh chân dung khi nhập thì lỗ hổng làm sập ứng dụng
+vẫn còn. Quyết định của điều phối viên, theo ủy quyền của chủ dự án (B2), ưu tiên an toàn:
+1. Tạo bộ **R6v2**: cùng cấu trúc, cùng số hồ sơ và số ảnh như R6, nhưng ảnh là JPEG và WebP thật cỡ nhỏ, đã bỏ siêu
+   dữ liệu, kích thước khớp bản ghi. Bộ này được khóa từ khi tạo, kèm `sha256` của mọi tệp.
+2. R6 (a)–(d) chạy trên R6v2, ngưỡng giữ nguyên. Bộ R6 cũ giữ nguyên trong kho để đối chiếu lịch sử. Kỳ vọng mới với
+   bộ R6 cũ là bị từ chối khi nhập, vì nó chứa ảnh giả.
+3. Bật kiểm tra B6 cho ảnh chân dung ở đường nhập sao lưu, như B6 đã quy định.
+4. Bên kiểm định độc lập chạy lại R6 trên R6v2.

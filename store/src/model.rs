@@ -121,8 +121,49 @@ pub struct DeathNotice {
     pub place: Option<String>,
     pub reason: Option<String>,
     pub notice_date: Option<DateValue>,
-    pub certificate_photo_ids: Vec<String>,
+    /// Tệp đính kèm (YC-2026-07, thay `certificate_photo_ids`), 0–6 phần tử.
+    pub attachments: Vec<NoticeAttachment>,
     pub note: Option<String>,
+}
+
+/// Loại tệp đính kèm thông tin báo tử (01 §3.2a).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AttachmentKind {
+    TinBaoTu,
+    GiayChungTu,
+    Khac,
+}
+
+/// Một phần tử `DeathNotice.attachments`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct NoticeAttachment {
+    pub id: String,
+    pub kind: AttachmentKind,
+    /// Trỏ tới một [`Attachment`].
+    pub file_id: String,
+}
+
+/// 01 §3.8a — tệp đính kèm (ảnh đã mã hóa lại hoặc PDF nguyên bản).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Attachment {
+    pub id: String,
+    pub mime: String,
+    pub bytes: u32,
+    pub sha256: String,
+    pub stripped: bool,
+    pub file_name: Option<String>,
+    pub created_at: String,
+}
+
+/// Giới tính (YC-2026-07).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum GioiTinh {
+    Nam,
+    Nu,
 }
 
 /// 01 §3.2.
@@ -217,6 +258,9 @@ pub struct Person {
     pub id: String,
     pub kind: Kind,
     pub danh_xung: String,
+    /// YC-2026-07: khóa tùy chọn, thiếu ≡ `null` (không ghi khi `None`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub gioi_tinh: Option<GioiTinh>,
     pub ho_ten: String,
     pub ten_hieu: String,
     pub quan_he: String,
@@ -325,6 +369,9 @@ pub struct BackupDoc {
     pub persons: Vec<Person>,
     pub events: Vec<Event>,
     pub photos: Vec<Photo>,
+    /// YC-2026-07: khóa tùy chọn, thiếu ≡ `[]` (không ghi khi rỗng).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub attachments: Vec<Attachment>,
 }
 
 /// Bốn loại sự kiện có sẵn (01 §3.5): (builtin, id cố định, tên mặc định, default_recurring).

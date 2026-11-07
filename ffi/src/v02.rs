@@ -60,6 +60,8 @@ impl From<StoreError> for LvhvDataError {
             StoreError::Invalid(v) => LvhvDataError::Invalid(format!("Dữ liệu không hợp lệ: {v}")),
             StoreError::Input(s) => LvhvDataError::Invalid(s),
             StoreError::NotFound => LvhvDataError::NotFound("Không tìm thấy bản ghi.".into()),
+            // 04 B5: kho chỉ đọc sau chuyển đổi lỗi — giữ biến thể lỗi cũ để mã ứng dụng không phải đổi.
+            e @ StoreError::ReadOnly => LvhvDataError::Invalid(e.to_string()),
             e @ (StoreError::Backup(_) | StoreError::NewerSchema(_)) => {
                 LvhvDataError::Backup(e.import_message().into())
             }
@@ -275,7 +277,7 @@ fn js_space(c: char) -> bool {
 }
 
 /// Chuẩn hóa `DeathNotice` (01 §3.2a) trước khi lưu: đủ sáu khóa; chuỗi NFC, cắt khoảng trắng hai đầu, rỗng →
-/// `null`; `certificate_photo_ids` thiếu → `[]`. Khóa lạ để nguyên cho bước kiểm tra báo lỗi.
+/// `null`; `attachments` thiếu → `[]` (YC-2026-07). Khóa lạ để nguyên cho bước kiểm tra báo lỗi.
 fn normalize_notice(n: &Value) -> R<Value> {
     use unicode_normalization::UnicodeNormalization;
     if n.is_null() {
@@ -305,7 +307,11 @@ fn normalize_notice(n: &Value) -> R<Value> {
         o.insert(k.into(), v);
     }
     o.entry("notice_date").or_insert(Value::Null);
-    o.entry("certificate_photo_ids").or_insert(json!([]));
+    // Khóa cũ `certificate_photo_ids` (ứng dụng chưa cập nhật, BM2-02) để nguyên cho lớp lưu trữ chuyển đổi; khi đó
+    // không thêm `attachments` (có cả hai khóa là dị dạng — X22).
+    if !o.contains_key("certificate_photo_ids") {
+        o.entry("attachments").or_insert(json!([]));
+    }
     Ok(Value::Object(o))
 }
 
@@ -353,6 +359,23 @@ impl LvhvStore {
     }
 }
 
+/// Trạng thái chuyển đổi khi mở kho (01 §7, 04 Bổ sung B5 / R14).
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct MigrationStatus {
+    /// `"ok"` (không cần chuyển), `"migrated"` (đã chuyển xong; có bản sao dữ liệu cũ ở `backup_path`),
+    /// `"read_only"` (chuyển lỗi: dữ liệu cũ giữ nguyên, mọi thao tác ghi báo lỗi; giao diện hiện chế độ chỉ đọc và
+    /// hướng dẫn xuất sao lưu — `export_backup` vẫn dùng được).
+    pub state: String,
+    /// Phiên bản kho trước khi mở.
+    pub from_version: i64,
+    /// Phiên bản kho sau khi mở (bằng `from_version` khi chỉ đọc).
+    pub to_version: i64,
+    /// Bản sao dữ liệu cũ (nếu đã tạo).
+    pub backup_path: Option<String>,
+    /// Câu lỗi (khi chỉ đọc), tiếng Việt cho người dùng.
+    pub message: Option<String>,
+}
+
 #[uniffi::export]
 impl LvhvStore {
     /// Mở (hoặc tạo) kho trong thư mục `dir` (tạo `lvhv.sqlite` và `photos/`), chuyển đổi phiên bản nếu cần.
@@ -361,6 +384,21 @@ impl LvhvStore {
         Ok(Arc::new(LvhvStore {
             inner: Mutex::new(Store::open(dir)?),
         }))
+    }
+
+    /// Trạng thái chuyển đổi khi mở kho — gọi ngay sau `open` để biết có phải hiện chế độ chỉ đọc không.
+    pub fn migration_status(&self) -> MigrationStatus {
+        let st = self.lock();
+        let m = st.migration_status();
+        MigrationStatus {
+            state: m.state.into(),
+            from_version: m.from_version,
+            to_version: m.to_version,
+            backup_path: m.backup_path.clone(),
+            message: m.error.as_ref().map(|e| {
+                format!("Chưa nâng cấp được dữ liệu ({e}). Dữ liệu cũ vẫn còn nguyên; ứng dụng đang ở chế độ chỉ đọc — hãy xuất sao lưu.")
+            }),
+        }
     }
 
     /// `AppSettings` (01 §3.9).
@@ -388,6 +426,8 @@ impl LvhvStore {
     /// kiểm V1–V8 rồi ghi. Trả bản đã lưu.
     pub fn save_person_json(&self, json: String) -> R<String> {
         let mut input = parse_json(&json)?;
+        // YC-2026-07: viết hoa chữ đầu cách gọi và quan hệ; `gioi_tinh: null` ≡ thiếu.
+        lvhv_store::names::normalize_person_names(&mut input);
         if input["death"].is_object() {
             if let Some(n) = input["death"].get("notice").cloned() {
                 input["death"]["notice"] = normalize_notice(&n)?;
@@ -467,6 +507,7 @@ impl LvhvStore {
         p["reminders"]["sinh_nhat"] = Value::Null;
         p["reminders"]["sinh_nhat_am"] = Value::Null;
         p["sinh_nhat_am"] = json!(false);
+        lvhv_store::names::normalize_person_names(&mut p);
         let old = p.clone();
         let mut p = lvhv_store::build_person(&p)?;
         if let Some(s) = p["death"]["solar"].as_object() {
@@ -483,6 +524,14 @@ impl LvhvStore {
     /// Xóa một người (gỡ id khỏi mọi sự kiện, xóa ảnh không còn ai dùng).
     pub fn delete_person(&self, id: String) -> R<()> {
         Ok(self.lock().delete_person(&id)?)
+    }
+
+    /// Xóa một người và, trong **cùng** giao dịch, các sự kiện mà người này là người duy nhất được gắn (sự kiện
+    /// vốn không gắn ai không bị xóa). Trả id các sự kiện đã xóa, sắp tăng dần (duyệt mã MA3N-24-08).
+    pub fn delete_person_and_orphan_events(&self, id: String) -> R<Vec<String>> {
+        let mut v = self.lock().delete_person_with(&id, true)?;
+        v.sort();
+        Ok(v)
     }
 
     /// Mọi `Event` (mảng JSON, sắp theo id).
@@ -547,6 +596,45 @@ impl LvhvStore {
         ))
     }
 
+    /// Xóa một ảnh không hồ sơ nào dùng (ví dụ đã `add_photo` rồi người dùng hủy, không lưu hồ sơ). Ảnh mà hồ sơ
+    /// bỏ khi đổi/xóa ảnh thì `save_person_json` đã tự xóa, không cần gọi hàm này. Ảnh còn được dùng → `Invalid`;
+    /// không có → `NotFound`.
+    pub fn delete_photo(&self, id: String) -> R<()> {
+        Ok(self.lock().delete_photo(&id)?)
+    }
+
+    /// Thêm một tệp đính kèm thông tin báo tử (01 §3.8a, YC-2026-07). `mime`: `image/jpeg` | `image/webp` (byte
+    /// **đã** được nền tảng giải mã và mã hóa lại, bỏ siêu dữ liệu, cạnh dài ≤ 2048 px, ≤ 2 MB) hoặc
+    /// `application/pdf` (lưu nguyên byte, ≤ 10 MB, phải bắt đầu bằng `%PDF-`; giao diện báo "Tệp PDF được lưu
+    /// nguyên bản"). `file_name`: tên gốc chỉ để hiển thị. Trả bản ghi `Attachment`; gắn vào hồ sơ bằng
+    /// `death.notice.attachments: [{id, kind, file_id}]` rồi `save_person_json` / `mark_deceased_json`. Gỡ khỏi danh
+    /// sách rồi lưu → tệp tự bị xóa.
+    pub fn add_attachment(
+        &self,
+        id: String,
+        mime: String,
+        file_name: Option<String>,
+        bytes: Vec<u8>,
+    ) -> R<String> {
+        Ok(to_text(&self.lock().add_attachment(
+            &id,
+            &mime,
+            file_name.as_deref(),
+            &bytes,
+        )?))
+    }
+
+    /// Byte của một tệp đính kèm (kiểm `sha256` khi đọc).
+    pub fn attachment_bytes(&self, id: String) -> R<Vec<u8>> {
+        Ok(self.lock().attachment_bytes(&id)?)
+    }
+
+    /// Xóa một tệp đính kèm chưa gắn hồ sơ nào (đã `add_attachment` rồi hủy). Còn được dùng → `Invalid`; không
+    /// có → `NotFound`.
+    pub fn delete_attachment(&self, id: String) -> R<()> {
+        Ok(self.lock().delete_attachment(&id)?)
+    }
+
     /// Byte của một ảnh (kiểm `sha256` khi đọc).
     pub fn photo_bytes(&self, id: String) -> R<Vec<u8>> {
         Ok(self.lock().photo_bytes(&id)?)
@@ -571,8 +659,9 @@ impl LvhvStore {
             .backup_reminder_due(&lvhv_store::now_rfc3339())?)
     }
 
-    /// Xuất tệp sao lưu mã hóa (03 §2). `platform`: "android" | "ios" | "macos" | "windows";
-    /// `app_version` dạng X.Y.Z. Ứng dụng ghi byte qua hộp thoại lưu tệp của hệ điều hành.
+    /// Tạo byte tệp sao lưu mã hóa (03 §2). `platform`: "android" | "ios" | "macos" | "windows";
+    /// `app_version` dạng X.Y.Z. Ứng dụng ghi byte qua hộp thoại lưu tệp của hệ điều hành, rồi **chỉ khi** hệ điều
+    /// hành báo ghi xong mới gọi `mark_backup_saved` (MA3N-23-01). Hàm này không đổi `last_backup_at`.
     pub fn export_backup(
         &self,
         password: String,
@@ -587,6 +676,19 @@ impl LvhvStore {
                 platform,
             },
         )?)
+    }
+
+    /// Ghi nhận tệp vừa tạo bằng `export_backup` **đã được lưu** (03 §2.4, MA3N-23-01): `last_backup_at` = lúc
+    /// lưu, hết "chờ sao lưu" nếu mọi thay đổi chờ đã có trong tệp. Gọi một lần sau mỗi lần lưu thành công; hủy hộp
+    /// "Lưu" hay ghi lỗi thì **không** gọi. Chưa tạo tệp nào → `Invalid`.
+    pub fn mark_backup_saved(&self, saved_at_unix_s: i64) -> R<()> {
+        let t = lvhv_store::rfc3339_from_unix(unix_ok(saved_at_unix_s, "saved_at_unix_s")?);
+        Ok(self.lock().mark_backup_saved(&t)?)
+    }
+
+    /// `due_today_json` trên dữ liệu của kho.
+    pub fn due_today_json(&self, today: SolarDay, zone: DeviceZone) -> R<String> {
+        due_today_impl(&self.dataset()?, today, &zone)
     }
 
     /// Ghi tệp đã kiểm tra (Thay toàn bộ / Gộp) trong một giao dịch; lỗi → không ghi gì.
@@ -760,6 +862,7 @@ fn item_json(it: &period::PeriodItem) -> Value {
             _ => None,
         },
         "headline": o.headline,
+        "headline_plain": o.headline_plain,
         "date_line": date_line(cal(), o.date),
     })
 }
@@ -1198,6 +1301,134 @@ pub struct IcsExport {
     pub events: u32,
     /// Số người khác nhau có tên trong tệp (cho hộp xác nhận S10: "Tệp này chứa tên và ngày giỗ của … người").
     pub persons: u32,
+    /// Tóm tắt cho hộp xác nhận (cùng `ics_summary`).
+    pub summary: IcsSummary,
+}
+
+/// Tóm tắt cho hộp xác nhận xuất .ics (S10, MA3N-24-08) — cùng bản với `icsSummary` của tsport.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct IcsSummary {
+    /// Số mục (VEVENT, mỗi mục một ngày).
+    pub events: u32,
+    /// Số người có tên trong tệp.
+    pub persons: u32,
+    /// Ngày đầu và ngày cuối (gồm) của cửa sổ 10 năm.
+    pub from: SolarDay,
+    pub to: SolarDay,
+    /// Loại dữ liệu có trong tệp: `gio`, `sinh_nhat`, `su_kien` (theo thứ tự này).
+    pub kinds: Vec<String>,
+    /// Câu riêng tư: "Tệp này chứa tên, ngày giỗ và sinh nhật của 3 người. Bất kỳ ai có tệp đều đọc được."
+    /// Rỗng khi không có mục nào.
+    pub privacy_text: String,
+    /// Tối đa 5 dòng xem trước đầu tiên, `DD/MM/YYYY — <tiêu đề>`.
+    pub preview: Vec<String>,
+}
+
+fn ics_summary_of(ds: &Dataset, opt: &lvhv_memorial::ics::IcsOptions) -> IcsSummary {
+    let s = lvhv_memorial::ics::summary(cal(), ds, opt);
+    IcsSummary {
+        events: s.events as u32,
+        persons: s.persons as u32,
+        from: solar_day(s.from),
+        to: solar_day(s.to),
+        kinds: s.kinds.iter().map(|k| k.to_string()).collect(),
+        privacy_text: s.privacy_text,
+        preview: s.preview,
+    }
+}
+
+/// Tóm tắt hộp xác nhận xuất .ics (S10) mà không sinh tệp — ví dụ để biết có gì để xuất không. `only_ids` như
+/// `ics_export`.
+#[uniffi::export]
+pub fn ics_summary(
+    dataset_json: String,
+    today: SolarDay,
+    only_ids: Option<Vec<String>>,
+) -> R<IcsSummary> {
+    let ds = dataset(&dataset_json)?;
+    Ok(ics_summary_of(
+        &ds,
+        &lvhv_memorial::ics::IcsOptions {
+            today: ymd(today)?,
+            dtstamp: String::new(),
+            only_ids,
+        },
+    ))
+}
+
+fn due_today_impl(ds: &Dataset, today: SolarDay, zone: &DeviceZone) -> R<String> {
+    let tz = self::zone(zone)?;
+    let list: Vec<Value> = lvhv_memorial::remind::due_today(cal(), ds, ymd(today)?, &tz)
+        .iter()
+        .map(|r| reminder_json(ds, r, true))
+        .collect();
+    Ok(to_text(&Value::Array(list)))
+}
+
+/// Thẻ nhắc trong ứng dụng hôm nay (02 §7.5; MA3-15-05, MA3N-24-08): mọi lời nhắc có giờ thiết bị rơi vào
+/// `today` (kể cả giờ đã qua), sắp theo giờ → thứ tự 02 §7.2 → id. Phần tử như `reminders_json` với tiêu đề có tên
+/// (hiển thị **trong** ứng dụng, không phải màn hình khóa). Theo công tắc chung và `rule.enabled`.
+#[uniffi::export]
+pub fn due_today_json(dataset_json: String, today: SolarDay, zone: DeviceZone) -> R<String> {
+    due_today_impl(&dataset(&dataset_json)?, today, &zone)
+}
+
+/// Lỗi của mật khẩu khi tạo sao lưu (03 §2.4): ít nhất 8 điểm mã sau NFC; `confirm` (ô nhập lại, nếu có) phải
+/// bằng sau NFC. `null` = hợp lệ. Cùng quy tắc với lõi sao lưu và `backupPasswordError` của tsport.
+#[uniffi::export]
+pub fn backup_password_error(password: String, confirm: Option<String>) -> Option<String> {
+    let password = zeroize::Zeroizing::new(password);
+    let confirm = confirm.map(zeroize::Zeroizing::new);
+    lvhv_backup::password_error(&password, confirm.as_deref().map(String::as_str))
+        .map(str::to_owned)
+}
+
+/// Gợi ý cách gọi (01 §3.1, YC-2026-07), đã viết hoa chữ đầu. Người đang sống không có Cụ, Kỵ, Ông Tổ họ, Bà
+/// Cô Tổ họ, Bé đỏ. `gioi_tinh` = `"nam"` / `"nu"`: từ hợp giới tính lên trước (thứ tự gốc trong mỗi nhóm);
+/// `null` hay giá trị khác → thứ tự gốc. Cùng `danhXungSuggestions` của PWA.
+#[uniffi::export]
+pub fn danh_xung_suggestions(deceased: bool, gioi_tinh: Option<String>) -> Vec<String> {
+    lvhv_store::names::danh_xung_suggestions(deceased, gioi_tinh.as_deref())
+        .into_iter()
+        .map(str::to_owned)
+        .collect()
+}
+
+/// Gợi ý quan hệ (01 §3.1), đã viết hoa chữ đầu.
+#[uniffi::export]
+pub fn quan_he_suggestions(deceased: bool) -> Vec<String> {
+    lvhv_store::names::quan_he_suggestions(deceased)
+        .into_iter()
+        .map(str::to_owned)
+        .collect()
+}
+
+/// Viết hoa chữ cái đầu (NFC, phần còn lại giữ nguyên) để **hiển thị** `danh_xung` / `quan_he` đã lưu — dữ liệu
+/// khôi phục từ tệp cũ có thể còn viết thường vì nhập sao lưu giữ nguyên byte. `save_person_json` tự áp khi lưu.
+/// Tên hiển thị trong lời nhắc, .ics, danh sách của lõi đã viết hoa sẵn.
+#[uniffi::export]
+pub fn display_capitalize(text: String) -> String {
+    lvhv_store::names::display_capitalize(&text)
+}
+
+/// Tháng nhuận của năm âm `year` (1899–3000) theo phương pháp mặc định, `null` nếu năm không nhuận — để ô chọn
+/// "nhuận" chỉ hiện khi có (01 §6.1). Cùng `Cal.leapMonth` của tsport.
+#[uniffi::export]
+pub fn lunar_leap_month(year: i32) -> R<Option<u32>> {
+    if !(lvhv_core::MIN_LUNAR_YEAR..=lvhv_core::MAX_LUNAR_YEAR).contains(&year) {
+        return Err(bad(format!("Năm âm {year} ngoài miền 1899–3000 của lịch.")));
+    }
+    Ok(cal().leap_month(year))
+}
+
+/// Kiểm phần đầu tệp sao lưu (03 §2.2) **trước khi** đọc phần thân (S12, MA3N-24-03): `head` = ít nhất 72 byte
+/// đầu tệp, `file_len` = kích thước tệp. Tệp không phải sao lưu / phiên bản mới hơn / tham số sai / độ dài không
+/// khớp → `Backup(<thông báo>)`; hợp lệ thì ứng dụng mới đọc cả tệp và gọi `open_backup`.
+#[uniffi::export]
+pub fn backup_header_check(head: Vec<u8>, file_len: u64) -> R<()> {
+    lvhv_backup::check_header(&head, file_len)
+        .map(|_| ())
+        .map_err(|e| LvhvDataError::Backup(e.user_message().into()))
 }
 
 /// Sinh tệp .ics 10 năm từ `today` (02 §8). `only_ids`: chỉ xuất các hồ sơ/sự kiện này; `null` = mặc
@@ -1218,27 +1449,12 @@ pub fn ics_export(
         dtstamp,
         only_ids,
     };
-    let occs = lvhv_memorial::ics::ics_occurrences(cal(), &ds, &opt);
-    let mut persons: Vec<&str> = occs
-        .iter()
-        .flat_map(|(o, _)| -> Vec<&str> {
-            if o.class.is_event() {
-                ds.events
-                    .iter()
-                    .find(|e| e.id == o.entity_id)
-                    .map(|e| e.person_ids.iter().map(String::as_str).collect())
-                    .unwrap_or_default()
-            } else {
-                vec![o.entity_id.as_str()]
-            }
-        })
-        .collect();
-    persons.sort_unstable();
-    persons.dedup();
+    let summary = ics_summary_of(&ds, &opt);
     Ok(IcsExport {
         file_name: lvhv_memorial::ics::file_name(today),
         content: lvhv_memorial::ics::generate(cal(), &ds, &opt),
-        events: occs.len() as u32,
-        persons: persons.len() as u32,
+        events: summary.events,
+        persons: summary.persons,
+        summary,
     })
 }

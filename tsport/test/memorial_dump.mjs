@@ -115,6 +115,15 @@ if (c0 === "gio-dates" && c1 === "solar" && args.length >= 4) {
   const f = c2 === undefined ? ymd(2026, 1, 1) : pYmd(c2);
   const t = c3 === undefined ? ymd(2036, 12, 31) : pYmd(c3);
   M.r13Lines(cal, ds, f, t, out);
+} else if (c0 === "due-today" && args.length === 4) {
+  const ds = load(c1);
+  const tz = Zone.vietnam();
+  out.push(D.DUE_TODAY_HEADER);
+  for (let j = ymdJdn(pYmd(c2)); j <= ymdJdn(pYmd(c3)); j++) { D.dueTodayLines(cal, ds, ymdFromJdn(j), tz, out); flushIf(); }
+} else if (c0 === "ics-summary" && args.length === 4) {
+  const ds = load(c1);
+  out.push(D.ICS_SUMMARY_HEADER);
+  for (let j = ymdJdn(pYmd(c2)); j <= ymdJdn(pYmd(c3)); j++) { D.icsSummaryLine(cal, ds, ymdFromJdn(j), out); flushIf(); }
 } else if (c0 === "ics" && args.length === 4) {
   out.push(generateIcs(cal, load(c1), { today: pYmd(c2), dtstamp: c3, only_ids: null }));
 } else if (c0 === "derive" && args.length === 2) {

@@ -3,7 +3,7 @@
 
 import type { Cal } from "./memorial_cal.ts";
 import { type Dataset, type ReminderRule, type Ymd, cmpYmd, fmtHhmm, iso, parseHhmm, parseYmd, ymdFromJdn, ymdJdn } from "./memorial_model.ts";
-import { type Occurrence, type RemType, eventClass, keyText, notificationText, occurrencesWithTt, ruleOf } from "./memorial_occ.ts";
+import { type Occurrence, type RemType, cmpOcc, eventClass, keyText, notificationText, occurrencesWithTt, ruleOf } from "./memorial_occ.ts";
 
 export class Zone {
   readonly initial: number;
@@ -87,6 +87,18 @@ const cmpId = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 
 export function sortReminders(v: Reminder[]): void {
   v.sort((a, b) => a.at - b.at || cmpId(a.id, b.id));
+}
+
+/**
+ * In-app reminder cards for today (02 §7.5; mirror of Rust `due_today`): every reminder (02 §7.1, honouring the
+ * global switch and `rule.enabled`) whose device clock time falls on `today`, including past times. Sorted by time,
+ * then 02 §7.2 order of the occurrence, then id.
+ */
+export function dueToday(cal: Cal, ds: Dataset, today: Ymd, tz: Zone): Reminder[] {
+  const day = ymdJdn(today);
+  return allReminders(cal, ds, today, ymdFromJdn(day + 61), -Infinity, tz)
+    .filter((r) => Math.floor(r.at_local / 1440) === day)
+    .sort((a, b) => a.at_local - b.at_local || cmpOcc(a.occ, b.occ) || cmpId(a.id, b.id));
 }
 
 export function allReminders(cal: Cal, ds: Dataset, from: Ymd, to: Ymd, now: number, tz: Zone): Reminder[] {
