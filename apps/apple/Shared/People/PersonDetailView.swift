@@ -106,7 +106,7 @@ struct PersonDetailView: View {
         VStack(alignment: .leading, spacing: 4) {
             Text(name).serif(26, .semibold).foregroundStyle(C.ink).fixedSize(horizontal: false, vertical: true)
                 .accessibilityAddTraits(.isHeader).accessibilityIdentifier("person.name")
-            if !p["quan_he"].string.isEmpty { Text(p["quan_he"].string).ps(16).foregroundStyle(C.ink2) }
+            if !p["quan_he"].string.isEmpty { Text(Text1.capFirst(p["quan_he"].string)).ps(16).foregroundStyle(C.ink2) }
             if !p["ten_hieu"].string.isEmpty { Text("Tên hiệu: \(p["ten_hieu"].string)").ps(15).foregroundStyle(C.ink2) }
         }
     }

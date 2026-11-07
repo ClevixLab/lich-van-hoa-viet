@@ -262,7 +262,7 @@ enum PFmt {
     }
 
     static func displayName(_ p: JV) -> String {
-        let dx = p["danh_xung"].string, ten = p["ho_ten"].string
+        let dx = Text1.capFirst(p["danh_xung"].string), ten = p["ho_ten"].string
         return dx.isEmpty ? ten : "\(dx) \(ten)"
     }
 

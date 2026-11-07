@@ -16,6 +16,11 @@ enum Text1 {
         return filtered.trimmingCharacters(in: .whitespacesAndNewlines)
     }
     static func count(_ s: String) -> Int { clean(s, multiline: true).unicodeScalars.count }
+    /// Viết hoa chữ cái đầu, giữ nguyên phần còn lại (cách gọi, quan hệ — YC-2026-07).
+    static func capFirst(_ s: String) -> String {
+        guard let f = s.first else { return s }
+        return String(f).uppercased() + s.dropFirst()
+    }
 }
 
 /// Lỗi theo trường; giữ thứ tự để khung tóm tắt "Còn n chỗ cần sửa" liệt kê đúng thứ tự biểu mẫu.
@@ -534,10 +539,10 @@ struct PersonDraft: Equatable {
     func build(photoId pid: String?, noticePhotoIds: [String], today: CivilDate) -> JV {
         var p = base.isObject ? base : JV.object([:])
         p["kind"] = .s(kind)
-        p["danh_xung"] = .s(Text1.clean(danhXung))
+        p["danh_xung"] = .s(Text1.capFirst(Text1.clean(danhXung)))
         p["ho_ten"] = .s(Text1.clean(hoTen))
         p["ten_hieu"] = .s(Text1.clean(tenHieu))
-        p["quan_he"] = .s(Text1.clean(quanHe))
+        p["quan_he"] = .s(Text1.capFirst(Text1.clean(quanHe)))
         p["ghi_chu"] = .s(Text1.clean(ghiChu, multiline: true))
         p["photo_id"] = .opt(pid)
         p["feb29_rule"] = .s(isFeb29 ? feb29 : (base["feb29_rule"].str ?? "feb28"))

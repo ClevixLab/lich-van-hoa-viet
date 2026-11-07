@@ -4,8 +4,12 @@ import SwiftUI
 
 /// Gợi ý từ thường ngày (quyết định của chủ dự án: không dùng từ Hán-Việt cổ, không có ô "dòng đầu bia").
 enum Suggest {
-    static let danhXung = ["Cụ", "Kỵ", "Ông", "Bà", "Bác", "Chú", "Thím", "Cô", "Dì", "Cậu", "Mợ", "Anh", "Chị", "Em",
-                           "Bố", "Mẹ", "Cha", "Má", "Ba"]
+    /// Cách gọi (01 §3.1, YC-2026-07): viết hoa chữ cái đầu; người đang sống không có Cụ, Kỵ, Ông Tổ họ, Bà Cô Tổ họ, Bé đỏ.
+    /// TODO(core2): lấy hai danh sách từ lõi khi PR #28 có hàm gợi ý.
+    static let danhXungDeceased = ["Ông", "Bà", "Cụ", "Kỵ", "Bác", "Cô", "Chú", "Dì", "Cậu", "Mợ", "Thím", "Anh", "Chị",
+                                   "Em", "Cháu", "Con", "Bạn", "Bố", "Mẹ", "Ông Tổ họ", "Bà Cô Tổ họ", "Bé đỏ"]
+    static let deceasedOnly: Set<String> = ["Cụ", "Kỵ", "Ông Tổ họ", "Bà Cô Tổ họ", "Bé đỏ"]
+    static let danhXungLiving = danhXungDeceased.filter { !deceasedOnly.contains($0) }
     static let quanHeDeceased = ["Bố", "Mẹ", "Ông nội", "Bà nội", "Ông ngoại", "Bà ngoại", "Cụ ông", "Cụ bà", "Kỵ ông",
                                  "Kỵ bà", "Ông cố", "Bà cố", "Ông sơ", "Bà sơ", "Bác", "Chú", "Thím", "Cô", "Dì", "Cậu",
                                  "Mợ", "Anh", "Chị", "Em", "Chồng", "Vợ", "Con"]
@@ -236,7 +240,7 @@ struct PersonFormView: View {
         PCard {
             PHeading(deceased ? "Người đã mất" : "Người đang sống")
             PTextField(label: "Cách gọi (đứng trước tên)", text: $d.danhXung, error: err("danh_xung"),
-                       suggestions: Suggest.danhXung, id: "form.danhXung")
+                       suggestions: deceased ? Suggest.danhXungDeceased : Suggest.danhXungLiving, id: "form.danhXung")
             PTextField(label: "Họ và tên *", text: $d.hoTen, error: err("ho_ten"), id: "form.hoTen")
             if deceased {
                 PTextField(label: "Tên hiệu / pháp danh", text: $d.tenHieu, error: err("ten_hieu"), id: "form.tenHieu")

@@ -426,7 +426,7 @@ struct ProfilesSection: View {
                 .frame(width: 44, height: 44).background(C.paper2, in: Circle()).accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text(name).ps(17, .semibold).foregroundStyle(C.ink).fixedSize(horizontal: false, vertical: true)
-                if !p["quan_he"].string.isEmpty { Text(p["quan_he"].string).ps(14).foregroundStyle(C.ink2) }
+                if !p["quan_he"].string.isEmpty { Text(Text1.capFirst(p["quan_he"].string)).ps(14).foregroundStyle(C.ink2) }
                 Text(summary(p, id)).ps(14).foregroundStyle(C.ink3).fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: 0)
