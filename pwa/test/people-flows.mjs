@@ -396,18 +396,11 @@ export async function runPeople({ browser, BASE, ORIGIN, ROOT, SHOTS, check, met
     await page.fill("#bk-pw2", "nhà có cây bàng");
     await shot("backup-dialog-360", false);
     const dlP = page.waitForEvent("download", { timeout: 120000 });
-    // MA3-15-03: ghi lại mọi sự kiện "cancel" (Esc) và việc nó có bị chặn không, để kết quả không phụ thuộc thời gian mã hóa.
-    await page.evaluate(() => { window.__esc = []; window.addEventListener("cancel", (e) => { const busy = e.target.getAttribute("aria-busy"); setTimeout(() => window.__esc.push({ busy, prevented: e.defaultPrevented })); }, true); });
+    // MA3-15-03 (Esc trong lúc mã hóa) kiểm tất định ở runEscGate() bên dưới, trên bản dựng kiểm thử có cổng giữ bước mã hóa.
     await page.click(".bk-dialog .dbtn.main");
-    await page.waitForSelector('.bk-dialog[aria-busy="true"]', { timeout: 5000 }).catch(() => {});
-    await page.keyboard.press("Escape"); // đang mã hóa → Esc không đóng được hộp
-    const escOpen = await page.locator(".bk-dialog[open]").count();
     const bk = await dlP;
     const bkBytes = readFileSync(await bk.path());
     check(bk.suggestedFilename() === `LichVanHoaViet-saoluu-${TODAY}.lvhv` && bkBytes.subarray(0, 7).toString() === "LVHVBAK", `L9: tải ${bk.suggestedFilename()} (${bkBytes.length} byte)`);
-    const esc = await page.evaluate(() => window.__esc);
-    check(esc.length >= 1 && esc.every((x) => x.busy !== "true" || x.prevented) && esc.some((x) => x.busy === "true" && x.prevented) && escOpen <= 1,
-      `MA3-15-03: nhấn Esc trong lúc mã hóa — Esc bị chặn, hộp không bị hủy, tệp vẫn được tải (${JSON.stringify(esc)})`);
     // Trang Sao lưu dựng lại sau khi xuất xong — chờ đúng dòng mới, không đọc bản cũ.
     const lastOk = await page.waitForSelector('#bk-last:has-text("Lần sao lưu gần nhất: 25/07/2026")', { timeout: 30000 }).then(() => true, () => false);
     check(lastOk, `L9: ghi lần sao lưu gần nhất (${await text("#bk-last")})`);
@@ -788,4 +781,58 @@ export async function runPeople({ browser, BASE, ORIGIN, ROOT, SHOTS, check, met
   }
   await ctx.close();
   return shots;
+}
+
+/**
+ * MA3-15-03, tất định: nhấn Esc trong lúc mã hóa sao lưu → Esc bị chặn, hộp vẫn mở, tệp vẫn được tải.
+ * Chạy trên bản dựng KIỂM THỬ (LVHV_TEST_HOOKS=1, smoke.mjs dựng vào thư mục tạm): cổng "backup-encrypt"
+ * (src/testhooks.ts) giữ bước mã hóa cho tới khi kiểm thử đã nhấn Esc và kiểm xong hộp còn mở, rồi mới cho chạy tiếp.
+ * Không phụ thuộc mã hóa nhanh hay chậm. Bản dựng chính không có cổng (smoke.mjs kiểm).
+ */
+export async function runEscGate({ browser, BASE, check }) {
+  const ctx = await browser.newContext({ viewport: { width: 360, height: 780 }, deviceScaleFactor: 2, hasTouch: true, isMobile: true, locale: "vi-VN", timezoneId: "Asia/Ho_Chi_Minh", acceptDownloads: true });
+  const page = await ctx.newPage();
+  await page.clock.setFixedTime(FIXED);
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.addInitScript(() => {
+    window.__gate = { reached: 0, release: null };
+    window.__lvhvGates = { "backup-encrypt": () => new Promise((ok) => { window.__gate.reached++; window.__gate.release = ok; }) };
+    window.__esc = [];
+    window.addEventListener("cancel", (e) => { const busy = e.target.getAttribute?.("aria-busy"); setTimeout(() => window.__esc.push({ busy, prevented: e.defaultPrevented })); }, true);
+  });
+  try {
+    await page.goto(BASE + "#/nguoi-than/them/dang-song");
+    await page.waitForSelector("#pf-ten", { timeout: 15000 });
+    await page.fill("#pf-ten", "Trần Thị Esc");
+    await page.fill("#pf-birth-d", "25"); await page.fill("#pf-birth-m", "7"); await page.fill("#pf-birth-y", "2000");
+    await page.click(".form-acts .primary");
+    await page.waitForSelector("#person-name", { timeout: 15000 });
+    await page.goto(BASE + "#/nguoi-than/sao-luu");
+    await page.waitForSelector("#bk-export:not([disabled])", { timeout: 15000 });
+    await page.click("#bk-export");
+    await page.fill("#bk-pw1", "nhà có cây bàng");
+    await page.fill("#bk-pw2", "nhà có cây bàng");
+    const dlP = page.waitForEvent("download", { timeout: 60000 });
+    await page.click(".bk-dialog .dbtn.main");
+    // Bước mã hóa đã tới cổng và đang bị giữ: hộp chắc chắn đang bận.
+    await page.waitForFunction(() => window.__gate.reached === 1, null, { timeout: 15000 });
+    const busy = await page.getAttribute(".bk-dialog", "aria-busy");
+    await page.keyboard.press("Escape");
+    await page.waitForFunction(() => window.__esc.length >= 1, null, { timeout: 5000 }).catch(() => {});
+    const esc = await page.evaluate(() => window.__esc);
+    const open = await page.locator(".bk-dialog[open]").count();
+    const prog = await page.locator("#bk-prog:not([hidden])").count();
+    check(busy === "true" && esc.length === 1 && esc[0].busy === "true" && esc[0].prevented === true && open === 1 && prog === 1,
+      `MA3-15-03: nhấn Esc trong lúc mã hóa (bước mã hóa đang giữ) — Esc bị chặn, hộp vẫn mở và đang chạy (busy ${busy}, Esc ${JSON.stringify(esc)}, hộp mở ${open})`);
+    await page.evaluate(() => window.__gate.release()); // cho bước mã hóa chạy tiếp
+    const bk = await dlP.catch(() => null);
+    await page.waitForSelector(".bk-dialog", { state: "detached", timeout: 30000 }).catch(() => {});
+    const toast = await page.locator(".toast").first().innerText().catch(() => "");
+    check(!!bk && bk.suggestedFilename() === `LichVanHoaViet-saoluu-${TODAY}.lvhv` && await page.locator(".bk-dialog").count() === 0 && toast.startsWith("Đã tạo tệp sao lưu"),
+      `MA3-15-03: sau khi mã hóa xong — tệp vẫn được tải (${bk ? bk.suggestedFilename() : "không có"}), hộp đóng, có thông báo`);
+    check(errors.length === 0, `MA3-15-03: không có lỗi trang (${errors.join(" | ") || "0"})`);
+  } finally {
+    await ctx.close();
+  }
 }

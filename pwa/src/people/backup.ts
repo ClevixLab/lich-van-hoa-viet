@@ -5,6 +5,7 @@ import { APP_VERSION } from "../gen/content";
 import { M, cal, dmy, nowTs, snap, store, today, type JsonObj } from "./core";
 import { confirmDialog, itemTitle, toast } from "./ui";
 import { openBackup, type VerifiedBackup } from "../store/index";
+import { testGate } from "../testhooks";
 
 const iso = (d: M.Ymd) => M.iso(d);
 
@@ -113,6 +114,7 @@ export async function renderBackup(root: HTMLElement, rerender: () => void): Pro
         const e2m = M.backupPasswordError(a, b);
         if (e2m) { mark(pw2, e2, e2m); pw2.focus(); return false; }
         prog.hidden = false; progTxt.hidden = false;
+        if (__LVHV_TEST_HOOKS__) await testGate("backup-encrypt"); // chỉ bản dựng kiểm thử: giữ bước mã hóa tới khi kiểm thử cho chạy (MA3-15-03)
         const bytes = await s.exportBackup(a, { version: APP_VERSION, platform: "pwa" }, (x) => { prog.value = x; });
         pw1.value = ""; pw2.value = ""; // MA3-15-08: không giữ mật khẩu trong ô sau khi xuất
         download(`LichVanHoaViet-saoluu-${iso(today())}.lvhv`, bytes, "application/octet-stream");

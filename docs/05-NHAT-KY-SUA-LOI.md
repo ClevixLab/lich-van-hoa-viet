@@ -312,3 +312,24 @@ việc kích hoạt service worker.
   không thử lại. Kết quả: 20/20 lần đạt.
 - Người đang dùng 0.1.4 có thể còn gặp lỗi này một lần cho tới khi cập nhật lên bản có bản sửa.
 
+## K. MA3-15-03 (Esc trong lúc mã hóa sao lưu) — kiểm thử tất định (PWA, 2026-11-07)
+
+**Triệu chứng.** Kiểm tra MA3-15-03 trong `pwa/test/people-flows.mjs` thỉnh thoảng lỗi với `esc: []`. Mã hóa xong trước
+khi kiểm thử kịp nhấn Esc, nên Esc rơi vào lúc không còn hộp nào. Kết quả phụ thuộc tốc độ mã hóa. Đây là lỗi của kiểm
+thử, không phải của ứng dụng: chốt chặn Esc trong `src/people/ui.ts` vẫn đúng.
+
+**Sửa.**
+- Móc chỉ dành cho kiểm thử: `src/testhooks.ts`, cổng `backup-encrypt` ngay trước bước mã hóa trong `src/people/backup.ts`.
+  Cờ `__LVHV_TEST_HOOKS__` do `build.mjs` thay lúc dựng.
+- `LVHV_TEST_HOOKS=1` chỉ được nhận cùng `LVHV_OUT_DIR`. Bản dựng chính `dist/` luôn có cờ false, nên esbuild bỏ hẳn
+  lời gọi và tên cổng. Smoke kiểm `dist/` không chứa `__lvhvGates` / `backup-encrypt`.
+- Smoke mục 1e dựng bản kiểm thử vào thư mục tạm và chạy `runEscGate()`:
+  1. bấm "Tạo và tải tệp", chờ bước mã hóa tới cổng và bị giữ;
+  2. nhấn Esc, kiểm sự kiện `cancel` bị chặn và hộp vẫn mở, đang bận;
+  3. mở cổng, kiểm tệp vẫn được tải, hộp đóng, có thông báo.
+- Luồng L9 vẫn xuất và tải tệp trên bản dựng chính, chỉ bỏ phần Esc cũ.
+
+**Chứng minh kiểm thử bắt lỗi.** Tạm gỡ chốt chặn Esc trong `ui.ts` → MA3-15-03 LỖI
+(`Esc [{"busy":"true","prevented":false}], hộp mở 0`). Trả lại chốt chặn → ĐẠT. Smoke chạy 10 lần liên tiếp cục bộ:
+xem báo cáo PR #30.
+
