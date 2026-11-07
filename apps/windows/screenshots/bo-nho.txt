@@ -1,2 +1,2 @@
-Tờ lịch (khởi động): Working set 83.5 MB; Private 79.2 MB
-Người thân + tưởng niệm (5 hồ sơ, 2 ảnh): Working set 93.4 MB; Private 84.7 MB; đỉnh Working set 95.0 MB
+Tờ lịch (khởi động): Working set 83.5 MB; Private 79.3 MB
+Người thân + tưởng niệm (5 hồ sơ, 2 ảnh): Working set 93.8 MB; Private 86.8 MB; đỉnh Working set 94.3 MB
