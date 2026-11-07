@@ -381,8 +381,10 @@ này, và bộ ảnh chụp v0.1 không có ảnh trang này trên Android.
   - Sau khi sửa: ĐẠT.
 - Job `upgrade` (trình giả lập API 34, `ci/upgrade-test.sh`, ca "Thẻ Giới thiệu không sập") cài APK rồi chạm thẻ
   "Giới thiệu" qua `uiautomator`, sau đó tìm `FATAL EXCEPTION` trong logcat.
-  - Với APK dựng từ v0.1.4: ghi kết quả để đối chiếu, không làm đỏ CI.
-  - Với bản mới: phải `OK`.
+  - Với APK dựng từ v0.1.4: ghi kết quả để đối chiếu, không làm đỏ CI. Đã **tái hiện**: run trên `c9b096a`, job
+    `upgrade` 128447953337, ra `CRASH` với `IllegalArgumentException: Only VectorDrawables and rasterized asset types
+    are supported` tại `AboutScreen.kt:62` (mã v0.1.4).
+  - Với bản mới: phải `OK`. Cùng run đó: `OK`.
 - Chỉ đo trên trình giả lập API 34. Các bản Android khác suy ra từ nguyên nhân gốc: tài nguyên duy nhất là
   `anydpi-v26`, `minSdk 26`.
 
