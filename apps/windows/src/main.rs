@@ -20,6 +20,7 @@ mod toasts;
 mod ui_tests;
 #[cfg(test)]
 mod ui_tests_people;
+mod attach;
 mod update;
 mod upgrade;
 
@@ -764,7 +765,12 @@ fn main() -> Result<(), slint::PlatformError> {
         ui.global::<Data>().invoke_open_people();
         ui.global::<People>().invoke_open_person(id.into());
     }
-    ui.run()
+    // §5.3: bản sao tạm của tệp đính kèm chỉ sống trong một lần chạy — dọn khi mở và khi đóng.
+    let data = platform::data_dir();
+    attach::cleanup(&data);
+    let r = ui.run();
+    attach::cleanup(&data);
+    r
 }
 
 /// Nạp dữ liệu ban đầu và nối mọi callback giữa giao diện và lõi. Dùng chung cho `main` và kiểm thử.

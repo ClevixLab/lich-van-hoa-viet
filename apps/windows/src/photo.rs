@@ -11,9 +11,28 @@ pub const MAX_INPUT: usize = 25 * 1024 * 1024;
 /// Ảnh lưu tối đa 1 MB.
 pub const MAX_STORED: usize = 1024 * 1024;
 const MAX_SIDE: u32 = 1024;
+/// Tệp đính kèm dạng ảnh (01 §3.8a): cạnh dài ≤ 2048 px để giấy tờ còn đọc được, ≤ 2 MB.
+pub const DOC_SIDE: u32 = 2048;
+pub const DOC_STORED: usize = 2 * 1024 * 1024;
+/// Trần bộ nhớ cấp cho một lần giải mã (BM2-10, T-D3): 50 Mpx × 4 byte + đệm.
+const MAX_ALLOC: u64 = 256 * 1024 * 1024;
+/// Hiển thị (BM2-10, B6 mục 3): ảnh trong kho do ứng dụng tạo có cạnh ≤ 2048; tệp cũ hay độc vượt trần này thì hiện
+/// khung trống chứ không giải mã.
+pub const DISPLAY_MAX_SIDE: u32 = 4096;
+const DISPLAY_MAX_ALLOC: u64 = 80 * 1024 * 1024;
+/// Ảnh hiển thị được thu về cạnh dài ≤ 1024 (khung lớn nhất trên màn hình là ảnh tưởng niệm).
+const DISPLAY_SIDE: u32 = 1024;
+
+fn limits(max_side: u32, max_alloc: u64) -> image::io::Limits {
+    let mut l = image::io::Limits::default();
+    l.max_image_width = Some(max_side);
+    l.max_image_height = Some(max_side);
+    l.max_alloc = Some(max_alloc);
+    l
+}
 
 /// Ảnh đã mã hóa lại, sẵn sàng `LvhvStore::add_photo(id, "image/jpeg", width, height, bytes)`.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Encoded {
     pub bytes: Vec<u8>,
     pub width: u32,
@@ -94,6 +113,11 @@ fn orient(img: DynamicImage, o: u16) -> DynamicImage {
 
 /// Giải mã + mã hóa lại một ảnh người dùng chọn. Lỗi là câu hiển thị được (§3.4).
 pub fn reencode(input: &[u8]) -> Result<Encoded, String> {
+    reencode_with(input, MAX_SIDE, MAX_STORED)
+}
+
+/// Như [`reencode`] với cạnh dài và dung lượng lưu riêng (tệp đính kèm dạng ảnh: 2048 px, 2 MB).
+pub fn reencode_with(input: &[u8], max_side: u32, max_stored: usize) -> Result<Encoded, String> {
     if input.len() > MAX_INPUT {
         return Err("Ảnh lớn hơn 25 MB — hãy chọn ảnh nhỏ hơn".into());
     }
@@ -114,15 +138,18 @@ pub fn reencode(input: &[u8]) -> Result<Encoded, String> {
             "Ảnh quá lớn ({w} × {h} điểm ảnh) — hãy chọn ảnh nhỏ hơn"
         ));
     }
-    let img = image::load_from_memory_with_format(input, fmt).map_err(|_| unreadable())?;
+    // Giải mã có trần (BM2-10): kích thước đã kiểm từ phần đầu tệp ở trên; trần cấp phát chặn thêm định dạng nén.
+    let mut reader = image::io::Reader::with_format(Cursor::new(input), fmt);
+    reader.limits(limits(12_000, MAX_ALLOC));
+    let img = reader.decode().map_err(|_| unreadable())?;
     let img = if fmt == ImageFormat::Jpeg {
         orient(img, exif_orientation(input))
     } else {
         img
     };
     let (w, h) = img.dimensions();
-    let img = if w.max(h) > MAX_SIDE {
-        let s = MAX_SIDE as f64 / w.max(h) as f64;
+    let img = if w.max(h) > max_side {
+        let s = max_side as f64 / w.max(h) as f64;
         let nw = ((w as f64 * s).round() as u32).max(1);
         let nh = ((h as f64 * s).round() as u32).max(1);
         img.resize_exact(nw, nh, image::imageops::FilterType::Triangle)
@@ -143,7 +170,7 @@ pub fn reencode(input: &[u8]) -> Result<Encoded, String> {
         JpegEncoder::new_with_quality(&mut out, q)
             .encode_image(&rgb)
             .map_err(|_| unreadable())?;
-        if out.len() <= MAX_STORED {
+        if out.len() <= max_stored {
             return Ok(Encoded {
                 bytes: out,
                 width: w,
@@ -151,15 +178,38 @@ pub fn reencode(input: &[u8]) -> Result<Encoded, String> {
             });
         }
     }
-    Err("Ảnh quá chi tiết, chưa nén được dưới 1 MB".into())
+    Err(format!("Ảnh quá chi tiết, chưa nén được dưới {} MB", max_stored / (1024 * 1024)))
 }
 
-/// Ảnh để hiển thị trong Slint (giải mã byte JPEG đã lưu).
+/// Ảnh để hiển thị trong Slint (giải mã byte JPEG đã lưu). BM2-10: đọc kích thước từ phần đầu tệp trước; vượt
+/// [`DISPLAY_MAX_SIDE`] thì trả `None` (khung trống), không giải mã. Giải mã có trần cấp phát, rồi thu về cạnh dài
+/// ≤ 1024 trước khi đưa cho Slint.
 pub fn to_slint(bytes: &[u8]) -> Option<slint::Image> {
-    let img = image::load_from_memory(bytes).ok()?.to_rgba8();
+    let img = decode_bounded(bytes)?.to_rgba8();
     let (w, h) = img.dimensions();
     let buf = slint::SharedPixelBuffer::<slint::Rgba8Pixel>::clone_from_slice(img.as_raw(), w, h);
     Some(slint::Image::from_rgba8(buf))
+}
+
+/// Giải mã ảnh để hiển thị với giới hạn kích thước điểm ảnh và bộ nhớ (BM2-10).
+pub fn decode_bounded(bytes: &[u8]) -> Option<DynamicImage> {
+    let probe = image::io::Reader::new(Cursor::new(bytes)).with_guessed_format().ok()?;
+    let fmt = probe.format()?;
+    if !matches!(fmt, ImageFormat::Jpeg | ImageFormat::Png | ImageFormat::WebP) {
+        return None;
+    }
+    let (w, h) = probe.into_dimensions().ok()?;
+    if w == 0 || h == 0 || w > DISPLAY_MAX_SIDE || h > DISPLAY_MAX_SIDE {
+        return None;
+    }
+    let mut reader = image::io::Reader::with_format(Cursor::new(bytes), fmt);
+    reader.limits(limits(DISPLAY_MAX_SIDE, DISPLAY_MAX_ALLOC));
+    let img = reader.decode().ok()?;
+    Some(if img.width().max(img.height()) > DISPLAY_SIDE {
+        img.thumbnail(DISPLAY_SIDE, DISPLAY_SIDE)
+    } else {
+        img
+    })
 }
 
 /// Byte có đoạn APP1 (EXIF/XMP) hoặc APP13 (IPTC) không — dùng trong kiểm thử S9.
@@ -234,5 +284,39 @@ pub(crate) mod tests {
             reencode(b"khong phai anh").err().unwrap(),
             "Không đọc được ảnh này (định dạng không hỗ trợ)"
         );
+    }
+
+    fn png(w: u32, h: u32) -> Vec<u8> {
+        let mut out = Vec::new();
+        DynamicImage::ImageLuma8(image::GrayImage::new(w, h))
+            .write_to(&mut Cursor::new(&mut out), ImageFormat::Png)
+            .unwrap();
+        out
+    }
+
+    /// BM2-10 / B6: hiển thị có trần; ảnh vượt trần, ảnh giả (HTML), byte hỏng → khung trống, không giải mã.
+    #[test]
+    fn display_decode_is_bounded() {
+        let big = png(DISPLAY_MAX_SIDE + 1, 2);
+        assert!(big.len() < 64 * 1024, "tệp nhỏ nhưng khổ lớn");
+        assert!(decode_bounded(&big).is_none());
+        assert!(decode_bounded(b"<html><script>alert(1)</script></html>").is_none());
+        let mut cut = png(800, 600);
+        cut.truncate(cut.len() / 2);
+        assert!(decode_bounded(&cut).is_none());
+        let ok = decode_bounded(&png(3000, 1500)).unwrap();
+        assert_eq!((ok.width(), ok.height()), (1024, 512), "thu nhỏ trước khi đưa cho Slint");
+        let e = reencode(&png(800, 600)).unwrap();
+        assert_eq!(decode_bounded(&e.bytes).unwrap().dimensions(), (800, 600));
+    }
+
+    /// Tệp đính kèm dạng ảnh (01 §3.8a): cạnh dài ≤ 2048, ≤ 2 MB; ảnh khổng lồ bị từ chối từ phần đầu tệp.
+    #[test]
+    fn document_reencode_and_huge_input() {
+        let e = reencode_with(&png(3000, 1500), DOC_SIDE, DOC_STORED).unwrap();
+        assert_eq!((e.width, e.height), (2048, 1024));
+        assert!(e.bytes.len() <= DOC_STORED);
+        let huge = png(12_001, 1);
+        assert!(reencode(&huge).unwrap_err().contains("Ảnh quá lớn"));
     }
 }

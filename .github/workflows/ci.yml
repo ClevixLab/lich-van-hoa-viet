@@ -101,6 +101,14 @@ jobs:
         with:
           command: check advisories bans
           arguments: --workspace
+      # BM2-09: workspace riêng của ứng dụng Windows (Slint, image, windows…), cấu hình apps/windows/deny.toml (chỉ
+      # phụ thuộc của bản Windows; ngoại lệ có lý do và ngày).
+      - name: S11 — cargo-deny cho apps/windows
+        uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          manifest-path: apps/windows/Cargo.toml
+          command: check advisories bans
+          command-arguments: --config apps/windows/deny.toml
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
