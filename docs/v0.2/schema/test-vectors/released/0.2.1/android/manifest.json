@@ -1,0 +1,24 @@
+{
+  "fixture": "0.2.1/android",
+  "created_by": "lõi 0.2.1 (lvhv-ffi, VERSION 0.2.1, commit e3a0276) qua API LvhvStore mà ứng dụng Android gọi — make_android_fixture.rs.txt, chạy trên Linux; KHÔNG qua giao diện ứng dụng trên máy thật. shared_prefs/*.xml viết tay theo khóa bản 0.2.1 đọc. Xem README.md",
+  "created_at": "2026-11-07",
+  "store_user_version": 2,
+  "password": "mật khẩu thử nghiệm",
+  "persons": 3,
+  "has_tray_photo": true,
+  "description": "Kho SQLite của mô-đun Người thân (A đã mất: chân dung, mâm lễ, báo tử có ảnh + PDF, âm lịch nhuận; B đã mất chỉ ngày/tháng âm; C đang sống 29/02, sinh nhật âm; loại sự kiện tự tạo, 2 sự kiện; nhắc sao lưu 60 ngày; tên trên màn hình khóa bật), tùy chọn giao diện, tệp sao lưu. Không bao giờ sửa.",
+  "files": {
+    "README.md": "77812b6a6a69645a9f89ec9c8b9d2099fc7861884b85a2b851f098d9df6bceae",
+    "backup.lvhv": "32409945abc22f15c88e807119f4e422120d3833a130222c2ba4fb920aa8ca98",
+    "make_android_fixture.rs.txt": "368c921a39b721c222cb821391d12eacdcbe54eb8d5ce715ed405ef115c0f458",
+    "make_images.py.txt": "a6463fd57620f2ab3cfa32111bc67db1a7155aaccf6cb2e04d5dffc66579d7a0",
+    "shared_prefs/hien_thi.xml": "84366e5c289753b05a551e09f5b62e8764d30cb857eff7fd60f4fe73665c0363",
+    "shared_prefs/nhac_viec.xml": "7694d5d7fc83cbb2a8bee6fea5fe6b80b3990971c630c258fbf0f983890920a2",
+    "store-snapshot.json": "3e4de001b2c2562cbaa56d4fef51f71e0d30d72e42f97d4939adf8d722b2d60d",
+    "store/attachments/21a00000-0000-4000-8000-0000000000a1.bin": "cecb0c00007e8ee53a755c1dfad55640ef7f68de32cef1151e5abbf947d09a7f",
+    "store/attachments/21a00000-0000-4000-8000-0000000000a2.bin": "cfa3181c1ee36e8bce5e39f84959f4558ea7ba32c0e4539a8ab3c8ce8c716ec6",
+    "store/lvhv.sqlite": "6ba6478439cb489d3821579f10f9ab32771a12ec95886a57cb6e4c33a03fe727",
+    "store/photos/21a00000-0000-4000-8000-0000000000f1.img": "5ef581941fe2f1778a1168e7ef441fa7cbd5111ff9aca1530f4121df1e838d1a",
+    "store/photos/21a00000-0000-4000-8000-0000000000f2.img": "471258b565f860882c2c61d870cbb15260cceba2441cc09c114d75d978043b1c"
+  }
+}

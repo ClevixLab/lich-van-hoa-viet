@@ -163,6 +163,25 @@ final class PeopleUITests: XCTestCase {
         }
     }
 
+    /// DV23-01, DV23-03: tấm khôi phục có hai hàng chọn to theo chữ; khi đang khôi phục, nút Hủy bị khóa.
+    func testRestoreSheetLocksCancelWhileRunning() {
+        let app = launch(screen: "restore", extra: ["-lvhvSlowRestore", "1"])
+        // Tấm mở sau khi bản Debug tạo và giải mã tệp sao lưu mẫu (Argon2id) — chờ chính hàng chọn.
+        let merge = app.descendants(matching: .any)["restore.merge"].firstMatch
+        let replace = app.descendants(matching: .any)["restore.replace"].firstMatch
+        XCTAssertTrue(merge.waitForExistence(timeout: 60), "tấm khôi phục có hàng Gộp")
+        XCTAssertTrue(replace.exists)
+        XCTAssertTrue(merge.isSelected, "mặc định là Gộp")
+        XCTAssertFalse(replace.isSelected)
+        let cancel = app.buttons["restore.cancel"].firstMatch
+        XCTAssertTrue(cancel.isEnabled)
+        app.navigationBars.buttons["Khôi phục"].firstMatch.tap()
+        Thread.sleep(forTimeInterval: 0.8)
+        XCTAssertFalse(cancel.isEnabled, "đang khôi phục thì không đóng được tấm")
+        snap("restore-running-light")
+        app.terminate()
+    }
+
     // MARK: Luồng
 
     /// L1: thêm người đã mất theo ngày dương → thấy "15/6 nhuận" → lưu → trang hồ sơ.
@@ -240,6 +259,9 @@ final class PeopleUITests: XCTestCase {
                 XCTAssertFalse(altar.label.contains("mâm"), "nhãn trợ năng không nhắc mâm")
                 if !catholic { XCTAssertTrue(app.buttons["memorial.smoke"].exists) } else { XCTAssertFalse(app.buttons["memorial.smoke"].exists) }
                 snap("altar-\(screen == "memorial" ? "huong" : "cong-giao")-\(v)")
+                // V2-01: cuộn để thấy cả hàng bàn thờ (và nút thêm ảnh mâm lễ) trong một ảnh.
+                altar.swipeUp(velocity: .slow)
+                snap("altar-\(screen == "memorial" ? "huong" : "cong-giao")-\(v)-2")
                 app.terminate()
             }
         }
@@ -288,6 +310,9 @@ final class PeopleUITests: XCTestCase {
             XCTAssertTrue(any(app, "memorial.trayCredit").exists)
             XCTAssertTrue(any(app, "memorial.addTray").exists)
             snap("altar-clevix-\(v)")
+            // V2-02: cuộn để thấy ảnh Clevix dưới bàn thờ cùng dòng ghi công.
+            app.swipeUp(velocity: .slow)
+            snap("altar-clevix-\(v)-2")
             app.terminate()
             // … ảnh gia đình thắng khi có.
             app = launch(screen: "memorial-tray", dark: dark, extra: ["-lvhvTrayPack", "test"])

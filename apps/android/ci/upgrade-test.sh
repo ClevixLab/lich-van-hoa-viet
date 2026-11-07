@@ -9,6 +9,8 @@
 # Ca dữ liệu người thân: bản có mô-đun tạo đủ loại dữ liệu bằng màn tự kiểm (chỉ có ở bản debug), hủy báo
 #   thức, cài đè, rồi kiểm từng bản ghi, từng ảnh/tệp đính kèm và báo thức đã được ứng dụng tự đặt lại.
 # Ca chuyển đổi: kho SQLite thật của bản 0.2-dev (bộ mẫu đóng băng, phiên bản 1) → bản này: đúng tệp kỳ vọng chung.
+# Ca bộ mẫu đóng băng Android (released/<bản>/android, từ 0.2.1): kho, ảnh, tệp đính kèm, tùy chọn trên máy và tệp sao
+#   lưu của bản đã phát hành → bản này mở `ok`, đúng tệp kỳ vọng `expected/<bản>-android.json`.
 # Ca chuyển đổi lỗi (trigger chặn ghi `meta`): quay lui, chỉ đọc, kho giống hệt từng dòng/từng ảnh, tệp sao lưu mở lại
 #   được và nhập vào kho trống cho đúng trạng thái kỳ vọng.
 set -uo pipefail
@@ -102,6 +104,9 @@ seed_store() {
   adb install "$NEW" || fail "không cài được bản mới"
   put "$dir/lvhv.sqlite" files/lvhv.sqlite
   for f in "$dir"/photos/*; do put "$f" "files/photos/$(basename "$f")"; done
+  if [ -d "$dir/attachments" ]; then
+    for f in "$dir"/attachments/*; do put "$f" "files/attachments/$(basename "$f")"; done
+  fi
   adb shell run-as "$PKG" ls -la files files/photos
 }
 
@@ -115,6 +120,28 @@ adb logcat -c
 run_main   # rồi mở ứng dụng như người dùng trên kho đã chuyển
 adb logcat -d -s AndroidRuntime:E | grep -q "vn.clevix.lichviet" && fail "ứng dụng lỗi khi mở kho đã chuyển"
 end
+
+# 08-QUY-TRINH §10 / R14 (b): mọi bộ mẫu đóng băng của bản Android đã phát hành (released/<bản>/android) → bản này.
+# Kho + tùy chọn trên máy (shared_prefs) chép vào thư mục riêng của bản đang kiểm như dữ liệu người dùng thật.
+REL="docs/v0.2/schema/test-vectors/released"
+NREL=0
+for RFX in "$REL"/*/android; do
+  [ -d "$RFX" ] || continue
+  VER="$(basename "$(dirname "$RFX")")"
+  NREL=$((NREL + 1))
+  say "Ca bộ mẫu đóng băng Android $VER → bản mới"
+  seed_store "$RFX/store"
+  for f in "$RFX"/shared_prefs/*.xml; do put "$f" "shared_prefs/$(basename "$f")"; done
+  put "$REL/expected/$VER-android.json" files/r14-expected.json
+  put "$RFX/backup.lvhv" files/r14-backup.lvhv
+  R="$(self_check verify-released)"; echo "$R"
+  case "$R" in OK*) ;; *) fail "bộ mẫu Android $VER: $R" ;; esac
+  adb logcat -c
+  run_main
+  adb logcat -d -s AndroidRuntime:E | grep -q "vn.clevix.lichviet" && fail "ứng dụng lỗi khi mở dữ liệu của bộ mẫu Android $VER"
+  end
+done
+[ "$NREL" -gt 0 ] || fail "không tìm thấy bộ mẫu đóng băng Android nào trong $REL/*/android"
 
 say "Ca chuyển đổi lỗi: quay lui, chế độ chỉ đọc, vẫn xuất sao lưu"
 # Lõi chỉ có tùy chọn buộc lỗi ở API Rust (OpenOptions::force_migration_failure, không qua FFI). Như Windows (upgrade.rs):
