@@ -275,6 +275,17 @@ Cách cài (cả hai bản như nhau, 2026-11-07):
   động. Hệ quả: mất máy là mất dữ liệu nếu người dùng chưa xuất tệp sao lưu (rủi ro R-DATA-1, 05 §7). Tiêu chí: `04`
   S5.
 - `PRAGMA user_version` = `schema_version`; `PRAGMA foreign_keys = ON`; chế độ `journal_mode = WAL`.
+- `PRAGMA secure_delete = ON` (rà soát bảo mật BM2-11, quyết định 2026-11-07: **bật**). Đặt mỗi lần mở kết nối (thiết
+  lập theo kết nối, không ghi trong tệp). SQLite ghi đè bằng 0 phần nội dung bị xóa trong trang của CSDL (hồ sơ, thông
+  tin báo tử, ghi chú) thay vì để lại trong trang trống. Sau khi xóa hồ sơ và sau lần dọn 7 ngày (§7.1), lõi gọi
+  `PRAGMA wal_checkpoint(TRUNCATE)` để trang đã ghi đè vào tệp chính và `lvhv.sqlite-wal` về 0 byte (bản cũ trong WAL
+  không còn). Kiểm thử `deleted_person_text_not_left_in_database_files`: chuỗi đánh dấu của hồ sơ đã xóa không còn
+  trong `lvhv.sqlite` hay `-wal` (tắt pragma thì kiểm thử này thất bại). Chi phí: chỉ thêm ghi khi xóa; kho cỡ vài MB
+  nên không đáng kể; không đổi định dạng tệp, không đổi dữ liệu đọc ra. Giới hạn (ghi rõ, không hứa hơn): sửa một
+  trường (không xóa hồ sơ) thì bản cũ trong WAL được dọn ở lần gộp tự động kế tiếp hoặc khi đóng kết nối cuối;
+  bộ nhớ flash có thể còn bản cũ ở tầng dưới hệ điều hành (ngoài tầm ứng dụng — mã hóa thiết bị của hệ điều hành mới
+  che được); tệp ảnh và tệp đính kèm bị xóa bằng xóa tệp thông thường; bản web (IndexedDB) do trình duyệt quản lý,
+  không có thiết lập tương đương.
 - Bảng `person`, `event`, `event_person` (n–m), `event_type`, `photo`, `settings`. Các đối tượng nhúng
   (`DeathInfo`, `BirthInfo`, `MemorialSettings`, `ReminderRule`) lưu dạng cột JSON (TEXT) đã kiểm tra theo lược
   đồ ở cùng lớp mã — để một lớp tuần tự hóa duy nhất dùng chung cho SQLite và tệp sao lưu.
@@ -369,7 +380,16 @@ mất ảnh giấy báo tử của bản nhập (PR #30) — đã sửa ở cả
   ảnh dùng cho nhiều hồ sơ → một tệp dùng chung.
 - **Khóa `legacy`.** Hồ sơ có chuyển đổi nhận `legacy.certificate_photo_ids` (danh sách gốc) và
   `legacy.certificate_photos` (bản ghi `Photo` gốc, có `width`/`height`). `Person.legacy` là đối tượng tự do, không hiển
-  thị. Không phép chuyển nào xóa tệp ảnh trên máy.
+  thị. Lúc chuyển, không phép chuyển nào xóa tệp ảnh trên máy (bản sao CSDL + thư mục ảnh đủ để quay lui).
+- **Tệp ảnh gốc của ảnh đã chuyển** (rà soát bảo mật vòng 2, BM3-01). Rust: ảnh chỉ là giấy báo tử có byte được chép
+  sang `attachments/<id>.bin` và bản ghi `Photo` bị bỏ, nhưng tệp `photos/<id>.img` gốc còn giữ để quay lui; id của nó
+  được ghi ở `meta.migration_moved_photos`. Tệp gốc bị **xóa** khi (a) dọn sau 7 ngày (mục dưới), hoặc (b) xóa hồ sơ —
+  ngay khi không còn hồ sơ nào giữ ảnh đó trong `legacy` (ảnh dùng chung cho hai hồ sơ còn tới khi xóa hồ sơ thứ hai);
+  trong cả hai trường hợp chỉ khi không còn bản ghi `Photo` nào cùng id. Kho đã chuyển trước khi có danh sách này cũng
+  được dọn (id lấy từ `legacy.certificate_photo_ids`). Kiểm thử `moved_certificate_photos_removed_after_7_days_and_on_delete`:
+  sau 7 ngày không còn tệp `.img` nào không có bản ghi; xóa mọi hồ sơ → 0 tệp `.img`. Web: byte ảnh nằm trong IndexedDB
+  nên ảnh gốc được xóa ngay trong giao dịch nâng cấp (IndexedDB tự quay lui khi lỗi); kiểm thử `pwa/test/store/run.mjs`
+  "BM3-01".
 - **Giữ 7 ngày rồi dọn** (BM2-06, BM2-07; quyết định của điều phối viên 2026-11-07, theo đúng "giữ 1 bản, xóa sau 7
   ngày nếu chuyển đổi thành công" ở trên). Chuyển đổi **thành công** ghi `meta.migrated_at` (và tên bản sao ở
   `meta.migration_backup`); lưu một hồ sơ còn khóa cũ hoặc nhập tài liệu đã chuyển cũng ghi lại `migrated_at`. Mỗi lần

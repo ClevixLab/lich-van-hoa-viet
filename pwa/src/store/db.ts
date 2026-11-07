@@ -302,9 +302,11 @@ export class Store {
   /**
    * Cờ giao diện trong kho `meta` (MA3C-30-04: `ui_persist_notice_hidden_at`, `ui_restored_from`, …) — không phải dữ liệu
    * người dùng, không vào stateHash. Ở chế độ chỉ đọc: bỏ qua lặng lẽ (kho cũ giữ nguyên đúng nghĩa đen).
-   * Trả `true` nếu đã ghi.
+   * Trả `true` nếu đã ghi. Chỉ nhận khóa `ui_*` và `persist`: kho `meta` còn giữ khóa của lõi (`schema_version`,
+   * `store_version`, `migrated_at`, `migration_moved_photos`, …) mà giao diện không được ghi đè — khóa khác → "input".
    */
   async putUiMeta(key: string, value: Json): Promise<boolean> {
+    if (!(key === "persist" || /^ui_[a-z0-9_]{1,60}$/.test(key))) throw new StoreError("input", `khóa meta không dành cho giao diện: ${key}`);
     if (this.status.state === "read_only") return false;
     const tx = this.tx("meta", "readwrite");
     tx.objectStore("meta").put(value, key);
