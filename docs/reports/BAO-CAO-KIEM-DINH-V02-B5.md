@@ -3,7 +3,81 @@
 Ngày lập: 2026-11-07. Người lập: bên không tham gia xây dựng đặc tả (kiểm định độc lập, phòng sạch).
 Nhánh: `oracle-v02-b5` (từ `origin/main` 6ee647b). Đối tượng kiểm: PR #28, nhánh `v0.2-w3-core2`, chưa gộp.
 - Lần 1: head `5535a49`. Có tệp đính kèm, **chưa** có chuyển đổi.
-- Lần 2: head `8a2ed41`. Có chuyển đổi 1→2 và bộ mẫu đóng băng. **Kết luận dưới đây là của lần 2.**
+- Lần 2: head `8a2ed41`. Có chuyển đổi 1→2 và bộ mẫu đóng băng.
+- **Lần 3 (kết luận hiện hành, mục 0):** `main` 43c3639 (PR #28 đã gộp, gồm B6) cộng PR #36 `9106ae9`, có công cụ
+  hộp đen `lvhv-store-tool` (bản Rust và bản TS, theo `docs/v0.2/10`). Mục 1–9 giữ nguyên kết quả lần 1 và lần 2.
+
+## 0. Lần 3 — `main` 43c3639 + PR #36 `9106ae9` (kết luận hiện hành)
+
+Ở lần 3 chỉ đọc thêm tài liệu: `docs/v0.2/10`, 04 Bổ sung B6 và B7. Không đọc mã của công cụ hay của lõi. Mọi phép
+thử chạy trên cả hai bản, Rust (`target/release/lvhv-store-tool`) và TS (`node pwa/test/tools/lvhv-store-tool.mjs`).
+Hai bản cho cùng kết quả ở **mọi** ca. Số liệu: `oracle/v02/out/b5_r3_9106ae9.json` và `.log`.
+
+### 0.1 Kết luận
+
+| Phần | Kết luận | Số liệu |
+|---|---|---|
+| **R14 mức lõi** (Rust + TS) | **ĐẠT**, kèm hai khiếm khuyết đã biết (mục 0.3). Hai khiếm khuyết này không vi phạm ngưỡng | Xem các dòng dưới |
+| Chuyển kho SQLite tại chỗ (Rust) / IndexedDB (TS) | ĐẠT | 9 kho phiên bản 1 hợp lệ (bộ mẫu đóng băng + M01–M05, M07, M08, M10): 0 bản ghi mất, 0 trường khác so với chuyển đổi tham chiếu, byte ảnh và tệp đính kèm trùng. Kho Rust đạt `user_version` 2; TS `state: migrated`. Hai kho thuộc ca phải lỗi đi đúng đường lỗi: M06 (khóa lạ) và M09 (id ảnh treo) → `read_only`, `user_version` vẫn 1, mọi hàng của CSDL không đổi, `.pre-v2.bak` có mặt |
+| Ca lỗi (`--force-migration-failure`) | ĐẠT | 11/11 kho, Rust và TS: `state = read_only`; `user_version` vẫn 1; các hàng CSDL giống hệt trước khi mở; ảnh không đổi; `.pre-v2.bak` có mặt. `put_settings`, `put_person`, `delete_person` lỗi `ReadOnly`; `export_backup` thành công. TS: tài liệu kho = dữ liệu cũ |
+| Nhập tệp sao lưu cũ | ĐẠT | M01–M05, M07: 0 bản ghi mất, 0 trường khác (`store.document` so trực tiếp, không còn qua băm). `example-v1.lvhv` nhập ra `state_sha256` `177b73e2…`, đúng băm do bên kiểm định tự tính ở lần 1 |
+| Từ chối phiên bản mới hơn | ĐẠT | `schema_version` 3 và 99 → `NewerSchema` (cả hai bản) |
+| Vectơ R6 đã khóa | ĐẠT | Dựng 9106ae9, sinh lại bằng `gen_test_vectors`: 28/28 tệp giống từng byte bản trên `main` 6ee647b. Theo B7, bộ R6v2 chưa có trong kho, nên chưa kiểm |
+| **YC-2026-07 — tệp đính kèm** | **ĐẠT** | 22/22 tệp không hợp lệ bị từ chối, kể cả X21 (`mime_mismatch`) và X22 ("có cả attachments lẫn certificate_photo_ids — tài liệu dị dạng"). 5/5 tệp hợp lệ, gồm cả ca đúng biên, nhập ra 0 trường khác. `check-media` (Rust và TS): PDF dán nhãn `image/jpeg` → `mime_mismatch`; PDF đúng nhãn → `ok` |
+| YC-2026-07 — `gioi_tinh` | ĐẠT | 4/4 giá trị sai bị từ chối; thiếu khóa và `null` được nhận |
+| YC-2026-07 — không viết hoa khi nhập | ĐẠT | M07 giữ nguyên từng byte |
+| **YC-2026-07 — viết hoa khi lưu và khi hiển thị** | **KHÔNG ĐẠT (2/28 ca)** | `save-person` và `display-capitalize` khớp kỳ vọng ở 26/28 ca, kể cả mọi ca NFD và mọi ca chưa rõ theo A-N1 (`"(bên nội) ông"`, `"2 bà"`, `"«bà»"`, dấu kết hợp đứng đầu: giữ nguyên). 2 ca sai: `"  chú  "` lưu thành `"  chú  "` (kỳ vọng `"Chú"`), và `"   "` lưu thành `"   "` (kỳ vọng `""`). Khoảng trắng hai đầu không bị cắt (trái 01 §1), nên chữ đầu không được viết hoa. `ho_ten` không bao giờ bị viết hoa (28/28) |
+| **YC-2026-07 — danh sách gợi ý** | **ĐẠT** | Không truyền giới tính: người mất đúng 22 mục, người sống đúng 17 mục, **đúng thứ tự** của 01 §3.1. Có `nam`/`nu`: cùng tập mục, thứ tự đổi (từ hợp giới tính lên trước). Quy tắc thứ tự này là phần thêm của PR, 01 §3.1 không quy định |
+| M10, U01 (ảnh/tệp dùng chung) | ghi nhận: không mất | M10: chuyển đổi tại chỗ và nhập đều cho **một** tệp dùng chung, hai hồ sơ cùng trỏ tới, 0 trường khác. U01 được nhận |
+
+### 0.2 Kiểm lại X21, X22, M09 và ảnh dùng chung
+
+| Ca | Lần 2 (`8a2ed41`) | Lần 3 |
+|---|---|---|
+| X21 (khai `image/jpeg`, byte PDF) | nhận nhầm | từ chối, `Invalid … mime_mismatch` (Rust, TS) — **đã sửa** |
+| X22 (trộn hai dạng) | nhận, không rõ đã ghi gì | từ chối: "có cả attachments lẫn certificate_photo_ids (khóa cũ) — tài liệu dị dạng" — **đã sửa** |
+| M09 (id ảnh giấy chứng tử treo) | nhận, giữ id trong `legacy` | nhập: từ chối `V3` "ảnh không tồn tại". Chuyển tại chỗ: `read_only`, dữ liệu cũ nguyên vẹn — **khớp kỳ vọng đăng ký trước** |
+| Ảnh dùng chung (M03, M10, bộ mẫu đóng băng) | M03 khớp băm | 0 trường khác ở cả nhập lẫn chuyển tại chỗ. Ảnh chân dung còn nguyên; ảnh dùng cho hai hồ sơ → một tệp dùng chung |
+
+### 0.3 Quan sát về hai khiếm khuyết bên xây dựng đang sửa (không chờ bản sửa)
+
+1. **Tệp đính kèm mồ côi khi chuyển đổi lỗi.** Sau ca lỗi, thư mục `attachments/` còn tệp ở 5 kho có ảnh giấy chứng
+   tử: bộ mẫu đóng băng (2 tệp), M01 (3), M02, M06 (3, là ca lỗi thật chứ không phải buộc lỗi) và M10 (2).
+   - Các tệp này là bản chép của ảnh giấy chứng tử. CSDL đã quay lui, không trỏ tới chúng.
+   - Không mất dữ liệu. Nhưng thư mục đã không còn "như trước khi mở", và có thêm bản chép của dữ liệu nhạy cảm (R-PRIV-2).
+   - M09 không có tệp mồ côi.
+2. **`.pre-v2.bak` không giống từng byte tệp CSDL gốc** ở 11/11 kho. Bên kiểm định đọc bản sao ở chế độ chỉ đọc: mọi
+   bảng và mọi hàng, cùng `user_version` 1, giống hệt bản gốc ở 11/11 kho. Như vậy không mất dữ liệu, chỉ khác byte.
+   Ghi chú phương pháp: việc đọc bản sao bằng `sqlite3` ở chế độ chỉ đọc tạo thêm `-shm`/`-wal` cạnh `.bak`. Hai tệp đó
+   do bên kiểm định sinh ra, không phải do lõi.
+
+### 0.4 Sai lệch và ghi nhận của lần 3
+
+- **Viết hoa khi lưu/hiển thị — 2 ca khoảng trắng** (mục 0.1). Hai bản giống nhau.
+- **N03 / N04 (đánh số phiên bản):** giữ nguyên như mục 5.4 của lần 2. Lượt không chuyển dạng: N04 (`schema_version`
+  2 + dạng cũ) → `NewerSchema(2)`. Theo cách đánh số của PR (tài liệu sao lưu vẫn là 1) thì kết quả này đúng; nó chỉ
+  khác lớp so với A-V1. Không tính là lỗi.
+- M06: khóa lạ vẫn bị từ chối, không có `legacy`. Theo A-M7: CHƯA RÕ, không bỏ lặng lẽ.
+- M08: NFD vẫn được giữ nguyên khi nhập; khi chuyển tại chỗ cũng vậy.
+- **Lỗi của chính tệp thử, đã sửa trước khi chạy lần 3 (commit `b9d8b07`).** Bản `d14f452` ghi kích thước ảnh cố
+  định 64×48, trong khi ảnh thật có kích thước khác. Chỗ sai lộ ra khi đọc 04 B6, vì kiểm tra kích thước mới bật. Bản
+  sửa chỉ đổi `width`/`height` trong các tệp thử M01, M02, M06, N04 và thêm M10. Không kỳ vọng cũ nào đổi:
+  `b5_expected.json` chỉ có thêm mục M10.
+
+### 0.5 Trình tự lần 3
+
+| Giờ (+07) | Commit | Việc |
+|---|---|---|
+| 13:2x | — | Đọc `docs/v0.2/10`, 04 B6/B7. Dựng `lvhv-store-tool` và các ví dụ của `lvhv-store` từ `9106ae9`; chạy `npm ci` cho TS; chạy `--help` |
+| 13:27 | `b9d8b07` | Sửa kích thước ảnh trong tệp thử, thêm M10. Commit **trước** khi chạy công cụ trên tệp thử |
+| 13:30–13:40 | — | `b5_mkstore.py` dựng kho SQLite phiên bản 1 từ tệp thử. Bố cục bảng lấy từ CSDL của bộ mẫu đóng băng, đọc như dữ liệu. `b5_round3.py` chạy toàn bộ |
+| 13:41 | `936d260` | Kết quả lần 3 |
+
+### 0.6 Ngoài phạm vi / chưa làm (lần 3)
+
+- Nâng cấp tại chỗ trên từng nền tảng và lịch nhắc đặt lại sau nâng cấp: do các job CI nền tảng chạy.
+- R6 trên R6v2 (B7): bộ R6v2 chưa có trong kho.
+- Dựng lại bộ mẫu đóng băng từ commit 7338f04: chưa làm.
 
 Căn cứ đặc tả, đọc trên `main` 6ee647b **trước** khi viết kỳ vọng:
 - `docs/v0.2/01` §1, §3.1, §3.2a, §3.8, §3.8a, §6, §7;
@@ -18,7 +92,7 @@ Không đọc mã nguồn của `memorial/`, `store/`, `backup/`, `core/`, `tspo
 `make_dev_fixture.rs.txt` của bộ mẫu là mã, nên cũng không đọc; chỉ kiểm sha256 của nó. Các tệp dưới `test-vectors/`
 chỉ được đọc như dữ liệu. Công cụ của bên xây dựng chỉ được dựng và chạy như hộp đen.
 
-## 1. Kết luận (lần 2, `8a2ed41`)
+## 1. Kết luận lần 2 (`8a2ed41`) — đã được lần 3 thay thế
 
 | Phần | Kết luận | Số liệu |
 |---|---|---|
