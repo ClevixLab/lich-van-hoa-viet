@@ -3,7 +3,8 @@
 // Khói (R8): chỉ CSS @keyframes, KHÔNG requestAnimationFrame. Chạy khi trang hiển thị, tự dừng sau 2 phút (tính thời
 // gian hiển thị), dừng ngay khi tab ẩn hoặc rời trang; prefers-reduced-motion → khói tĩnh từ đầu.
 import { h, svg } from "../dom";
-import { M, addDays, biaHeading, cal, daysBetween, displayName, lunarText, snap, store, today, tuoiText, type JsonObj } from "./core";
+import { M, addDays, biaHeading, cal, daysBetween, displayName, isReadOnly, lunarText, snap, store, today, tuoiText, type JsonObj } from "./core";
+import { TRAY_PACK } from "../gen/content";
 import { drawPhoto } from "./photo";
 import { backLink } from "./ui";
 
@@ -76,6 +77,25 @@ export async function renderMemorial(root: HTMLElement, id: string): Promise<voi
   const sticks = incense ? h("div", { class: "incense", "aria-hidden": "true" },
     ...[0, 1, 2].map((i) => h("span", { class: `stick s${i}` }, h("i", { class: "smoke" }), h("i", { class: "smoke b" }), h("b", { class: "tip" })))) : null;
 
+  // YC-2026-10 (08 §16.1, ADR-V02-01): ảnh mâm lễ — (1) của gia đình (`memorial.tray_photo_id`); (2) ảnh Clevix đã duyệt
+  // cùng `tray_style` trong gói đi kèm ứng dụng; (3) không có mâm. Ảnh nằm DƯỚI hàng bàn thờ, khung 4:3, vẽ bằng canvas
+  // (CSP img-src 'self' không đổi, không blob: URL).
+  const famTray = typeof mem.tray_photo_id === "string" ? mem.tray_photo_id : null;
+  const packTray = famTray ? null : TRAY_PACK.find((x) => x.tray_style === ((mem.tray_style as string) ?? "truyen_thong")) ?? null;
+  let trayFig: HTMLElement | null = null;
+  if (famTray || packTray) {
+    const c = h("canvas", { class: "mem-tray-img", width: "480", height: "360", role: "img", "aria-label": famTray ? "Ảnh mâm lễ của gia đình" : "Ảnh mâm lễ" }) as HTMLCanvasElement;
+    trayFig = h("figure", { class: "mem-tray", "data-src": famTray ? "family" : "clevix" }, c,
+      packTray?.credit ? h("figcaption", { class: "mem-tray-credit" }, packTray.credit) : null);
+    const fig = trayFig;
+    const bytesP = famTray ? s.photoBytes(famTray) : fetch(packTray!.path).then((r) => { if (!r.ok) throw new Error(String(r.status)); return r.arrayBuffer(); }).then((b) => new Uint8Array(b));
+    bytesP.then((bytes) => drawPhoto(c, bytes, packTray?.mime ?? "image/jpeg")).catch(() => fig.remove());
+  }
+  // Chưa có ảnh của gia đình → lối thêm ảnh (mở biểu mẫu sửa, cuộn tới mục ảnh mâm lễ). Chỉ đọc → không có (TKN3-P-01).
+  const addTray = !famTray && !isReadOnly()
+    ? h("p", { class: "mem-add-tray" }, h("a", { class: "textlink", id: "mem-add-tray", href: `#/nguoi-than/sua/${id}/mam-le` }, "Thêm ảnh mâm lễ của gia đình"))
+    : null;
+
   const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const toggle = h("button", { type: "button", class: "btn2 mem-toggle", id: "mem-toggle", hidden: !incense || reduce });
   const scene = h("div", { class: "mem-scene lit", id: "mem-scene" },
@@ -97,7 +117,9 @@ export async function renderMemorial(root: HTMLElement, id: string): Promise<voi
         catholic ? svg(VASE, "vase") : h("div", { class: "bowl-wrap" }, sticks, svg(BOWL, "bowl")),
         svg(CANDLE, "candle")),
       h("div", { class: "altar-table" })),
-    ((mem.loi_tuong_niem as string) ?? "").trim() ? h("blockquote", { class: "mem-loi" }, (mem.loi_tuong_niem as string).normalize("NFC").trim()) : null);
+    trayFig,
+    ((mem.loi_tuong_niem as string) ?? "").trim() ? h("blockquote", { class: "mem-loi" }, (mem.loi_tuong_niem as string).normalize("NFC").trim()) : null,
+    addTray);
 
   let remaining = SMOKE_MS, startedAt = 0, timer = 0;
   const stopAll = () => { window.clearTimeout(timer); timer = 0; scene.classList.remove("lit"); toggle.textContent = "Thắp lại"; };
