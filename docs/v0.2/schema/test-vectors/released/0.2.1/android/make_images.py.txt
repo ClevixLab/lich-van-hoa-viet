@@ -1,0 +1,33 @@
+"""Ảnh JPEG cho bộ mẫu Android 0.2.1 — vẽ bằng Pillow, lưu không kèm EXIF (Pillow không chép siêu dữ liệu)."""
+import sys
+from PIL import Image, ImageDraw
+
+out = sys.argv[1]
+
+
+def save(im, name, q):
+    im.save(f"{out}/{name}", "JPEG", quality=q, optimize=True)
+
+
+# Ảnh chân dung 600 × 800 (cạnh dài ≤ 1024).
+im = Image.new("RGB", (600, 800), (150, 110, 80))
+d = ImageDraw.Draw(im)
+d.ellipse((180, 140, 420, 420), fill=(222, 190, 160))
+d.rectangle((120, 460, 480, 800), fill=(60, 60, 70))
+save(im, "chan-dung.jpg", 88)
+
+# Ảnh mâm lễ 1600 × 1200 (cạnh dài ≤ 1600, ≤ 1 MB).
+im = Image.new("RGB", (1600, 1200), (120, 70, 40))
+d = ImageDraw.Draw(im)
+d.ellipse((200, 300, 1400, 1100), fill=(181, 140, 70))
+for i, c in enumerate([(224, 177, 58), (245, 240, 230), (192, 70, 58), (127, 163, 74), (217, 130, 43)]):
+    d.ellipse((330 + i * 200, 560, 530 + i * 200, 760), fill=c)
+save(im, "mam-le.jpg", 82)
+
+# Ảnh giấy chứng tử 1400 × 1000 (đính kèm: cạnh dài ≤ 2048, ≤ 2 MB).
+im = Image.new("RGB", (1400, 1000), (246, 243, 235))
+d = ImageDraw.Draw(im)
+d.rectangle((40, 40, 1360, 960), outline=(170, 60, 50), width=10)
+for i in range(12):
+    d.line((120, 160 + i * 60, 1280 if i % 3 else 800, 160 + i * 60), fill=(150, 140, 130), width=6)
+save(im, "giay-chung-tu.jpg", 85)

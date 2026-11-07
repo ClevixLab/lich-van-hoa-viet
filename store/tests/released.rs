@@ -661,3 +661,68 @@ fn deleted_person_text_not_left_in_database_files() {
     assert!(!find(&dir));
     let _ = std::fs::remove_dir_all(dir);
 }
+
+// ---------- Bộ mẫu Android 0.2.1 (bản Android đầu tiên có mô-đun Người thân; README của bộ mẫu ghi cách tạo) ----------
+
+const FIX_ANDROID_021: &str = "0.2.1/android";
+
+fn android_021_expected() -> Value {
+    serde_json::from_slice(
+        &std::fs::read(released().join("expected").join("0.2.1-android.json")).unwrap(),
+    )
+    .unwrap()
+}
+
+#[test]
+fn released_0_2_1_android_is_frozen() {
+    let d = released().join(FIX_ANDROID_021);
+    let m: Value =
+        serde_json::from_slice(&std::fs::read(d.join("manifest.json")).unwrap()).unwrap();
+    let files = m["files"].as_object().unwrap();
+    assert!(files.len() >= 10);
+    for (f, sha) in files {
+        assert_eq!(
+            sha256_hex(&std::fs::read(d.join(f)).unwrap()),
+            sha.as_str().unwrap(),
+            "{f} đã bị sửa — bộ mẫu đóng băng không được sửa"
+        );
+    }
+}
+
+/// Kho cùng phiên bản lược đồ: mở bản sao → `ok` (không chuyển đổi), trạng thái đúng từng byte như tệp kỳ vọng,
+/// từng ảnh/tệp đúng sha256; tệp sao lưu của bộ mẫu nhập vào kho trống cho cùng trạng thái.
+#[test]
+fn released_0_2_1_android_opens_unchanged() {
+    let fix = released().join(FIX_ANDROID_021);
+    let want = android_021_expected();
+    let dir = tmpdir("android-021");
+    copy_dir(&fix.join("store"), &dir);
+    let s = Store::open(&dir).unwrap();
+    assert_eq!(s.migration_status().state, "ok");
+    assert_eq!(state_doc(&s), want["state"]);
+    assert_eq!(s.state_hash().unwrap(), want["state_sha256"]);
+    assert_eq!(
+        json!(s.lock_screen_names().unwrap()),
+        want["lock_screen_names"]
+    );
+    for (id, sha) in want["photo_sha256"].as_object().unwrap() {
+        assert_eq!(
+            sha256_hex(&s.photo_bytes(id).unwrap()),
+            sha.as_str().unwrap()
+        );
+    }
+    for (id, sha) in want["attachment_sha256"].as_object().unwrap() {
+        assert_eq!(
+            sha256_hex(&s.attachment_bytes(id).unwrap()),
+            sha.as_str().unwrap()
+        );
+    }
+    drop(s);
+    let v = open_backup(&std::fs::read(fix.join("backup.lvhv")).unwrap(), PASSWORD).unwrap();
+    let dir2 = tmpdir("android-021-import");
+    let mut t = Store::open(&dir2).unwrap();
+    t.apply_import(&v, ImportMode::Replace).unwrap();
+    assert_eq!(t.state_hash().unwrap(), want["state_sha256"]);
+    let _ = std::fs::remove_dir_all(dir);
+    let _ = std::fs::remove_dir_all(dir2);
+}

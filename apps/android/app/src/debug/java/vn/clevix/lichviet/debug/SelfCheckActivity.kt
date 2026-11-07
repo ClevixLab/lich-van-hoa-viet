@@ -39,6 +39,8 @@ import vn.clevix.lichviet.people.s
  * - verify-readonly: bước chuyển 1 → 2 lỗi (CI thêm trigger chặn ghi bảng `meta`) → `read_only`: dữ liệu cũ xem được,
  *   mọi thao tác ghi bị từ chối; tệp sao lưu xuất ra mở lại được trọn vẹn và nhập vào kho trống cho đúng trạng thái kỳ
  *   vọng (B5 mục 3, MA3C-24-01). CI so thêm từng dòng mọi bảng và từng ảnh của kho trước/sau.
+ * - verify-released: bộ mẫu đóng băng của bản Android đã phát hành (`released/0.2.1/android`, …) mở bằng bản này — xem
+ *   [verifyReleased].
  */
 class SelfCheckActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -51,6 +53,7 @@ class SelfCheckActivity : Activity() {
                 "verify-prefs" -> verifyPrefs(this)
                 "verify-migrated" -> verifyMigrated(this)
                 "verify-readonly" -> verifyReadOnly(this)
+                "verify-released" -> verifyReleased(this)
                 else -> "FAIL thao tác lạ: $op"
             }
         } catch (e: Throwable) {
@@ -277,6 +280,69 @@ class SelfCheckActivity : Activity() {
             dir.deleteRecursively()
             return "OK read_only: $n người xem được, ghi bị từ chối; tệp sao lưu mở lại được ($n người, $photos ảnh), " +
                 "nhập vào kho trống khớp kỳ vọng (${gotAtt.size} tệp đính kèm đúng sha256); ${st.message}"
+        }
+
+        /**
+         * Bộ mẫu đóng băng của bản đã phát hành (`released/<bản>/android`, cùng phiên bản lược đồ): CI chép `store/` và
+         * `shared_prefs/` của bộ mẫu vào thư mục riêng của ứng dụng, cùng tệp kỳ vọng (`files/r14-expected.json`) và tệp
+         * sao lưu của bộ mẫu (`files/r14-backup.lvhv`). Mở bằng bản này → `ok` (không chuyển đổi), dữ liệu đúng từng
+         * trường, từng ảnh/tệp đúng sha256, tùy chọn trên máy còn nguyên; tệp sao lưu của bộ mẫu và tệp máy vừa xuất đều
+         * nhập được vào kho trống cho đúng dữ liệu kỳ vọng.
+         */
+        fun verifyReleased(ctx: Context): String {
+            val expF = File(ctx.filesDir, "r14-expected.json")
+            if (!expF.exists()) return "FAIL thiếu tệp kỳ vọng"
+            val exp = parseObj(expF.readText())
+            val want = exp.o("state") ?: return "FAIL tệp kỳ vọng hỏng"
+            PeopleStore.reset()
+            val repo = PeopleStore.get(ctx) ?: return "FAIL không mở được kho: ${PeopleStore.openError()}"
+            val st = repo.migration()
+            if (st.state != exp["migration_state"]) return "FAIL trạng thái ${st.state} (${st.message}), cần ${exp["migration_state"]}"
+            if (repo.readOnly) return "FAIL kho ở chế độ chỉ đọc"
+            diff(want, stateOf(parseObj(repo.datasetJson())))?.let { return "FAIL dữ liệu khác kỳ vọng tại $it" }
+            if (repo.lockScreenNames() != exp["lock_screen_names"]) return "FAIL tên trên màn hình khóa: ${repo.lockScreenNames()}"
+            for ((id, s) in exp.o("photo_sha256") ?: return "FAIL tệp kỳ vọng thiếu photo_sha256") {
+                val b = repo.photo(id) ?: return "FAIL mất ảnh $id"
+                if (sha(b) != s) return "FAIL sha256 ảnh $id"
+            }
+            for ((id, s) in exp.o("attachment_sha256") ?: return "FAIL tệp kỳ vọng thiếu attachment_sha256") {
+                val b = repo.attachmentBytes(id) ?: return "FAIL mất tệp đính kèm $id"
+                if (sha(b) != s) return "FAIL sha256 tệp đính kèm $id"
+            }
+            val prefs = exp.o("prefs") ?: return "FAIL tệp kỳ vọng thiếu prefs"
+            for ((file, kv) in prefs) {
+                val sp = ctx.getSharedPreferences(file, Context.MODE_PRIVATE).all
+                for ((k, v) in kv as Map<*, *>) diff(v, sp[k.toString()], "prefs/$file/$k")?.let { return "FAIL tùy chọn $it" }
+            }
+            val n = repo.persons().size
+            // Tệp sao lưu của bộ mẫu (do bản đã phát hành tạo) và tệp máy vừa xuất: mở lại, nhập vào kho trống, so.
+            val old = File(ctx.filesDir, "r14-backup.lvhv").takeIf { it.exists() }?.readBytes() ?: return "FAIL thiếu tệp sao lưu của bộ mẫu"
+            val now = runCatching { repo.exportBackup("mật khẩu thử nghiệm", vn.clevix.lichviet.BuildConfig.VERSION_NAME) }
+                .getOrElse { return "FAIL không xuất được sao lưu: ${it.message}" }
+            for ((name, bytes) in listOf("của bộ mẫu" to old, "vừa xuất" to now)) {
+                val (v, pv) = runCatching { PeopleRepo.openBackupFile(bytes, "mật khẩu thử nghiệm") }
+                    .getOrElse { return "FAIL tệp sao lưu $name không mở được: ${it.message}" }
+                if (pv.persons.toInt() != n) {
+                    v.destroy()
+                    return "FAIL tệp sao lưu $name có ${pv.persons} người, kho có $n"
+                }
+                val dir = File(ctx.cacheDir, "r14-import").apply { deleteRecursively(); mkdirs() }
+                val fresh = PeopleRepo(vn.clevix.lichviet.core.LvhvStore.open(dir.absolutePath))
+                runCatching { fresh.applyImport(v, true) }.also { v.destroy() }
+                    .onFailure { return "FAIL không nhập được tệp sao lưu $name vào kho trống: ${it.message}" }
+                val got = parseObj(fresh.datasetJson())
+                for (k in listOf("persons", "events", "event_types", "photos", "attachments")) {
+                    diff(want[k], got[k], "/$k")?.let { return "FAIL sao lưu $name → nhập khác kỳ vọng tại $it" }
+                }
+                for (a in got.objs("attachments")) {
+                    val b = fresh.attachmentBytes(a.s("id")) ?: return "FAIL mất tệp đính kèm ${a.s("id")} sau nhập ($name)"
+                    if (sha(b) != a.s("sha256")) return "FAIL sha256 tệp đính kèm ${a.s("id")} sau nhập ($name)"
+                }
+                dir.deleteRecursively()
+            }
+            return "OK released: trạng thái ${st.state}, $n người, ${repo.events().size} sự kiện, " +
+                "${exp.o("photo_sha256")!!.size} ảnh + ${exp.o("attachment_sha256")!!.size} tệp đính kèm đúng sha256, tùy chọn còn nguyên; " +
+                "tệp sao lưu của bộ mẫu và tệp vừa xuất nhập vào kho trống khớp kỳ vọng"
         }
 
         /** Giá trị CI ghi vào shared_prefs/hien_thi.xml trước khi cài đè (cỡ chữ A++, giao diện tối, "Để sau"). */

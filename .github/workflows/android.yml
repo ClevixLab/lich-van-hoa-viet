@@ -1,5 +1,7 @@
 # Android: dựng thư viện Rust (cargo-ndk) + APK/AAB release (R8). Không có khóa → bản không ký;
 # có đủ 4 secret LVHV_ANDROID_* → bản ký bằng khóa tải lên (upload key). Xem docs/04-BUILD-NATIVE.md.
+# Đăng bản phát hành (job `publish`): thẻ v* hoặc chạy tay với publish_release = true trên main; chỉ bản đã ký.
+# Tạo khóa và đặt 4 secret: scripts/tao-khoa-ky-android.ps1 (máy Windows của chủ dự án).
 name: android
 
 # Chỉ chạy khi mã hay dữ liệu mà bản Android dùng thay đổi (đường lọc không áp cho thẻ v*: thẻ luôn dựng).
@@ -39,6 +41,11 @@ on:
       - "VERSION"
       - ".github/workflows/android.yml"
   workflow_dispatch:
+    inputs:
+      publish_release:
+        description: "Đăng APK + AAB đã ký lên GitHub Releases v<VERSION> (chỉ từ main; cần 4 secret LVHV_ANDROID_*)"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -60,6 +67,9 @@ jobs:
   build:
     runs-on: ubuntu-24.04
     timeout-minutes: 60
+    outputs:
+      signed: ${{ steps.signed.outputs.signed }}
+      cert_sha256: ${{ steps.signed.outputs.cert_sha256 }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
@@ -237,6 +247,35 @@ jobs:
       - name: Xóa tệp khóa tạm
         if: always()
         run: rm -f "$RUNNER_TEMP/upload.jks"
+
+      # Bản release có được ký không (job `publish` chỉ đăng bản đã ký). APK: apksigner verify; AAB: chữ ký JAR, cùng
+      # chứng chỉ với APK. Dấu vân tay SHA-256 của chứng chỉ ghi vào tóm tắt run để chủ dự án so với dấu vân tay mà
+      # scripts/tao-khoa-ky-android.ps1 in ra lúc tạo khóa.
+      - name: Kiểm tra — bản release đã ký chưa
+        id: signed
+        working-directory: apps/android
+        run: |
+          APK=$(find app/build/outputs/apk/release -name "*.apk" | sort | head -1)
+          AAB=$(find app/build/outputs/bundle/release -name "*.aab" | sort | head -1)
+          echo "APK: $APK"; echo "AAB: $AAB"
+          APKSIGNER="$ANDROID_HOME/build-tools/35.0.0/apksigner"
+          if "$APKSIGNER" verify --print-certs "$APK" > "$RUNNER_TEMP/apk-certs.txt" 2>&1; then
+            cat "$RUNNER_TEMP/apk-certs.txt"
+            APK_SHA=$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' "$RUNNER_TEMP/apk-certs.txt" | tr -d ':[:space:]' | tr 'A-F' 'a-f')
+            AAB_SHA=$(keytool -printcert -jarfile "$AAB" 2>/dev/null | sed -n 's/^[[:space:]]*SHA256: //p' | head -1 | tr -d ':[:space:]' | tr 'A-F' 'a-f')
+            echo "Chứng chỉ APK: $APK_SHA"; echo "Chứng chỉ AAB: $AAB_SHA"
+            if [ -z "$APK_SHA" ] || [ "$APK_SHA" != "$AAB_SHA" ]; then
+              echo "::error::APK đã ký nhưng AAB không cùng chứng chỉ (APK: '$APK_SHA', AAB: '$AAB_SHA')."; exit 1
+            fi
+            echo "signed=true" >> "$GITHUB_OUTPUT"
+            echo "cert_sha256=$APK_SHA" >> "$GITHUB_OUTPUT"
+            { echo "### Android: bản release ĐÃ KÝ"; echo; echo "Chứng chỉ SHA-256: \`$APK_SHA\`"; } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+            echo "cert_sha256=" >> "$GITHUB_OUTPUT"
+            echo "Bản release KHÔNG ký ($(basename "$APK")) — không cài được trên điện thoại, không đăng phát hành."
+            { echo "### Android: bản release CHƯA KÝ"; echo; echo "Chưa có 4 secret LVHV_ANDROID_* — xem scripts/tao-khoa-ky-android.ps1."; } >> "$GITHUB_STEP_SUMMARY"
+          fi
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
@@ -426,3 +465,93 @@ jobs:
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           script: apps/android/ci/upgrade-test.sh "$RUNNER_TEMP/apk/new.apk" "$RUNNER_TEMP/apk/old-v0.1.4.apk" "$RUNNER_TEMP/apk/old-main.apk"
+
+  # Đăng bản phát hành: thẻ v* hoặc chạy tay (workflow_dispatch, publish_release = true) trên main. Chỉ sau khi dựng,
+  # kiểm thử giao diện và R14 trên trình giả lập đều đạt; chỉ đăng bản ĐÃ KÝ (bản không ký không cài được trên điện
+  # thoại) — chưa có khóa thì job đỏ với hướng dẫn. Không chạy mã của nhánh: chỉ lấy tạo phẩm `android-release` và
+  # CHANGELOG.md, VERSION.
+  publish:
+    needs: [build, ui, upgrade]
+    if: ${{ !cancelled() && needs.build.result == 'success' && needs.ui.result == 'success' && needs.upgrade.result == 'success' && (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.publish_release == true)) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          sparse-checkout: |
+            VERSION
+            CHANGELOG.md
+          sparse-checkout-cone-mode: false
+
+      - name: Điều kiện đăng — bản đã ký, đúng nhánh/thẻ
+        env:
+          SIGNED: ${{ needs.build.outputs.signed }}
+          REF: ${{ github.ref }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          V="$(tr -d '[:space:]' < VERSION)"
+          if [ "$SIGNED" != "true" ]; then
+            echo "::error::Bản release Android CHƯA KÝ nên không đăng: tệp APK không ký không cài được trên điện thoại. Cần đủ 4 secret của kho: LVHV_ANDROID_KEYSTORE_BASE64, LVHV_ANDROID_KEYSTORE_PASSWORD, LVHV_ANDROID_KEY_ALIAS, LVHV_ANDROID_KEY_PASSWORD. Chủ dự án tạo khóa và đặt secret bằng scripts/tao-khoa-ky-android.ps1 (Windows PowerShell), rồi chạy lại workflow này."
+            exit 1
+          fi
+          case "$REF" in
+            refs/tags/v*) [ "$REF_NAME" = "v$V" ] || { echo "::error::Thẻ $REF_NAME khác VERSION ($V): thẻ phải là v$V."; exit 1; } ;;
+            refs/heads/main) ;;
+            *) echo "::error::Chỉ đăng bản phát hành từ main hoặc thẻ v*, không từ $REF."; exit 1 ;;
+          esac
+          echo "Đăng v$V, chứng chỉ SHA-256 ${{ needs.build.outputs.cert_sha256 }}"
+
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: android-release
+          path: ${{ runner.temp }}/rel
+
+      - name: Đăng lên GitHub Releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+          CERT: ${{ needs.build.outputs.cert_sha256 }}
+        run: |
+          set -euo pipefail
+          V="$(tr -d '[:space:]' < VERSION)"
+          TAG="v$V"
+          OUT="$RUNNER_TEMP/dang"; mkdir -p "$OUT"
+          APK=$(find "$RUNNER_TEMP/rel" -path '*apk/release/*.apk' | sort | head -1)
+          AAB=$(find "$RUNNER_TEMP/rel" -path '*bundle/release/*.aab' | sort | head -1)
+          case "$APK" in *-unsigned.apk|"") echo "::error::Không có APK đã ký trong tạo phẩm ($APK)."; exit 1 ;; esac
+          [ -n "$AAB" ] || { echo "::error::Không có AAB trong tạo phẩm."; exit 1; }
+          cp "$APK" "$OUT/LichViet-$V.apk"
+          cp "$AAB" "$OUT/LichViet-$V.aab"
+          (cd "$OUT" && sha256sum "LichViet-$V.apk" "LichViet-$V.aab" > "LichViet-$V-android-SHA256SUMS.txt")
+          cat "$OUT/LichViet-$V-android-SHA256SUMS.txt"
+          # Ghi chú: mục "## [<VERSION>]" của CHANGELOG.md.
+          awk -v want="$V" '
+            /^## \[/ { v = $2; gsub(/[\[\]]/, "", v); on = (v == want) }
+            on { print }
+          ' CHANGELOG.md > "$OUT/changelog.md"
+          grep -q '^- ' "$OUT/changelog.md" || { echo "::error::CHANGELOG.md không có mục [$V] (hoặc mục rỗng)."; exit 1; }
+          {
+            echo "Bản thử nghiệm Lịch và Văn hóa Việt $TAG cho Android 8.0 trở lên, có mục Người thân như bản web"
+            echo "(ngày giỗ âm lịch, sinh nhật, nhắc trước, màn hình tưởng niệm, sao lưu ra tệp có mật khẩu)."
+            echo
+            echo "- **LichViet-$V.apk**: tệp cài trên điện thoại. Tải về, mở tệp, cho phép \"Cài ứng dụng không rõ nguồn gốc\" khi máy hỏi."
+            echo "- **LichViet-$V.aab**: gói dành cho cửa hàng ứng dụng, không cài trực tiếp được."
+            echo "- **LichViet-$V-android-SHA256SUMS.txt**: mã kiểm tra tệp."
+            echo
+            echo "Chứng chỉ ký (SHA-256): \`$CERT\`. Các bản cập nhật sau dùng cùng chứng chỉ này nên cài đè được, dữ liệu giữ nguyên."
+            echo "Ứng dụng không kết nối mạng và không thu thập dữ liệu."
+            echo
+            cat "$OUT/changelog.md"
+          } > "$OUT/release-notes.md"
+          cat "$OUT/release-notes.md"
+          if ! gh release view "$TAG" -R "$REPO" > /dev/null 2>&1; then
+            gh release create "$TAG" -R "$REPO" --target "$SHA" --prerelease --title "Lịch và Văn hóa Việt $TAG" --notes-file "$OUT/release-notes.md" \
+              || gh release view "$TAG" -R "$REPO" > /dev/null   # workflow khác vừa tạo cùng lúc (thẻ v*)
+          else
+            echo "Đã có bản phát hành $TAG (ví dụ do Windows tạo): chỉ thêm tệp Android, không sửa ghi chú."
+          fi
+          gh release upload "$TAG" -R "$REPO" --clobber "$OUT/LichViet-$V.apk" "$OUT/LichViet-$V.aab" "$OUT/LichViet-$V-android-SHA256SUMS.txt"
+          gh release view "$TAG" -R "$REPO" --json url,assets --jq '.url, (.assets[].name)'

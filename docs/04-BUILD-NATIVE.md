@@ -84,9 +84,9 @@ nếu muốn dùng `./gradlew`.
 Ký bản phát hành trên máy: tạo `apps/android/keystore.properties` (đã nằm trong `.gitignore`):
 
 ```
-storeFile=C:/Users/<tên>/ClevixKeys/lichviet-upload.jks
+storeFile=C:/Users/<tên>/ClevixLab/khoa-ky-android/lichviet-release.jks
 storePassword=...
-keyAlias=lichviet-upload
+keyAlias=lichviet
 keyPassword=...
 ```
 
@@ -237,20 +237,40 @@ https://slint.dev/terms-and-conditions trước khi phát hành để xác nhậ
 ### 3.5 Tạo khóa ký Android (Windows)
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File apps\windows\scripts\New-AndroidUploadKeystore.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\tao-khoa-ky-android.ps1
 ```
 
-Không cần sửa script. Script tìm `keytool` (JDK hoặc Android Studio), hỏi mật khẩu (ẩn), tạo
-`%USERPROFILE%\ClevixKeys\lichviet-upload.jks` (RSA 4096, 10 000 ngày, PKCS12), ghi tệp Base64, chép
-vào clipboard, in 4 secret cần đặt và dấu vân tay SHA-256. Script không ghi đè khóa cũ. **Sao lưu tệp
-.jks và mật khẩu.**
+Không cần sửa script. Script kiểm `keytool` (JDK hoặc Android Studio) và GitHub CLI (`gh`, đã đăng nhập, có quyền
+quản trị kho); thiếu thì in đúng lệnh cài (`winget install --id EclipseAdoptium.Temurin.17.JDK -e`,
+`winget install --id GitHub.cli -e`, `gh auth login`). Rồi hỏi mật khẩu (ẩn, ≥ 12 ký tự không dấu), tạo
+`%USERPROFILE%\ClevixLab\khoa-ky-android\lichviet-release.jks` (PKCS12, RSA 4096, 10 000 ngày, bí danh `lichviet`),
+in dấu vân tay SHA-256, ghi `thong-tin-khoa.txt` (không có mật khẩu) và đặt thẳng 4 secret `LVHV_ANDROID_*` bằng
+`gh secret set` (giá trị qua đầu vào chuẩn, không qua dòng lệnh). Script **không bao giờ ghi đè** khóa đã có: chạy lại
+thì dùng lại khóa đó (hỏi mật khẩu để kiểm). Kho đã có secret thì phải gõ `CO` mới thay. Mọi tệp chỉ ghi trong thư mục
+khóa. **Sao lưu tệp .jks và mật khẩu: mất một trong hai thì không bao giờ cập nhật được ứng dụng cho người đã cài từ
+APK.**
+
+Khóa này là khóa ký ứng dụng của bản phát hành qua GitHub Releases. Khi lên Google Play, chọn dùng khóa ký đã có cho
+Play App Signing để bản Play cài đè được bản APK. Script cũ `apps/windows/scripts/New-AndroidUploadKeystore.ps1`
+(khóa `%USERPROFILE%\ClevixKeys\lichviet-upload.jks`, chỉ in giá trị để tự dán) được thay bằng script này.
+
+Đăng bản phát hành Android (sau khi đã có 4 secret):
+
+```powershell
+gh workflow run android.yml --repo ClevixLab/lich-van-hoa-viet --ref main -f publish_release=true
+```
+
+Job `publish` của `android.yml` chờ `build`, `ui`, `upgrade` đạt, kiểm bản release đã ký (APK bằng `apksigner`, AAB
+cùng chứng chỉ), rồi đăng `LichViet-<VERSION>.apk`, `LichViet-<VERSION>.aab` và `LichViet-<VERSION>-android-SHA256SUMS.txt`
+lên bản phát hành `v<VERSION>` (tạo mới dạng prerelease nếu chưa có, ghi chú lấy từ mục `[<VERSION>]` của CHANGELOG
+và dấu vân tay chứng chỉ). Bản không ký → job đỏ với hướng dẫn, không đăng gì. Chỉ đăng từ `main` hoặc thẻ `v*`.
 
 ## 4. CI (GitHub Actions)
 
 | Workflow | Khi chạy | Làm gì | Sản phẩm (Artifacts) |
 |---|---|---|---|
 | `ci.yml` | mọi push / PR | `cargo fmt --check`, `clippy -D warnings`, `cargo test --workspace --release`, kiểm S1 (không `unsafe` trong core), sinh lại mã UniFFI và so với `ffi/generated`, `cargo-deny check advisories`, sinh lại `core/out/*` bằng `lvhv-dump` rồi chạy `tsport` L7 (`npm test`), typecheck + build PWA, kiểm thử khói Playwright (Chromium) | `ffi-bindings`, `pwa-dist`, `pwa-smoke` |
-| `android.yml` | push `main`, thẻ `v*`, PR | NDK r27c + cargo-ndk → `.so` 3 ABI; Gradle 8.11.1: unit test, lint, `assembleRelease` + `bundleRelease` (R8); kiểm APK không có `uses-permission` và có đủ `.so` | `android-release` (APK, AAB, mapping.txt), `android-lint-report` |
+| `android.yml` | push `main`, thẻ `v*`, PR, chạy tay (`publish_release`) | NDK r27c + cargo-ndk → `.so` 3 ABI; Gradle 8.11.1: unit test, lint, `assembleRelease` + `bundleRelease` (R8); kiểm quyền, `.so`, bản đã ký chưa; R14 trên trình giả lập; thẻ `v*` hoặc `publish_release` trên `main`: đăng APK + AAB đã ký lên GitHub Releases (mục 3.5) | `android-release` (APK, AAB, mapping.txt), `android-lint-report`; bản phát hành `v<VERSION>` |
 | `apple.yml` | push `main`, thẻ `v*`, PR | XCFramework 5 target, XcodeGen, `xcodebuild` iOS Simulator + iOS thiết bị + macOS (không ký), kiểm PrivacyInfo/phông/quyền mạng, chạy thử trên Simulator và chụp màn hình | `apple-unsigned` (zip .app iOS Simulator, zip .app macOS, ảnh) |
 | `windows.yml` | push `main`, thẻ `v*`, PR | `cargo test` (gồm kiểm thử giao diện), `cargo build --release`, đo RAM, chụp 11 màn hình (`--chup-man-hinh`), ký Authenticode nếu có chứng chỉ, gói zip + MSI | `windows-x64`, `windows-screens` |
 | `pwa-pages.yml` | thẻ `v*`, chạy tay | build PWA, đăng `pwa/dist` lên GitHub Pages | trang Pages |
@@ -326,10 +346,10 @@ xem thì dựng với `LVHV_BUILD_DATE` lùi hơn 60 ngày), đường `getInsta
 
 | Secret | Dùng bởi | Nội dung |
 |---|---|---|
-| `LVHV_ANDROID_KEYSTORE_BASE64` | android.yml | Base64 của `lichviet-upload.jks` (script mục 3.5 in sẵn) |
+| `LVHV_ANDROID_KEYSTORE_BASE64` | android.yml | Base64 của `lichviet-release.jks` (script mục 3.5 tự đặt) |
 | `LVHV_ANDROID_KEYSTORE_PASSWORD` | android.yml | mật khẩu kho khóa |
-| `LVHV_ANDROID_KEY_ALIAS` | android.yml | `lichviet-upload` |
-| `LVHV_ANDROID_KEY_PASSWORD` | android.yml | mật khẩu khóa (script dùng cùng mật khẩu kho khóa) |
+| `LVHV_ANDROID_KEY_ALIAS` | android.yml | `lichviet` |
+| `LVHV_ANDROID_KEY_PASSWORD` | android.yml | mật khẩu khóa (PKCS12: bằng mật khẩu kho khóa) |
 | `LVHV_WIN_CERT_PFX_BASE64` | windows.yml | Base64 của chứng chỉ ký mã `.pfx` (tùy chọn) |
 | `LVHV_WIN_CERT_PASSWORD` | windows.yml | mật khẩu `.pfx` |
 
