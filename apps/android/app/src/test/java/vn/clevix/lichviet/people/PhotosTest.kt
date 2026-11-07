@@ -94,4 +94,51 @@ class PhotosTest {
     fun garbageIsRejected() {
         Photos.encode(ByteArray(100) { it.toByte() })
     }
+
+    /** PNG chỉ có phần đầu khai kích thước [w] × [h] (IDAT rất nhỏ): bom giải nén nếu giải mã đầy đủ. */
+    private fun bombPng(w: Int, h: Int): ByteArray {
+        fun be(v: Int) = byteArrayOf((v ushr 24).toByte(), (v ushr 16).toByte(), (v ushr 8).toByte(), v.toByte())
+        fun chunk(type: String, data: ByteArray): ByteArray {
+            val t = type.toByteArray(Charsets.US_ASCII)
+            val crc = java.util.zip.CRC32().apply { update(t); update(data) }.value.toInt()
+            return be(data.size) + t + data + be(crc)
+        }
+        val ihdr = be(w) + be(h) + byteArrayOf(8, 2, 0, 0, 0) // 8 bit, RGB
+        val idat = java.util.zip.Deflater().run { setInput(ByteArray(1024)); finish(); val o = ByteArray(2048); val n = deflate(o); o.copyOf(n) }
+        return byteArrayOf(0x89.toByte(), 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A) +
+            chunk("IHDR", ihdr) + chunk("IDAT", idat) + chunk("IEND", ByteArray(0))
+    }
+
+    /** BM2-10: ảnh khai kích thước khổng lồ không bao giờ được giải mã (hiển thị → null, thêm ảnh → lỗi rõ ràng). */
+    @Test
+    fun hugeDeclaredImageIsNeverDecoded() {
+        val bomb = bombPng(30_000, 30_000)
+        val b = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        android.graphics.BitmapFactory.decodeByteArray(bomb, 0, bomb.size, b)
+        assertEquals("phần đầu tệp phải đọc được kích thước khai", 30_000, b.outWidth)
+        assertEquals(null, Photos.bitmap(bomb))
+        assertEquals(null, Photos.bitmap(bombPng(8_000, 8_000))) // 64 Mpx > 50 Mpx
+        try {
+            Photos.encode(bomb)
+            org.junit.Assert.fail("encode phải từ chối")
+        } catch (e: Photos.PhotoError) {
+            assertTrue(e.message!!.contains("quá lớn"))
+        }
+        assertEquals(null, Photos.bitmap(ByteArray(64) { 7 }))
+    }
+
+    /** BM2-10: ảnh lớn hợp lệ được lấy mẫu xuống khi hiển thị (cạnh dài ≤ DISPLAY_EDGE). */
+    @Test
+    fun displayDecodeIsSampled() {
+        val bmp = Bitmap.createBitmap(5000, 2500, Bitmap.Config.RGB_565).apply { eraseColor(Color.GRAY) }
+        val bos = ByteArrayOutputStream()
+        bmp.compress(Bitmap.CompressFormat.JPEG, 60, bos)
+        val shown = Photos.bitmap(bos.toByteArray())!!
+        assertTrue("cạnh dài ${shown.width} phải ≤ ${Photos.DISPLAY_EDGE}", maxOf(shown.width, shown.height) <= Photos.DISPLAY_EDGE)
+        assertEquals(1, Photos.sampleFor(2048, 100, 2048))
+        assertEquals(2, Photos.sampleFor(2049, 100, 2048))
+        assertEquals(8, Photos.sampleFor(12_000, 9_000, 2048))
+        val small = Photos.bitmap(bos.toByteArray(), maxEdge = 300)!!
+        assertTrue(maxOf(small.width, small.height) <= 300)
+    }
 }

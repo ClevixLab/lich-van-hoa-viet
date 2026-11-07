@@ -62,6 +62,7 @@ fun icsPreview(content: String, n: Int = 2): List<String> {
 /** Sao lưu và lịch điện thoại — 08 §3.8 (bản Android: chia sẻ .ics, lưu/mở tệp qua Storage Access Framework). */
 @Composable
 fun BackupScreen(x: PeopleCtx) {
+    SecureScreen() // BM2-04: ô mật khẩu sao lưu, xem trước tệp sao lưu
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     val settings = remember(x.rev) { runCatching { x.repo.settings() }.getOrNull() }
@@ -114,7 +115,8 @@ fun BackupScreen(x: PeopleCtx) {
     var busy by remember { mutableStateOf(false) }
     var exportErr by remember { mutableStateOf<String?>(null) }
     val createDoc = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { uri ->
-        if (uri == null) { busy = false; return@rememberLauncherForActivityResult }
+        // BM2-17: xóa mật khẩu ở mọi nhánh (hủy chọn nơi lưu, lỗi, thành công) — người dùng nhập lại khi thử lại.
+        if (uri == null) { busy = false; pw1 = ""; pw2 = ""; pwTouched = false; return@rememberLauncherForActivityResult }
         val pw = pw1
         scope.launch {
             val r = withContext(Dispatchers.Default) {
@@ -124,8 +126,9 @@ fun BackupScreen(x: PeopleCtx) {
                 }
             }
             busy = false
+            pw1 = ""; pw2 = ""; pwTouched = false
             r.onSuccess {
-                exportOpen = false; pw1 = ""; pw2 = ""; pwTouched = false
+                exportOpen = false
                 x.changed()
                 x.toast("Đã tạo tệp sao lưu. Hãy cất tệp ở nơi an toàn (ổ đám mây, USB) — tệp không tự gửi đi đâu.")
             }.onFailure { exportErr = "Chưa tạo được tệp sao lưu: ${errText(it)}" }
@@ -141,7 +144,7 @@ fun BackupScreen(x: PeopleCtx) {
         } else {
             // Bản Android: các ô mật khẩu mở ngay trong khung (không đặt ô nhập trong hộp thoại) — 08 §13.
             val e1 = if (pwTouched && pwLen(pw1) < 8) "Mật khẩu cần ít nhất 8 ký tự" else null
-            val e2 = if (pwTouched && e1 == null && pw1 != pw2) "Hai lần nhập mật khẩu chưa giống nhau" else null
+            val e2 = if (pwTouched && e1 == null && !pwSame(pw1, pw2)) "Hai lần nhập mật khẩu chưa giống nhau" else null
             H3("Tạo tệp sao lưu")
             Body("Tệp sẽ chứa ${ds.first} người, ${ds.second} sự kiện, ${ds.third} ảnh — đã mã hóa bằng mật khẩu.")
             Fine("Tệp gồm cả thông tin báo tử (người báo tin, nơi mất, lý do, ảnh giấy báo tử) — chỉ ai biết mật khẩu mới đọc được.")
@@ -153,7 +156,7 @@ fun BackupScreen(x: PeopleCtx) {
             exportErr?.let { ErrorText(it) }
             PrimaryButton(if (busy) "Đang mã hóa…" else "Tạo và lưu tệp", {
                 pwTouched = true
-                if (pwLen(pw1) >= 8 && pw1 == pw2) {
+                if (pwLen(pw1) >= 8 && pwSame(pw1, pw2)) {
                     busy = true
                     exportErr = null
                     createDoc.launch("LichVanHoaViet-saoluu-$today.lvhv")
@@ -190,7 +193,8 @@ fun BackupScreen(x: PeopleCtx) {
                     }
                 }
                 opening = false
-                r.onSuccess { verified = it }.onFailure { openErr = errText(it) }
+                // BM2-17: mật khẩu xóa ngay cả khi sai mật khẩu / tệp hỏng; khi đúng, xóa lúc đóng tấm xem trước.
+                r.onSuccess { verified = it }.onFailure { pwIn = ""; openErr = errText(it) }
             }
         }, Modifier.fillMaxWidth(), enabled = !opening)
         if (opening) LinearProgressIndicator(Modifier.fillMaxWidth())
@@ -228,6 +232,11 @@ fun BackupScreen(x: PeopleCtx) {
             }
         }
     }
+    // Rời màn hình khi tấm xem trước còn mở (nút Quay lại, đổi thẻ): vẫn thả bản rõ ở phía Rust (BM2-17).
+    val latestVerified = androidx.compose.runtime.rememberUpdatedState(verified)
+    androidx.compose.runtime.DisposableEffect(Unit) {
+        onDispose { latestVerified.value?.first?.let { runCatching { it.destroy() } } }
+    }
     verified?.let { (_, pv) ->
         RestoreDialogs(
             pv = pv, currentPersons = ds.first, replace = replace, confirmReplace = confirmReplace, busy = importing,
@@ -258,6 +267,10 @@ fun pwLen(pw: String): Int {
     val n = java.text.Normalizer.normalize(pw, java.text.Normalizer.Form.NFC)
     return n.codePointCount(0, n.length)
 }
+
+/** Hai lần nhập giống nhau sau NFC (BM2-23): cùng mật khẩu gõ bằng hai bộ gõ (NFC/NFD) không bị báo khác. */
+fun pwSame(a: String, b: String): Boolean =
+    java.text.Normalizer.normalize(a, java.text.Normalizer.Form.NFC) == java.text.Normalizer.normalize(b, java.text.Normalizer.Form.NFC)
 
 /** Hộp xem trước khôi phục (Gộp / Thay toàn bộ) và hộp xác nhận thứ hai "Thay toàn bộ" (08 §3.8 C). */
 @Composable
@@ -349,10 +362,22 @@ fun readBackupBytes(input: java.io.InputStream, size: Long): ByteArray? {
     return out.toByteArray()
 }
 
+/**
+ * Xóa tệp tạm để chia sẻ (`cache/ics/`, có tên và ngày giỗ) cũ hơn [olderThanMs] — BM2-16. Gọi khi mở ứng dụng (0: xóa
+ * hết) và mỗi lần quay lại ứng dụng (ứng dụng nhận đã đọc xong). Không bao giờ ném lỗi.
+ */
+fun cleanShareCache(ctx: Context, olderThanMs: Long, nowMs: Long = System.currentTimeMillis()) {
+    runCatching {
+        File(ctx.cacheDir, "ics").listFiles()?.forEach { f ->
+            if (olderThanMs <= 0L || nowMs - f.lastModified() >= olderThanMs) f.delete()
+        }
+    }
+}
+
 /** Ghi .ics vào cache/ics/ (xóa tệp cũ) rồi mở bảng chia sẻ của hệ thống. */
 private fun shareIcs(ctx: Context, e: IcsExport) {
     val dir = File(ctx.cacheDir, "ics").apply { mkdirs() }
-    dir.listFiles()?.forEach { it.delete() }
+    cleanShareCache(ctx, 0L)
     val f = File(dir, e.fileName)
     f.writeText(e.content, Charsets.UTF_8)
     val uri = FileProvider.getUriForFile(ctx, ctx.packageName + ".files", f)

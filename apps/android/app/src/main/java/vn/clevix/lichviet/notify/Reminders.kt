@@ -57,12 +57,39 @@ object PeopleStore {
 object Reminders {
     const val ACTION_ALARM = "vn.clevix.lichviet.action.NHAC"
     const val EXTRA_OPEN = "vn.clevix.lichviet.extra.MO"
+    /** Mã ngẫu nhiên chỉ ứng dụng biết (BM2-19): Intent mang [EXTRA_OPEN] phải kèm đúng mã này mới được mở hồ sơ. */
+    const val EXTRA_TOKEN = "vn.clevix.lichviet.extra.MA"
+    private const val KEY_TOKEN = "open_token"
     const val CHANNEL = "nhac-ngay-gio"
     private const val PREFS = "nhac_viec"
     private const val KEY_LAST = "last_run_unix_s"
     private const val KEY_ASKED = "asked_post_notifications"
 
     private val worker = Executors.newSingleThreadExecutor { r -> Thread(r, "lvhv-nhac").apply { isDaemon = true } }
+
+    /**
+     * Mã mở hồ sơ từ thông báo (BM2-19): 128 bit ngẫu nhiên, tạo một lần, lưu trong SharedPreferences riêng của ứng
+     * dụng. Chỉ PendingIntent của chính ứng dụng mang được mã này; ứng dụng khác gửi Intent tới MainActivity (exported vì
+     * là LAUNCHER) không biết mã → chỉ mở ứng dụng, không mở thẳng trang hồ sơ có thông tin báo tử.
+     */
+    @Synchronized
+    fun openToken(ctx: Context): String {
+        val p = prefs(ctx)
+        p.getString(KEY_TOKEN, null)?.let { if (it.length == 32) return it }
+        val b = ByteArray(16).also { java.security.SecureRandom().nextBytes(it) }
+        val t = b.joinToString("") { "%02x".format(it) }
+        p.edit().putString(KEY_TOKEN, t).commit()
+        return t
+    }
+
+    /** Id hồ sơ/sự kiện cần mở nếu Intent đến từ thông báo của ứng dụng (đúng mã), ngược lại null. */
+    fun acceptOpen(ctx: Context, intent: Intent?): String? {
+        val id = intent?.getStringExtra(EXTRA_OPEN) ?: return null
+        val got = intent.getStringExtra(EXTRA_TOKEN) ?: return null
+        val want = prefs(ctx).getString(KEY_TOKEN, null) ?: return null
+        val ok = java.security.MessageDigest.isEqual(got.toByteArray(Charsets.US_ASCII), want.toByteArray(Charsets.US_ASCII))
+        return if (ok && id.length <= 64) id else null
+    }
 
     /** Đặt lại chuỗi trên luồng nền (mở ứng dụng, lưu, nhập sao lưu). */
     fun rearmAsync(ctx: Context, done: (() -> Unit)? = null) {
@@ -182,6 +209,7 @@ object Reminders {
             val open = Intent(ctx, MainActivity::class.java)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
                 .putExtra(EXTRA_OPEN, r.entityId)
+                .putExtra(EXTRA_TOKEN, openToken(ctx))
             val pi = PendingIntent.getActivity(
                 ctx, AlarmChain.notificationId(r.id), open,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,

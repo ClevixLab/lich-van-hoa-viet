@@ -6,6 +6,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.hasScrollAction
@@ -73,6 +74,8 @@ class PeopleScreensTest {
     private lateinit var ids: Seed.Ids
     private val nav = PeopleNav()
     private var variant by mutableStateOf(V.Light)
+    /** Activity chứa nội dung kiểm thử (để đọc cờ FLAG_SECURE của cửa sổ — BM2-04). */
+    private var act: android.app.Activity? = null
     private val shotDir = File(System.getProperty("lvhv.screenshots.dir") ?: "build/screenshots")
 
     @Before
@@ -85,6 +88,7 @@ class PeopleScreensTest {
     private fun show(r: PeopleRepo? = repo, start: PRoute = PRoute.Upcoming, reduced: Boolean = true) {
         nav.tab(start)
         rule.setContent {
+            act = LocalContext.current.findActivity()
             val d = LocalDensity.current
             CompositionLocalProvider(LocalDensity provides Density(d.density, d.fontScale * variant.scale)) {
                 LichTheme(variant.mode, 1f) {
@@ -110,6 +114,35 @@ class PeopleScreensTest {
     private fun go(r: PRoute) {
         rule.runOnIdle { nav.tab(PRoute.Profiles); if (r != PRoute.Profiles) nav.go(r) }
         rule.waitForIdle()
+    }
+
+    /** BM2-04: cửa sổ đặt FLAG_SECURE (ảnh đa nhiệm trống) đúng ở các màn hình nhạy cảm, gỡ khi rời đi. */
+    @Test
+    fun flagSecureOnlyOnSensitiveScreens() {
+        show()
+        fun secure(): Boolean { rule.waitForIdle(); return SecureWindow.isSecure(act!!) }
+        assertFalse("Sắp tới không che", secure())
+        go(PRoute.Backup)
+        assertTrue("Sao lưu (ô mật khẩu) phải che", secure())
+        go(PRoute.Profiles)
+        assertFalse("rời Sao lưu → gỡ che", secure())
+        go(PRoute.PersonPage(ids.d))
+        assertTrue("hồ sơ có thông tin báo tử phải che", secure())
+        go(PRoute.PersonPage(ids.b))
+        assertFalse("hồ sơ người đã mất không có báo tử không che", secure())
+        go(PRoute.PersonPage(ids.c))
+        assertFalse("hồ sơ người đang sống không che", secure())
+        go(PRoute.MarkDeceased(ids.m))
+        assertTrue("biểu mẫu báo tử phải che", secure())
+        go(PRoute.EditPerson(ids.d))
+        assertTrue("sửa hồ sơ người đã mất (khối báo tử) phải che", secure())
+        go(PRoute.Upcoming)
+        assertFalse("về danh sách → gỡ che", secure())
+        // Hai màn hình che chồng nhau (Sao lưu → hồ sơ có báo tử → quay lại): không hở khi một màn hình rời đi.
+        rule.runOnIdle { nav.tab(PRoute.Backup); nav.go(PRoute.PersonPage(ids.d)) }
+        assertTrue(secure())
+        rule.runOnIdle { nav.back() }
+        assertTrue("quay lại Sao lưu vẫn che", secure())
     }
 
     @Test

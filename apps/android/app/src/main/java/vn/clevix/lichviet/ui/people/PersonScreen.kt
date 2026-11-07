@@ -94,6 +94,8 @@ fun PersonScreen(x: PeopleCtx, id: String) {
 
     // Thông tin báo tử: chỉ ở đây (R-PRIV-2), thu gọn.
     val n = p.notice
+    // BM2-04: thông tin báo tử trên màn hình → che ảnh đa nhiệm.
+    SecureScreen(p.deceased && n != null && noticeHasContent(n))
     if (p.deceased && n != null && noticeHasContent(n)) NoticeView(x, n)
 
     PCard(title = "Sự kiện") {

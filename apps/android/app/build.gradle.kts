@@ -196,6 +196,11 @@ if (!project.hasProperty("lvhv.hostOnly")) {
     tasks.named("preBuild") { dependsOn(checkRustArtifacts) }
 }
 
+// S11 / BM2-09: khóa phụ thuộc. CI chạy `:app:dependencies --write-locks` để sinh app/gradle.lockfile (đồ thị đã phân giải,
+// gồm phụ thuộc bắc cầu) rồi quét lỗ hổng bằng osv-scanner. Khi tệp khóa được commit, mọi lần dựng phải khớp nó.
+dependencyLocking {
+    lockAllConfigurations()
+}
 
 dependencies {
     // Compose BOM 2024.12.01 (Compose 1.7.6, Material3 1.3.1).

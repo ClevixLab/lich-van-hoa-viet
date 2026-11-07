@@ -78,6 +78,7 @@ import vn.clevix.lichviet.notify.Reminders
 import vn.clevix.lichviet.ui.people.PRoute
 import vn.clevix.lichviet.ui.people.PeopleModule
 import vn.clevix.lichviet.ui.people.PeopleNav
+import vn.clevix.lichviet.ui.people.cleanShareCache
 
 /** Tùy chọn hiển thị: chỉ cỡ chữ và chế độ sáng/tối (giống PWA). Không lưu dữ liệu khác. */
 private object Prefs {
@@ -108,7 +109,10 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         val ctx = applicationContext
-        openRequest.value = intent?.getStringExtra(Reminders.EXTRA_OPEN)
+        // BM2-19: chỉ nhận yêu cầu mở hồ sơ kèm mã của chính ứng dụng (từ thông báo nhắc).
+        if (savedInstanceState == null) openRequest.value = Reminders.acceptOpen(ctx, intent)
+        // BM2-16: tệp .ics tạm của lần chia sẻ trước (có tên, ngày giỗ) không nằm lại trong cache.
+        cleanShareCache(ctx, 0L)
         setContent {
             var size by rememberSaveable { mutableIntStateOf(Prefs.size(ctx).coerceIn(1, 3)) }
             var theme by rememberSaveable { mutableStateOf(Prefs.theme(ctx)) }
@@ -134,13 +138,15 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        intent.getStringExtra(Reminders.EXTRA_OPEN)?.let { openRequest.value = it }
+        Reminders.acceptOpen(applicationContext, intent)?.let { openRequest.value = it }
     }
 
     override fun onResume() {
         super.onResume()
         // Mở ứng dụng: đặt lại chuỗi báo thức nhắc việc (02 §7.3). Chưa có sổ người thân → không làm gì.
         Reminders.rearmAsync(this)
+        // Quay lại sau khi chia sẻ .ics: ứng dụng nhận đã đọc xong → xóa tệp tạm (chừa 30 s cho ứng dụng đọc chậm).
+        cleanShareCache(applicationContext, 30_000L)
     }
 }
 

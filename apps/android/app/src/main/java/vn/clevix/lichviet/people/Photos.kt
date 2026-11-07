@@ -52,6 +52,12 @@ object Photos {
 
     /** Giải mã + xoay + thu nhỏ + mã hóa lại. */
     fun encode(raw: ByteArray): EncodedImage {
+        // Trần điểm ảnh trước khi giải mã (T-D3): đọc kích thước từ phần đầu tệp.
+        val b = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        runCatching { BitmapFactory.decodeByteArray(raw, 0, raw.size, b) }
+        if (b.outWidth > MAX_DECLARED_EDGE || b.outHeight > MAX_DECLARED_EDGE ||
+            b.outWidth.toLong() * b.outHeight > MAX_DECLARED_PIXELS
+        ) throw PhotoError("Ảnh quá lớn (${b.outWidth} × ${b.outHeight} điểm ảnh) — hãy chọn ảnh nhỏ hơn")
         val bmp = decode(raw) ?: throw PhotoError("Không đọc được ảnh này (định dạng không hỗ trợ)")
         val scale = MAX_EDGE.toFloat() / max(bmp.width, bmp.height)
         var w = bmp.width
@@ -119,6 +125,33 @@ object Photos {
         return Bitmap.createBitmap(b, 0, 0, b.width, b.height, m, true)
     }
 
-    /** Giải mã byte đã lưu để hiển thị. */
-    fun bitmap(bytes: ByteArray): Bitmap? = runCatching { BitmapFactory.decodeByteArray(bytes, 0, bytes.size) }.getOrNull()
+    /** Cạnh dài tối đa của ảnh giải mã để hiển thị (ảnh lưu ≤ 1024 px, tệp đính kèm ≤ 2048 px — 01 §3.8, §3.8a). */
+    const val DISPLAY_EDGE = 2048
+    /** Trần kích thước khai báo trong phần đầu tệp: vượt → không giải mã (bom giải nén, BM2-10, B6 mục 3). */
+    const val MAX_DECLARED_EDGE = 12_000
+    const val MAX_DECLARED_PIXELS = 50_000_000L
+
+    /**
+     * Giải mã byte đã lưu để hiển thị, có giới hạn bộ nhớ (BM2-10): đọc kích thước từ phần đầu tệp trước
+     * (`inJustDecodeBounds`), từ chối kích thước bất thường, lấy mẫu xuống (`inSampleSize`) để cạnh dài ≤ [maxEdge]. Mọi
+     * đường hiển thị ảnh (chân dung, ảnh giấy tờ, màn hình tưởng niệm, xem trước biểu mẫu) đều qua hàm này. Lỗi → null
+     * (giao diện hiện khung trống), không bao giờ sập.
+     */
+    fun bitmap(bytes: ByteArray, maxEdge: Int = DISPLAY_EDGE): Bitmap? = runCatching {
+        val b = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeByteArray(bytes, 0, bytes.size, b)
+        val w = b.outWidth
+        val h = b.outHeight
+        if (w <= 0 || h <= 0 || w > MAX_DECLARED_EDGE || h > MAX_DECLARED_EDGE || w.toLong() * h > MAX_DECLARED_PIXELS) {
+            return@runCatching null
+        }
+        BitmapFactory.decodeByteArray(bytes, 0, bytes.size, BitmapFactory.Options().apply { inSampleSize = sampleFor(w, h, maxEdge) })
+    }.getOrNull()
+
+    /** Hệ số lấy mẫu (lũy thừa của 2) để cạnh dài ≤ [maxEdge]. */
+    fun sampleFor(w: Int, h: Int, maxEdge: Int): Int {
+        var s = 1
+        while (max(w, h) / s > maxEdge) s *= 2
+        return s
+    }
 }

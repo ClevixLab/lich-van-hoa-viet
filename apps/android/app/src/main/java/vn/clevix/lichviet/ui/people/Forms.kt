@@ -314,6 +314,7 @@ fun PersonForm(x: PeopleCtx, id: String?, deceasedNew: Boolean?) {
             photoErr?.let { ErrorText(it) }
             Fine("Ảnh chỉ lưu trong ứng dụng trên máy này, đã bỏ thông tin vị trí và máy chụp.")
         }
+        SecureScreen() // BM2-04: khối thông tin báo tử
         NoticeEditor(f.notice, startOpen = f.notice.hadNotice, showErrors = showErrors, today = x.today, repo = x.repo)
         PCard(title = "Nhắc ngày giỗ") {
             RuleEditor(f.gio, "Nhắc ngày giỗ", showTienThuong = true, showErrors = showErrors)

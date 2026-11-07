@@ -28,6 +28,7 @@ import vn.clevix.lichviet.people.sn
  */
 @Composable
 fun MarkDeceasedForm(x: PeopleCtx, id: String) {
+    SecureScreen() // BM2-04: biểu mẫu thông tin báo tử
     val p = remember(id) { x.repo.person(id) }
     if (p == null) {
         BackLink("Về hồ sơ") { x.nav.back() }
