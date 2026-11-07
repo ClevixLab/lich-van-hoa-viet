@@ -19,7 +19,9 @@
       "width": 2295,
       "height": 1836,
       "file": "ga-luoc-1.jpg",
-      "sha256": ""
+      "sha256": "2c14f25bcf03027221df89620d582af0068ff043455f446f0b7843468f76703b",
+      "download_url": "https://upload.wikimedia.org/wikipedia/commons/e/e2/Chicken_in_Hanoi.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "stored_at": "content/memorial/photos/originals/ga-luoc-1.jpg"
     },
     {
       "id": "ga-luoc-2",
@@ -59,7 +61,9 @@
       "width": 4000,
       "height": 3000,
       "file": "khoanh-gio-1.jpg",
-      "sha256": ""
+      "sha256": "e428f26f3728642538e598c51847ce045a0e237dd5c09eace4da5513fc59fce2",
+      "download_url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/95/Gi%C3%B2_l%E1%BB%A5a.jpg/3840px-Gi%C3%B2_l%E1%BB%A5a.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+      "stored_at": "content/memorial/photos/originals/khoanh-gio-1.jpg"
     },
     {
       "id": "khoanh-gio-2",
@@ -93,13 +97,15 @@
       "original_url": "https://upload.wikimedia.org/wikipedia/commons/1/11/X%C3%B4i_g%E1%BA%A5c_c%C3%BAng_giao_th%E1%BB%ABa_T%E1%BA%BFt_%C4%90inh_D%E1%BA%ADu_n%C4%83m_2017_t%E1%BA%A1i_%C4%90%C3%B4ng_H%C3%A0_%282%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
       "photographer": "Phương Huy",
       "licence": "Public domain",
-      "licence_url": "https://creativecommons.org/publicdomain/mark/1.0/",
+      "licence_url": "",
       "date_taken": "",
       "verified_by": "API Commons (extmetadata) trên máy chạy CI, 2026-11-07",
       "width": 2957,
       "height": 2994,
       "file": "dia-xoi-1.jpg",
-      "sha256": ""
+      "sha256": "e46c1247dd3fa6ed08632b091ca373c3b4396f3ab147b0fb7e0894670edae17a",
+      "download_url": "https://upload.wikimedia.org/wikipedia/commons/1/11/X%C3%B4i_g%E1%BA%A5c_c%C3%BAng_giao_th%E1%BB%ABa_T%E1%BA%BFt_%C4%90inh_D%E1%BA%ADu_n%C4%83m_2017_t%E1%BA%A1i_%C4%90%C3%B4ng_H%C3%A0_%282%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+      "stored_at": "content/memorial/photos/originals/dia-xoi-1.jpg"
     },
     {
       "id": "dia-xoi-2",
@@ -139,7 +145,9 @@
       "width": 809,
       "height": 626,
       "file": "bat-com-1.jpg",
-      "sha256": ""
+      "sha256": "2288ddd76d09f67151dd029a3b03a7a24f46a20c574963bac123399eefb83ec9",
+      "download_url": "https://upload.wikimedia.org/wikipedia/commons/7/77/Steamed_rice_in_bowl_01.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "stored_at": "content/memorial/photos/originals/bat-com-1.jpg"
     },
     {
       "id": "bat-com-2",
@@ -179,7 +187,9 @@
       "width": 600,
       "height": 518,
       "file": "trung-1.jpg",
-      "sha256": ""
+      "sha256": "b2297dc038824b74f6edcb0106d6227df7b4a41330c7111dcac61745582a8c84",
+      "download_url": "https://upload.wikimedia.org/wikipedia/commons/3/36/CodazziBoiledEgg2.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "stored_at": "content/memorial/photos/originals/trung-1.jpg"
     },
     {
       "id": "trung-2",
@@ -219,7 +229,9 @@
       "width": 2876,
       "height": 3817,
       "file": "hoa-qua-1.jpg",
-      "sha256": ""
+      "sha256": "feb37017092253e64e4aa38c594b0e365c39f5adcce97448954b15808a2a503d",
+      "download_url": "https://upload.wikimedia.org/wikipedia/commons/d/d1/M%C3%A2m_ng%C5%A9_qu%E1%BA%A3_%28t%C3%A1o_%C4%91%E1%BB%8F_%C4%90%C3%A0_L%E1%BA%A1t%29%2C_T%E1%BA%BFt_2022_%283%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+      "stored_at": "content/memorial/photos/originals/hoa-qua-1.jpg"
     },
     {
       "id": "hoa-qua-2",
@@ -259,7 +271,9 @@
       "width": 5184,
       "height": 3456,
       "file": "nen-1.jpg",
-      "sha256": ""
+      "sha256": "cd5b9d3b8d4f083f000c1417aeeff9b97629fde1892ca5722fbc4d1f9e26c40b",
+      "download_url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/2d/Candle_1_%28Unsplash%29.jpg/3840px-Candle_1_%28Unsplash%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+      "stored_at": "content/memorial/photos/originals/nen-1.jpg"
     },
     {
       "id": "nen-2",
@@ -276,7 +290,9 @@
       "licence_url": "https://unsplash.com/license",
       "date_taken": "đăng 2021-09-27",
       "file": "nen-2.jpg",
-      "sha256": ""
+      "sha256": "796dbdd86be3f49a4faf94e0e2973ba1ccd923b81be4e20b8870b5ed8fc792a9",
+      "download_url": "https://images.unsplash.com/photo-1632770385660-5c51b3adbf60?w=2400&q=90&fm=jpg",
+      "stored_at": "content/memorial/photos/originals/nen-2.jpg"
     },
     {
       "id": "lo-hoa-1",
@@ -293,7 +309,9 @@
       "licence_url": "https://unsplash.com/license",
       "date_taken": "đăng 2025-06-06",
       "file": "lo-hoa-1.jpg",
-      "sha256": ""
+      "sha256": "727c33fe80a1e97aa33d381a50891373621d4cc58e7f8d2df41770f49a87db8f",
+      "download_url": "https://images.unsplash.com/photo-1749221479907-c77891a3404c?w=2400&q=90&fm=jpg",
+      "stored_at": "content/memorial/photos/originals/lo-hoa-1.jpg"
     },
     {
       "id": "lo-hoa-2",
@@ -330,7 +348,9 @@
       "height": 2520,
       "note": "Pixabay chỉ cho tải công khai bản 1280 px",
       "file": "bat-huong-1.jpg",
-      "sha256": ""
+      "sha256": "d21b84c28a25d87c86811bf924b97bcb57794f117636c12ad983a73f8aec2059",
+      "download_url": "https://cdn.pixabay.com/photo/2016/03/28/09/32/incense-1285138_1280.jpg",
+      "stored_at": "content/memorial/photos/originals/bat-huong-1.jpg"
     },
     {
       "id": "bat-huong-2",
