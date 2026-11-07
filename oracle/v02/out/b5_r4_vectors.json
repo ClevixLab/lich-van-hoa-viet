@@ -1,0 +1,6 @@
+{
+ "argon2id_rfc9106_5_3": true,
+ "argon2_two_libs_same_key_64MiB_t3_p4": true,
+ "xchacha_A31_pynacl": true,
+ "xchacha_A31_hchacha_tu_cai": true
+}
