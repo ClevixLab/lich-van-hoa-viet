@@ -1,0 +1,8 @@
+R14 Windows — 2026-11-07 04:28 UTC+00:00, bản mới 0.1.4 (run 164)
+msiexec /i LichViet-0.1.4-x64.msi: mã 0
+Đã cài bản cũ: LichViet.exe 0.1.4
+Để sau (định dạng 0.1.4): 2026-12-07
+  Đã tạo dữ liệu mẫu ở C:\Users\runneradmin\AppData\Local\ClevixLab\LichVanHoaViet: 5 hồ sơ, 1 sự kiện, 2 ảnh; Để sau = "2026-12-07"
+msiexec /i LichViet-0.1.4-x64.msi: mã 0
+Mục trong Apps & features: 0 ()
+R14 Windows: KHÔNG ĐẠT — có 0 bản cài sau khi nâng cấp
