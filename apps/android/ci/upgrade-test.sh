@@ -146,6 +146,16 @@ content "$BAD/after/lvhv.sqlite" > "$BAD/after.txt"
 if diff -u "$BAD/before.txt" "$BAD/after.txt"; then echo "kho cũ: $(wc -l < "$BAD/before.txt") dòng giống hệt"; else fail "chỉ đọc: nội dung kho đổi sau khi mở"; fi
 adb exec-out run-as "$PKG" sh -c 'cd files/photos && sha256sum *' | tr -d '\r' | sort > "$BAD/photos-after.txt"
 diff -u "$BAD/photos-before.txt" "$BAD/photos-after.txt" || fail "chỉ đọc: ảnh đổi hoặc mất"
+adb shell run-as "$PKG" ls -la files files/attachments || true
+# Chẩn đoán: giải mã tệp sao lưu máy xuất bằng công cụ của lõi trên máy dựng (cùng mã nguồn).
+adb exec-out run-as "$PKG" cat files/r14-export.lvhv > "$BAD/r14-export.lvhv" || true
+if [ -s "$BAD/r14-export.lvhv" ]; then
+  cargo run -q -p lvhv-ffi --bin lvhv-store-tool -- import "$BAD/r14-export.lvhv" "mật khẩu thử nghiệm" --replace --into "$BAD/import" | cut -c1-600 || true
+fi
+cp -r "$FIX/store/." "$BAD/host/" 2>/dev/null || { mkdir -p "$BAD/host" && cp -r "$FIX/store/." "$BAD/host/"; }
+sqlite3 "$BAD/host/lvhv.sqlite" "CREATE TRIGGER kiem_dinh_loi_chuyen_doi BEFORE INSERT ON meta BEGIN SELECT RAISE(ABORT, 'R14 kiem dinh: loi chuyen doi'); END;"
+cargo run -q -p lvhv-ffi --bin lvhv-store-tool -- open "$BAD/host" | cut -c1-400 || true
+ls -la "$BAD/host" "$BAD/host/attachments" || true
 N_ATT="$(adb shell run-as "$PKG" sh -c 'ls files/attachments 2>/dev/null | wc -l' | tr -d '\r ')"
 [ "${N_ATT:-0}" = "0" ] || fail "chỉ đọc: còn $N_ATT tệp đính kèm mồ côi sau chuyển đổi lỗi"
 end

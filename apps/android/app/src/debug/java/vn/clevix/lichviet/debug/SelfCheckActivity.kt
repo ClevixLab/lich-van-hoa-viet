@@ -248,6 +248,8 @@ class SelfCheckActivity : Activity() {
             val photos = parseObj(repo.datasetJson()).objs("photos").size
             val bytes = runCatching { repo.exportBackup("mật khẩu thử nghiệm", "r14") }
             if (bytes.isFailure) return "FAIL không xuất được sao lưu: ${bytes.exceptionOrNull()?.message}"
+            // Tệp xuất được giữ lại để CI giải mã thêm bằng công cụ của lõi trên máy dựng (chẩn đoán khi lỗi).
+            File(ctx.filesDir, "r14-export.lvhv").writeBytes(bytes.getOrThrow())
             // MA3C-24-01: mở lại trọn vẹn tệp vừa xuất (giải mã + kiểm toàn bộ qua lõi), nhập vào một kho trống của bản này
             // rồi so từng hồ sơ, sự kiện, loại sự kiện với tệp kỳ vọng chung và từng tệp đính kèm theo sha256.
             val (v, pv) = runCatching { PeopleRepo.openBackupFile(bytes.getOrThrow(), "mật khẩu thử nghiệm") }

@@ -150,9 +150,12 @@ class PeopleScreensTest {
         // TKN3-A-01: lời thường; mã kỹ thuật chỉ trong mục thu gọn "Chi tiết kỹ thuật".
         assertTrue(rule.onAllNodesWithText("R14 kiem dinh", substring = true).fetchSemanticsNodes().isEmpty())
         shoot("41-chi-doc", variants = withXl)
-        rule.onNodeWithText("Chi tiết kỹ thuật ▾").performClick()
+        rule.onNodeWithText("Chi tiết kỹ thuật ▾").performScrollTo().performClick()
         rule.onNodeWithText("R14 kiem dinh", substring = true).assertExists()
-        rule.onNodeWithText("Chi tiết kỹ thuật ▴").performClick()
+        shoot("41b-chi-doc-chi-tiet", variants = listOf(V.Light)) {
+            rule.onNode(hasScrollAction()).performScrollToNode(hasText("R14 kiem dinh", substring = true))
+        }
+        rule.onNodeWithText("Chi tiết kỹ thuật ▴").performScrollTo().performClick()
         rule.onNodeWithText("Đi tới Sao lưu").performScrollTo().performClick()
         rule.waitForIdle()
         assertTrue(rule.onAllNodesWithText("Khôi phục từ tệp sao lưu").fetchSemanticsNodes().isEmpty())
