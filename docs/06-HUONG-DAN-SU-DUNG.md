@@ -266,6 +266,10 @@ Trang có ảnh chân dung, bia ghi quan hệ (ví dụ "Ông nội"), họ tên
 bàn thờ có ba nén hương với khói nhẹ, và **lời tưởng niệm** do gia đình viết (ô "Lời tưởng niệm" trong phần
 "Tưởng niệm" của hồ sơ).
 
+- **Ảnh mâm lễ:** gia đình có thể thêm **ảnh mâm cúng do mình chụp** cho từng người (sửa hồ sơ → mục "Ảnh mâm lễ
+  ngày giỗ" → "Chọn ảnh mâm lễ…"). Ảnh chỉ lưu trên máy và trong tệp sao lưu, đã bỏ thông tin vị trí và máy chụp. Chưa
+  có ảnh thì trang chỉ có bát hương và nến, không có hình mâm. (Khi Clevix có ảnh mâm đẹp đã duyệt, ảnh sẽ có trong bản
+  cập nhật ứng dụng.)
 - Trang **không có quảng cáo, không có âm thanh**, không có nút chia sẻ.
 - Khói tự dừng sau 2 phút; bấm **Dừng khói** / **Thắp lại** tùy ý. Nếu máy đặt chế độ "giảm chuyển động", khói đứng
   yên.

@@ -7,18 +7,19 @@ Tệp này đáp ứng phần "Nội dung" của R8 (04): mọi tệp hình tron
 
 | Tệp | Nguồn | Giấy phép |
 |---|---|---|
-| `mam-truyen-thong.svg` (bản tạm) | Vẽ mới cho dự án (Clevix Lab, 2026-11-07), viết tay bằng SVG; không lấy hình, nét hay mẫu từ nguồn ngoài | MIT, như mã nguồn của dự án (`LICENSE`) |
-| `mam-chay.svg` (bản tạm) | Vẽ mới cho dự án (Clevix Lab, 2026-11-07), viết tay bằng SVG; không lấy hình, nét hay mẫu từ nguồn ngoài | MIT, như mã nguồn của dự án (`LICENSE`) |
-| `mam-toi-gian.svg` (bản tạm) | Vẽ mới cho dự án (Clevix Lab, 2026-11-07), viết tay bằng SVG; không lấy hình, nét hay mẫu từ nguồn ngoài | MIT, như mã nguồn của dự án (`LICENSE`) |
 | `photos/originals/*`, `photos/cutouts/*`, `photos/webp/*`, `photos/preview/*`, `photos/discover/*` | Ảnh chụp thật của người khác và bản cắt nền / thu nhỏ / ghép từ các ảnh đó — xem sổ §1b | Theo từng ảnh ở §1b; bản phái sinh có thành phần CC BY-SA: CC BY-SA 4.0 |
 
-Số tệp **hình vẽ** lấy từ nguồn ngoài: **0**. Ba tệp trên là **bản tạm (placeholder)** — chỉ dùng cho tới khi có
-ảnh thật được duyệt (YC-2026-09, docs/v0.2/09 §1, §3); vai giao diện có thể nhúng trực tiếp trong thời gian chờ. Hình
-đang chạy trong PWA viết trong `pwa/src/people/memorial.ts`, cũng là hình vẽ mới cho dự án.
+Không còn tệp hình vẽ mâm nào trong thư mục này: ba tệp SVG mẫu (`mam-truyen-thong.svg`, `mam-chay.svg`,
+`mam-toi-gian.svg`, vẽ mới cho dự án, MIT) **đã bị xóa** theo YC-2026-10 / R15 (a) — màn hình tưởng niệm không có mâm vẽ.
+Bát hương, nến, bia và khói trên màn hình là hình vẽ mới cho dự án, viết trong mã của từng nền tảng (ví dụ
+`pwa/src/people/memorial.ts`). Ảnh mâm Clevix đã duyệt (nếu có) nằm ở `content/memorial/trays/` với sổ riêng trong
+`manifest.json`.
 
-Phông chữ: các tệp SVG không chứa chữ. Không dùng phông, ảnh nhúng (`<image>`), liên kết ngoài hay mã chạy (`<script>`).
+## 1b. Sổ giấy phép ảnh thật — lần thử ghép mâm truyền thống (YC-2026-09) — KHÔNG DÙNG
 
-## 1b. Sổ giấy phép ảnh thật — mâm truyền thống (YC-2026-09)
+**Chủ dự án đánh giá ảnh ghép dưới đây chất lượng thấp, không phù hợp (YC-2026-10).** Không ảnh nào trong sổ này được
+đưa vào gói `content/memorial/trays/` hay hiện trong ứng dụng. Sổ được giữ để ghi lại nguồn và giấy phép của các tệp
+còn trong `content/memorial/photos/`.
 
 Quy tắc (chỉ thị của điều phối viên 07/11/2026, theo ý chủ dự án):
 - Chỉ **ảnh chụp thật**; không hình vẽ, không ảnh do máy hay trí tuệ nhân tạo tạo ra. Ảnh trên Commons nằm trong thể

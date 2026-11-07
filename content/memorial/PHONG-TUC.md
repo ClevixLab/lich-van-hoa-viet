@@ -81,16 +81,16 @@ gọi trước tên nữa, để không lặp ("Ông nội / Nguyễn Văn A", k
 
 ## 3. Bàn thờ và mâm lễ trên màn hình tưởng niệm
 
-### 3.1 Thành phần chung (kiểu truyền thống đang có trong ứng dụng)
+### 3.1 Thành phần bàn thờ và mâm (vẽ: chỉ bát hương, nến, hương — R15 (a); các thứ khác chỉ có trong ảnh mâm)
 
 | Thành phần trong hình | Nguồn | Ghi chú |
 |---|---|---|
 | Bát hương ở giữa | [N9] "Một chiếc bàn hoặc kệ gỗ đặt lư hương bằng đồng (bát hương) ở chính giữa."; [N2] "đặt phía trước bát hương là một bát nước trong" | |
 | Hai cây nến hai bên | [N9] "Hai chân nến ở hai bên."; [N2] "hai cây đèn tượng trưng cho mặt trời mặt trăng, còn hương là tinh tú." | |
-| Đĩa quả | [N9] "Trái cây tươi là lễ vật dâng hằng ngày phổ biến nhất."; [N2] "đặt xen giữa đèn và hương là hai cái đĩa để đặt hoa quả lễ" | Hình vẽ **một** đĩa quả (nguồn nói hai đĩa) — giản lược có chủ ý. [N2] không có cụm "mâm ngũ quả" |
-| Bình hoa | [N9] "Hoa tươi, thường là cúc vạn thọ hoặc hoa huệ, đặt ở một bên."; [N2] "trên bàn thờ của những gia đình theo Phật giáo phổ biến còn bày một chiếc độc bình lớn" | [N2] không nói bình đặt bên nào; [N9] chỉ nói "ở một bên". Hình đặt bên phải bát hương |
+| Đĩa quả (chỉ trong ảnh mâm, không vẽ — R15) | [N9] "Trái cây tươi là lễ vật dâng hằng ngày phổ biến nhất."; [N2] "đặt xen giữa đèn và hương là hai cái đĩa để đặt hoa quả lễ" | [N2] không có cụm "mâm ngũ quả" |
+| Bình hoa (chỉ trong ảnh mâm, không vẽ — R15) | [N9] "Hoa tươi, thường là cúc vạn thọ hoặc hoa huệ, đặt ở một bên."; [N2] "trên bàn thờ của những gia đình theo Phật giáo phổ biến còn bày một chiếc độc bình lớn" | [N2] không nói bình đặt bên nào; [N9] chỉ nói "ở một bên". |
 | Ba nén hương | [N3] "Thông thường thắp 1 hoặc 3 nén hương là thắp cho gia tiên."; "3 nén hương tượng trưng cho sự hòa hợp của Thiên - Địa - Nhân"; "Cắm từng nén hương vào bát hương." | |
-| Bát nước trong | [N2] câu trên | Chưa vẽ trong bản đang chạy; đề xuất thêm (docs/v0.2/09) |
+| Bát nước trong | [N2] câu trên | Không vẽ; có trong ảnh mâm nếu bày được (docs/v0.2/09 §2) |
 
 ### 3.2 Đồ cúng trên mâm theo ba kiểu (01 §3.7, R9)
 
@@ -100,12 +100,12 @@ gọi trước tên nữa, để không lặp ("Ông nội / Nguyễn Văn A", k
 | Phật giáo — mâm chay | Hương, hoa, đèn (nến), trà, quả, món chay; tối thiểu nước sạch, hoa quả, một nén hương | [N8] "Vào những ngày giỗ kỵ tổ tiên, ông bà hay bố mẹ, người thân của mình nên làm chay thanh tịnh mới tốt."; "có hương, hoa, đăng; có trà, quả, thực"; "chén nước lạnh tinh khiết với hoa quả, một nén hương thành tâm là đủ". [N4] "Nhà nghèo thì chỉ cần nhang đèn bông trái, vài món ăn giản dị cúng người mất cũng được rồi." |
 | Công giáo — nến và hoa, **không hương** | Cầu nguyện, dâng lễ ở nhà thờ; không cúng | [N10] "Chúng ta không cúng nhưng cầu nguyện cho người thân đã qua đời."; "Cũng tổ chức lễ giỗ tại tư gia, tại nhà thờ." [N10] **không** nhắc nến, hoa, hương hay bàn thờ — phần "nến và hoa" của 01 §3.7 **chưa có nguồn** (§5) |
 
-Mâm truyền thống dùng **ảnh chụp thật** ghép lại (YC-2026-09, docs/v0.2/09 §3), không hình vẽ, không ảnh do máy tạo.
-Hình vẽ `mam-truyen-thong.svg` chỉ là bản tạm; hình vẽ không vẽ món mặn (dễ thô ở cỡ nhỏ). Sổ giấy phép ảnh:
-`SOURCES.md` §1b.
+Mâm chỉ hiện bằng **ảnh chụp thật** (YC-2026-10, R15): ảnh gia đình tự chụp, hoặc ảnh Clevix đã duyệt trong
+`content/memorial/trays/`. Chưa có ảnh thì **không có mâm**, dưới bia chỉ có nến và bát hương (Công giáo: nến và hoa).
+Không có hình mâm vẽ. Nội dung ảnh mâm: docs/v0.2/09.
 
-Hình vẽ bàn thờ, bia, nến, đĩa quả, bình hoa, hương và khói là **hình vẽ mới cho dự án**. Bản đang chạy viết thẳng bằng
-SVG/CSS trong `pwa/src/people/memorial.ts`; bản mẫu ba kiểu mâm ở `content/memorial/mam-*.svg` (`SOURCES.md`).
+Hình vẽ bàn thờ, bia, nến, hương và khói là **hình vẽ mới cho dự án**, viết thẳng trong mã của từng nền tảng (ví dụ
+`pwa/src/people/memorial.ts`).
 
 ## 4. Không đưa vào ứng dụng (quyết định, không phải thiếu nguồn)
 

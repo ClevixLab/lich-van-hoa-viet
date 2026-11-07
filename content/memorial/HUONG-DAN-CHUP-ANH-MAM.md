@@ -5,29 +5,31 @@ hình ảnh các thứ đều thật, chỉ là phối cảnh thành một mâm 
 thật**. Không dùng ảnh vẽ, ảnh do máy hay trí tuệ nhân tạo tạo ra, không dùng chức năng "xóa vật thể / vẽ thêm" của
 điện thoại.
 
-Có hai cách, chọn một:
-- **Cách A — chụp từng món** (mục 3): dễ cắt nền, dễ ghép, khuyên dùng.
-- **Cách B — bày cả mâm thật rồi chụp một tấm** (mục 6): đẹp và tự nhiên nhất nếu có chỗ bày.
+Ứng dụng hiện **một ảnh cả mâm** (khung ngang 4:3) dưới hàng bàn thờ của trang tưởng niệm. Vì vậy:
+- **Cách chính — bày cả mâm thật rồi chụp một tấm** (mục 6). Đây là cách khuyên dùng.
+- Cách phụ — chụp từng món (mục 3): chỉ dùng khi không bày được cả mâm. Ghép từ ảnh lẻ đã thử với ảnh trên mạng
+  ngày 07/11/2026 và bị đánh giá chất lượng thấp, nên chỉ ghép khi mọi ảnh lẻ đều do nhóm mình chụp cùng một chỗ,
+  cùng một buổi.
 
-## 1. Cần những món gì — và món nào đang **cần chụp**
+Ảnh được duyệt và đưa vào ứng dụng theo `trays/README.md`. Chưa có ảnh đạt thì ứng dụng **không hiện mâm** (chỉ có
+bát hương và nến).
 
-Một số món đã tìm được ảnh thật có giấy phép trên mạng (xem `SOURCES.md` §1b). Những món ghi **CẦN CHỤP** là món
-chưa có ảnh dùng được, nhóm mình chụp giúp. Món đã có ảnh mạng vẫn nên chụp nếu được: ảnh nhà mình chụp sẽ hợp nhau
-hơn về ánh sáng và góc máy.
+## 1. Mâm truyền thống cần những gì — **tất cả đều CẦN CHỤP**
 
-| # | Món | Tình trạng (07/11/2026) |
+Ảnh tìm trên mạng (lần thử 07/11/2026) đã bị loại, nên mọi món đều cần nhóm mình chụp.
+
+| # | Món | Ghi chú |
 |---|---|---|
-| 1 | Bát cơm trắng, trên có một quả trứng luộc bóc vỏ | Có ảnh mạng tạm (bát cơm và quả trứng là hai ảnh khác nhau). Nên chụp |
-| 2 | Một khoanh giò lụa (cắt dày, thấy mặt cắt) | Có ảnh mạng tạm, nhưng là miếng cắt tam giác, không phải khoanh tròn. **Nên chụp** |
-| 3 | Một con gà luộc nguyên con, da vàng, trên đĩa | Có ảnh mạng tạm (gà ở chợ Hà Nội, bị khung ảnh cắt một bên). Nên chụp |
-| 4 | Một đĩa xôi (xôi gấc, xôi trắng hoặc xôi đỗ) | Có ảnh mạng tạm (xôi gấc, mất đĩa khi tách nền). Nên chụp |
-| 5 | Một đĩa hoa quả tổng hợp (chuối, bưởi, cam, táo, nho…) | Có ảnh mạng tạm, nhưng chỉ có táo. **Nên chụp** |
-| 6 | **Bát hương có rất nhiều chân hương đã cháy hết, tàn cong đẹp, ba nén đang cháy** | **CẦN CHỤP** — không có ảnh mạng đúng như vậy |
-| 7 | Lọ hoa ly **hoặc** cúc vàng | Hoa ly: có ảnh mạng tạm, nhưng mất lọ khi tách nền. Cúc vàng: **CẦN CHỤP** (không có ảnh chụp thật có giấy phép) |
-| 8 | Hai cây nến đỏ trên chân nến, đang cháy | Có ảnh mạng tạm (nến không có chân nến). Nên chụp kèm chân nến đồng |
-| 9 | Chén nước trong | **CẦN CHỤP** |
-| 10 | Mâm tròn (gỗ sơn, đồng hoặc nhôm), để trống | **CẦN CHỤP** |
-| 11 | Mặt bàn thờ gỗ (một dải gỗ thật, không đồ vật) | **CẦN CHỤP** (không bắt buộc) |
+| 1 | Bát cơm trắng, trên có một quả trứng luộc bóc vỏ | |
+| 2 | Một khoanh giò lụa (cắt dày, thấy mặt cắt) | Khoanh tròn, không cắt miếng tam giác |
+| 3 | Một con gà luộc nguyên con, da vàng, trên đĩa | |
+| 4 | Một đĩa xôi (xôi gấc, xôi trắng hoặc xôi đỗ) | Có đĩa |
+| 5 | Một đĩa hoa quả tổng hợp (chuối, bưởi, cam, táo, nho…) | Nhiều loại quả |
+| 6 | **Bát hương có rất nhiều chân hương đã cháy hết, tàn cong đẹp, ba nén đang cháy** | Món quan trọng nhất (mục 4) |
+| 7 | Lọ hoa ly **hoặc** cúc vàng | Có cả lọ |
+| 8 | Hai cây nến đỏ trên chân nến, đang cháy | |
+| 9 | Chén nước trong | Nếu bày được |
+| 10 | Mâm tròn (gỗ sơn, đồng hoặc nhôm) | Đựng các món mặn |
 
 ## 2. Chuẩn bị chung (cho mọi tấm)
 
@@ -60,9 +62,9 @@ biết món đó to thật bao nhiêu. Ghi kích thước đo được vào tin 
 **Không được có trong ảnh:** người, tay, mặt; điện thoại; chữ, logo, nhãn giá, tem dán trên quả; túi ni lông, màng
 bọc; đồ dùng có in hãng. Coi chừng **bóng người chụp phản chiếu** trên đồ đồng, kính.
 
-## 3. Danh sách tấm chụp từng món (cách A)
+## 3. Danh sách tấm chụp từng món (cách phụ)
 
-Mỗi món chụp **ít nhất 5 tấm** ở cùng góc: lệch nhau một chút về khoảng cách hoặc độ cao, để có tấm chọn. Thêm 1 tấm
+Chỉ dùng khi không bày được cả mâm. Mỗi món chụp **ít nhất 5 tấm** ở cùng góc: lệch nhau một chút về khoảng cách hoặc độ cao, để có tấm chọn. Thêm 1 tấm
 có thước.
 
 | Món | Cách bày | Lưu ý |
@@ -98,7 +100,7 @@ Anh Khánh muốn: "một bát hương đã có rất nhiều nén hương đã 
 
 Nếu được, chụp cả hai loại ly và cúc vàng để anh Khánh chọn.
 
-## 6. Cách B — bày cả mâm thật, chụp một tấm
+## 6. Cách chính — bày cả mâm thật, chụp một tấm
 
 1. Bày mâm như sơ đồ: hàng sau (trên bàn) từ trái sang phải: nến — đĩa hoa quả — **bát hương ở chính giữa** — chén
    nước — lọ hoa — nến. Hàng trước: mâm tròn ở giữa, trên mâm: đĩa xôi bên trái, gà luộc ở giữa, bát cơm có trứng
@@ -120,7 +122,7 @@ mam-<mon>-<so thu tu>-<ngay chup yyyymmdd>-<ten nguoi chup>.<duoi>
 
 Mã món: `bat-com-trung`, `khoanh-gio`, `ga-luoc`, `dia-xoi`, `dia-hoa-qua`, `bat-huong`, `bat-huong-khong-thap`,
 `lo-hoa-ly`, `lo-hoa-cuc`, `lo-hoa-hue`, `nen-trai`, `nen-phai`, `chen-nuoc`, `mam`, `thuoc` (tấm có thước),
-`ca-mam` (cách B), `nen-trong` (clean plate), `lop-01`, `lop-02`… (cách B, từng lớp).
+`ca-mam` (cách chính), `nen-trong` (clean plate), `lop-01`, `lop-02`… (cách chính, từng lớp).
 
 Ví dụ: `mam-bat-huong-03-20261110-hoa.jpg`, `mam-ca-mam-01-20261110-trung.heic`.
 
@@ -134,5 +136,5 @@ Ví dụ: `mam-bat-huong-03-20261110-hoa.jpg`, `mam-ca-mam-01-20261110-trung.hei
   **đồng ý cho Clevix LLC dùng ảnh trong ứng dụng Lịch và Văn hóa Việt** (ví dụ: "Tôi, <tên>, là người chụp các ảnh
   trên và đồng ý cho Clevix LLC dùng, sửa (cắt nền, ghép) và phát hành các ảnh này trong ứng dụng Lịch và Văn hóa
   Việt.").
-- Vai nội dung sẽ ghi từng ảnh vào sổ giấy phép (`SOURCES.md` §1b): người chụp, ngày, giấy phép, tên tệp, nơi lưu bản
+- Vai nội dung sẽ ghi từng ảnh vào `trays/manifest.json` (xem `trays/README.md`): người chụp, ngày, giấy phép, tên tệp, nơi lưu bản
   gốc, mã kiểm tra sha256.
