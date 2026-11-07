@@ -34,6 +34,10 @@ targets:
       - path: Generated
       - path: iOS
         excludes: ["Info.plist"]
+      # Gói ảnh mâm lễ Clevix đã duyệt (gen-trays.sh, 08 §16.3) — thư mục tài nguyên `TrayPack/`.
+      - path: build/TrayPack
+        type: folder
+        buildPhase: resources
     dependencies:
       - framework: build/LvhvCore.xcframework
         embed: false
@@ -45,6 +49,7 @@ targets:
         CFBundleDevelopmentRegion: vi
         CFBundleLocalizations: [vi]
         LSRequiresIPhoneOS: true
+        NSCameraUsageDescription: "Ứng dụng dùng máy ảnh khi bạn chọn chụp ảnh mâm lễ ngày giỗ. Ảnh chỉ lưu trên máy này và trong tệp sao lưu mã hóa."
         UILaunchScreen:
           UIColorName: ""
         UIApplicationSceneManifest:
@@ -79,6 +84,9 @@ targets:
       - path: Generated
       - path: macOS
         excludes: ["Info.plist", "LichViet.entitlements"]
+      - path: build/TrayPack
+        type: folder
+        buildPhase: resources
     dependencies:
       - framework: build/LvhvCore.xcframework
         embed: false
@@ -87,6 +95,8 @@ targets:
       properties:
         # Hộp cát (App Sandbox), KHÔNG có com.apple.security.network.client/server.
         com.apple.security.app-sandbox: true
+        # Chỉ tệp người dùng tự chọn trong hộp mở/lưu của hệ thống (khôi phục, PDF, ảnh mâm lễ; tạo tệp sao lưu).
+        com.apple.security.files.user-selected.read-write: true
     info:
       path: macOS/Info.plist
       properties:

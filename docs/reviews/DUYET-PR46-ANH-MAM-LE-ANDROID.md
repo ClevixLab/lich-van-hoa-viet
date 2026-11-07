@@ -165,3 +165,52 @@ lõi): **ĐẠT** trên đường thư viện ảnh qua `Photos.encode`; đườ
 Ghi chỉ khi Lưu, giữ `tray_photo_id` trên mọi đường lưu, không xin quyền máy ảnh, không lộ ra thông báo/.ics/tên tệp:
 đúng. P46-01 và P46-02 là lỗi trạng thái nhỏ, sửa vài dòng; P46-03–05 nên đi cùng vòng sửa này để phần kiểm thử và tài
 liệu khớp với mã.
+
+## Vòng 2 — 2026-11-07: PR #68 `v0.2-yc10-android-fix`
+
+Đầu nhánh duyệt: `961152e` (gộp `main`); diff `origin/main...961152e`, 7 tệp: `build.gradle.kts`, `AndroidManifest.xml`,
+`Forms.kt`, `TrayForm.kt`, `file_paths.xml`, `TrayFormStateTest.kt` (mới), 08 §13. CI trên `961152e`: `ui`, `build`,
+`upgrade`, `screenshots`, "Gói ảnh mâm lễ", Rust, L7, memorial Rust ≡ TS, cargo-deny: `success`.
+
+### V2.1 Trạng thái từng mục
+
+| Mục | Mức | Trạng thái | Bằng chứng |
+|---|---|---|---|
+| P46-01 | nên sửa | **ĐÃ SỬA** | `processTrayPick` (`TrayForm.kt`): `finally` gọi `TrayCapture.cleanup` trong `withContext(NonCancellable)` (xóa `mam.jpg`, thu hồi quyền URI) rồi `trayBusy = false` — chạy cả khi bị hủy. Launcher + scope chuyển lên `PersonForm` (`rememberTrayPicker`), nên thu gọn khối "Tưởng niệm" không còn hủy việc xử lý; câu lỗi chuyển vào `PersonFormState.trayError` nên không mất khi khối đóng/mở. Kiểm thử `processingCleansUpEvenWhenCancelled` hủy thật giữa lúc xử lý (khởi chạy `UNDISPATCHED`, ảnh 4000×3000) → `trayBusy = false`, tệp tạm không còn |
+| P46-02 | nên sửa | **ĐÃ SỬA** | `if (r.resultCode != Activity.RESULT_OK) { cleanup; return }` trước mọi xử lý. Không có kiểm thử riêng (launcher không chạy được trong Robolectric); mã một dòng, đọc là đủ |
+| P46-03 | nên sửa | **ĐÃ SỬA** | `TrayFormStateTest` đi qua `PersonFormState.save()` thật: đổi ảnh → khóa mới, ảnh cũ mất cả bản ghi lẫn tệp, số tệp = số bản ghi; bỏ ảnh → không còn khóa (`containsKey` = false), không còn tệp; lưu lỗi (`hoTen = ""`) → ảnh vừa `addPhoto` bị xóa; chọn rồi bỏ trên hồ sơ chưa có ảnh → không có khóa, không thêm ảnh |
+| P46-04 | nên sửa | **CHƯA SỬA — chuyển chủ dự án** | Ghi vào danh sách thử trên máy thật (API 26/28/34, ảnh dọc/ngang, Photo Picker qua `GET_CONTENT`). Chấp nhận cho vòng này; R15 (c) đường máy ảnh vẫn **CHƯA ĐỦ BẰNG CHỨNG** tới khi có biên bản thử |
+| P46-05 | nên sửa | **ĐÃ SỬA phần thuộc PR** | Chú thích `file_paths.xml` nay ghi ba thư mục và vòng đời `capture/`; 08 §13 có dòng "Ảnh mâm lễ (YC-2026-10, §16)" (bộ chọn, vòng đời `mam.jpg`, không `CAMERA`, Python 3 lúc dựng, sáng ≡ tối) và dòng FileProvider của tệp đính kèm đã cập nhật. Phần `RA-SOAT-BAO-MAT-V02*.md` để chủ biên bản rà soát (V2.2, P46-17) |
+| P46-06 | góp ý | **ĐÃ SỬA** | So `captured.length()` trước `readBytes()`; kiểm thử với tệp thưa 25 MB + 1 byte → "Ảnh quá lớn (tối đa 25 MB).", tệp bị xóa |
+| P46-07 | góp ý | **ĐÃ SỬA** | `<uses-permission android:name="android.permission.CAMERA" tools:node="remove" …/>`; `tools:ignore` chỉ tắt cảnh báo lint phần cứng, không thêm quyền. Bản dựng và job `upgrade` đạt |
+| P46-08 | góp ý | **ĐÃ SỬA** | `IOException` khi khởi chạy → `GradleException` có hướng dẫn; đổi lệnh bằng `-Plvhv.python=<lệnh>` |
+| P46-09 | góp ý | CHƯA SỬA | Như PR ghi; không chặn |
+| P46-10 | góp ý | CHƯA SỬA | Chờ điều phối chốt câu; không chặn |
+| P46-11 | góp ý | CHƯA SỬA | Thuộc vai nội dung (`check-tray-pack.py`); không chặn |
+| P46-12 | góp ý | CHƯA SỬA | Không chặn |
+| P46-13 | góp ý | **ĐÃ SỬA một phần** | "Đang xử lý ảnh…" có `liveRegion = Polite`. Chưa đưa tiêu điểm về "Chọn ảnh mâm lễ…" sau "Bỏ ảnh"; chưa thêm ảnh chụp cỡ chữ lớn. Không chặn |
+| P46-14, -15, -16 | góp ý | CHƯA SỬA | Không chặn |
+
+### V2.2 Phát hiện mới
+
+Không có phát hiện chặn hay nên sửa mới. Đã xét: (a) dọn dẹp trong `finally` không xóa nhầm ảnh của lần chọn sau — trong
+lúc `trayBusy` các nút chọn bị ẩn, và hộp chọn tự dọn trước khi mở; (b) `runCatching` không nuốt `CancellationException`
+vì khối giải mã không có điểm treo, hủy được ném ra ở `withContext` và đi qua `finally`; (c) rời biểu mẫu khi đang xử lý
+vẫn hủy và dọn như trên, `f` bị bỏ cùng biểu mẫu; (d) `tools:node="remove"` chỉ bỏ quyền, danh sách quyền cuối (S6)
+không đổi.
+
+#### P46-17 — góp ý, chuyển chủ biên bản rà soát bảo mật — FileProvider Android nay có `capture/`
+
+`RA-SOAT-BAO-MAT-V02.md` và `RA-SOAT-BAO-MAT-V02-VONG2.md` liệt kê thư mục FileProvider của Android là `cache/ics/` và
+`cache/att/`. Từ PR #46 có thêm `<cache-path name="capture" path="capture/"/>`: tệp `cache/capture/mam.jpg` (ảnh gốc
+từ ứng dụng máy ảnh, **còn EXIF/GPS** cho tới khi bị xóa), quyền **đọc + ghi** cấp cho đúng Intent `ACTION_IMAGE_CAPTURE`
+(khác hai thư mục kia chỉ cấp đọc), xóa và `revokeUriPermission` sau xử lý (cả khi bị hủy), khi người dùng hủy, trước
+mỗi lần mở hộp chọn và mỗi lần mở ứng dụng. Chủ biên bản rà soát cần ghi thêm mục này vào danh sách FileProvider và vòng
+rà soát sau đối chiếu. Biên bản này không sửa tệp `RA-SOAT-*`.
+
+### V2.3 Kết luận vòng 2
+
+**GỘP ĐƯỢC** — **0 chặn**. P46-01, -02, -03, -06, -07, -08 đã sửa; P46-05 sửa phần thuộc PR, phần biên bản rà soát
+chuyển thành P46-17 (góp ý, chủ biên bản rà soát); P46-13 sửa một phần; P46-04 chuyển chủ dự án thử trên máy thật —
+tới khi có biên bản đó, R15 (c) đường máy ảnh trên Android vẫn **CHƯA ĐỦ BẰNG CHỨNG** (đường thư viện ảnh: ĐẠT). Các
+góp ý còn lại không chặn.

@@ -53,7 +53,7 @@ final class PeopleUITests: XCTestCase {
         ("form-deceased", 4), ("form-living", 2), ("event", 1), ("event-deceased", 1), ("mark", 2), ("memorial", 2),
         ("memorial-a", 2), ("settings", 2),
         ("form-am-nhuan", 2), ("form-duong", 3), ("form-loi", 2), ("form-living-am", 3),
-        ("upcoming-denied", 1), ("store-error", 1), ("backup-nag", 1), ("form-edit", 4),
+        ("upcoming-denied", 1), ("store-error", 1), ("backup-nag", 1), ("form-edit", 4), ("memorial-cg", 2),
     ]
 
     private func shoot(variant: String, dark: Bool, big: Bool, screens: [(String, Int)]) {
@@ -240,5 +240,106 @@ final class PeopleUITests: XCTestCase {
         XCTAssertTrue(app.buttons["person.memorial"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.otherElements["person.notice"].exists || app.buttons["person.notice"].exists
                       || app.staticTexts["Thông tin báo tử"].exists)
+    }
+
+    // MARK: YC-2026-10 — ảnh mâm lễ (08 §16.4)
+
+    /// YC-2026-10 (08 §16.4 ca 1 và 4): chưa có ảnh mâm lễ, gói ảnh Clevix rỗng → hàng bàn thờ chỉ có hai nến và bát hương
+    /// ba nén, không có mâm; Công giáo → nến, hoa, nến, không hương. Chụp sáng và tối (iPhone, và iPad trên CI).
+    func testMemorialAltar() {
+        for (v, dark) in [("light", false), ("dark", true)] {
+            for (screen, catholic) in [("memorial", false), ("memorial-cg", true)] {
+                let app = launch(screen: screen, dark: dark)
+                let altar = app.descendants(matching: .any)["memorial.altar"].firstMatch
+                XCTAssertTrue(altar.waitForExistence(timeout: 15))
+                XCTAssertEqual(app.descendants(matching: .any).matching(identifier: "memorial.candle").count, 2)
+                XCTAssertEqual(app.descendants(matching: .any)["memorial.incense"].exists, !catholic)
+                XCTAssertEqual(app.descendants(matching: .any)["memorial.flowers"].exists, catholic)
+                XCTAssertFalse(app.descendants(matching: .any)["memorial.tray"].exists, "không có mâm khi chưa có ảnh")
+                XCTAssertFalse(altar.label.contains("mâm"), "nhãn trợ năng không nhắc mâm")
+                if !catholic { XCTAssertTrue(app.buttons["memorial.smoke"].exists) } else { XCTAssertFalse(app.buttons["memorial.smoke"].exists) }
+                snap("altar-\(screen == "memorial" ? "huong" : "cong-giao")-\(v)")
+                // V2-01: cuộn để thấy cả hàng bàn thờ (và nút thêm ảnh mâm lễ) trong một ảnh.
+                altar.swipeUp(velocity: .slow)
+                snap("altar-\(screen == "memorial" ? "huong" : "cong-giao")-\(v)-2")
+                app.terminate()
+            }
+        }
+    }
+
+    /// YC-2026-10 (08 §16.4 ca 2, 3, 5) — ảnh mâm lễ: ảnh gia đình hiện dưới bàn thờ (không còn nút thêm); bỏ ảnh trong
+    /// biểu mẫu rồi lưu → trang hồ sơ "Chưa có"; gói thử có một ảnh đã duyệt → ảnh Clevix hiện khi chưa có ảnh gia đình,
+    /// ảnh gia đình thắng khi có; nút "Thêm ảnh mâm lễ của gia đình" mở biểu mẫu ở đúng mục.
+    func testTrayPhoto() {
+        let any = { (app: XCUIApplication, id: String) in app.descendants(matching: .any)[id].firstMatch }
+        for (v, dark) in [("light", false), ("dark", true)] {
+            // Ca 2: ảnh gia đình.
+            var app = launch(screen: "memorial-tray", dark: dark)
+            XCTAssertTrue(any(app, "memorial.tray").waitForExistence(timeout: 15))
+            XCTAssertEqual(any(app, "memorial.tray").label, "Ảnh mâm lễ của gia đình")
+            XCTAssertFalse(any(app, "memorial.addTray").exists, "có ảnh gia đình thì không có nút thêm")
+            snap("altar-tray-\(v)")
+            app.swipeUp(velocity: .slow)
+            snap("altar-tray-\(v)-2")
+            app.terminate()
+
+            // Biểu mẫu: chưa có ảnh / có ảnh.
+            app = launch(screen: "form-tray-empty", dark: dark)
+            XCTAssertTrue(any(app, "form.tray.none").waitForExistence(timeout: 15))
+            snap("form-tray-empty-\(v)")
+            app.terminate()
+            app = launch(screen: "form-tray", dark: dark)
+            XCTAssertTrue(any(app, "form.tray.thumb").waitForExistence(timeout: 15))
+            XCTAssertEqual(any(app, "form.tray.thumb").label, "Ảnh mâm lễ đã chọn")
+            XCTAssertEqual(app.buttons["form.tray.remove"].firstMatch.label, "Bỏ ảnh mâm lễ")
+            snap("form-tray-\(v)")
+            app.terminate()
+            if !dark {
+                app = launch(screen: "form-tray", big: true)
+                XCTAssertTrue(any(app, "form.tray.thumb").waitForExistence(timeout: 15))
+                snap("form-tray-large")
+                app.swipeUp(velocity: .slow)
+                snap("form-tray-large-2")
+                app.terminate()
+            }
+
+            // Ca 5: gói thử — ảnh Clevix khi chưa có ảnh gia đình (có dòng ghi công) …
+            app = launch(screen: "memorial", dark: dark, extra: ["-lvhvTrayPack", "test"])
+            XCTAssertTrue(any(app, "memorial.tray").waitForExistence(timeout: 15))
+            XCTAssertEqual(any(app, "memorial.tray").label, "Ảnh mâm lễ")
+            XCTAssertTrue(any(app, "memorial.trayCredit").exists)
+            XCTAssertTrue(any(app, "memorial.addTray").exists)
+            snap("altar-clevix-\(v)")
+            // V2-02: cuộn để thấy ảnh Clevix dưới bàn thờ cùng dòng ghi công.
+            app.swipeUp(velocity: .slow)
+            snap("altar-clevix-\(v)-2")
+            app.terminate()
+            // … ảnh gia đình thắng khi có.
+            app = launch(screen: "memorial-tray", dark: dark, extra: ["-lvhvTrayPack", "test"])
+            XCTAssertTrue(any(app, "memorial.tray").waitForExistence(timeout: 15))
+            XCTAssertEqual(any(app, "memorial.tray").label, "Ảnh mâm lễ của gia đình")
+            XCTAssertFalse(any(app, "memorial.trayCredit").exists)
+            app.terminate()
+        }
+
+        // Ca 3: bỏ ảnh rồi lưu → trang hồ sơ "Ảnh mâm lễ: Chưa có", màn hình tưởng niệm không còn mâm.
+        var app = launch(screen: "form-tray")
+        let remove = app.buttons["form.tray.remove"].firstMatch
+        XCTAssertTrue(remove.waitForExistence(timeout: 15))
+        tapScrolling(app, remove)
+        XCTAssertTrue(any(app, "form.tray.none").waitForExistence(timeout: 5))
+        app.buttons["form.saveTop"].firstMatch.tap()
+        XCTAssertTrue(app.staticTexts["Chưa có"].firstMatch.waitForExistence(timeout: 10), "trang hồ sơ: Ảnh mâm lễ — Chưa có")
+        app.terminate()
+
+        // Nút trên màn hình tưởng niệm mở biểu mẫu ở mục ảnh mâm lễ.
+        app = launch(screen: "memorial")
+        let add = app.buttons["memorial.addTray"].firstMatch
+        XCTAssertTrue(add.waitForExistence(timeout: 15))
+        tapScrolling(app, add)
+        XCTAssertTrue(any(app, "form.tray.none").waitForExistence(timeout: 10))
+        Thread.sleep(forTimeInterval: 1)
+        XCTAssertTrue(app.buttons["form.tray.pick"].firstMatch.isHittable, "biểu mẫu cuộn tới mục ảnh mâm lễ")
+        app.terminate()
     }
 }

@@ -4,6 +4,11 @@ Số phiên bản lấy từ tệp `VERSION` ở gốc kho (nguồn duy nhất c
 dưới tiêu đề của phiên bản đang dựng và đưa vào `version.json` làm ghi chú phát hành hiển thị cho người dùng,
 nên mỗi dòng nên ngắn, viết bằng tiếng Việt thường ngày.
 
+## [0.2.1] — 2026-11-07
+
+- Trang Giới thiệu viết lại: ứng dụng giúp bạn được những gì, cách bắt đầu dùng mục Người thân trong một phút, mẹo để không lỡ ngày giỗ.
+- Phần Quyền riêng tư nói rõ hồ sơ người thân và ảnh chỉ lưu trên máy, khi nào dữ liệu có thể mất và vì sao nên sao lưu.
+
 ## [0.2.0] — 2026-11-07
 
 - Mục mới "Người thân": ghi ông bà, cha mẹ đã khuất và người thân đang sống, ngay trên máy của bạn.

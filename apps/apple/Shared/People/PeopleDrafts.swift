@@ -478,6 +478,10 @@ struct PersonDraft: Equatable {
     var feb29 = "feb28"
     var photoId: String?
     var newPhoto: ProcessedPhoto?
+    /// Ảnh mâm lễ của gia đình (YC-2026-10, 01 §3.7 `memorial.tray_photo_id`). Ảnh mới chỉ ghi vào kho khi bấm Lưu.
+    var trayPhotoId: String?
+    var newTray: ProcessedPhoto?
+    var hasTray: Bool { trayPhotoId != nil || newTray != nil }
     var notice = NoticeDraft()
     /// Giới tính (YC-2026-07): "nam" | "nu" | nil (Không ghi).
     var gioiTinh: String?
@@ -517,6 +521,7 @@ struct PersonDraft: Equatable {
         amSame = !p["reminders"]["sinh_nhat_am"].isObject || sinhNhatAm.sameSettings(as: sinhNhat)
         feb29 = p["feb29_rule"].str ?? "feb28"
         photoId = p["photo_id"].str
+        trayPhotoId = p["memorial"]["tray_photo_id"].str
         notice = NoticeDraft(p["death"]["notice"])
         gioiTinh = p["gioi_tinh"].str
     }
@@ -605,6 +610,9 @@ struct PersonDraft: Equatable {
             mem["loi_tuong_niem"] = .s(Text1.clean(loiTuongNiem, multiline: true))
             mem["gio_het_nam"] = .i(gioHetNam)
             mem["huong_duong_duoi"] = .i(Int(nguong.trimmingCharacters(in: .whitespaces)) ?? 60)
+            // null ≡ thiếu: không ghi khóa (01 §3.7). Ảnh cũ không còn dùng được lõi xóa khi lưu (01 §3.8).
+            mem = mem.removing("tray_photo_id")
+            if let t = trayPhotoId { mem["tray_photo_id"] = .s(t) }
             p["memorial"] = mem
             p["reminders"] = ["gio": gio.json(tienThuongAllowed: true), "sinh_nhat": nil, "sinh_nhat_am": nil]
             p["sinh_nhat_am"] = false

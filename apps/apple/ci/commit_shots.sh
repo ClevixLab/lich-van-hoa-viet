@@ -31,9 +31,13 @@ git worktree add -q "$WT" "origin/$HEAD_REF"
 cd "$WT"
 DEST="apps/apple/screenshots${SUBDIR:+/$SUBDIR}"
 mkdir -p "$DEST"
-if [ -n "$SUBDIR" ]; then rm -f "$DEST"/*.png; else rm -f apps/apple/screenshots/*.png; fi
-cp "$SHOTS"/*.png "$DEST/"
-git add -A apps/apple/screenshots
+# Không bao giờ xóa ảnh đã có (job bị hủy/hỏng giữa chừng không được làm mất bằng chứng): chỉ thêm hoặc ghi đè bằng
+# ảnh mới khác rỗng.
+for f in "$SHOTS"/*.png; do
+  [ -s "$f" ] && cp "$f" "$DEST/"
+done
+git add apps/apple/screenshots
+if git diff --cached --name-status | grep -q "^D"; then echo "::error::Ghi ảnh không được xóa tệp"; exit 1; fi
 if git diff --cached --quiet; then exit 0; fi
 git commit -q -m "Ảnh chụp giao diện Apple${SUBDIR:+ ($SUBDIR)} — CI lần $RUN_NO (${HEAD_SHA:0:7})" \
   -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

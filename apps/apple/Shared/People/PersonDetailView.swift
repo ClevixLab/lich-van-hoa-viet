@@ -179,6 +179,11 @@ struct PersonDetailView: View {
                 InfoRow(label: "Tuổi", value: "\(t)" + (s?.tuoi_am.map { " (tuổi âm \($0))" } ?? ""))
             }
             if deceased { InfoRow(label: "Nơi an táng", value: p["noi_an_tang"].string) }
+            if deceased {
+                // YC-2026-10 (08 §16.2): chỉ báo có hay chưa — ảnh hiện trên màn hình tưởng niệm.
+                InfoRow(label: "Ảnh mâm lễ", value: p["memorial"]["tray_photo_id"].str == nil ? "Chưa có" : "Đã có")
+                    .accessibilityIdentifier("person.tray")
+            }
             InfoRow(label: "Giới tính", value: p["gioi_tinh"].str == "nam" ? "Nam" : p["gioi_tinh"].str == "nu" ? "Nữ" : "Không ghi")
             InfoRow(label: "Ghi chú", value: p["ghi_chu"].string)
             if !deceased && !b.isObject && p["ghi_chu"].string.isEmpty { PBody("Chưa có ngày sinh.") }

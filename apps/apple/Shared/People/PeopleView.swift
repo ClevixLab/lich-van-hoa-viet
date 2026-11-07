@@ -17,6 +17,7 @@ enum PRoute: Hashable {
     case event(String, String?) // id người, id sự kiện (nil = thêm)
     case markDeceased(String)
     case memorial(String)
+    case editTray(String)       // sửa hồ sơ, mở sẵn mục "Ảnh mâm lễ ngày giỗ" (08 §16.1)
     case settings
 }
 
@@ -134,6 +135,7 @@ struct PeopleView: View {
                 ReadOnlyBlockedView()
             case .add(let kind): PersonFormView(kind: kind, editId: nil, path: $path)
             case .edit(let id): PersonFormView(kind: m.person(id)?["kind"].str ?? "living", editId: id, path: $path)
+            case .editTray(let id): PersonFormView(kind: "deceased", editId: id, path: $path, focusTray: true)
             case .event(let pid, let eid): EventFormView(personId: pid, eventId: eid, path: $path)
             case .markDeceased(let id): MarkDeceasedView(id: id, path: $path)
             case .memorial(let id): MemorialView(id: id)

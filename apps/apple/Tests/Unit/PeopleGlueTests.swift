@@ -404,4 +404,86 @@ final class PeopleGlueTests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: u.path))
     }
 
+    /// YC-2026-10 (08 §16.4 ca 2, 3): ảnh mâm lễ có EXIF → lưu đã thu nhỏ ≤ 1600 px, ≤ 1 MB, không còn EXIF; gắn vào
+    /// `memorial.tray_photo_id`; bỏ ảnh rồi lưu → không còn khóa, tệp ảnh bị xóa. Không vào .ics.
+    func testTrayPhotoSavedStrippedAndRemoved() throws {
+        let (st, _) = try tempStore()
+        let settings = JV.parse(try st.settingsJson())!
+        let input = jpegWithMetadata(width: 3000, height: 2000)
+        XCTAssertTrue(JPEGSanitizer.markers(input).contains(0xE1))
+        let t = try PhotoProcessor.process(input, maxSide: TrayPhoto.maxSide, maxBytes: TrayPhoto.maxBytes)
+        XCTAssertLessThanOrEqual(max(t.width, t.height), 1600)
+        XCTAssertLessThanOrEqual(t.jpeg.count, 1_048_576)
+        let trayId = try newUuid()
+        _ = try st.addPhoto(id: trayId, mime: "image/jpeg", width: UInt32(t.width), height: UInt32(t.height), bytes: t.jpeg)
+        var a = deceasedDraft("Nguyễn Văn A", settings: settings)
+        XCTAssertNil(a.build(photoId: nil, today: today)["memorial"]["tray_photo_id"].str)
+        a.trayPhotoId = trayId
+        var saved = JV.parse(try st.savePersonJson(json: a.build(photoId: nil, today: today).text))!
+        XCTAssertEqual(saved["memorial"]["tray_photo_id"].str, trayId)
+        let stored = try st.photoBytes(id: trayId)
+        XCTAssertFalse(JPEGSanitizer.markers(stored).contains(0xE1), "ảnh mâm lễ lưu không còn EXIF")
+        XCTAssertFalse(String(decoding: stored, as: UTF8.self).contains("MayChupThu"))
+        let ics = try icsExport(datasetJson: try st.datasetJson(), today: today.sd, nowUnixS: Int64(now.timeIntervalSince1970), onlyIds: nil)
+        XCTAssertFalse(ics.content.contains(trayId))
+        // Bỏ ảnh rồi lưu.
+        var b = PersonDraft(person: saved, settings: settings)
+        XCTAssertEqual(b.trayPhotoId, trayId)
+        b.trayPhotoId = nil
+        saved = JV.parse(try st.savePersonJson(json: b.build(photoId: nil, today: today).text))!
+        XCTAssertFalse(saved["memorial"]["tray_photo_id"].isObject || saved["memorial"]["tray_photo_id"].str != nil)
+        XCTAssertFalse(saved["memorial"].text.contains("tray_photo_id"), "null ≡ thiếu: không ghi khóa")
+        XCTAssertThrowsError(try st.photoBytes(id: trayId), "ảnh mâm lễ bỏ đi bị xóa")
+    }
+
+    /// 08 §16.3: gói chỉ nhận mục đã duyệt, có tệp, đúng sha256 (gói thử: 1 duyệt, 1 chờ, 1 sai sha256).
+    func testTrayPackKeepsOnlyApprovedVerifiedItems() throws {
+        let dir = try XCTUnwrap(TrayPackTest.make())
+        let items = TrayPack.load(dir)
+        XCTAssertEqual(items.map(\.id), ["thu-01"])
+        XCTAssertEqual(TrayPack(dir: dir).item(style: "truyen_thong")?.id, "thu-01")
+        XCTAssertNil(TrayPack(dir: dir).item(style: "cong_giao"))
+        XCTAssertTrue(TrayPack(dir: nil).items.isEmpty)
+        // Gói nhúng trong app (hiện rỗng) không làm hỏng gì.
+        XCTAssertNotNil(Bundle.main.url(forResource: "TrayPack", withExtension: nil), "thư mục TrayPack có trong bundle")
+    }
+
+    /// MA10-11 (DUYET-MA-YC10-CORE vòng 2): mọi đường lưu giữ `memorial.tray_photo_id`. Sửa trường khác (tên, lời tưởng
+    /// niệm, ảnh chân dung, thông tin báo tử, nhắc giỗ) qua bản nháp rồi lưu — ảnh mâm lễ vẫn gắn và tệp vẫn còn.
+    func testEverySavePathKeepsTrayPhoto() throws {
+        let (st, _) = try tempStore()
+        let settings = JV.parse(try st.settingsJson())!
+        let t = try PhotoProcessor.process(jpegWithMetadata(width: 1200, height: 900), maxSide: TrayPhoto.maxSide,
+                                           maxBytes: TrayPhoto.maxBytes)
+        let trayId = try newUuid()
+        _ = try st.addPhoto(id: trayId, mime: "image/jpeg", width: UInt32(t.width), height: UInt32(t.height), bytes: t.jpeg)
+        var a = deceasedDraft("Nguyễn Văn A", settings: settings)
+        a.trayPhotoId = trayId
+        var saved = JV.parse(try st.savePersonJson(json: a.build(photoId: nil, today: today).text))!
+        let edits: [(String, (inout PersonDraft) -> Void)] = [
+            ("tên", { $0.hoTen = "Nguyễn Văn An" }),
+            ("lời tưởng niệm", { $0.loiTuongNiem = "Con cháu nhớ ông." }),
+            ("giỗ hết", { $0.gioHetNam = 3 }),
+            ("ngưỡng hưởng dương", { $0.nguong = "50" }),
+            ("thông tin báo tử", { $0.notice.reason = "Tuổi cao" }),
+            ("nhắc giỗ", { $0.gio.enabled.toggle() }),
+            ("ghi chú", { $0.ghiChu = "Ghi chú mới" }),
+        ]
+        for (name, f) in edits {
+            var d = PersonDraft(person: saved, settings: settings)
+            f(&d)
+            saved = JV.parse(try st.savePersonJson(json: d.build(photoId: d.photoId, today: today).text))!
+            XCTAssertEqual(saved["memorial"]["tray_photo_id"].str, trayId, "sửa \(name) không làm mất ảnh mâm lễ")
+            XCTAssertNoThrow(try st.photoBytes(id: trayId), "sửa \(name): tệp ảnh mâm lễ còn")
+        }
+        // Thêm ảnh chân dung (đường lưu có ảnh mới) cũng giữ ảnh mâm lễ.
+        let portrait = try PhotoProcessor.process(jpegWithMetadata(width: 400, height: 500))
+        let pid = try newUuid()
+        _ = try st.addPhoto(id: pid, mime: "image/jpeg", width: UInt32(portrait.width), height: UInt32(portrait.height),
+                            bytes: portrait.jpeg)
+        let d = PersonDraft(person: saved, settings: settings)
+        saved = JV.parse(try st.savePersonJson(json: d.build(photoId: pid, today: today).text))!
+        XCTAssertEqual(saved["memorial"]["tray_photo_id"].str, trayId)
+        XCTAssertNoThrow(try st.photoBytes(id: trayId))
+    }
 }

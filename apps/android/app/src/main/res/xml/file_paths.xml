@@ -1,8 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Chỉ hai thư mục tạm: cache/ics/ (tệp .ics để chia sẻ) và cache/att/ (một bản tạm của tệp PDF đính kèm báo tử khi người
-  dùng chọn "Mở bằng ứng dụng khác", tên chung TepDinhKem.pdf — RA-SOAT-BAO-MAT-V02 §5.3). Không lộ thư mục dữ liệu, ảnh
-  hay cơ sở dữ liệu. Provider không exported; quyền đọc chỉ cấp cho đúng một Intent.
+  Chỉ ba thư mục tạm: cache/ics/ (tệp .ics để chia sẻ); cache/att/ (một bản tạm của tệp PDF đính kèm báo tử khi người
+  dùng chọn "Mở bằng ứng dụng khác", tên chung TepDinhKem.pdf — RA-SOAT-BAO-MAT-V02 §5.3); cache/capture/ (ảnh mâm lễ
+  vừa chụp bằng ứng dụng máy ảnh, tên chung mam.jpg — YC-2026-10, 08 §16.2; xóa và thu hồi quyền ngay sau khi xử lý,
+  khi hủy, và mỗi lần mở ứng dụng). Không lộ thư mục dữ liệu, ảnh hay cơ sở dữ liệu. Provider không exported; quyền
+  chỉ cấp cho đúng một Intent (đọc: .ics, PDF; đọc + ghi: Intent chụp ảnh).
 -->
 <paths>
     <cache-path name="ics" path="ics/" />

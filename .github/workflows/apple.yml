@@ -165,6 +165,13 @@ jobs:
             done
           done
           echo "Bản Release không có mã kiểm thử."
+          # YC-2026-10 N-5: Info.plist đã dựng của app iOS có câu xin quyền máy ảnh (iOS/Info.plist trong kho do XcodeGen sinh).
+          CAM=$(/usr/libexec/PlistBuddy -c "Print :NSCameraUsageDescription" "$IOS/Info.plist")
+          echo "NSCameraUsageDescription: $CAM"
+          echo "$CAM" | grep -q "tệp sao lưu mã hóa" || { echo "::error::Thiếu/sai NSCameraUsageDescription"; exit 1; }
+          # N-4: bản macOS được chọn/lưu tệp người dùng tự chọn trong hộp cát.
+          grep -q "com.apple.security.files.user-selected.read-write" ../../../../macOS/LichViet.entitlements \
+            || { echo "::error::Thiếu com.apple.security.files.user-selected.read-write"; exit 1; }
           ditto -c -k --sequesterRsrc --keepParent "$IOS" "$RUNNER_TEMP/LichViet-iOS-simulator.zip"
           ditto -c -k --sequesterRsrc --keepParent "$MAC" "$RUNNER_TEMP/LichViet-macOS-unsigned.zip"
           ls -la "$RUNNER_TEMP"/*.zip
@@ -204,10 +211,12 @@ jobs:
           xcodebuild -project LichVanHoaViet.xcodeproj -scheme LichViet-iOS -configuration Debug \
             -destination "id=$IPAD" -derivedDataPath build/ddt -resultBundlePath build/ipad-tests.xcresult \
             -only-testing:LichVietUITests-iOS/PeopleUITests/testScreenshotsLight \
+            -only-testing:LichVietUITests-iOS/PeopleUITests/testMemorialAltar \
+            -only-testing:LichVietUITests-iOS/PeopleUITests/testTrayPhoto \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO test-without-building | tee build/ipad-tests.log
 
       - name: Ghi ảnh chụp vào nhánh PR (apps/apple/screenshots/)
-        if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && contains(github.head_ref, 'apple')
+        if: ${{ !cancelled() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && contains(github.head_ref, 'apple') }}
         env:
           HEAD_REF: ${{ github.head_ref }}
           RUN_NO: ${{ github.run_number }}
@@ -278,9 +287,10 @@ jobs:
           apps/apple/build-xcframework.sh
           cd apps/apple && xcodegen generate
       - name: R14 — nâng cấp tại chỗ (0.1 → mới, 0.2-dev → mới)
+        id: r14
         run: bash apps/apple/ci/upgrade.sh
       - name: Ghi ảnh nâng cấp vào nhánh PR (apps/apple/screenshots/upgrade/)
-        if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && contains(github.head_ref, 'apple')
+        if: ${{ steps.r14.outcome == 'success' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && contains(github.head_ref, 'apple') }}
         env:
           HEAD_REF: ${{ github.head_ref }}
           RUN_NO: ${{ github.run_number }}
