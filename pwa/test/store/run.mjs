@@ -432,6 +432,81 @@ let r6File;
   results.photo_gc = got;
 }
 
+// YC-2026-10 (04 Bổ sung B8, R15 (c)–(f)): ảnh mâm lễ `memorial.tray_photo_id` — như Rust store/tests/tray.rs.
+{
+  const T1 = "0b8e4f52-3c1a-4d2e-9f60-0000000000c1", T2 = "0b8e4f52-3c1a-4d2e-9f60-0000000000c2";
+  const D1 = "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e01", D2 = "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e02", L3 = "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e03";
+  const PW = manifest.password;
+  const exStore = async () => { const s = await freshStore(); await s.applyImport(await S.openBackup(new Uint8Array(exFile), PW), "replace"); return s; };
+  const photoFile = (n) => new Uint8Array(readFileSync(join(TV, "r6v2", `photo-${String(n).padStart(2, "0")}.jpg`)));
+  const add = (s, id, n) => s.addPhoto({ id, mime: "image/jpeg", width: 300 + n, height: 400 + n, bytes: photoFile(n) });
+  const bump = (p) => { p.rev += 1; p.updated_at = "2026-11-07T00:00:00Z"; };
+  const withTray = async (s, id, tray) => { const p = structuredClone(await s.person(id)); p.memorial.tray_photo_id = tray; bump(p); return s.putPerson(S.normalizePersonNames(p)); };
+  const v3 = async (fn) => { try { await fn(); return "OK"; } catch (e) { return / (V\d \/\S+?):/.exec(" " + e.message)?.[1] ?? e.message; } };
+  const orphans = async (s) => {
+    const ids = (await s.photos()).map((p) => p.id);
+    const used = new Set((await s.persons()).flatMap((p) => S.validate.personPhotoRefs(p)));
+    return ids.filter((i) => !used.has(i)).length;
+  };
+  // (e) R14: tệp của bản trước mở được, không đổi; tệp xuất lại không có khóa mới.
+  const s = await exStore();
+  const ex = JSON.parse(exJsonText);
+  const snap = await s.snapshot({ version: "0.2.0", platform: "pwa" }, "x");
+  ok(["persons", "photos", "events", "event_types"].every((k) => S.canonicalJson(snap[k]) === S.canonicalJson(ex[k])) && !S.canonicalJson(snap).includes("tray_photo_id"),
+    "R15 (e): example-v1.lvhv (không có tray_photo_id) mở được, kho = tệp, không có khóa mới");
+  ok(!("tray_photo_id" in S.normalizePersonNames({ memorial: { tray_photo_id: null } }).memorial), "R15 (e): tray_photo_id null → bỏ khóa khi lưu (như Rust)");
+  // V3.
+  await add(s, T1, 0);
+  await withTray(s, D1, T1);
+  const portrait = (await s.person(D1)).photo_id;
+  const l = structuredClone(await s.person(L3)); l.photo_id = T1; bump(l);
+  const v3s = [await v3(() => withTray(s, D2, "0b8e4f52-3c1a-4d2e-9f60-0000000000ee")), await v3(() => withTray(s, D2, T1)), await v3(() => withTray(s, D2, portrait)),
+    await v3(() => withTray(s, D1, portrait)), await v3(() => s.putPerson(l))];
+  ok((await s.person(D1)).memorial.tray_photo_id === T1 && JSON.stringify(v3s) === JSON.stringify(["V3 /person/memorial/tray_photo_id", "V3 /person/memorial/tray_photo_id",
+    "V3 /person/memorial/tray_photo_id", "V3 /person/memorial/tray_photo_id", "V3 /person/photo_id"]), `R15 V3: ảnh không có / dùng chung → từ chối (như Rust) ${JSON.stringify(v3s)}`);
+  const doc = structuredClone(ex); doc.persons[1].memorial.tray_photo_id = T1;
+  const dv = await v3(() => S.validate.document(doc));
+  doc.persons[1].memorial.tray_photo_id = portrait;
+  const ds = await v3(() => S.validate.document(doc));
+  ok(dv === "V3 /persons/1/memorial/tray_photo_id" && ds === "V3 /persons/0/photo_id", `R15 (d): tài liệu nhập có tray_photo_id treo / dùng chung → V3 (như Rust) ${dv}; ${ds}`);
+  // (d) xuất / nhập.
+  const sha1 = sha(await s.photoBytes(T1));
+  const f = await s.exportBackup(PW, { version: "0.2.0", platform: "pwa" });
+  let rt = true;
+  for (const [mode, seed] of [["replace", false], ["merge", false], ["merge", true]]) {
+    const u = seed ? await exStore() : await freshStore();
+    await u.applyImport(await S.openBackup(f, PW), mode);
+    rt &&= (await u.person(D1)).memorial.tray_photo_id === T1 && sha(await u.photoBytes(T1)) === sha1 && (await orphans(u)) === 0;
+    u.close();
+  }
+  ok(rt, "R15 (d): xuất rồi nhập (Thay toàn bộ, Gộp vào kho trống, Gộp vào kho có bản cũ) giữ ảnh mâm lễ (sha256) và liên kết");
+  // (f) đổi, bỏ, đổi về đang sống, xóa hồ sơ → ảnh cũ bị xóa; 0 ảnh mồ côi.
+  const gone = async (id) => (await code(() => s.photoBytes(id))) !== "OK";
+  await add(s, T2, 2); await withTray(s, D1, T2);
+  const f1 = (await gone(T1)) && (await orphans(s)) === 0;
+  await withTray(s, D1, null);
+  const f2 = (await gone(T2)) && !("tray_photo_id" in (await s.person(D1)).memorial) && (await orphans(s)) === 0;
+  await add(s, T1, 0); await withTray(s, D1, T1);
+  const p = structuredClone(await s.person(D1));
+  Object.assign(p, { kind: "living", death: null, memorial: null, noi_an_tang: "" }); p.reminders.gio = null; bump(p);
+  await s.putPerson(p);
+  const f3 = (await gone(T1)) && (await orphans(s)) === 0;
+  await add(s, T2, 2); await withTray(s, D2, T2); await s.deletePerson(D2);
+  const f4 = (await gone(T2)) && (await orphans(s)) === 0;
+  ok(f1 && f2 && f3 && f4, `R15 (f): đổi / bỏ / đổi về đang sống / xóa hồ sơ → ảnh mâm lễ cũ bị xóa cùng giao dịch, 0 ảnh mồ côi (${[f1, f2, f3, f4].join(",")})`);
+  s.close();
+  // 01 §6.3: Gộp giữ ảnh mâm lễ của bản nhập mà hồ sơ sau gộp còn dùng.
+  const inc = structuredClone(ex);
+  inc.photos.push({ id: T1, mime: "image/jpeg", width: 300, height: 400, bytes: 10, sha256: "a".repeat(64), stripped: true, created_at: "2026-11-07T00:00:00Z" });
+  inc.persons[1].memorial.tray_photo_id = T1; inc.persons[1].rev = 9;
+  const m1 = S.mergeDocs(ex, inc);
+  const loc2 = structuredClone(ex); loc2.persons[1].rev = 99;
+  const m2 = S.mergeDocs(loc2, inc);
+  ok(m1.photos.some((x) => x.id === T1) && m1.persons[1].memorial.tray_photo_id === T1 && !m2.photos.some((x) => x.id === T1),
+    "Gộp giữ ảnh mâm lễ của bản nhập khi hồ sơ nhập thắng; bỏ khi hồ sơ trên máy thắng (như Rust merge_docs)");
+  results.tray_photo = "ok";
+}
+
 // YC-2026-07: gợi ý cách gọi / quan hệ và viết hoa chữ đầu — giống hệt Rust (names-rust.json do cross_platform write ghi).
 {
   const rust = JSON.parse(readFileSync(join(OUT, "names-rust.json"), "utf8"));
