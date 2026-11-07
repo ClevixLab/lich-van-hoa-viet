@@ -122,6 +122,9 @@ targets:
       base:
         GENERATE_INFOPLIST_FILE: YES
         PRODUCT_BUNDLE_IDENTIFIER: vn.clevix.lichviet.tests
+        # Tên sản phẩm của app iOS là LichViet (khác tên target) — chỉ rõ app chủ cho kiểm thử.
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/LichViet.app/LichViet"
+        BUNDLE_LOADER: "$(TEST_HOST)"
         TARGETED_DEVICE_FAMILY: "1,2"
   # Kiểm thử giao diện (XCUITest): luồng chính và ảnh chụp mọi màn hình mới của mô-đun "Người thân".
   LichVietUITests-iOS:
