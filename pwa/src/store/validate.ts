@@ -263,18 +263,27 @@ export function trayPhotoRef(pj: JsonObj): string | null {
 }
 
 /** Như Rust `tray_photo_shared`: ảnh mâm lễ chỉ thuộc một người. Trả đường dẫn tương đối của trường vi phạm hoặc null. */
-export function trayPhotoShared(pj: JsonObj, persons: JsonObj[]): string | null {
+export function trayPhotoShared(pj: JsonObj, persons: JsonObj[]): [string, string] | null {
   const tray = trayPhotoRef(pj);
   const ph = typeof pj.photo_id === "string" ? pj.photo_id : null;
-  if (tray !== null && tray === ph) return "memorial/tray_photo_id";
+  if (tray !== null && tray === ph) return ["memorial/tray_photo_id", TRAY_IS_PORTRAIT];
   for (const q of persons) {
     if (q.id === pj.id) continue;
-    if (tray !== null && (q.photo_id === tray || trayPhotoRef(q) === tray)) return "memorial/tray_photo_id";
+    if (tray !== null && (q.photo_id === tray || trayPhotoRef(q) === tray)) return ["memorial/tray_photo_id", TRAY_SHARED];
     const qt = trayPhotoRef(q);
-    if (ph !== null && qt !== null && ph === qt) return "photo_id";
+    if (ph !== null && qt !== null && ph === qt) return ["photo_id", TRAY_SHARED];
   }
   return null;
 }
+
+/** Câu lỗi (như Rust validate::TRAY_*). */
+export const TRAY_SHARED = "ảnh mâm lễ dùng chung với hồ sơ khác";
+export const TRAY_IS_PORTRAIT = "ảnh mâm lễ không được trùng ảnh chân dung";
+export const TRAY_TOO_LARGE = "ảnh mâm lễ có cạnh dài quá 1600 px";
+/** Cạnh dài tối đa của ảnh mâm lễ (01 §3.7; Bổ sung 01-YC10-a, MA10-02). */
+export const TRAY_MAX_EDGE = 1600;
+/** Bản ghi `Photo` có cạnh dài > 1600 không (như Rust `tray_too_large`). */
+export const trayTooLarge = (photo: JsonObj): boolean => Math.max(Number(photo.width) || 0, Number(photo.height) || 0) > TRAY_MAX_EDGE;
 
 /** Every attachment id a Person references: `death.notice.attachments[].file_id` (YC-2026-07). */
 export function personAttachmentRefs(pj: JsonObj): string[] {
@@ -498,8 +507,10 @@ export function document(v: Json): void {
     if (typeof pid === "string" && !photoIds.has(pid)) throw err("V3", `/persons/${i}/photo_id`, "ảnh không tồn tại");
     const tray = trayPhotoRef(x as JsonObj);
     if (tray !== null && !photoIds.has(tray)) throw err("V3", `/persons/${i}/memorial/tray_photo_id`, "ảnh mâm lễ không tồn tại");
+    // Bổ sung 01-YC10-a (MA10-02): lỗi lược đồ tại trường trỏ ảnh.
+    if (tray !== null && trayTooLarge((photos as JsonObj[]).find((ph) => ph.id === tray)!)) throw v1(`/persons/${i}/memorial/tray_photo_id`, TRAY_TOO_LARGE);
     const sh = trayPhotoShared(x as JsonObj, persons as JsonObj[]);
-    if (sh !== null) throw err("V3", `/persons/${i}/${sh}`, "ảnh mâm lễ dùng chung với hồ sơ khác");
+    if (sh !== null) throw err("V3", `/persons/${i}/${sh[0]}`, sh[1]);
     const d = (x as JsonObj).death as JsonObj | null;
     const n = d && isObj(d) ? (d.notice as JsonObj | null | undefined) : null;
     if (n && isObj(n)) {

@@ -416,6 +416,7 @@ const TP = "mật khẩu thử nghiệm";
 const T1 = "0b8e4f52-3c1a-4d2e-9f60-0000000000a1", T2 = "0b8e4f52-3c1a-4d2e-9f60-0000000000a2";
 const T3 = "0b8e4f52-3c1a-4d2e-9f60-0000000000a3", T4 = "0b8e4f52-3c1a-4d2e-9f60-0000000000a4";
 const TX = "0b8e4f52-3c1a-4d2e-9f60-0000000000af";
+const T0 = "0b8e4f52-3c1a-4d2e-9f60-0000000000a0", T5 = "0b8e4f52-3c1a-4d2e-9f60-0000000000a5", T6 = "0b8e4f52-3c1a-4d2e-9f60-0000000000a6";
 const D1 = "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e01", D2 = "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e02", L3 = "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e03";
 const PORTRAIT = "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09";
 const TV = join(REPO, "docs/v0.2/schema/test-vectors");
@@ -436,7 +437,7 @@ class Tray {
     });
   }
   async withTray(id, tray) { const p = structuredClone(await this.person(id)); p.memorial.tray_photo_id = tray; return this.save(p); }
-  add(id, file, w, h) { return outcome(() => this.st.addPhoto({ id, mime: "image/jpeg", width: w, height: h, bytes: new Uint8Array(readFileSync(join(TV, file))) })); }
+  add(id, file, w, h, mime = "image/jpeg") { return outcome(() => this.st.addPhoto({ id, mime, width: w, height: h, bytes: new Uint8Array(readFileSync(join(TV, file))) })); }
   async photos() {
     const ids = (await this.st.photos()).map((p) => p.id).sort();
     const used = new Set((await this.st.persons()).flatMap((p) => S.validate.personPhotoRefs(p)));
@@ -458,7 +459,12 @@ const openOutcome = (e) => (e?.code === "backup" || e?.message === "Sai mật kh
 async function trayImport(t, file, mode) {
   let v;
   try { v = await S.openBackup(new Uint8Array(file), TP); } catch (e) { return openOutcome(e); }
-  return outcome(() => t.st.applyImport(v, mode));
+  // Như Rust FFI `apply_import` (lỗi → `LvhvDataError::Backup`, thông báo chung) và màn hình khôi phục của PWA ("Chưa khôi
+  // phục được — dữ liệu trên máy giữ nguyên."): người dùng chỉ thấy thông báo chung.
+  try { await t.st.applyImport(v, mode); return "ok"; } catch (e) { const o = outcomeOf(e); return o === "storage" ? o : "backup"; }
+}
+async function fixedFile(doc, blobs) {
+  return S.bc.exportWithFixedRng(TP, S.canonicalJson(doc), blobs.map(([id, bytes]) => ({ id: S.bc.uuidToBytes(id), bytes })), new Uint8Array(16).fill(0x11), new Uint8Array(24).fill(0x22));
 }
 async function contentsOf(t) {
   const d = await t.st.snapshot({ version: "0.2.0", platform: "pwa" }, "2026-11-07T00:00:00Z");
@@ -511,8 +517,16 @@ async function cmdScenario(a) {
     portrait_is_other_tray: await t.save(l3),
   };
   out.set = { save: set, tray_d1: await t.trayOf(D1), photos: await t.photos(), v3 };
+  // MA10-02, MA10-04.
+  const add5 = await t.add(T5, "tray-photo/tray-1601x1200.jpg", 1601, 1200);
+  const save5 = await t.withTray(D2, T5);
+  const del5 = await outcome(() => t.st.deletePhoto(T5));
+  const dd = structuredClone(await t.person(D2));
+  dd.photo_id = "0b8e4f52-3c1a-4d2e-9f60-0000000000ee"; dd.memorial.tray_photo_id = "0b8e4f52-3c1a-4d2e-9f60-0000000000ee";
+  out.g_rules = { tray_1601: { add_photo: add5, save: save5, delete_photo: del5 }, double_dangling: await t.save(dd), photos: await t.photos() };
 
   // (d)
+  const resave = await t.withTray(D1, T1); // rev tăng để bản này thắng khi gộp (MA10-03)
   const file = await t.st.exportBackup(TP, { version: "0.2.0", platform: "pwa" });
   const sha1 = await t.photoSha(T1);
   const d = {};
@@ -529,12 +543,49 @@ async function cmdScenario(a) {
   const exifDoc = structuredClone(doc);
   for (const ph of exifDoc.photos) if (ph.id === T1) { ph.bytes = exifB.length; ph.sha256 = sha(exifB); ph.width = 768; ph.height = 1024; }
   const shared = structuredClone(doc); shared.persons.find((p) => p.id === L3).photo_id = T1;
+  const bigB = new Uint8Array(readFileSync(join(TV, "tray-photo/tray-1601x1200.jpg")));
+  const bigDoc = structuredClone(doc);
+  for (const ph of bigDoc.photos) if (ph.id === T1) { ph.bytes = bigB.length; ph.sha256 = sha(bigB); ph.width = 1601; ph.height = 1200; }
   d.crafted = {
     dangling_tray: await crafted(dangling, blobs.filter(([i]) => i !== T1)),
     tray_with_exif: await crafted(exifDoc, blobs.map(([i, b]) => [i, i === T1 ? exifB : b])),
     shared_tray: await crafted(shared, blobs),
     control: await crafted(doc, blobs),
+    tray_too_large: await crafted(bigDoc, blobs.map(([i, b]) => [i, i === T1 ? bigB : b])),
   };
+  // F2.
+  const nullDoc = structuredClone(doc); nullDoc.persons.find((p) => p.id === D2).memorial.tray_photo_id = null;
+  {
+    const u = await Tray.fresh();
+    const ri = await trayImport(u, await fixedFile(nullDoc, blobs), "replace");
+    const again = await u.st.exportBackup(TP, { version: "0.2.0", platform: "pwa" });
+    const c = await S.bc.importBackup(again, TP);
+    const snap = await u.st.snapshot({ version: "0.2.0", platform: "pwa" }, "2026-11-07T00:00:00Z");
+    d.explicit_null = { import: ri, tray_d2: await u.trayOf(D2), store_has_null: JSON.stringify(snap).includes('"tray_photo_id":null'), reexport_has_null: c.json.includes('"tray_photo_id":null') };
+    u.st.close();
+  }
+  // MA10-03.
+  {
+    const u = await Tray.fresh();
+    await trayImport(u, example, "replace");
+    const a0 = await u.add(T0, "r6v2/photo-08.jpg", 308, 408);
+    const s0 = await u.withTray(D1, T0);
+    const ri = await trayImport(u, file, "merge");
+    const snap = await u.st.snapshot({ version: "0.2.0", platform: "pwa" }, "2026-11-07T00:00:00Z");
+    d.merge_replaces_local_tray = { setup: [a0, s0, resave], import: ri, tray_d1: await u.trayOf(D1), photos: await u.photos(), old_tray_in_store: JSON.stringify(snap).includes(T0) };
+    u.st.close();
+  }
+  // MA10-10: gộp làm hai hồ sơ cùng trỏ một ảnh mâm lễ.
+  {
+    const u = await Tray.fresh();
+    await trayImport(u, example, "replace");
+    const a1 = await u.add(T1, "r6v2/photo-00.jpg", 300, 400);
+    const s1 = await u.withTray(D2, T1);
+    const before = S.canonicalJson(await u.st.persons());
+    const ri = await trayImport(u, file, "merge");
+    d.merge_shared_tray = { setup: [a1, s1], import: ri, unchanged: S.canonicalJson(await u.st.persons()) === before, photos: await u.photos() };
+    u.st.close();
+  }
   out.d_round_trip = d;
 
   // (f)
@@ -547,6 +598,9 @@ async function cmdScenario(a) {
   const p = structuredClone(await t.person(D1));
   p.kind = "living"; p.death = null; p.memorial = null; p.reminders.gio = null; p.noi_an_tang = "";
   f.to_living = { set: s3, save: await t.save(p), tray_d1: await t.trayOf(D1), photos: await t.photos() };
+  const a6 = await t.add(T6, "r6v2/photo-01.webp", 301, 401, "image/webp");
+  const s6 = await t.withTray(D2, T6);
+  f.webp = { add_photo: a6, save: s6, tray_d2: await t.trayOf(D2), photos: await t.photos() };
   await t.add(T4, "r6v2/photo-06.jpg", 306, 406);
   const s4 = await t.withTray(D2, T4);
   f.delete_person = { set: s4, delete: await outcome(() => t.st.deletePerson(D2)), photos: await t.photos() };
