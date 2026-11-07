@@ -174,8 +174,10 @@ class PeopleScreensTest {
         show(start = PRoute.Profiles)
         go(PRoute.PersonPage(ids.c))
         shoot("20-hop-xoa", screen = true) {
-            rule.onNode(hasScrollAction()).performScrollToNode(hasText("Xóa hồ sơ"))
-            if (rule.onAllNodesWithText("Giữ lại").fetchSemanticsNodes().isEmpty()) rule.onNodeWithText("Xóa hồ sơ").performClick()
+            if (rule.onAllNodesWithText("Giữ lại").fetchSemanticsNodes().isEmpty()) {
+                rule.onNode(hasScrollAction()).performScrollToNode(hasText("Xóa hồ sơ"))
+                rule.onNodeWithText("Xóa hồ sơ").performClick()
+            }
         }
         rule.onNodeWithText("Giữ lại").performClick()
         rule.runOnIdle { nav.tab(PRoute.Backup) }
