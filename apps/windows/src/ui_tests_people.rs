@@ -34,6 +34,13 @@ fn press(ui: &AppWindow, label: &str) {
     click(ui, &by_label(ui, label));
 }
 
+/// Gửi một phím (nhấn + nhả) tới phần tử đang có tiêu điểm.
+fn key(ui: &AppWindow, k: slint::platform::Key) {
+    let t: slint::SharedString = k.into();
+    ui.window().dispatch_event(slint::platform::WindowEvent::KeyPressed { text: t.clone() });
+    ui.window().dispatch_event(slint::platform::WindowEvent::KeyReleased { text: t });
+}
+
 /// Về một trang của thanh phân đoạn: bấm "‹ Về …" cho tới khi thanh phân đoạn hiện ra, rồi bấm mục đó.
 fn seg(ui: &AppWindow, name: &str) {
     for _ in 0..6 {
@@ -308,6 +315,15 @@ fn nguoi_dang_song_su_kien_bao_tu() {
     assert_eq!(p.get_dlg(), "");
     assert!(ps.borrow().last_opened.is_none(), "Hủy thì không mở");
     assert!(!tmp.join("tmp").exists());
+    // Bàn phím (DV25-05): Enter = nút mặc định "Hủy", Esc đóng — cả hai không mở tệp.
+    for k in [slint::platform::Key::Return, slint::platform::Key::Escape] {
+        press(&ui, "Mở tệp đính kèm 2");
+        assert_eq!(p.get_dlg(), "mo-tep");
+        key(&ui, k);
+        assert_eq!(p.get_dlg(), "", "phím {k:?} đóng hộp");
+        assert!(ps.borrow().last_opened.is_none(), "phím {k:?} không mở tệp");
+        assert!(!tmp.join("tmp").exists());
+    }
     press(&ui, "Mở tệp đính kèm 2");
     click(&ui, &last_by_label(&ui, "Mở tệp"));
     let opened = ps.borrow().last_opened.clone().unwrap();
@@ -457,6 +473,12 @@ fn theo_ky_ics_sao_luu_the_nhac() {
     press(&ui, "Tạo tệp sao lưu…");
     assert_eq!(p.get_dlg(), "tao-sao-luu");
     assert!(p.get_dlg_lines().iter().any(|l| l.contains("thông tin báo tử")), "hộp sao lưu nói rõ có báo tử");
+    // Esc khi tiêu điểm ở ô mật khẩu vẫn đóng hộp (DV25-05: nội dung nằm trong FocusScope của hộp).
+    click(&ui, &last_by_label(&ui, "Mật khẩu (ít nhất 8 ký tự)"));
+    key(&ui, slint::platform::Key::Escape);
+    assert_eq!(p.get_dlg(), "", "Esc trong ô mật khẩu đóng hộp");
+    press(&ui, "Tạo tệp sao lưu…");
+    assert_eq!(p.get_dlg(), "tao-sao-luu");
     p.set_pw1("ngan".into());
     click(&ui, &last_by_label(&ui, "Tạo và lưu tệp"));
     assert_eq!(p.get_e_pw1(), "Mật khẩu cần ít nhất 8 ký tự");
@@ -487,9 +509,19 @@ fn theo_ky_ics_sao_luu_the_nhac() {
     p.set_restore_pw("sai mật khẩu".into());
     press(&ui, "Mở tệp");
     assert_eq!(p.get_restore_error(), "Sai mật khẩu hoặc tệp bị hỏng");
+    assert!(!p.get_restore_busy(), "nhánh lỗi mở khóa nút (DV25-03)");
+    // Đang giải mã: nút "Mở tệp" khóa — bấm không làm gì (MA3C-25-05).
+    p.set_restore_busy(true);
     p.set_restore_pw("nhà ở Hà Đông có cây bàng".into());
     press(&ui, "Mở tệp");
+    assert_eq!(p.get_dlg(), "", "nút đang khóa");
+    // Phần chạy trên luồng giao diện của bg (bản phát hành): tìm lại trạng thái qua PS_TLS và mở khóa ở nhánh lỗi.
+    assert!(crate::people::deliver(&ui.as_weak(), Err("thử".to_string()), crate::people::backup_opened));
+    assert!(!p.get_restore_busy());
+    assert_eq!(p.get_restore_error(), "thử");
+    press(&ui, "Mở tệp");
     assert_eq!(p.get_dlg(), "khoi-phuc");
+    assert!(!p.get_restore_busy(), "nhánh thành công mở khóa nút (DV25-03)");
     click(&ui, &last_by_label(&ui, "Cách nhập: Thay toàn bộ"));
     click(&ui, &last_by_label(&ui, "Khôi phục"));
     assert_eq!(p.get_dlg_title(), "Thay toàn bộ dữ liệu?");
