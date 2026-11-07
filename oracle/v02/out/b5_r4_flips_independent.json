@@ -1,0 +1,13 @@
+{
+ "file": "r6v2-fixed.lvhv",
+ "variants": 65536,
+ "accepted": [],
+ "by_code": {
+  "not_a_backup": 64,
+  "unsupported": 17,
+  "newer_version": 15,
+  "wrong_password_or_corrupt": 65304,
+  "bad_kdf_params": 72,
+  "bad_length": 64
+ }
+}

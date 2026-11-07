@@ -1,0 +1,831 @@
+{
+ "tag": "8a2ed41-adapted",
+ "fixtures_dir": "adapted",
+ "summary": {
+  "KHOP": 39,
+  "GHI_NHAN": 4,
+  "SAI_LECH_CHAP_NHAN": 5
+ },
+ "rows": [
+  {
+   "name": "G01-v2-hop-le",
+   "expect": "accept",
+   "class": [
+    "v2"
+   ],
+   "actual": {
+    "accepted": true,
+    "state": "c369a8e36707645d066c49a7fb8c45fcd90946d669da3781ec4cdb117659a89d"
+   },
+   "expected_states": {
+    "nguyen-van": "c369a8e36707645d066c49a7fb8c45fcd90946d669da3781ec4cdb117659a89d",
+    "bo-gioi_tinh-null": "dc334bc4103d8454ef3de9e2940432017df68b45a2b8d9827fb5dd60788c0ec0",
+    "them-gioi_tinh-null": "c369a8e36707645d066c49a7fb8c45fcd90946d669da3781ec4cdb117659a89d"
+   },
+   "state_match": [
+    "nguyen-van",
+    "them-gioi_tinh-null"
+   ],
+   "verdict": "KHOP"
+  },
+  {
+   "name": "G02-v2-dung-6-tep",
+   "expect": "accept",
+   "class": [
+    "v2"
+   ],
+   "actual": {
+    "accepted": true,
+    "state": "1788b3432d09879c8cafc66e7a84d81d8879c72615e596d6d9b24a910899c249"
+   },
+   "expected_states": {
+    "nguyen-van": "1788b3432d09879c8cafc66e7a84d81d8879c72615e596d6d9b24a910899c249",
+    "bo-gioi_tinh-null": "03b76a83dfda1f66fdd9c6ff27112ae4f7165b2443f8dddd389e5698dd51e3fb",
+    "them-gioi_tinh-null": "1788b3432d09879c8cafc66e7a84d81d8879c72615e596d6d9b24a910899c249"
+   },
+   "state_match": [
+    "nguyen-van",
+    "them-gioi_tinh-null"
+   ],
+   "verdict": "KHOP"
+  },
+  {
+   "name": "G03-v2-gioi-tinh-vang",
+   "expect": "accept",
+   "class": [
+    "v2"
+   ],
+   "actual": {
+    "accepted": true,
+    "state": "dc334bc4103d8454ef3de9e2940432017df68b45a2b8d9827fb5dd60788c0ec0"
+   },
+   "expected_states": {
+    "nguyen-van": "dc334bc4103d8454ef3de9e2940432017df68b45a2b8d9827fb5dd60788c0ec0",
+    "bo-gioi_tinh-null": "dc334bc4103d8454ef3de9e2940432017df68b45a2b8d9827fb5dd60788c0ec0",
+    "them-gioi_tinh-null": "c369a8e36707645d066c49a7fb8c45fcd90946d669da3781ec4cdb117659a89d"
+   },
+   "state_match": [
+    "nguyen-van",
+    "bo-gioi_tinh-null"
+   ],
+   "verdict": "KHOP"
+  },
+  {
+   "name": "G04-pdf-dung-10MB",
+   "expect": "accept",
+   "class": [
+    "v2"
+   ],
+   "actual": {
+    "accepted": true,
+    "state": "ae1974c8a563de35b1225a42f7e99dcfbbe63cc8a7cc1aee1f42615d42c2df4d"
+   },
+   "expected_states": {
+    "nguyen-van": "ae1974c8a563de35b1225a42f7e99dcfbbe63cc8a7cc1aee1f42615d42c2df4d",
+    "bo-gioi_tinh-null": "17f3c4626207ca890acf8c33566bc4ea08901aee4ee4679007fe8e64d5d257ac",
+    "them-gioi_tinh-null": "ae1974c8a563de35b1225a42f7e99dcfbbe63cc8a7cc1aee1f42615d42c2df4d"
+   },
+   "state_match": [
+    "nguyen-van",
+    "them-gioi_tinh-null"
+   ],
+   "verdict": "KHOP"
+  },
+  {
+   "name": "G05-anh-dung-2MB",
+   "expect": "accept",
+   "class": [
+    "v2"
+   ],
+   "actual": {
+    "accepted": true,
+    "state": "f5d57caf4ff8a52e2e0a7c193211285501ad68bb944ca9abe39ea1ff5edf8c80"
+   },
+   "expected_states": {
+    "nguyen-van": "f5d57caf4ff8a52e2e0a7c193211285501ad68bb944ca9abe39ea1ff5edf8c80",
+    "bo-gioi_tinh-null": "de3b1188d670e765a0830da189dfe582c2cce3db531cd1f7a66e734873704289",
+    "them-gioi_tinh-null": "f5d57caf4ff8a52e2e0a7c193211285501ad68bb944ca9abe39ea1ff5edf8c80"
+   },
+   "state_match": [
+    "nguyen-van",
+    "them-gioi_tinh-null"
+   ],
+   "verdict": "KHOP"
+  },
+  {
+   "name": "M01-cu-giay-chung-tu",
+   "expect": "accept",
+   "class": [
+    "migrate"
+   ],
+   "actual": {
+    "accepted": true,
+    "state": "1e49c1de5d36be13126a05896f88448d7f89f59dae2615cf27105ebd369fc78d"
+   },
+   "expected_states": {
+    "chuyen-doi:nguyen-van": "133a0dbbbd5671dedb7f8dd53d2216487f1adfb4d1ecda208c5e90317a8400a9",
+    "chuyen-doi:bo-gioi_tinh-null": "f9864b067b8831cb49853758ab1629e5e541166b2b22264fa341aeec68652a64",
+    "chuyen-doi:them-gioi_tinh-null": "133a0dbbbd5671dedb7f8dd53d2216487f1adfb4d1ecda208c5e90317a8400a9",
+    "nguyen-tep:nguyen-van": "95c7a5c0e5f790eaf771223351e218a2612d0edb7bf53033464c309303013b15",
+    "nguyen-tep:bo-gioi_tinh-null": "95c7a5c0e5f790eaf771223351e218a2612d0edb7bf53033464c309303013b15",
+    "nguyen-tep:them-gioi_tinh-null": "b0345c6400d9050318e47af51ac5052507c4f1417ee12616061dfe90821fa61c",
+    "bieu-dien-PR(legacy)": "1e49c1de5d36be13126a05896f88448d7f89f59dae2615cf27105ebd369fc78d",
+    "bieu-dien-PR(legacy+rong)": "1e49c1de5d36be13126a05896f88448d7f89f59dae2615cf27105ebd369fc78d"
+   },
+   "state_match": [
+    "bieu-dien-PR(legacy)",
+    "bieu-dien-PR(legacy+rong)"
+   ],
+   "verdict": "KHOP"
+  },
+  {
+   "name": "M02-cu-4-anh",
+   "expect": "accept",
+   "class": [
+    "migrate"
+   ],
+   "actual": {
+    "accepted": true,
+    "state": "f6301a78468e7a5beb8f9d643c95f1813597859b8ed4ad4f032b085422370cea"
+   },
+   "expected_states": {
+    "chuyen-doi:nguyen-van": "94b397d761c41c0ae918baeeff1c550df38396e51e067d9dedfafbf71e49a733",
+    "chuyen-doi:bo-gioi_tinh-null": "0c2ff1dca030b4b94c81b94d5a99280a9ecdecdc5575c3261dcdce6db71b15ed",
+    "chuyen-doi:them-gioi_tinh-null": "94b397d761c41c0ae918baeeff1c550df38396e51e067d9dedfafbf71e49a733",
+    "nguyen-tep:nguyen-van": "5353391701e098a408173ab0819b64a0d6b620baef0b83fc34e5cf159518ab86",
+    "nguyen-tep:bo-gioi_tinh-null": "5353391701e098a408173ab0819b64a0d6b620baef0b83fc34e5cf159518ab86",
+    "nguyen-tep:them-gioi_tinh-null": "a58c0413441b615d9ea05737ab416a09a695df4f5217bf79442556341bd2319e",
+    "bieu-dien-PR(legacy)": "f6301a78468e7a5beb8f9d643c95f1813597859b8ed4ad4f032b085422370cea",
+    "bieu-dien-PR(legacy+rong)": "f6301a78468e7a5beb8f9d643c95f1813597859b8ed4ad4f032b085422370cea"
+   },
+   "state_match": [
+    "bieu-dien-PR(legacy)",
+    "bieu-dien-PR(legacy+rong)"
+   ],
+   "verdict": "KHOP"
+  },
+  {
+   "name": "M03-cu-anh-chung",
+   "expect": "accept",
+   "class": [
+    "migrate"
+   ],
+   "actual": {
+    "accepted": true,
+    "state": "4e9f43fee2d413f39ee335738e9316a114d20932c89e2517cc1395cbfdebb155"
+   },
+   "expected_states": {
+    "chuyen-doi:nguyen-van": "42d5eb5580b93e971a365aa162543d2328e98a7b9d0b1880488dd68da901a32b",
+    "chuyen-doi:bo-gioi_tinh-null": "c8418e910130bd8aeb4a496cbeba836e16d5f4add15d07a3db415fc279082148",
+    "chuyen-doi:them-gioi_tinh-null": "42d5eb5580b93e971a365aa162543d2328e98a7b9d0b1880488dd68da901a32b",
+    "nguyen-tep:nguyen-van": "1315a2abf3756149bcefd4dd774e0e1fd93c5820fe9aafa9c055a0ca38ec3719",
+    "nguyen-tep:bo-gioi_tinh-null": "1315a2abf3756149bcefd4dd774e0e1fd93c5820fe9aafa9c055a0ca38ec3719",
+    "nguyen-tep:them-gioi_tinh-null": "8ea3a6011edf465faae70f30b24d9705f48e773308b5168942df12433549747e",
+    "bieu-dien-PR(legacy)": "4e9f43fee2d413f39ee335738e9316a114d20932c89e2517cc1395cbfdebb155",
+    "bieu-dien-PR(legacy+rong)": "4e9f43fee2d413f39ee335738e9316a114d20932c89e2517cc1395cbfdebb155"
+   },
+   "state_match": [
+    "bieu-dien-PR(legacy)",
+    "bieu-dien-PR(legacy+rong)"
+   ],
+   "verdict": "KHOP"
+  },
+  {
+   "name": "M04-cu-khong-bao-tu",
+   "expect": "accept",
+   "class": [
+    "migrate"
+   ],
+   "actual": {
+    "accepted": true,
+    "state": "177b73e2af3dfacbff38794f92d626c596754e440c3767f17ddcf520f587426e"
+   },
+   "expected_states": {
+    "chuyen-doi:nguyen-van": "33e047056b14e5295bc6dfaea01a367db5b6b592ba9d73709b36664c6ff6d19b",
+    "chuyen-doi:bo-gioi_tinh-null": "177b73e2af3dfacbff38794f92d626c596754e440c3767f17ddcf520f587426e",
+    "chuyen-doi:them-gioi_tinh-null": "33e047056b14e5295bc6dfaea01a367db5b6b592ba9d73709b36664c6ff6d19b",
+    "nguyen-tep:nguyen-van": "177b73e2af3dfacbff38794f92d626c596754e440c3767f17ddcf520f587426e",
+    "nguyen-tep:bo-gioi_tinh-null": "177b73e2af3dfacbff38794f92d626c596754e440c3767f17ddcf520f587426e",
+    "nguyen-tep:them-gioi_tinh-null": "33e047056b14e5295bc6dfaea01a367db5b6b592ba9d73709b36664c6ff6d19b",
+    "bieu-dien-PR(legacy)": "177b73e2af3dfacbff38794f92d626c596754e440c3767f17ddcf520f587426e",
+    "bieu-dien-PR(legacy+rong)": "177b73e2af3dfacbff38794f92d626c596754e440c3767f17ddcf520f587426e"
+   },
+   "state_match": [
+    "chuyen-doi:bo-gioi_tinh-null",
+    "nguyen-tep:nguyen-van",
+    "nguyen-tep:bo-gioi_tinh-null",
+    "bieu-dien-PR(legacy)",
+    "bieu-dien-PR(legacy+rong)"
+   ],
+   "verdict": "KHOP"
+  },
+  {
+   "name": "M05-cu-bao-tu-rong",
+   "expect": "accept",
+   "class": [
+    "migrate"
+   ],
+   "actual": {
+    "accepted": true,
+    "state": "741a829052d21f888f5421dbc6d6e5977460715d58a34e5201694ad688206c14"
+   },
+   "expected_states": {
+    "chuyen-doi:nguyen-van": "2b96fdaf89b88b862a3aa5a31809c6482adee04157573bfccab09b471582b448",
+    "chuyen-doi:bo-gioi_tinh-null": "dd008d26aa24e1e39908153af335c15e4eb6be8edc39c843272d3ce4f0b1b4fe",
+    "chuyen-doi:them-gioi_tinh-null": "2b96fdaf89b88b862a3aa5a31809c6482adee04157573bfccab09b471582b448",
+    "nguyen-tep:nguyen-van": "f2128e5c2a9a9b4c73aff578d04ad2c4321e05879f172983989e4fd0522af795",
+    "nguyen-tep:bo-gioi_tinh-null": "f2128e5c2a9a9b4c73aff578d04ad2c4321e05879f172983989e4fd0522af795",
+    "nguyen-tep:them-gioi_tinh-null": "9f661851555194911d0289104d7bd865517a26096e135fd7465526e78c0ee0b5",
+    "bieu-dien-PR(legacy)": "dd008d26aa24e1e39908153af335c15e4eb6be8edc39c843272d3ce4f0b1b4fe",
+    "bieu-dien-PR(legacy+rong)": "741a829052d21f888f5421dbc6d6e5977460715d58a34e5201694ad688206c14"
+   },
+   "state_match": [
+    "bieu-dien-PR(legacy+rong)"
+   ],
+   "verdict": "KHOP"
+  },
+  {
+   "name": "M06-cu-khoa-la-legacy",
+   "expect": "accept_or_chua_ro",
+   "class": [
+    "migrate",
+    "legacy"
+   ],
+   "actual": {
+    "accepted": false,
+    "error": "Invalid(ValidationError { code: \"V1\", path: \"\", msg: \"trường lạ \\\"ghi_chu_ban_cu\\\"\" })"
+   },
+   "expected_states": {
+    "chuyen-doi:nguyen-van": "de9a0df4c1ade93b6d6c7e6a1e35134f53b55074f3a0fb5760f01b68c488c5d2",
+    "chuyen-doi:bo-gioi_tinh-null": "6482b60cfa7ddcab6d05e54f551b772c4168a9284a50aee7c2fb029fa813af0b",
+    "chuyen-doi:them-gioi_tinh-null": "de9a0df4c1ade93b6d6c7e6a1e35134f53b55074f3a0fb5760f01b68c488c5d2",
+    "nguyen-tep:nguyen-van": "beea005ac63269c6b6248052a7cc4eb3295db811f2c90b09bf0a0d3a72f0938b",
+    "nguyen-tep:bo-gioi_tinh-null": "beea005ac63269c6b6248052a7cc4eb3295db811f2c90b09bf0a0d3a72f0938b",
+    "nguyen-tep:them-gioi_tinh-null": "478a715dd8634b953909a734cfc4d0bd14eb8db0f97ed5eac12ce4f5e82b0349",
+    "bieu-dien-PR(legacy)": "597e7427c33a4e4ce2b92f6f2b86c8d5565bc78dbf3bd11c442187c237c66890",
+    "bieu-dien-PR(legacy+rong)": "597e7427c33a4e4ce2b92f6f2b86c8d5565bc78dbf3bd11c442187c237c66890"
+   },
+   "verdict": "GHI_NHAN"
+  },
+  {
+   "name": "M07-cu-chu-thuong-nfc",
+   "expect": "accept",
+   "class": [
+    "migrate",
+    "names"
+   ],
+   "actual": {
+    "accepted": true,
+    "state": "50e6eb4fb6ec64556259791423b817955d42a036f77fdca606c0bb8c7c61e32b"
+   },
+   "expected_states": {
+    "chuyen-doi:nguyen-van": "083f99cce7d6215e42e0a96ca2147c3e256a80c5130c75e37110a7187ff3eaa6",
+    "chuyen-doi:bo-gioi_tinh-null": "50e6eb4fb6ec64556259791423b817955d42a036f77fdca606c0bb8c7c61e32b",
+    "chuyen-doi:them-gioi_tinh-null": "083f99cce7d6215e42e0a96ca2147c3e256a80c5130c75e37110a7187ff3eaa6",
+    "nguyen-tep:nguyen-van": "50e6eb4fb6ec64556259791423b817955d42a036f77fdca606c0bb8c7c61e32b",
+    "nguyen-tep:bo-gioi_tinh-null": "50e6eb4fb6ec64556259791423b817955d42a036f77fdca606c0bb8c7c61e32b",
+    "nguyen-tep:them-gioi_tinh-null": "083f99cce7d6215e42e0a96ca2147c3e256a80c5130c75e37110a7187ff3eaa6",
+    "bieu-dien-PR(legacy)": "50e6eb4fb6ec64556259791423b817955d42a036f77fdca606c0bb8c7c61e32b",
+    "bieu-dien-PR(legacy+rong)": "50e6eb4fb6ec64556259791423b817955d42a036f77fdca606c0bb8c7c61e32b"
+   },
+   "state_match": [
+    "chuyen-doi:bo-gioi_tinh-null",
+    "nguyen-tep:nguyen-van",
+    "nguyen-tep:bo-gioi_tinh-null",
+    "bieu-dien-PR(legacy)",
+    "bieu-dien-PR(legacy+rong)"
+   ],
+   "verdict": "KHOP"
+  },
+  {
+   "name": "M08-cu-nfd",
+   "expect": "chua_ro",
+   "class": [
+    "migrate",
+    "names"
+   ],
+   "actual": {
+    "accepted": true,
+    "state": "e0f265d3139cb99c6b8ee9813a0bcee2200583719f506fdb06f7dfdcfd91d817"
+   },
+   "expected_states": {
+    "chuyen-doi:nguyen-van": "81a9c1099574ded895cfae2cb794ef4942d6ead9fc3e24eda4c9e7f10469b22c",
+    "chuyen-doi:bo-gioi_tinh-null": "e0f265d3139cb99c6b8ee9813a0bcee2200583719f506fdb06f7dfdcfd91d817",
+    "chuyen-doi:them-gioi_tinh-null": "81a9c1099574ded895cfae2cb794ef4942d6ead9fc3e24eda4c9e7f10469b22c",
+    "nguyen-tep:nguyen-van": "e0f265d3139cb99c6b8ee9813a0bcee2200583719f506fdb06f7dfdcfd91d817",
+    "nguyen-tep:bo-gioi_tinh-null": "e0f265d3139cb99c6b8ee9813a0bcee2200583719f506fdb06f7dfdcfd91d817",
+    "nguyen-tep:them-gioi_tinh-null": "81a9c1099574ded895cfae2cb794ef4942d6ead9fc3e24eda4c9e7f10469b22c",
+    "bieu-dien-PR(legacy)": "e0f265d3139cb99c6b8ee9813a0bcee2200583719f506fdb06f7dfdcfd91d817",
+    "bieu-dien-PR(legacy+rong)": "e0f265d3139cb99c6b8ee9813a0bcee2200583719f506fdb06f7dfdcfd91d817"
+   },
+   "state_match": [
+    "chuyen-doi:bo-gioi_tinh-null",
+    "nguyen-tep:nguyen-van",
+    "nguyen-tep:bo-gioi_tinh-null",
+    "bieu-dien-PR(legacy)",
+    "bieu-dien-PR(legacy+rong)"
+   ],
+   "verdict": "GHI_NHAN"
+  },
+  {
+   "name": "M09-cu-anh-chung-tu-thieu",
+   "expect": "reject",
+   "class": [
+    "V3"
+   ],
+   "actual": {
+    "accepted": true,
+    "state": "2f2d3adc2e6486ccc33e72264b266247b93dedc624606d73269cc5e1f9b801e2"
+   },
+   "verdict": "SAI_LECH_CHAP_NHAN"
+  },
+  {
+   "name": "N01-schema-3",
+   "expect": "reject",
+   "class": [
+    "NEWER"
+   ],
+   "actual": {
+    "accepted": false,
+    "error": "NewerSchema(3)"
+   },
+   "class_newer_ok": true,
+   "class_fine_ok": true,
+   "verdict": "KHOP"
+  },
+  {
+   "name": "N02-schema-99",
+   "expect": "reject",
+   "class": [
+    "NEWER"
+   ],
+   "actual": {
+    "accepted": false,
+    "error": "NewerSchema(99)"
+   },
+   "class_newer_ok": true,
+   "class_fine_ok": true,
+   "verdict": "KHOP"
+  },
+  {
+   "name": "N03-v1-dang-moi",
+   "expect": "reject",
+   "class": [
+    "V1"
+   ],
+   "actual": {
+    "accepted": true,
+    "state": "133a0dbbbd5671dedb7f8dd53d2216487f1adfb4d1ecda208c5e90317a8400a9"
+   },
+   "verdict": "SAI_LECH_CHAP_NHAN"
+  },
+  {
+   "name": "N04-v2-dang-cu",
+   "expect": "reject",
+   "class": [
+    "V1"
+   ],
+   "actual": {
+    "accepted": true,
+    "state": "1e49c1de5d36be13126a05896f88448d7f89f59dae2615cf27105ebd369fc78d"
+   },
+   "verdict": "SAI_LECH_CHAP_NHAN"
+  },
+  {
+   "name": "N05-schema-0",
+   "expect": "reject",
+   "class": [
+    "V1"
+   ],
+   "actual": {
+    "accepted": false,
+    "error": "Invalid(ValidationError { code: \"V1\", path: \"/schema_version\", msg: \"phải là 1\" })"
+   },
+   "class_newer_ok": true,
+   "class_fine_ok": true,
+   "verdict": "KHOP"
+  },
+  {
+   "name": "U01-hai-ho-so-chung-tep",
+   "expect": "chua_ro",
+   "class": [
+    "A-U1"
+   ],
+   "actual": {
+    "accepted": true,
+    "state": "f7cf8fb51c2ac47c308416261074b05fdc267cec699fdce8bdd83358eb8b1a7d"
+   },
+   "expected_states": {
+    "nguyen-van": "f7cf8fb51c2ac47c308416261074b05fdc267cec699fdce8bdd83358eb8b1a7d",
+    "bo-gioi_tinh-null": "9a2c0b838d5315a9fec3f66c984a403bd1e55abe06b82f963aaa599e3d135509",
+    "them-gioi_tinh-null": "f7cf8fb51c2ac47c308416261074b05fdc267cec699fdce8bdd83358eb8b1a7d"
+   },
+   "state_match": [
+    "nguyen-van",
+    "them-gioi_tinh-null"
+   ],
+   "verdict": "GHI_NHAN"
+  },
+  {
+   "name": "U02-tep-mo-coi",
+   "expect": "chua_ro",
+   "class": [
+    "A-U1"
+   ],
+   "actual": {
+    "accepted": true,
+    "state": "3623404dcb4eb8f123eaddfa7248f0c8e4c656e452c0f3e460a146fcf77c7964"
+   },
+   "expected_states": {
+    "nguyen-van": "3623404dcb4eb8f123eaddfa7248f0c8e4c656e452c0f3e460a146fcf77c7964",
+    "bo-gioi_tinh-null": "be9c069217220247171645b092a78a465f4403aa9bef15ed13036e49918befa2",
+    "them-gioi_tinh-null": "3623404dcb4eb8f123eaddfa7248f0c8e4c656e452c0f3e460a146fcf77c7964"
+   },
+   "state_match": [
+    "nguyen-van",
+    "them-gioi_tinh-null"
+   ],
+   "verdict": "GHI_NHAN"
+  },
+  {
+   "name": "X01-pdf-sai-magic",
+   "expect": "reject",
+   "class": [
+    "MAGIC"
+   ],
+   "actual": {
+    "accepted": false,
+    "error": "Invalid(ValidationError { code: \"ATTACHMENT\", path: \"/attachments\", msg: \"PDF không hợp lệ\" })"
+   },
+   "class_newer_ok": true,
+   "class_fine_ok": true,
+   "verdict": "KHOP"
+  },
+  {
+   "name": "X01b-pdf-co-bom-truoc",
+   "expect": "reject",
+   "class": [
+    "MAGIC"
+   ],
+   "actual": {
+    "accepted": false,
+    "error": "Invalid(ValidationError { code: \"ATTACHMENT\", path: \"/attachments\", msg: \"PDF không hợp lệ\" })"
+   },
+   "class_newer_ok": true,
+   "class_fine_ok": true,
+   "verdict": "KHOP"
+  },
+  {
+   "name": "X01c-pdf-chu-thuong",
+   "expect": "reject",
+   "class": [
+    "MAGIC"
+   ],
+   "actual": {
+    "accepted": false,
+    "error": "Invalid(ValidationError { code: \"ATTACHMENT\", path: \"/attachments\", msg: \"PDF không hợp lệ\" })"
+   },
+   "class_newer_ok": true,
+   "class_fine_ok": true,
+   "verdict": "KHOP"
+  },
+  {
+   "name": "X02-pdf-qua-10MB",
+   "expect": "reject",
+   "class": [
+    "SIZE",
+    "V1"
+   ],
+   "actual": {
+    "accepted": false,
+    "error": "Backup(MalformedPlaintext)"
+   },
+   "class_newer_ok": true,
+   "class_fine_ok": true,
+   "verdict": "KHOP"
+  },
+  {
+   "name": "X03-anh-qua-2MB",
+   "expect": "reject",
+   "class": [
+    "SIZE"
+   ],
+   "actual": {
+    "accepted": false,
+    "error": "Invalid(ValidationError { code: \"V1\", path: \"/attachments/5/bytes\", msg: \"ngoài khoảng 1–2097152\" })"
+   },
+   "class_newer_ok": true,
+   "class_fine_ok": true,
+   "verdict": "KHOP"
+  },
+  {
+   "name": "X04-trung-id-dinh-kem",
+   "expect": "reject",
+   "class": [
+    "DUP"
+   ],
+   "actual": {
+    "accepted": false,
+    "error": "Invalid(ValidationError { code: \"V1\", path: \"/persons/0/death/notice/attachments/3/id\", msg: \"id trùng\" })"
+   },
+   "class_newer_ok": true,
+   "class_fine_ok": true,
+   "verdict": "KHOP"
+  },
+  {
+   "name": "X04b-trung-id-dinh-kem-hai-ho-so",
+   "expect": "reject",
+   "class": [
+    "DUP"
+   ],
+   "actual": {
+    "accepted": false,
+    "error": "Invalid(ValidationError { code: \"V1\", path: \"/persons/1/death/notice/attachments/2/file_id\", msg: \"tệp trùng\" })"
+   },
+   "class_newer_ok": true,
+   "class_fine_ok": true,
+   "verdict": "KHOP"
+  },
+  {
+   "name": "X05-trung-id-ban-ghi-tep",
+   "expect": "reject",
+   "class": [
+    "DUP",
+    "BLOB",
+    "V1"
+   ],
+   "actual": {
+    "accepted": false,
+    "error": "Invalid(ValidationError { code: \"V1\", path: \"/attachments/5/id\", msg: \"id trùng\" })"
+   },
+   "class_newer_ok": true,
+   "class_fine_ok": true,
+   "verdict": "KHOP"
+  },
+  {
+   "name": "X06-tep-duoc-tro-nhung-thieu",
+   "expect": "reject",
+   "class": [
+    "V3"
+   ],
+   "actual": {
+    "accepted": false,
+    "error": "Invalid(ValidationError { code: \"V3\", path: \"/persons/0/death/notice/attachments/3/file_id\", msg: \"tệp đính kèm không tồn tại\" })"
+   },
+   "class_newer_ok": true,
+   "class_fine_ok": true,
+   "verdict": "KHOP"
+  },
+  {
+   "name": "X07-thieu-byte-tep",
+   "expect": "reject",
+   "class": [
+    "BLOB"
+   ],
+   "actual": {
+    "accepted": false,
+    "error": "Invalid(ValidationError { code: \"ATTACHMENT\", path: \"/attachments\", msg: \"thiếu tệp đính kèm\" })"
+   },
+   "class_newer_ok": true,
+   "class_fine_ok": true,
+   "verdict": "KHOP"
+  },
+  {
+   "name": "X08-7-tep",
+   "expect": "reject",
+   "class": [
+    "COUNT",
+    "V1"
+   ],
+   "actual": {
+    "accepted": false,
+    "error": "Invalid(ValidationError { code: \"V1\", path: \"/persons/0/death/notice/attachments\", msg: \"quá 6 tệp\" })"
+   },
+   "class_newer_ok": true,
+   "class_fine_ok": true,
+   "verdict": "KHOP"
+  },
+  {
+   "name": "X09-kind-sai",
+   "expect": "reject",
+   "class": [
+    "V1"
+   ],
+   "actual": {
+    "accepted": false,
+    "error": "Invalid(ValidationError { code: \"V1\", path: \"/persons/1/death/notice/attachments/2/kind\", msg: \"giá trị không hợp lệ \\\"giay_bao_tu\\\"\" })"
+   },
+   "class_newer_ok": true,
+   "class_fine_ok": true,
+   "verdict": "KHOP"
+  },
+  {
+   "name": "X10-mime-png",
+   "expect": "reject",
+   "class": [
+    "V1",
+    "MAGIC"
+   ],
+   "actual": {
+    "accepted": false,
+    "error": "Invalid(ValidationError { code: \"V1\", path: \"/attachments/5/mime\", msg: \"giá trị không hợp lệ \\\"image/png\\\"\" })"
+   },
+   "class_newer_ok": true,
+   "class_fine_ok": true,
+   "verdict": "KHOP"
+  },
+  {
+   "name": "X11-sha-sai",
+   "expect": "reject",
+   "class": [
+    "SHA"
+   ],
+   "actual": {
+    "accepted": false,
+    "error": "Invalid(ValidationError { code: \"ATTACHMENT\", path: \"/attachments\", msg: \"sha256/bytes không khớp\" })"
+   },
+   "class_newer_ok": true,
+   "class_fine_ok": true,
+   "verdict": "KHOP"
+  },
+  {
+   "name": "X12-bytes-sai",
+   "expect": "reject",
+   "class": [
+    "BYTES",
+    "SHA"
+   ],
+   "actual": {
+    "accepted": false,
+    "error": "Invalid(ValidationError { code: \"ATTACHMENT\", path: \"/attachments\", msg: \"sha256/bytes không khớp\" })"
+   },
+   "class_newer_ok": true,
+   "class_fine_ok": true,
+   "verdict": "KHOP"
+  },
+  {
+   "name": "X13-pdf-stripped-true",
+   "expect": "reject",
+   "class": [
+    "V1"
+   ],
+   "actual": {
+    "accepted": false,
+    "error": "Invalid(ValidationError { code: \"V1\", path: \"/attachments/5/stripped\", msg: \"PDF lưu nguyên bản: phải là false\" })"
+   },
+   "class_newer_ok": true,
+   "class_fine_ok": true,
+   "verdict": "KHOP"
+  },
+  {
+   "name": "X14-anh-stripped-false",
+   "expect": "reject",
+   "class": [
+    "V1"
+   ],
+   "actual": {
+    "accepted": false,
+    "error": "Invalid(ValidationError { code: \"V1\", path: \"/attachments/5/stripped\", msg: \"ảnh luôn được mã hóa lại: phải là true\" })"
+   },
+   "class_newer_ok": true,
+   "class_fine_ok": true,
+   "verdict": "KHOP"
+  },
+  {
+   "name": "X15-gioi-tinh-Nam",
+   "expect": "reject",
+   "class": [
+    "V1"
+   ],
+   "actual": {
+    "accepted": false,
+    "error": "Invalid(ValidationError { code: \"V1\", path: \"/persons/0/gioi_tinh\", msg: \"giá trị không hợp lệ \\\"Nam\\\"\" })"
+   },
+   "class_newer_ok": true,
+   "class_fine_ok": true,
+   "verdict": "KHOP"
+  },
+  {
+   "name": "X16-gioi-tinh-khac",
+   "expect": "reject",
+   "class": [
+    "V1"
+   ],
+   "actual": {
+    "accepted": false,
+    "error": "Invalid(ValidationError { code: \"V1\", path: \"/persons/0/gioi_tinh\", msg: \"giá trị không hợp lệ \\\"khac\\\"\" })"
+   },
+   "class_newer_ok": true,
+   "class_fine_ok": true,
+   "verdict": "KHOP"
+  },
+  {
+   "name": "X17-gioi-tinh-rong",
+   "expect": "reject",
+   "class": [
+    "V1"
+   ],
+   "actual": {
+    "accepted": false,
+    "error": "Invalid(ValidationError { code: \"V1\", path: \"/persons/0/gioi_tinh\", msg: \"giá trị không hợp lệ \\\"\\\"\" })"
+   },
+   "class_newer_ok": true,
+   "class_fine_ok": true,
+   "verdict": "KHOP"
+  },
+  {
+   "name": "X17b-gioi-tinh-nu-dau",
+   "expect": "reject",
+   "class": [
+    "V1"
+   ],
+   "actual": {
+    "accepted": false,
+    "error": "Invalid(ValidationError { code: \"V1\", path: \"/persons/0/gioi_tinh\", msg: \"giá trị không hợp lệ \\\"nữ\\\"\" })"
+   },
+   "class_newer_ok": true,
+   "class_fine_ok": true,
+   "verdict": "KHOP"
+  },
+  {
+   "name": "X18-ten-tep-121",
+   "expect": "reject",
+   "class": [
+    "V1"
+   ],
+   "actual": {
+    "accepted": false,
+    "error": "Invalid(ValidationError { code: \"V1\", path: \"/attachments/5/file_name\", msg: \"độ dài 121 ngoài 1–120\" })"
+   },
+   "class_newer_ok": true,
+   "class_fine_ok": true,
+   "verdict": "KHOP"
+  },
+  {
+   "name": "X19-byte-thua",
+   "expect": "reject",
+   "class": [
+    "BLOB"
+   ],
+   "actual": {
+    "accepted": false,
+    "error": "Invalid(ValidationError { code: \"PHOTO\", path: \"/photos\", msg: \"ảnh thừa\" })"
+   },
+   "class_newer_ok": true,
+   "class_fine_ok": true,
+   "verdict": "KHOP"
+  },
+  {
+   "name": "X20-mime-pdf-byte-jpeg",
+   "expect": "reject",
+   "class": [
+    "MAGIC"
+   ],
+   "actual": {
+    "accepted": false,
+    "error": "Invalid(ValidationError { code: \"ATTACHMENT\", path: \"/attachments\", msg: \"PDF không hợp lệ\" })"
+   },
+   "class_newer_ok": true,
+   "class_fine_ok": true,
+   "verdict": "KHOP"
+  },
+  {
+   "name": "X21-mime-jpeg-byte-pdf",
+   "expect": "reject",
+   "class": [
+    "MAGIC"
+   ],
+   "actual": {
+    "accepted": true,
+    "state": "638ddc11b959b2e13b8dedc6b538b61e2226ffdcc45e271e103bfa6d5751e042"
+   },
+   "verdict": "SAI_LECH_CHAP_NHAN"
+  },
+  {
+   "name": "X22-v2-con-khoa-cu",
+   "expect": "reject",
+   "class": [
+    "V1"
+   ],
+   "actual": {
+    "accepted": true,
+    "state": "f6f801a803a12c0b8a06604444a2e697c23fa2cb3aaac819e47f4d30eddb13b4"
+   },
+   "verdict": "SAI_LECH_CHAP_NHAN"
+  },
+  {
+   "name": "X23-ten-tep-dieu-khien",
+   "expect": "reject",
+   "class": [
+    "V1"
+   ],
+   "actual": {
+    "accepted": false,
+    "error": "Invalid(ValidationError { code: \"V1\", path: \"/attachments/5/file_name\", msg: \"chứa ký tự điều khiển\" })"
+   },
+   "class_newer_ok": true,
+   "class_fine_ok": true,
+   "verdict": "KHOP"
+  }
+ ]
+}

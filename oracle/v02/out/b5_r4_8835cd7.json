@@ -1,0 +1,500 @@
+{
+ "tag": "8835cd7",
+ "prune_rust": {
+  "6_ngay": {
+   "after_migration": {
+    "state": "migrated",
+    "meta": {
+     "schema_version": "1",
+     "created_with_app_version": "0.1.0",
+     "backup_pending_since": "2026-11-07T03:57:55Z",
+     "store_version": "2",
+     "migrated_at": "2026-11-07T07:41:16Z",
+     "migration_backup": "lvhv.sqlite.pre-v2.bak"
+    },
+    "persons_with_legacy": 2,
+    "bak": true
+   },
+   "after_reopen": {
+    "state": "ok",
+    "meta": {
+     "schema_version": "1",
+     "created_with_app_version": "0.1.0",
+     "backup_pending_since": "2026-11-07T03:57:55Z",
+     "store_version": "2",
+     "migrated_at": "2026-11-01T07:41:16Z",
+     "migration_backup": "lvhv.sqlite.pre-v2.bak"
+    },
+    "persons_with_legacy": 2,
+    "bak": true,
+    "rev_updated_unchanged": true,
+    "other_fields_unchanged": true,
+    "attachments_unchanged": true
+   },
+   "verdict": "KHOP"
+  },
+  "8_ngay": {
+   "after_migration": {
+    "state": "migrated",
+    "meta": {
+     "schema_version": "1",
+     "created_with_app_version": "0.1.0",
+     "backup_pending_since": "2026-11-07T03:57:55Z",
+     "store_version": "2",
+     "migrated_at": "2026-11-07T07:41:16Z",
+     "migration_backup": "lvhv.sqlite.pre-v2.bak"
+    },
+    "persons_with_legacy": 2,
+    "bak": true
+   },
+   "after_reopen": {
+    "state": "ok",
+    "meta": {
+     "schema_version": "1",
+     "created_with_app_version": "0.1.0",
+     "backup_pending_since": "2026-11-07T03:57:55Z",
+     "store_version": "2",
+     "legacy_pruned_at": "2026-11-07T07:41:16Z"
+    },
+    "persons_with_legacy": 0,
+    "bak": false,
+    "rev_updated_unchanged": true,
+    "other_fields_unchanged": true,
+    "attachments_unchanged": true
+   },
+   "verdict": "KHOP"
+  },
+  "loi": {
+   "state": "read_only",
+   "meta": {
+    "schema_version": "1",
+    "created_with_app_version": "0.1.0",
+    "backup_pending_since": "2026-11-07T03:57:55Z"
+   },
+   "bak": true,
+   "verdict": "KHOP"
+  }
+ },
+ "r6v2_independent_decrypt": {
+  "file": "dataset-r6v2-fixed.lvhv",
+  "len": 327973,
+  "sha256": "c8f511be1967cde710fe01e193fee339a6852f862dc5d71007fb5f2ea26222b3",
+  "two_decryptors_same_plaintext": true,
+  "plaintext_len_matches_header": true,
+  "json_canonical": true,
+  "schema_version": 1,
+  "counts": {
+   "persons": 60,
+   "events": 30,
+   "event_types": 6,
+   "photos": 20,
+   "attachments": 0
+  },
+  "block_order_matches_records": true,
+  "blocks_sha256_and_len_match_records": true,
+  "bad_blocks": [],
+  "images_ok": true,
+  "n_images": 20,
+  "photo_sha256_match_manifest": true,
+  "photo_files_match_manifest": true,
+  "json_equals_dataset_file": true,
+  "independent_state_sha256": "9f4f7bb9f47d1a497decde0d1a53ec40f0aebddf9a00c20796a60599e1fdf36e"
+ },
+ "r6a_import": {
+  "rust--replace": {
+   "ok": true,
+   "state_sha256": "9f4f7bb9f47d1a497decde0d1a53ec40f0aebddf9a00c20796a60599e1fdf36e",
+   "state_ok": true,
+   "indep_state_of_tool_doc": "9f4f7bb9f47d1a497decde0d1a53ec40f0aebddf9a00c20796a60599e1fdf36e",
+   "n_diffs": 0,
+   "diffs": [],
+   "photo_bytes_ok": true
+  },
+  "rust--merge": {
+   "ok": true,
+   "state_sha256": "965d0ec47085cce6b2a727ea915bb4d7b7d7e83043473b40b47041e814f92bad",
+   "state_ok": false,
+   "indep_state_of_tool_doc": "965d0ec47085cce6b2a727ea915bb4d7b7d7e83043473b40b47041e814f92bad",
+   "n_diffs": 4,
+   "diffs": [
+    [
+     "/settings/backup_nag_days",
+     "60",
+     "30"
+    ],
+    [
+     "/settings/default_offsets_days",
+     "len=3",
+     "len=2"
+    ],
+    [
+     "/settings/default_time_local",
+     "06:30",
+     "07:00"
+    ],
+    [
+     "/settings/last_backup_at",
+     "2026-10-01T00:00:00Z",
+     "None"
+    ]
+   ],
+   "photo_bytes_ok": true
+  },
+  "ts--replace": {
+   "ok": true,
+   "state_sha256": "9f4f7bb9f47d1a497decde0d1a53ec40f0aebddf9a00c20796a60599e1fdf36e",
+   "state_ok": true,
+   "indep_state_of_tool_doc": "9f4f7bb9f47d1a497decde0d1a53ec40f0aebddf9a00c20796a60599e1fdf36e",
+   "n_diffs": 0,
+   "diffs": [],
+   "photo_bytes_ok": true
+  },
+  "ts--merge": {
+   "ok": true,
+   "state_sha256": "965d0ec47085cce6b2a727ea915bb4d7b7d7e83043473b40b47041e814f92bad",
+   "state_ok": false,
+   "indep_state_of_tool_doc": "965d0ec47085cce6b2a727ea915bb4d7b7d7e83043473b40b47041e814f92bad",
+   "n_diffs": 4,
+   "diffs": [
+    [
+     "/settings/backup_nag_days",
+     "60",
+     "30"
+    ],
+    [
+     "/settings/default_offsets_days",
+     "len=3",
+     "len=2"
+    ],
+    [
+     "/settings/default_time_local",
+     "06:30",
+     "07:00"
+    ],
+    [
+     "/settings/last_backup_at",
+     "2026-10-01T00:00:00Z",
+     "None"
+    ]
+   ],
+   "photo_bytes_ok": true
+  }
+ },
+ "r6a2": {
+  "rust": {
+   "wrong_tested": 19,
+   "wrong_accepted": [],
+   "nfd_of_right_accepted": true,
+   "nfd_state_ok": true
+  },
+  "ts": {
+   "wrong_tested": 19,
+   "wrong_accepted": [],
+   "nfd_of_right_accepted": true,
+   "nfd_state_ok": true
+  }
+ },
+ "r6b_tool_sample": {
+  "rust": {
+   "variants": 104,
+   "accepted": []
+  },
+  "ts": {
+   "variants": 104,
+   "accepted": []
+  }
+ },
+ "r6d_samples": [
+  {
+   "file": "example-v1.lvhv",
+   "len": 38908,
+   "sha256": "a17f91d914488c2e3cabf60752f7d162ef95ae719fdeb9af603cf7a3c9315a0f",
+   "two_decryptors_same_plaintext": true,
+   "plaintext_len_matches_header": true,
+   "json_canonical": true,
+   "schema_version": 1,
+   "counts": {
+    "persons": 3,
+    "events": 1,
+    "event_types": 4,
+    "photos": 1,
+    "attachments": 0
+   },
+   "block_order_matches_records": true,
+   "blocks_sha256_and_len_match_records": true,
+   "bad_blocks": [],
+   "images_ok": true,
+   "n_images": 1,
+   "independent_state_sha256": "177b73e2af3dfacbff38794f92d626c596754e440c3767f17ddcf520f587426e",
+   "ok": true,
+   "tool_state_equals_independent": true,
+   "tool_ok": true,
+   "tool_error": null
+  },
+  {
+   "file": "notice-v1.lvhv",
+   "len": 73826,
+   "sha256": "a64c7fba9a94ebd4df8ec66dad616483d188e46302fabf761b6a66566209236e",
+   "two_decryptors_same_plaintext": true,
+   "plaintext_len_matches_header": true,
+   "json_canonical": true,
+   "schema_version": 1,
+   "counts": {
+    "persons": 3,
+    "events": 1,
+    "event_types": 4,
+    "photos": 1,
+    "attachments": 2
+   },
+   "block_order_matches_records": true,
+   "blocks_sha256_and_len_match_records": true,
+   "bad_blocks": [],
+   "images_ok": false,
+   "n_images": 2,
+   "independent_state_sha256": "ac8a9dce82d41eebbf7279a3c047614315bcfd428c3d11d8bf3c1b3b95334704",
+   "ok": false,
+   "tool_state_equals_independent": true,
+   "tool_ok": true,
+   "tool_error": null
+  },
+  {
+   "file": "backup.lvhv",
+   "len": 73419,
+   "sha256": "7a98d468fc4d5dcc4964d27a9897af7d7cd29fa38ea3ab3bb5d5f9c23e4efd90",
+   "two_decryptors_same_plaintext": true,
+   "plaintext_len_matches_header": true,
+   "json_canonical": true,
+   "schema_version": 1,
+   "counts": {
+    "persons": 3,
+    "events": 1,
+    "event_types": 4,
+    "photos": 2,
+    "attachments": 0
+   },
+   "block_order_matches_records": true,
+   "blocks_sha256_and_len_match_records": true,
+   "bad_blocks": [],
+   "images_ok": true,
+   "n_images": 2,
+   "independent_state_sha256": "1a5c3f2649551a84cf642f71f450ce3e2a7b88f2ff1ff902f82487d22c0fd38f",
+   "ok": true,
+   "tool_state_equals_independent": false,
+   "tool_ok": true,
+   "tool_error": null
+  },
+  {
+   "file": "dataset-r6v2-fixed.lvhv",
+   "len": 327973,
+   "sha256": "c8f511be1967cde710fe01e193fee339a6852f862dc5d71007fb5f2ea26222b3",
+   "two_decryptors_same_plaintext": true,
+   "plaintext_len_matches_header": true,
+   "json_canonical": true,
+   "schema_version": 1,
+   "counts": {
+    "persons": 60,
+    "events": 30,
+    "event_types": 6,
+    "photos": 20,
+    "attachments": 0
+   },
+   "block_order_matches_records": true,
+   "blocks_sha256_and_len_match_records": true,
+   "bad_blocks": [],
+   "images_ok": true,
+   "n_images": 20,
+   "independent_state_sha256": "9f4f7bb9f47d1a497decde0d1a53ec40f0aebddf9a00c20796a60599e1fdf36e",
+   "ok": true,
+   "tool_state_equals_independent": true,
+   "tool_ok": true,
+   "tool_error": null
+  },
+  {
+   "file": "rust-export-0.lvhv",
+   "len": 327973,
+   "sha256": "077ed7cf2b554dcc7f1d2601d17d211331d4ae3b058835a8b832580716554d74",
+   "two_decryptors_same_plaintext": true,
+   "plaintext_len_matches_header": true,
+   "json_canonical": true,
+   "schema_version": 1,
+   "counts": {
+    "persons": 60,
+    "events": 30,
+    "event_types": 6,
+    "photos": 20,
+    "attachments": 0
+   },
+   "block_order_matches_records": true,
+   "blocks_sha256_and_len_match_records": true,
+   "bad_blocks": [],
+   "images_ok": true,
+   "n_images": 20,
+   "independent_state_sha256": "9f4f7bb9f47d1a497decde0d1a53ec40f0aebddf9a00c20796a60599e1fdf36e",
+   "ok": true,
+   "tool_state_equals_independent": true,
+   "tool_ok": true,
+   "tool_error": null
+  },
+  {
+   "file": "rust-export-1.lvhv",
+   "len": 327973,
+   "sha256": "2eb05fceb418439d0df647f2740d00ab969b9d9b7922d55ae3a0975b58bfe0d7",
+   "two_decryptors_same_plaintext": true,
+   "plaintext_len_matches_header": true,
+   "json_canonical": true,
+   "schema_version": 1,
+   "counts": {
+    "persons": 60,
+    "events": 30,
+    "event_types": 6,
+    "photos": 20,
+    "attachments": 0
+   },
+   "block_order_matches_records": true,
+   "blocks_sha256_and_len_match_records": true,
+   "bad_blocks": [],
+   "images_ok": true,
+   "n_images": 20,
+   "independent_state_sha256": "9f4f7bb9f47d1a497decde0d1a53ec40f0aebddf9a00c20796a60599e1fdf36e",
+   "ok": true,
+   "tool_state_equals_independent": true,
+   "tool_ok": true,
+   "tool_error": null
+  },
+  {
+   "file": "rust-export-2.lvhv",
+   "len": 327973,
+   "sha256": "d68bf85245e0eb518b2a4d5aeacc5f4ff3e32a4214d3a7928b52646248f2bb91",
+   "two_decryptors_same_plaintext": true,
+   "plaintext_len_matches_header": true,
+   "json_canonical": true,
+   "schema_version": 1,
+   "counts": {
+    "persons": 60,
+    "events": 30,
+    "event_types": 6,
+    "photos": 20,
+    "attachments": 0
+   },
+   "block_order_matches_records": true,
+   "blocks_sha256_and_len_match_records": true,
+   "bad_blocks": [],
+   "images_ok": true,
+   "n_images": 20,
+   "independent_state_sha256": "9f4f7bb9f47d1a497decde0d1a53ec40f0aebddf9a00c20796a60599e1fdf36e",
+   "ok": true,
+   "tool_state_equals_independent": true,
+   "tool_ok": true,
+   "tool_error": null
+  },
+  {
+   "file": "rust-export-3.lvhv",
+   "len": 327973,
+   "sha256": "9f644eb31d2b019a9e4053a548b4ac579e2600e8c3edeb9d0cda9df867f8beda",
+   "two_decryptors_same_plaintext": true,
+   "plaintext_len_matches_header": true,
+   "json_canonical": true,
+   "schema_version": 1,
+   "counts": {
+    "persons": 60,
+    "events": 30,
+    "event_types": 6,
+    "photos": 20,
+    "attachments": 0
+   },
+   "block_order_matches_records": true,
+   "blocks_sha256_and_len_match_records": true,
+   "bad_blocks": [],
+   "images_ok": true,
+   "n_images": 20,
+   "independent_state_sha256": "9f4f7bb9f47d1a497decde0d1a53ec40f0aebddf9a00c20796a60599e1fdf36e",
+   "ok": true,
+   "tool_state_equals_independent": true,
+   "tool_ok": true,
+   "tool_error": null
+  },
+  {
+   "file": "rust-export-4.lvhv",
+   "len": 327973,
+   "sha256": "21392bfa634327dd3faefa8bad63506b8a2c36b9ed6d41475477495cfd2c4693",
+   "two_decryptors_same_plaintext": true,
+   "plaintext_len_matches_header": true,
+   "json_canonical": true,
+   "schema_version": 1,
+   "counts": {
+    "persons": 60,
+    "events": 30,
+    "event_types": 6,
+    "photos": 20,
+    "attachments": 0
+   },
+   "block_order_matches_records": true,
+   "blocks_sha256_and_len_match_records": true,
+   "bad_blocks": [],
+   "images_ok": true,
+   "n_images": 20,
+   "independent_state_sha256": "9f4f7bb9f47d1a497decde0d1a53ec40f0aebddf9a00c20796a60599e1fdf36e",
+   "ok": true,
+   "tool_state_equals_independent": true,
+   "tool_ok": true,
+   "tool_error": null
+  },
+  {
+   "file": "rust-export-5.lvhv",
+   "len": 327973,
+   "sha256": "5c99acfe78703805395b1f00cfebcd718ec14e483d132c5cc4218bcbf96b3283",
+   "two_decryptors_same_plaintext": true,
+   "plaintext_len_matches_header": true,
+   "json_canonical": true,
+   "schema_version": 1,
+   "counts": {
+    "persons": 60,
+    "events": 30,
+    "event_types": 6,
+    "photos": 20,
+    "attachments": 0
+   },
+   "block_order_matches_records": true,
+   "blocks_sha256_and_len_match_records": true,
+   "bad_blocks": [],
+   "images_ok": true,
+   "n_images": 20,
+   "independent_state_sha256": "9f4f7bb9f47d1a497decde0d1a53ec40f0aebddf9a00c20796a60599e1fdf36e",
+   "ok": true,
+   "tool_state_equals_independent": true,
+   "tool_ok": true,
+   "tool_error": null
+  }
+ ],
+ "r6d_distinct_salts": 7,
+ "old_r6_rejected": {
+  "rust": {
+   "ok": false,
+   "error": {
+    "code": "PHOTO",
+    "debug": "Invalid(ValidationError { code: \"PHOTO\", path: \"/photos\", msg: \"bad_header\" })",
+    "display": "dữ liệu không hợp lệ: PHOTO /photos: bad_header",
+    "import_message": "Sai mật khẩu hoặc tệp bị hỏng",
+    "kind": "Invalid",
+    "msg": "bad_header",
+    "path": "/photos"
+   },
+   "stage": "open_backup"
+  },
+  "ts": {
+   "ok": false,
+   "error": {
+    "cause": {
+     "code": "PHOTO",
+     "display": "PHOTO /photos: bad_header",
+     "kind": "ValidationError",
+     "path": "/photos"
+    },
+    "code": "invalid",
+    "display": "Sai mật khẩu hoặc tệp bị hỏng",
+    "kind": "StoreError"
+   },
+   "stage": "open_backup"
+  }
+ }
+}

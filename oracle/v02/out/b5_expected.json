@@ -1,0 +1,782 @@
+{
+ "app_schema_version": 2,
+ "assumptions": {
+  "A-C1": "Byte tep dinh kem di trong cung danh sach muc nhi phan cua ban ro (03 §2.3) voi anh, khop theo id ban ghi Attachment; gioi han moi muc 1 MiB cua anh duoc noi thanh 10 MiB cho PDF.",
+  "A-L1": "2 MB = 2 097 152 byte, 10 MB = 10 485 760 byte (cung don vi voi 'Photo ... 1 MB = 1 048 576', 01 §3.8). Dung bien: bang gioi han thi hop le.",
+  "A-M1": "Moi id trong certificate_photo_ids -> mot phan tu attachments {kind: giay_chung_tu}, giu thu tu. id cua phan tu tham chieu va file_id KHONG duoc dac ta quy dinh: so sanh khong phu thuoc gia tri id, chi doi hoi UUID v4 hop le, khong trung, va tep duoc tro toi co dung byte/sha256/mime cua anh cu.",
+  "A-M2": "Ban ghi Photo cua anh giay chung tu duoc chuyen thanh Attachment {mime, bytes, sha256, created_at giu nguyen; stripped = true; file_name = null}. width/height cua Photo khong co cho trong Attachment: duoc phep bo vi suy ra duoc tu byte anh giu nguyen (khong tinh mat du lieu); giu trong legacy cung hop le.",
+  "A-M3": "Neu anh giay chung tu dong thoi la anh chan dung (photo_id) cua mot ho so thi Photo van con trong photos (khong duoc mat anh chan dung) va van co Attachment tuong ung.",
+  "A-M4": "Anh giay chung tu chi dung cho giay chung tu: Photo bi go khoi photos sau khi chuyen (con trong photos cung khong mat du lieu: chi ghi nhan, khong tinh sai lech).",
+  "A-M5": "gioi_tinh vang mat -> null. Vang khoa va null la tuong duong khi so (01 §3.1 'Thieu khoa = null').",
+  "A-M6": "Chuyen doi KHONG viet hoa danh_xung/quan_he va khong doi chuoi nao (B5 muc 1: khong doi nghia; 'ap khi luu, khong ap khi nhap').",
+  "A-M7": "Khoa la (khong co trong luoc do v1) cua mot ban ghi duoc giu nguyen gia tri trong mot doi tuong 'legacy' (B5 muc 2). Vi tri chinh xac khong duoc dac ta: dat 'legacy' trong chinh ban ghi do la ky vong cua tham chieu; khi so, chap nhan bat ky khoa 'legacy' nao chua cung ten khoa va cung gia tri. Tu choi ca tai lieu (khong ghi gi) -> CHUA RO (dac ta: B5 muc 2 vs 01 §6.3); bo lang le -> SAI LECH.",
+  "A-N1": "Viet hoa: cat khoang trang hai dau, NFC, roi doi diem ma DAU TIEN sang chu hoa (str.upper), phan con lai giu nguyen; NFC lai. Diem ma dau khong phai chu cai co hoa thuong -> giu nguyen (ca '(ben noi)' -> khong doi: diem ma dau la '('). Cach hieu khac ('chu cai dau tien tim thay') duoc danh dau ca CHUA RO.",
+  "A-N2": "Khi nhap sao luu: danh_xung/quan_he giu dung byte trong tep (khong viet hoa). Chuoi NFD trong tep nhap: giu nguyen hay chuan hoa NFC deu chua duoc dac ta cho duong nhap -> CHUA RO, chi ghi nhan.",
+  "A-R1": "Ban ghi Attachment nam o mang goc 'attachments' cua tai lieu (canh 'photos'); byte di trong vung chua nhi phan cung danh sach voi anh (A-C1).",
+  "A-U1": "Hai ho so tro cung mot file_id, hoac Attachment khong ai tro toi: dac ta chi noi 'thuoc ve ho so nay' -> CHUA RO, chi ghi nhan.",
+  "A-V1": "Doi certificate_photo_ids -> attachments tang schema_version 1 -> 2; tai lieu > 2 bi tu choi (newer_version)."
+ },
+ "fixtures": [
+  {
+   "class": [
+    "migrate"
+   ],
+   "counts": {
+    "attachments": 3,
+    "event_types": 4,
+    "events": 1,
+    "persons": 3,
+    "photos": 1
+   },
+   "expect": "accept",
+   "expected_json_sha256": "afda9d0b2b094c3f5e9def34e34e1f6b404b81ef1c79d5d0feeff30fa672e6d1",
+   "expected_legacy": [],
+   "expected_norm_sha256": "c68edb1b1b726864564863d697b9a7a0decae83de3f365aad3dac247a7bd4881",
+   "name": "M01-cu-giay-chung-tu"
+  },
+  {
+   "class": [
+    "migrate"
+   ],
+   "counts": {
+    "attachments": 4,
+    "event_types": 4,
+    "events": 1,
+    "persons": 3,
+    "photos": 1
+   },
+   "expect": "accept",
+   "expected_json_sha256": "b3f6633fd89e2204cc623c6ce3d02fbbe7a3c15d9659184c6d54d08b626a357d",
+   "expected_legacy": [],
+   "expected_norm_sha256": "780c88a08afe24146957174f5f8bfb0ecdbd3b35fc5a65c87da22e8d3bf9fc75",
+   "name": "M02-cu-4-anh"
+  },
+  {
+   "class": [
+    "migrate"
+   ],
+   "counts": {
+    "attachments": 1,
+    "event_types": 4,
+    "events": 1,
+    "persons": 3,
+    "photos": 1
+   },
+   "expect": "accept",
+   "expected_json_sha256": "53d04a0130c875b3e8dbf164e2f78fa887a00cbbeebbabea452e806a908f14a7",
+   "expected_legacy": [],
+   "expected_norm_sha256": "1b87c261fdfbb2c4385f353d420dfa8bc71cb1c952beb25fb9fea1b2b30ac667",
+   "name": "M03-cu-anh-chung"
+  },
+  {
+   "class": [
+    "migrate"
+   ],
+   "counts": {
+    "attachments": 0,
+    "event_types": 4,
+    "events": 1,
+    "persons": 3,
+    "photos": 1
+   },
+   "expect": "accept",
+   "expected_json_sha256": "e7c3fc8ce97b48e15512f2d0dafdfea9e31f682f3b2b95badbf06cde5087e73f",
+   "expected_legacy": [],
+   "expected_norm_sha256": "69fd1f45840cf3b583daf95af95e982381d73fcf015029211be676dcc9c1bcc3",
+   "name": "M04-cu-khong-bao-tu"
+  },
+  {
+   "class": [
+    "migrate"
+   ],
+   "counts": {
+    "attachments": 0,
+    "event_types": 4,
+    "events": 1,
+    "persons": 3,
+    "photos": 1
+   },
+   "expect": "accept",
+   "expected_json_sha256": "ed08155dde1c0e98632043046ca56b1c1f0b3377a5d757b8fec18f5fdec1a2dc",
+   "expected_legacy": [],
+   "expected_norm_sha256": "229424f0b7516318e9a625bce3dd7699d8405c5a1b2ff779ccb6e7bbe24d5fd5",
+   "name": "M05-cu-bao-tu-rong"
+  },
+  {
+   "class": [
+    "migrate",
+    "legacy"
+   ],
+   "counts": {
+    "attachments": 3,
+    "event_types": 4,
+    "events": 1,
+    "persons": 3,
+    "photos": 1
+   },
+   "expect": "accept_or_chua_ro",
+   "expected_json_sha256": "4fcd5b59924e187a427a24b15e8f8c96af679433e2d38fe04ed67f6394c25981",
+   "expected_legacy": [
+    [
+     "ghi_chu_ban_cu",
+     "{\"x\": [1, 2]}"
+    ],
+    [
+     "so_giay",
+     "\"123/2025/TLKT\""
+    ],
+    [
+     "ten_goi_cu",
+     "\"Cố Nguyễn\""
+    ]
+   ],
+   "expected_norm_sha256": "c68edb1b1b726864564863d697b9a7a0decae83de3f365aad3dac247a7bd4881",
+   "name": "M06-cu-khoa-la-legacy"
+  },
+  {
+   "class": [
+    "migrate",
+    "names"
+   ],
+   "counts": {
+    "attachments": 0,
+    "event_types": 4,
+    "events": 1,
+    "persons": 3,
+    "photos": 1
+   },
+   "expect": "accept",
+   "expected_json_sha256": "91d51416dd5aa1fd3516f6b83993e6e188693b32827cb208fd8357a5f940060b",
+   "expected_legacy": [],
+   "expected_norm_sha256": "dfd3263729b6f28c85ae42136f5b4f2a3b9515414fe31fba6706229b0e8dbaa1",
+   "name": "M07-cu-chu-thuong-nfc"
+  },
+  {
+   "class": [
+    "migrate",
+    "names"
+   ],
+   "expect": "chua_ro",
+   "name": "M08-cu-nfd"
+  },
+  {
+   "class": [
+    "V3"
+   ],
+   "expect": "reject",
+   "name": "M09-cu-anh-chung-tu-thieu"
+  },
+  {
+   "class": [
+    "migrate",
+    "shared"
+   ],
+   "counts": {
+    "attachments": 2,
+    "event_types": 4,
+    "events": 1,
+    "persons": 3,
+    "photos": 1
+   },
+   "expect": "accept_or_chua_ro",
+   "expected_json_sha256": "17b7c7ef4101d95c7a5f2b12c0723dc3d6ce04821dd403c45e86e227b492f073",
+   "expected_legacy": [],
+   "expected_norm_sha256": "e10722c098244cd1f742808a72fe476ba8fc42989ec7183111ff4148d2046826",
+   "name": "M10-cu-anh-dung-chung"
+  },
+  {
+   "class": [
+    "NEWER"
+   ],
+   "expect": "reject",
+   "name": "N01-schema-3"
+  },
+  {
+   "class": [
+    "NEWER"
+   ],
+   "expect": "reject",
+   "name": "N02-schema-99"
+  },
+  {
+   "class": [
+    "V1"
+   ],
+   "expect": "reject",
+   "name": "N03-v1-dang-moi"
+  },
+  {
+   "class": [
+    "V1"
+   ],
+   "expect": "reject",
+   "name": "N04-v2-dang-cu"
+  },
+  {
+   "class": [
+    "V1"
+   ],
+   "expect": "reject",
+   "name": "N05-schema-0"
+  },
+  {
+   "class": [
+    "v2"
+   ],
+   "counts": {
+    "attachments": 5,
+    "event_types": 4,
+    "events": 1,
+    "persons": 3,
+    "photos": 1
+   },
+   "expect": "accept",
+   "expected_json_sha256": "6ac49a162cca8f01e3fd9ddbf2f35455ddaac81268d86bfd9691c51dc2381a05",
+   "expected_legacy": [],
+   "expected_norm_sha256": "5595ae1844e859ce032a5b94322baf5d101197e73490d937e22f8730925e5b3c",
+   "name": "G01-v2-hop-le"
+  },
+  {
+   "class": [
+    "v2"
+   ],
+   "counts": {
+    "attachments": 8,
+    "event_types": 4,
+    "events": 1,
+    "persons": 3,
+    "photos": 1
+   },
+   "expect": "accept",
+   "expected_json_sha256": "9527f852affa2b395c19cba7628386e1f22e4bfb8607b9300bec0150d7c07aec",
+   "expected_legacy": [],
+   "expected_norm_sha256": "c634111f125761e2f3dd5e346c00f904fd7fc84f1cb8865b9adf945d9a72198a",
+   "name": "G02-v2-dung-6-tep"
+  },
+  {
+   "class": [
+    "v2"
+   ],
+   "counts": {
+    "attachments": 5,
+    "event_types": 4,
+    "events": 1,
+    "persons": 3,
+    "photos": 1
+   },
+   "expect": "accept",
+   "expected_json_sha256": "3ac6d3d1150716c5721eb5deb0a2d2c3a61cf68d0a5b5073886a037541ef1d20",
+   "expected_legacy": [],
+   "expected_norm_sha256": "5595ae1844e859ce032a5b94322baf5d101197e73490d937e22f8730925e5b3c",
+   "name": "G03-v2-gioi-tinh-vang"
+  },
+  {
+   "class": [
+    "v2"
+   ],
+   "counts": {
+    "attachments": 6,
+    "event_types": 4,
+    "events": 1,
+    "persons": 3,
+    "photos": 1
+   },
+   "expect": "accept",
+   "expected_json_sha256": "a7d74becef28be98651d4b15fca8d75cdef0c53d746c20e4085ff5d088148ee5",
+   "expected_legacy": [],
+   "expected_norm_sha256": "524c2c0a630b9f469de35afa55ca002fa9cd9d07a400e6d6a9601f57422cda27",
+   "name": "G04-pdf-dung-10MB"
+  },
+  {
+   "class": [
+    "v2"
+   ],
+   "counts": {
+    "attachments": 6,
+    "event_types": 4,
+    "events": 1,
+    "persons": 3,
+    "photos": 1
+   },
+   "expect": "accept",
+   "expected_json_sha256": "16bde0b0231d8223cb420c93eae10fb8140d30454558b0811960dc695de6c261",
+   "expected_legacy": [],
+   "expected_norm_sha256": "07f2f19bac4e815419d159ad9ad62d4554db137f5481e85ae6017b8f9b3288a2",
+   "name": "G05-anh-dung-2MB"
+  },
+  {
+   "class": [
+    "SIZE",
+    "V1"
+   ],
+   "expect": "reject",
+   "name": "X02-pdf-qua-10MB"
+  },
+  {
+   "class": [
+    "SIZE"
+   ],
+   "expect": "reject",
+   "name": "X03-anh-qua-2MB"
+  },
+  {
+   "class": [
+    "MAGIC"
+   ],
+   "expect": "reject",
+   "name": "X01-pdf-sai-magic"
+  },
+  {
+   "class": [
+    "MAGIC"
+   ],
+   "expect": "reject",
+   "name": "X01b-pdf-co-bom-truoc"
+  },
+  {
+   "class": [
+    "MAGIC"
+   ],
+   "expect": "reject",
+   "name": "X01c-pdf-chu-thuong"
+  },
+  {
+   "class": [
+    "DUP"
+   ],
+   "expect": "reject",
+   "name": "X04-trung-id-dinh-kem"
+  },
+  {
+   "class": [
+    "DUP"
+   ],
+   "expect": "reject",
+   "name": "X04b-trung-id-dinh-kem-hai-ho-so"
+  },
+  {
+   "class": [
+    "DUP",
+    "BLOB",
+    "V1"
+   ],
+   "expect": "reject",
+   "name": "X05-trung-id-ban-ghi-tep"
+  },
+  {
+   "class": [
+    "V3"
+   ],
+   "expect": "reject",
+   "name": "X06-tep-duoc-tro-nhung-thieu"
+  },
+  {
+   "class": [
+    "BLOB"
+   ],
+   "expect": "reject",
+   "name": "X07-thieu-byte-tep"
+  },
+  {
+   "class": [
+    "COUNT",
+    "V1"
+   ],
+   "expect": "reject",
+   "name": "X08-7-tep"
+  },
+  {
+   "class": [
+    "V1"
+   ],
+   "expect": "reject",
+   "name": "X09-kind-sai"
+  },
+  {
+   "class": [
+    "V1",
+    "MAGIC"
+   ],
+   "expect": "reject",
+   "name": "X10-mime-png"
+  },
+  {
+   "class": [
+    "SHA"
+   ],
+   "expect": "reject",
+   "name": "X11-sha-sai"
+  },
+  {
+   "class": [
+    "BYTES",
+    "SHA"
+   ],
+   "expect": "reject",
+   "name": "X12-bytes-sai"
+  },
+  {
+   "class": [
+    "V1"
+   ],
+   "expect": "reject",
+   "name": "X13-pdf-stripped-true"
+  },
+  {
+   "class": [
+    "V1"
+   ],
+   "expect": "reject",
+   "name": "X14-anh-stripped-false"
+  },
+  {
+   "class": [
+    "V1"
+   ],
+   "expect": "reject",
+   "name": "X15-gioi-tinh-Nam"
+  },
+  {
+   "class": [
+    "V1"
+   ],
+   "expect": "reject",
+   "name": "X16-gioi-tinh-khac"
+  },
+  {
+   "class": [
+    "V1"
+   ],
+   "expect": "reject",
+   "name": "X17-gioi-tinh-rong"
+  },
+  {
+   "class": [
+    "V1"
+   ],
+   "expect": "reject",
+   "name": "X17b-gioi-tinh-nu-dau"
+  },
+  {
+   "class": [
+    "V1"
+   ],
+   "expect": "reject",
+   "name": "X18-ten-tep-121"
+  },
+  {
+   "class": [
+    "BLOB"
+   ],
+   "expect": "reject",
+   "name": "X19-byte-thua"
+  },
+  {
+   "class": [
+    "MAGIC"
+   ],
+   "expect": "reject",
+   "name": "X20-mime-pdf-byte-jpeg"
+  },
+  {
+   "class": [
+    "MAGIC"
+   ],
+   "expect": "reject",
+   "name": "X21-mime-jpeg-byte-pdf"
+  },
+  {
+   "class": [
+    "V1"
+   ],
+   "expect": "reject",
+   "name": "X22-v2-con-khoa-cu"
+  },
+  {
+   "class": [
+    "V1"
+   ],
+   "expect": "reject",
+   "name": "X23-ten-tep-dieu-khien"
+  },
+  {
+   "class": [
+    "A-U1"
+   ],
+   "expect": "chua_ro",
+   "name": "U01-hai-ho-so-chung-tep"
+  },
+  {
+   "class": [
+    "A-U1"
+   ],
+   "expect": "chua_ro",
+   "name": "U02-tep-mo-coi"
+  }
+ ],
+ "goi_y": {
+  "deceased": [
+   "Ông",
+   "Bà",
+   "Cụ",
+   "Kỵ",
+   "Bác",
+   "Cô",
+   "Chú",
+   "Dì",
+   "Cậu",
+   "Mợ",
+   "Thím",
+   "Anh",
+   "Chị",
+   "Em",
+   "Cháu",
+   "Con",
+   "Bạn",
+   "Bố",
+   "Mẹ",
+   "Ông Tổ họ",
+   "Bà Cô Tổ họ",
+   "Bé đỏ"
+  ],
+  "living": [
+   "Ông",
+   "Bà",
+   "Bác",
+   "Cô",
+   "Chú",
+   "Dì",
+   "Cậu",
+   "Mợ",
+   "Thím",
+   "Anh",
+   "Chị",
+   "Em",
+   "Cháu",
+   "Con",
+   "Bạn",
+   "Bố",
+   "Mẹ"
+  ]
+ },
+ "limits": {
+  "attachments_max": 6,
+  "file_name_max": 120,
+  "image_max_bytes": 2097152,
+  "kinds": [
+   "tin_bao_tu",
+   "giay_chung_tu",
+   "khac"
+  ],
+  "mimes": [
+   "image/jpeg",
+   "image/webp",
+   "application/pdf"
+  ],
+  "pdf_magic": "%PDF-",
+  "pdf_max_bytes": 10485760
+ },
+ "names_on_import": "giu nguyen tung byte (A-N2); NFD: chua ro",
+ "names_on_save": [
+  {
+   "alt_first_letter": "Ông",
+   "ambiguous": null,
+   "expected": "Ông",
+   "input": "ông",
+   "input_nfc": "ông"
+  },
+  {
+   "alt_first_letter": "Bà",
+   "ambiguous": null,
+   "expected": "Bà",
+   "input": "bà",
+   "input_nfc": "bà"
+  },
+  {
+   "alt_first_letter": "Cụ",
+   "ambiguous": null,
+   "expected": "Cụ",
+   "input": "cụ",
+   "input_nfc": "cụ"
+  },
+  {
+   "alt_first_letter": "Kỵ",
+   "ambiguous": null,
+   "expected": "Kỵ",
+   "input": "kỵ",
+   "input_nfc": "kỵ"
+  },
+  {
+   "alt_first_letter": "Ông tổ họ",
+   "ambiguous": null,
+   "expected": "Ông tổ họ",
+   "input": "ông tổ họ",
+   "input_nfc": "ông tổ họ"
+  },
+  {
+   "alt_first_letter": "Bà cô tổ họ",
+   "ambiguous": null,
+   "expected": "Bà cô tổ họ",
+   "input": "bà cô tổ họ",
+   "input_nfc": "bà cô tổ họ"
+  },
+  {
+   "alt_first_letter": "Bé đỏ",
+   "ambiguous": null,
+   "expected": "Bé đỏ",
+   "input": "bé đỏ",
+   "input_nfc": "bé đỏ"
+  },
+  {
+   "alt_first_letter": "Đứa em",
+   "ambiguous": null,
+   "expected": "Đứa em",
+   "input": "đứa em",
+   "input_nfc": "đứa em"
+  },
+  {
+   "alt_first_letter": "Ừ",
+   "ambiguous": null,
+   "expected": "Ừ",
+   "input": "ừ",
+   "input_nfc": "ừ"
+  },
+  {
+   "alt_first_letter": "Ỵ",
+   "ambiguous": null,
+   "expected": "Ỵ",
+   "input": "ỵ",
+   "input_nfc": "ỵ"
+  },
+  {
+   "alt_first_letter": "Ơ kìa",
+   "ambiguous": null,
+   "expected": "Ơ kìa",
+   "input": "ơ kìa",
+   "input_nfc": "ơ kìa"
+  },
+  {
+   "alt_first_letter": "Ông",
+   "ambiguous": null,
+   "expected": "Ông",
+   "input": "Ông",
+   "input_nfc": "Ông"
+  },
+  {
+   "alt_first_letter": "ÔNG",
+   "ambiguous": null,
+   "expected": "ÔNG",
+   "input": "ÔNG",
+   "input_nfc": "ÔNG"
+  },
+  {
+   "alt_first_letter": "BÀ",
+   "ambiguous": null,
+   "expected": "BÀ",
+   "input": "bÀ",
+   "input_nfc": "bÀ"
+  },
+  {
+   "alt_first_letter": "Chú",
+   "ambiguous": null,
+   "expected": "Chú",
+   "input": "  chú  ",
+   "input_nfc": "  chú  "
+  },
+  {
+   "alt_first_letter": "",
+   "ambiguous": null,
+   "expected": "",
+   "input": "",
+   "input_nfc": ""
+  },
+  {
+   "alt_first_letter": "",
+   "ambiguous": null,
+   "expected": "",
+   "input": "   ",
+   "input_nfc": "   "
+  },
+  {
+   "alt_first_letter": "2 Bà",
+   "ambiguous": "A-N1",
+   "expected": "2 bà",
+   "input": "2 bà",
+   "input_nfc": "2 bà"
+  },
+  {
+   "alt_first_letter": "Ông nội (bên nội)",
+   "ambiguous": null,
+   "expected": "Ông nội (bên nội)",
+   "input": "ông nội (bên nội)",
+   "input_nfc": "ông nội (bên nội)"
+  },
+  {
+   "alt_first_letter": "(Bên nội) ông",
+   "ambiguous": "A-N1",
+   "expected": "(bên nội) ông",
+   "input": "(bên nội) ông",
+   "input_nfc": "(bên nội) ông"
+  },
+  {
+   "alt_first_letter": "́A",
+   "ambiguous": "A-N1",
+   "expected": "́a",
+   "input": "́a",
+   "input_nfc": "́a"
+  },
+  {
+   "alt_first_letter": "«Bà»",
+   "ambiguous": "A-N1",
+   "expected": "«bà»",
+   "input": "«bà»",
+   "input_nfc": "«bà»"
+  },
+  {
+   "alt_first_letter": "Ông",
+   "ambiguous": null,
+   "expected": "Ông",
+   "input": "ông",
+   "input_nfc": "ông"
+  },
+  {
+   "alt_first_letter": "Ừ",
+   "ambiguous": null,
+   "expected": "Ừ",
+   "input": "ừ",
+   "input_nfc": "ừ"
+  },
+  {
+   "alt_first_letter": "Ấu",
+   "ambiguous": null,
+   "expected": "Ấu",
+   "input": "ấu",
+   "input_nfc": "ấu"
+  },
+  {
+   "alt_first_letter": "Ống",
+   "ambiguous": null,
+   "expected": "Ống",
+   "input": "ống",
+   "input_nfc": "ống"
+  },
+  {
+   "alt_first_letter": "Đ",
+   "ambiguous": null,
+   "expected": "Đ",
+   "input": "đ",
+   "input_nfc": "đ"
+  },
+  {
+   "alt_first_letter": "Ừ",
+   "ambiguous": null,
+   "expected": "Ừ",
+   "input": "ừ",
+   "input_nfc": "ừ"
+  }
+ ],
+ "nonce_hex": "606162636465666768696a6b6c6d6e6f7071727374757677",
+ "password": "mật khẩu thử nghiệm",
+ "salt_hex": "404142434445464748494a4b4c4d4e4f",
+ "spec_commit": "6ee647b (origin/main)"
+}

@@ -1,0 +1,4580 @@
+{
+ "tag": "9106ae9",
+ "import": {
+  "M01-cu-giay-chung-tu": {
+   "rust": {
+    "ok": true,
+    "exit": 0,
+    "lost": [],
+    "diffs": [],
+    "n_diffs": 0,
+    "legacy": [],
+    "bytes": [],
+    "verdict": "KHOP"
+   },
+   "ts": {
+    "ok": true,
+    "exit": 0,
+    "lost": [],
+    "diffs": [],
+    "n_diffs": 0,
+    "legacy": [],
+    "bytes": [],
+    "verdict": "KHOP"
+   }
+  },
+  "M02-cu-4-anh": {
+   "rust": {
+    "ok": true,
+    "exit": 0,
+    "lost": [],
+    "diffs": [],
+    "n_diffs": 0,
+    "legacy": [],
+    "bytes": [],
+    "verdict": "KHOP"
+   },
+   "ts": {
+    "ok": true,
+    "exit": 0,
+    "lost": [],
+    "diffs": [],
+    "n_diffs": 0,
+    "legacy": [],
+    "bytes": [],
+    "verdict": "KHOP"
+   }
+  },
+  "M03-cu-anh-chung": {
+   "rust": {
+    "ok": true,
+    "exit": 0,
+    "lost": [],
+    "diffs": [],
+    "n_diffs": 0,
+    "legacy": [],
+    "bytes": [],
+    "verdict": "KHOP"
+   },
+   "ts": {
+    "ok": true,
+    "exit": 0,
+    "lost": [],
+    "diffs": [],
+    "n_diffs": 0,
+    "legacy": [],
+    "bytes": [],
+    "verdict": "KHOP"
+   }
+  },
+  "M04-cu-khong-bao-tu": {
+   "rust": {
+    "ok": true,
+    "exit": 0,
+    "lost": [],
+    "diffs": [],
+    "n_diffs": 0,
+    "legacy": [],
+    "bytes": [],
+    "verdict": "KHOP"
+   },
+   "ts": {
+    "ok": true,
+    "exit": 0,
+    "lost": [],
+    "diffs": [],
+    "n_diffs": 0,
+    "legacy": [],
+    "bytes": [],
+    "verdict": "KHOP"
+   }
+  },
+  "M05-cu-bao-tu-rong": {
+   "rust": {
+    "ok": true,
+    "exit": 0,
+    "lost": [],
+    "diffs": [],
+    "n_diffs": 0,
+    "legacy": [],
+    "bytes": [],
+    "verdict": "KHOP"
+   },
+   "ts": {
+    "ok": true,
+    "exit": 0,
+    "lost": [],
+    "diffs": [],
+    "n_diffs": 0,
+    "legacy": [],
+    "bytes": [],
+    "verdict": "KHOP"
+   }
+  },
+  "M06-cu-khoa-la-legacy": {
+   "rust": {
+    "ok": false,
+    "exit": 1,
+    "error": {
+     "kind": "Invalid",
+     "code": "V1",
+     "path": "",
+     "msg": "trường lạ \"ghi_chu_ban_cu\"",
+     "version": null,
+     "backup_error": null
+    },
+    "stage": "open_backup",
+    "verdict": "GHI_NHAN_TU_CHOI"
+   },
+   "ts": {
+    "ok": false,
+    "exit": 1,
+    "error": {
+     "kind": "StoreError",
+     "code": "invalid",
+     "path": null,
+     "msg": null,
+     "version": null,
+     "backup_error": null
+    },
+    "stage": "open_backup",
+    "verdict": "GHI_NHAN_TU_CHOI"
+   }
+  },
+  "M07-cu-chu-thuong-nfc": {
+   "rust": {
+    "ok": true,
+    "exit": 0,
+    "lost": [],
+    "diffs": [],
+    "n_diffs": 0,
+    "legacy": [],
+    "bytes": [],
+    "verdict": "KHOP"
+   },
+   "ts": {
+    "ok": true,
+    "exit": 0,
+    "lost": [],
+    "diffs": [],
+    "n_diffs": 0,
+    "legacy": [],
+    "bytes": [],
+    "verdict": "KHOP"
+   }
+  },
+  "M08-cu-nfd": {
+   "rust": {
+    "ok": true,
+    "exit": 0,
+    "lost": [],
+    "diffs": [],
+    "n_diffs": 0,
+    "legacy": [],
+    "bytes": [],
+    "verdict": "GHI_NHAN"
+   },
+   "ts": {
+    "ok": true,
+    "exit": 0,
+    "lost": [],
+    "diffs": [],
+    "n_diffs": 0,
+    "legacy": [],
+    "bytes": [],
+    "verdict": "GHI_NHAN"
+   }
+  },
+  "M09-cu-anh-chung-tu-thieu": {
+   "rust": {
+    "ok": false,
+    "exit": 1,
+    "error": {
+     "kind": "Invalid",
+     "code": "V3",
+     "path": "/persons/0/death/notice/certificate_photo_ids/0",
+     "msg": "ảnh không tồn tại",
+     "version": null,
+     "backup_error": null
+    },
+    "stage": "open_backup",
+    "verdict": "KHOP"
+   },
+   "ts": {
+    "ok": false,
+    "exit": 1,
+    "error": {
+     "kind": "StoreError",
+     "code": "invalid",
+     "path": null,
+     "msg": null,
+     "version": null,
+     "backup_error": null
+    },
+    "stage": "open_backup",
+    "verdict": "KHOP"
+   }
+  },
+  "M10-cu-anh-dung-chung": {
+   "rust": {
+    "ok": true,
+    "exit": 0,
+    "lost": [],
+    "diffs": [],
+    "n_diffs": 0,
+    "legacy": [],
+    "bytes": [],
+    "verdict": "GHI_NHAN"
+   },
+   "ts": {
+    "ok": true,
+    "exit": 0,
+    "lost": [],
+    "diffs": [],
+    "n_diffs": 0,
+    "legacy": [],
+    "bytes": [],
+    "verdict": "GHI_NHAN"
+   }
+  },
+  "N01-schema-3": {
+   "rust": {
+    "ok": false,
+    "exit": 1,
+    "error": {
+     "kind": "NewerSchema",
+     "code": null,
+     "path": null,
+     "msg": null,
+     "version": 3,
+     "backup_error": null
+    },
+    "stage": "open_backup",
+    "verdict": "KHOP"
+   },
+   "ts": {
+    "ok": false,
+    "exit": 1,
+    "error": {
+     "kind": "StoreError",
+     "code": "newer_schema",
+     "path": null,
+     "msg": null,
+     "version": null,
+     "backup_error": null
+    },
+    "stage": "open_backup",
+    "verdict": "KHOP"
+   }
+  },
+  "N02-schema-99": {
+   "rust": {
+    "ok": false,
+    "exit": 1,
+    "error": {
+     "kind": "NewerSchema",
+     "code": null,
+     "path": null,
+     "msg": null,
+     "version": 99,
+     "backup_error": null
+    },
+    "stage": "open_backup",
+    "verdict": "KHOP"
+   },
+   "ts": {
+    "ok": false,
+    "exit": 1,
+    "error": {
+     "kind": "StoreError",
+     "code": "newer_schema",
+     "path": null,
+     "msg": null,
+     "version": null,
+     "backup_error": null
+    },
+    "stage": "open_backup",
+    "verdict": "KHOP"
+   }
+  },
+  "N03-v1-dang-moi": {
+   "rust": {
+    "ok": true,
+    "exit": 0,
+    "verdict": "SAI_LECH_CHAP_NHAN"
+   },
+   "ts": {
+    "ok": true,
+    "exit": 0,
+    "verdict": "SAI_LECH_CHAP_NHAN"
+   }
+  },
+  "N04-v2-dang-cu": {
+   "rust": {
+    "ok": false,
+    "exit": 1,
+    "error": {
+     "kind": "NewerSchema",
+     "code": null,
+     "path": null,
+     "msg": null,
+     "version": 2,
+     "backup_error": null
+    },
+    "stage": "open_backup",
+    "verdict": "SAI_LOP"
+   },
+   "ts": {
+    "ok": false,
+    "exit": 1,
+    "error": {
+     "kind": "StoreError",
+     "code": "newer_schema",
+     "path": null,
+     "msg": null,
+     "version": null,
+     "backup_error": null
+    },
+    "stage": "open_backup",
+    "verdict": "SAI_LOP"
+   }
+  },
+  "N05-schema-0": {
+   "rust": {
+    "ok": false,
+    "exit": 1,
+    "error": {
+     "kind": "Invalid",
+     "code": "V1",
+     "path": "/schema_version",
+     "msg": "phải là 1",
+     "version": null,
+     "backup_error": null
+    },
+    "stage": "open_backup",
+    "verdict": "KHOP"
+   },
+   "ts": {
+    "ok": false,
+    "exit": 1,
+    "error": {
+     "kind": "StoreError",
+     "code": "invalid",
+     "path": null,
+     "msg": null,
+     "version": null,
+     "backup_error": null
+    },
+    "stage": "open_backup",
+    "verdict": "KHOP"
+   }
+  },
+  "G01-v2-hop-le": {
+   "rust": {
+    "ok": true,
+    "exit": 0,
+    "lost": [],
+    "diffs": [],
+    "n_diffs": 0,
+    "legacy": [],
+    "bytes": [],
+    "verdict": "KHOP"
+   },
+   "ts": {
+    "ok": true,
+    "exit": 0,
+    "lost": [],
+    "diffs": [],
+    "n_diffs": 0,
+    "legacy": [],
+    "bytes": [],
+    "verdict": "KHOP"
+   }
+  },
+  "G02-v2-dung-6-tep": {
+   "rust": {
+    "ok": true,
+    "exit": 0,
+    "lost": [],
+    "diffs": [],
+    "n_diffs": 0,
+    "legacy": [],
+    "bytes": [],
+    "verdict": "KHOP"
+   },
+   "ts": {
+    "ok": true,
+    "exit": 0,
+    "lost": [],
+    "diffs": [],
+    "n_diffs": 0,
+    "legacy": [],
+    "bytes": [],
+    "verdict": "KHOP"
+   }
+  },
+  "G03-v2-gioi-tinh-vang": {
+   "rust": {
+    "ok": true,
+    "exit": 0,
+    "lost": [],
+    "diffs": [],
+    "n_diffs": 0,
+    "legacy": [],
+    "bytes": [],
+    "verdict": "KHOP"
+   },
+   "ts": {
+    "ok": true,
+    "exit": 0,
+    "lost": [],
+    "diffs": [],
+    "n_diffs": 0,
+    "legacy": [],
+    "bytes": [],
+    "verdict": "KHOP"
+   }
+  },
+  "G04-pdf-dung-10MB": {
+   "rust": {
+    "ok": true,
+    "exit": 0,
+    "lost": [],
+    "diffs": [],
+    "n_diffs": 0,
+    "legacy": [],
+    "bytes": [],
+    "verdict": "KHOP"
+   },
+   "ts": {
+    "ok": true,
+    "exit": 0,
+    "lost": [],
+    "diffs": [],
+    "n_diffs": 0,
+    "legacy": [],
+    "bytes": [],
+    "verdict": "KHOP"
+   }
+  },
+  "G05-anh-dung-2MB": {
+   "rust": {
+    "ok": true,
+    "exit": 0,
+    "lost": [],
+    "diffs": [],
+    "n_diffs": 0,
+    "legacy": [],
+    "bytes": [],
+    "verdict": "KHOP"
+   },
+   "ts": {
+    "ok": true,
+    "exit": 0,
+    "lost": [],
+    "diffs": [],
+    "n_diffs": 0,
+    "legacy": [],
+    "bytes": [],
+    "verdict": "KHOP"
+   }
+  },
+  "X02-pdf-qua-10MB": {
+   "rust": {
+    "ok": false,
+    "exit": 1,
+    "error": {
+     "kind": "Backup",
+     "code": null,
+     "path": null,
+     "msg": null,
+     "version": null,
+     "backup_error": "MalformedPlaintext"
+    },
+    "stage": "open_backup",
+    "verdict": "KHOP"
+   },
+   "ts": {
+    "ok": false,
+    "exit": 1,
+    "error": {
+     "kind": "StoreError",
+     "code": "backup",
+     "path": null,
+     "msg": null,
+     "version": null,
+     "backup_error": null
+    },
+    "stage": "open_backup",
+    "verdict": "KHOP"
+   }
+  },
+  "X03-anh-qua-2MB": {
+   "rust": {
+    "ok": false,
+    "exit": 1,
+    "error": {
+     "kind": "Invalid",
+     "code": "V1",
+     "path": "/attachments/5/bytes",
+     "msg": "ngoài khoảng 1–2097152",
+     "version": null,
+     "backup_error": null
+    },
+    "stage": "open_backup",
+    "verdict": "KHOP"
+   },
+   "ts": {
+    "ok": false,
+    "exit": 1,
+    "error": {
+     "kind": "StoreError",
+     "code": "invalid",
+     "path": null,
+     "msg": null,
+     "version": null,
+     "backup_error": null
+    },
+    "stage": "open_backup",
+    "verdict": "KHOP"
+   }
+  },
+  "X01-pdf-sai-magic": {
+   "rust": {
+    "ok": false,
+    "exit": 1,
+    "error": {
+     "kind": "Invalid",
+     "code": "ATTACHMENT",
+     "path": "/attachments",
+     "msg": "mime_mismatch",
+     "version": null,
+     "backup_error": null
+    },
+    "stage": "open_backup",
+    "verdict": "KHOP"
+   },
+   "ts": {
+    "ok": false,
+    "exit": 1,
+    "error": {
+     "kind": "StoreError",
+     "code": "invalid",
+     "path": null,
+     "msg": null,
+     "version": null,
+     "backup_error": null
+    },
+    "stage": "open_backup",
+    "verdict": "KHOP"
+   }
+  },
+  "X01b-pdf-co-bom-truoc": {
+   "rust": {
+    "ok": false,
+    "exit": 1,
+    "error": {
+     "kind": "Invalid",
+     "code": "ATTACHMENT",
+     "path": "/attachments",
+     "msg": "mime_mismatch",
+     "version": null,
+     "backup_error": null
+    },
+    "stage": "open_backup",
+    "verdict": "KHOP"
+   },
+   "ts": {
+    "ok": false,
+    "exit": 1,
+    "error": {
+     "kind": "StoreError",
+     "code": "invalid",
+     "path": null,
+     "msg": null,
+     "version": null,
+     "backup_error": null
+    },
+    "stage": "open_backup",
+    "verdict": "KHOP"
+   }
+  },
+  "X01c-pdf-chu-thuong": {
+   "rust": {
+    "ok": false,
+    "exit": 1,
+    "error": {
+     "kind": "Invalid",
+     "code": "ATTACHMENT",
+     "path": "/attachments",
+     "msg": "mime_mismatch",
+     "version": null,
+     "backup_error": null
+    },
+    "stage": "open_backup",
+    "verdict": "KHOP"
+   },
+   "ts": {
+    "ok": false,
+    "exit": 1,
+    "error": {
+     "kind": "StoreError",
+     "code": "invalid",
+     "path": null,
+     "msg": null,
+     "version": null,
+     "backup_error": null
+    },
+    "stage": "open_backup",
+    "verdict": "KHOP"
+   }
+  },
+  "X04-trung-id-dinh-kem": {
+   "rust": {
+    "ok": false,
+    "exit": 1,
+    "error": {
+     "kind": "Invalid",
+     "code": "V1",
+     "path": "/persons/0/death/notice/attachments/3/id",
+     "msg": "id trùng",
+     "version": null,
+     "backup_error": null
+    },
+    "stage": "open_backup",
+    "verdict": "KHOP"
+   },
+   "ts": {
+    "ok": false,
+    "exit": 1,
+    "error": {
+     "kind": "StoreError",
+     "code": "invalid",
+     "path": null,
+     "msg": null,
+     "version": null,
+     "backup_error": null
+    },
+    "stage": "open_backup",
+    "verdict": "KHOP"
+   }
+  },
+  "X04b-trung-id-dinh-kem-hai-ho-so": {
+   "rust": {
+    "ok": false,
+    "exit": 1,
+    "error": {
+     "kind": "Invalid",
+     "code": "V1",
+     "path": "/persons/1/death/notice/attachments/2/file_id",
+     "msg": "tệp trùng",
+     "version": null,
+     "backup_error": null
+    },
+    "stage": "open_backup",
+    "verdict": "KHOP"
+   },
+   "ts": {
+    "ok": false,
+    "exit": 1,
+    "error": {
+     "kind": "StoreError",
+     "code": "invalid",
+     "path": null,
+     "msg": null,
+     "version": null,
+     "backup_error": null
+    },
+    "stage": "open_backup",
+    "verdict": "KHOP"
+   }
+  },
+  "X05-trung-id-ban-ghi-tep": {
+   "rust": {
+    "ok": false,
+    "exit": 1,
+    "error": {
+     "kind": "Invalid",
+     "code": "V1",
+     "path": "/attachments/5/id",
+     "msg": "id trùng",
+     "version": null,
+     "backup_error": null
+    },
+    "stage": "open_backup",
+    "verdict": "KHOP"
+   },
+   "ts": {
+    "ok": false,
+    "exit": 1,
+    "error": {
+     "kind": "StoreError",
+     "code": "invalid",
+     "path": null,
+     "msg": null,
+     "version": null,
+     "backup_error": null
+    },
+    "stage": "open_backup",
+    "verdict": "KHOP"
+   }
+  },
+  "X06-tep-duoc-tro-nhung-thieu": {
+   "rust": {
+    "ok": false,
+    "exit": 1,
+    "error": {
+     "kind": "Invalid",
+     "code": "V3",
+     "path": "/persons/0/death/notice/attachments/3/file_id",
+     "msg": "tệp đính kèm không tồn tại",
+     "version": null,
+     "backup_error": null
+    },
+    "stage": "open_backup",
+    "verdict": "KHOP"
+   },
+   "ts": {
+    "ok": false,
+    "exit": 1,
+    "error": {
+     "kind": "StoreError",
+     "code": "invalid",
+     "path": null,
+     "msg": null,
+     "version": null,
+     "backup_error": null
+    },
+    "stage": "open_backup",
+    "verdict": "KHOP"
+   }
+  },
+  "X07-thieu-byte-tep": {
+   "rust": {
+    "ok": false,
+    "exit": 1,
+    "error": {
+     "kind": "Invalid",
+     "code": "ATTACHMENT",
+     "path": "/attachments",
+     "msg": "thiếu tệp đính kèm",
+     "version": null,
+     "backup_error": null
+    },
+    "stage": "open_backup",
+    "verdict": "KHOP"
+   },
+   "ts": {
+    "ok": false,
+    "exit": 1,
+    "error": {
+     "kind": "StoreError",
+     "code": "invalid",
+     "path": null,
+     "msg": null,
+     "version": null,
+     "backup_error": null
+    },
+    "stage": "open_backup",
+    "verdict": "KHOP"
+   }
+  },
+  "X08-7-tep": {
+   "rust": {
+    "ok": false,
+    "exit": 1,
+    "error": {
+     "kind": "Invalid",
+     "code": "V1",
+     "path": "/persons/0/death/notice/attachments",
+     "msg": "quá 6 tệp",
+     "version": null,
+     "backup_error": null
+    },
+    "stage": "open_backup",
+    "verdict": "KHOP"
+   },
+   "ts": {
+    "ok": false,
+    "exit": 1,
+    "error": {
+     "kind": "StoreError",
+     "code": "invalid",
+     "path": null,
+     "msg": null,
+     "version": null,
+     "backup_error": null
+    },
+    "stage": "open_backup",
+    "verdict": "KHOP"
+   }
+  },
+  "X09-kind-sai": {
+   "rust": {
+    "ok": false,
+    "exit": 1,
+    "error": {
+     "kind": "Invalid",
+     "code": "V1",
+     "path": "/persons/1/death/notice/attachments/2/kind",
+     "msg": "giá trị không hợp lệ \"giay_bao_tu\"",
+     "version": null,
+     "backup_error": null
+    },
+    "stage": "open_backup",
+    "verdict": "KHOP"
+   },
+   "ts": {
+    "ok": false,
+    "exit": 1,
+    "error": {
+     "kind": "StoreError",
+     "code": "invalid",
+     "path": null,
+     "msg": null,
+     "version": null,
+     "backup_error": null
+    },
+    "stage": "open_backup",
+    "verdict": "KHOP"
+   }
+  },
+  "X10-mime-png": {
+   "rust": {
+    "ok": false,
+    "exit": 1,
+    "error": {
+     "kind": "Invalid",
+     "code": "V1",
+     "path": "/attachments/5/mime",
+     "msg": "giá trị không hợp lệ \"image/png\"",
+     "version": null,
+     "backup_error": null
+    },
+    "stage": "open_backup",
+    "verdict": "KHOP"
+   },
+   "ts": {
+    "ok": false,
+    "exit": 1,
+    "error": {
+     "kind": "StoreError",
+     "code": "invalid",
+     "path": null,
+     "msg": null,
+     "version": null,
+     "backup_error": null
+    },
+    "stage": "open_backup",
+    "verdict": "KHOP"
+   }
+  },
+  "X11-sha-sai": {
+   "rust": {
+    "ok": false,
+    "exit": 1,
+    "error": {
+     "kind": "Invalid",
+     "code": "ATTACHMENT",
+     "path": "/attachments",
+     "msg": "sha256/bytes không khớp",
+     "version": null,
+     "backup_error": null
+    },
+    "stage": "open_backup",
+    "verdict": "KHOP"
+   },
+   "ts": {
+    "ok": false,
+    "exit": 1,
+    "error": {
+     "kind": "StoreError",
+     "code": "invalid",
+     "path": null,
+     "msg": null,
+     "version": null,
+     "backup_error": null
+    },
+    "stage": "open_backup",
+    "verdict": "KHOP"
+   }
+  },
+  "X12-bytes-sai": {
+   "rust": {
+    "ok": false,
+    "exit": 1,
+    "error": {
+     "kind": "Invalid",
+     "code": "ATTACHMENT",
+     "path": "/attachments",
+     "msg": "sha256/bytes không khớp",
+     "version": null,
+     "backup_error": null
+    },
+    "stage": "open_backup",
+    "verdict": "KHOP"
+   },
+   "ts": {
+    "ok": false,
+    "exit": 1,
+    "error": {
+     "kind": "StoreError",
+     "code": "invalid",
+     "path": null,
+     "msg": null,
+     "version": null,
+     "backup_error": null
+    },
+    "stage": "open_backup",
+    "verdict": "KHOP"
+   }
+  },
+  "X13-pdf-stripped-true": {
+   "rust": {
+    "ok": false,
+    "exit": 1,
+    "error": {
+     "kind": "Invalid",
+     "code": "V1",
+     "path": "/attachments/5/stripped",
+     "msg": "PDF lưu nguyên bản: phải là false",
+     "version": null,
+     "backup_error": null
+    },
+    "stage": "open_backup",
+    "verdict": "KHOP"
+   },
+   "ts": {
+    "ok": false,
+    "exit": 1,
+    "error": {
+     "kind": "StoreError",
+     "code": "invalid",
+     "path": null,
+     "msg": null,
+     "version": null,
+     "backup_error": null
+    },
+    "stage": "open_backup",
+    "verdict": "KHOP"
+   }
+  },
+  "X14-anh-stripped-false": {
+   "rust": {
+    "ok": false,
+    "exit": 1,
+    "error": {
+     "kind": "Invalid",
+     "code": "V1",
+     "path": "/attachments/5/stripped",
+     "msg": "ảnh luôn được mã hóa lại: phải là true",
+     "version": null,
+     "backup_error": null
+    },
+    "stage": "open_backup",
+    "verdict": "KHOP"
+   },
+   "ts": {
+    "ok": false,
+    "exit": 1,
+    "error": {
+     "kind": "StoreError",
+     "code": "invalid",
+     "path": null,
+     "msg": null,
+     "version": null,
+     "backup_error": null
+    },
+    "stage": "open_backup",
+    "verdict": "KHOP"
+   }
+  },
+  "X15-gioi-tinh-Nam": {
+   "rust": {
+    "ok": false,
+    "exit": 1,
+    "error": {
+     "kind": "Invalid",
+     "code": "V1",
+     "path": "/persons/0/gioi_tinh",
+     "msg": "giá trị không hợp lệ \"Nam\"",
+     "version": null,
+     "backup_error": null
+    },
+    "stage": "open_backup",
+    "verdict": "KHOP"
+   },
+   "ts": {
+    "ok": false,
+    "exit": 1,
+    "error": {
+     "kind": "StoreError",
+     "code": "invalid",
+     "path": null,
+     "msg": null,
+     "version": null,
+     "backup_error": null
+    },
+    "stage": "open_backup",
+    "verdict": "KHOP"
+   }
+  },
+  "X16-gioi-tinh-khac": {
+   "rust": {
+    "ok": false,
+    "exit": 1,
+    "error": {
+     "kind": "Invalid",
+     "code": "V1",
+     "path": "/persons/0/gioi_tinh",
+     "msg": "giá trị không hợp lệ \"khac\"",
+     "version": null,
+     "backup_error": null
+    },
+    "stage": "open_backup",
+    "verdict": "KHOP"
+   },
+   "ts": {
+    "ok": false,
+    "exit": 1,
+    "error": {
+     "kind": "StoreError",
+     "code": "invalid",
+     "path": null,
+     "msg": null,
+     "version": null,
+     "backup_error": null
+    },
+    "stage": "open_backup",
+    "verdict": "KHOP"
+   }
+  },
+  "X17-gioi-tinh-rong": {
+   "rust": {
+    "ok": false,
+    "exit": 1,
+    "error": {
+     "kind": "Invalid",
+     "code": "V1",
+     "path": "/persons/0/gioi_tinh",
+     "msg": "giá trị không hợp lệ \"\"",
+     "version": null,
+     "backup_error": null
+    },
+    "stage": "open_backup",
+    "verdict": "KHOP"
+   },
+   "ts": {
+    "ok": false,
+    "exit": 1,
+    "error": {
+     "kind": "StoreError",
+     "code": "invalid",
+     "path": null,
+     "msg": null,
+     "version": null,
+     "backup_error": null
+    },
+    "stage": "open_backup",
+    "verdict": "KHOP"
+   }
+  },
+  "X17b-gioi-tinh-nu-dau": {
+   "rust": {
+    "ok": false,
+    "exit": 1,
+    "error": {
+     "kind": "Invalid",
+     "code": "V1",
+     "path": "/persons/0/gioi_tinh",
+     "msg": "giá trị không hợp lệ \"nữ\"",
+     "version": null,
+     "backup_error": null
+    },
+    "stage": "open_backup",
+    "verdict": "KHOP"
+   },
+   "ts": {
+    "ok": false,
+    "exit": 1,
+    "error": {
+     "kind": "StoreError",
+     "code": "invalid",
+     "path": null,
+     "msg": null,
+     "version": null,
+     "backup_error": null
+    },
+    "stage": "open_backup",
+    "verdict": "KHOP"
+   }
+  },
+  "X18-ten-tep-121": {
+   "rust": {
+    "ok": false,
+    "exit": 1,
+    "error": {
+     "kind": "Invalid",
+     "code": "V1",
+     "path": "/attachments/5/file_name",
+     "msg": "độ dài 121 ngoài 1–120",
+     "version": null,
+     "backup_error": null
+    },
+    "stage": "open_backup",
+    "verdict": "KHOP"
+   },
+   "ts": {
+    "ok": false,
+    "exit": 1,
+    "error": {
+     "kind": "StoreError",
+     "code": "invalid",
+     "path": null,
+     "msg": null,
+     "version": null,
+     "backup_error": null
+    },
+    "stage": "open_backup",
+    "verdict": "KHOP"
+   }
+  },
+  "X19-byte-thua": {
+   "rust": {
+    "ok": false,
+    "exit": 1,
+    "error": {
+     "kind": "Invalid",
+     "code": "PHOTO",
+     "path": "/photos",
+     "msg": "ảnh thừa",
+     "version": null,
+     "backup_error": null
+    },
+    "stage": "open_backup",
+    "verdict": "KHOP"
+   },
+   "ts": {
+    "ok": false,
+    "exit": 1,
+    "error": {
+     "kind": "StoreError",
+     "code": "invalid",
+     "path": null,
+     "msg": null,
+     "version": null,
+     "backup_error": null
+    },
+    "stage": "open_backup",
+    "verdict": "KHOP"
+   }
+  },
+  "X20-mime-pdf-byte-jpeg": {
+   "rust": {
+    "ok": false,
+    "exit": 1,
+    "error": {
+     "kind": "Invalid",
+     "code": "ATTACHMENT",
+     "path": "/attachments",
+     "msg": "mime_mismatch",
+     "version": null,
+     "backup_error": null
+    },
+    "stage": "open_backup",
+    "verdict": "KHOP"
+   },
+   "ts": {
+    "ok": false,
+    "exit": 1,
+    "error": {
+     "kind": "StoreError",
+     "code": "invalid",
+     "path": null,
+     "msg": null,
+     "version": null,
+     "backup_error": null
+    },
+    "stage": "open_backup",
+    "verdict": "KHOP"
+   }
+  },
+  "X21-mime-jpeg-byte-pdf": {
+   "rust": {
+    "ok": false,
+    "exit": 1,
+    "error": {
+     "kind": "Invalid",
+     "code": "ATTACHMENT",
+     "path": "/attachments",
+     "msg": "mime_mismatch",
+     "version": null,
+     "backup_error": null
+    },
+    "stage": "open_backup",
+    "verdict": "KHOP"
+   },
+   "ts": {
+    "ok": false,
+    "exit": 1,
+    "error": {
+     "kind": "StoreError",
+     "code": "invalid",
+     "path": null,
+     "msg": null,
+     "version": null,
+     "backup_error": null
+    },
+    "stage": "open_backup",
+    "verdict": "KHOP"
+   }
+  },
+  "X22-v2-con-khoa-cu": {
+   "rust": {
+    "ok": false,
+    "exit": 1,
+    "error": {
+     "kind": "Invalid",
+     "code": "V1",
+     "path": "/persons/0/death/notice",
+     "msg": "có cả attachments lẫn certificate_photo_ids (khóa cũ) — tài liệu dị dạng",
+     "version": null,
+     "backup_error": null
+    },
+    "stage": "open_backup",
+    "verdict": "KHOP"
+   },
+   "ts": {
+    "ok": false,
+    "exit": 1,
+    "error": {
+     "kind": "StoreError",
+     "code": "invalid",
+     "path": null,
+     "msg": null,
+     "version": null,
+     "backup_error": null
+    },
+    "stage": "open_backup",
+    "verdict": "KHOP"
+   }
+  },
+  "X23-ten-tep-dieu-khien": {
+   "rust": {
+    "ok": false,
+    "exit": 1,
+    "error": {
+     "kind": "Invalid",
+     "code": "V1",
+     "path": "/attachments/5/file_name",
+     "msg": "chứa ký tự điều khiển",
+     "version": null,
+     "backup_error": null
+    },
+    "stage": "open_backup",
+    "verdict": "KHOP"
+   },
+   "ts": {
+    "ok": false,
+    "exit": 1,
+    "error": {
+     "kind": "StoreError",
+     "code": "invalid",
+     "path": null,
+     "msg": null,
+     "version": null,
+     "backup_error": null
+    },
+    "stage": "open_backup",
+    "verdict": "KHOP"
+   }
+  },
+  "U01-hai-ho-so-chung-tep": {
+   "rust": {
+    "ok": true,
+    "exit": 0,
+    "lost": [],
+    "diffs": [],
+    "n_diffs": 0,
+    "legacy": [],
+    "bytes": [],
+    "verdict": "GHI_NHAN"
+   },
+   "ts": {
+    "ok": true,
+    "exit": 0,
+    "lost": [],
+    "diffs": [],
+    "n_diffs": 0,
+    "legacy": [],
+    "bytes": [],
+    "verdict": "GHI_NHAN"
+   }
+  },
+  "U02-tep-mo-coi": {
+   "rust": {
+    "ok": true,
+    "exit": 0,
+    "lost": [],
+    "diffs": [],
+    "n_diffs": 0,
+    "legacy": [],
+    "bytes": [],
+    "verdict": "GHI_NHAN"
+   },
+   "ts": {
+    "ok": true,
+    "exit": 0,
+    "lost": [],
+    "diffs": [],
+    "n_diffs": 0,
+    "legacy": [],
+    "bytes": [],
+    "verdict": "GHI_NHAN"
+   }
+  }
+ },
+ "inplace": {
+  "FROZEN": {
+   "rust-thuong": {
+    "ok": true,
+    "migration_status": {
+     "backup_exists": true,
+     "backup_path": "/tmp/claude-0/-home-claude/d8cfd5b0-b603-5248-8abb-496e9a334290/scratchpad/r3/inplace/FROZEN-thuong/lvhv.sqlite.pre-v2.bak",
+     "error": null,
+     "from_version": 1,
+     "state": "migrated",
+     "to_version": 2
+    },
+    "bak_exists": true,
+    "bak_byte_identical": false,
+    "bak_rows_identical": true,
+    "photos_unchanged": true,
+    "files_after": [
+     "attachments/0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e0c.bin",
+     "attachments/0b8e4f52-3c1a-4d2e-9f60-e5d4c3b2a1f6.bin",
+     "lvhv.sqlite",
+     "lvhv.sqlite.pre-v2.bak",
+     "photos/0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09.img",
+     "photos/0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e0c.img"
+    ],
+    "lost": [],
+    "diffs": [],
+    "n_diffs": 0,
+    "legacy": [],
+    "bytes": [],
+    "user_version": 2,
+    "state_sha256": "067cfb6b7141bb94cd6233cd635a6d16abc0d39547ccca46179fae5ec957a836",
+    "verdict": "KHOP"
+   },
+   "ts-thuong": {
+    "ok": true,
+    "migration_status": {
+     "error": null,
+     "from_version": 1,
+     "state": "migrated",
+     "to_version": 3
+    },
+    "lost": [],
+    "diffs": [],
+    "n_diffs": 0,
+    "legacy": [],
+    "bytes": [],
+    "state_sha256": "067cfb6b7141bb94cd6233cd635a6d16abc0d39547ccca46179fae5ec957a836",
+    "verdict": "KHOP"
+   },
+   "rust-loi": {
+    "ok": true,
+    "migration_status": {
+     "backup_exists": true,
+     "backup_path": "/tmp/claude-0/-home-claude/d8cfd5b0-b603-5248-8abb-496e9a334290/scratchpad/r3/inplace/FROZEN-loi/lvhv.sqlite.pre-v2.bak",
+     "error": "buộc lỗi chuyển đổi (tùy chọn kiểm định)",
+     "from_version": 1,
+     "state": "read_only",
+     "to_version": 1
+    },
+    "bak_exists": true,
+    "bak_byte_identical": false,
+    "bak_rows_identical": true,
+    "photos_unchanged": true,
+    "files_after": [
+     "attachments/0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e0c.bin",
+     "attachments/0b8e4f52-3c1a-4d2e-9f60-e5d4c3b2a1f6.bin",
+     "lvhv.sqlite",
+     "lvhv.sqlite.pre-v2.bak",
+     "photos/0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09.img",
+     "photos/0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e0c.img"
+    ],
+    "user_version_after": 1,
+    "db_rows_unchanged": true,
+    "read_only_probe": {
+     "delete_person": {
+      "error": {
+       "debug": "ReadOnly",
+       "display": "Dữ liệu đang ở chế độ chỉ đọc vì nâng cấp chưa xong — dữ liệu cũ vẫn còn nguyên; hãy xuất sao lưu",
+       "import_message": "Sai mật khẩu hoặc tệp bị hỏng",
+       "kind": "ReadOnly"
+      },
+      "ok": false
+     },
+     "export_backup": {
+      "bytes": 73415,
+      "ok": true
+     },
+     "put_person": {
+      "error": {
+       "debug": "ReadOnly",
+       "display": "Dữ liệu đang ở chế độ chỉ đọc vì nâng cấp chưa xong — dữ liệu cũ vẫn còn nguyên; hãy xuất sao lưu",
+       "import_message": "Sai mật khẩu hoặc tệp bị hỏng",
+       "kind": "ReadOnly"
+      },
+      "ok": false
+     },
+     "put_settings": {
+      "error": {
+       "debug": "ReadOnly",
+       "display": "Dữ liệu đang ở chế độ chỉ đọc vì nâng cấp chưa xong — dữ liệu cũ vẫn còn nguyên; hãy xuất sao lưu",
+       "import_message": "Sai mật khẩu hoặc tệp bị hỏng",
+       "kind": "ReadOnly"
+      },
+      "ok": false
+     }
+    },
+    "orphan_attachment_files": [
+     "attachments/0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e0c.bin",
+     "attachments/0b8e4f52-3c1a-4d2e-9f60-e5d4c3b2a1f6.bin"
+    ],
+    "verdict": "KHOP"
+   },
+   "ts-loi": {
+    "ok": true,
+    "migration_status": {
+     "error": "buộc lỗi chuyển đổi (tùy chọn kiểm định)",
+     "from_version": 1,
+     "state": "read_only",
+     "to_version": 1
+    },
+    "read_only_probe": {
+     "delete_person": {
+      "error": {
+       "code": "read_only",
+       "display": "Dữ liệu đang ở chế độ chỉ đọc vì nâng cấp chưa xong — dữ liệu cũ vẫn còn nguyên; hãy xuất sao lưu",
+       "kind": "StoreError"
+      },
+      "ok": false
+     },
+     "export_backup": {
+      "bytes": 73415,
+      "ok": true
+     },
+     "put_person": {
+      "error": {
+       "code": "read_only",
+       "display": "Dữ liệu đang ở chế độ chỉ đọc vì nâng cấp chưa xong — dữ liệu cũ vẫn còn nguyên; hãy xuất sao lưu",
+       "kind": "StoreError"
+      },
+      "ok": false
+     },
+     "put_settings": {
+      "error": {
+       "code": "read_only",
+       "display": "Dữ liệu đang ở chế độ chỉ đọc vì nâng cấp chưa xong — dữ liệu cũ vẫn còn nguyên; hãy xuất sao lưu",
+       "kind": "StoreError"
+      },
+      "ok": false
+     }
+    },
+    "doc_equals_old": true,
+    "verdict": "KHOP"
+   }
+  },
+  "M01-cu-giay-chung-tu": {
+   "rust-thuong": {
+    "ok": true,
+    "migration_status": {
+     "backup_exists": true,
+     "backup_path": "/tmp/claude-0/-home-claude/d8cfd5b0-b603-5248-8abb-496e9a334290/scratchpad/r3/inplace/M01-cu-giay-chung-tu-thuong/lvhv.sqlite.pre-v2.bak",
+     "error": null,
+     "from_version": 1,
+     "state": "migrated",
+     "to_version": 2
+    },
+    "bak_exists": true,
+    "bak_byte_identical": false,
+    "bak_rows_identical": true,
+    "photos_unchanged": true,
+    "files_after": [
+     "attachments/b5000000-0000-4000-8000-0000000000c1.bin",
+     "attachments/b5000000-0000-4000-8000-0000000000c2.bin",
+     "attachments/b5000000-0000-4000-8000-0000000000c3.bin",
+     "lvhv.sqlite",
+     "lvhv.sqlite.pre-v2.bak",
+     "photos/0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09.img",
+     "photos/b5000000-0000-4000-8000-0000000000c1.img",
+     "photos/b5000000-0000-4000-8000-0000000000c2.img",
+     "photos/b5000000-0000-4000-8000-0000000000c3.img"
+    ],
+    "lost": [],
+    "diffs": [],
+    "n_diffs": 0,
+    "legacy": [],
+    "bytes": [],
+    "user_version": 2,
+    "state_sha256": "b25c02a09f02cbea73591636d9eee76225001a85a65e872b036a49224748b3e6",
+    "verdict": "KHOP"
+   },
+   "ts-thuong": {
+    "ok": true,
+    "migration_status": {
+     "error": null,
+     "from_version": 1,
+     "state": "migrated",
+     "to_version": 3
+    },
+    "lost": [],
+    "diffs": [],
+    "n_diffs": 0,
+    "legacy": [],
+    "bytes": [],
+    "state_sha256": "b25c02a09f02cbea73591636d9eee76225001a85a65e872b036a49224748b3e6",
+    "verdict": "KHOP"
+   },
+   "rust-loi": {
+    "ok": true,
+    "migration_status": {
+     "backup_exists": true,
+     "backup_path": "/tmp/claude-0/-home-claude/d8cfd5b0-b603-5248-8abb-496e9a334290/scratchpad/r3/inplace/M01-cu-giay-chung-tu-loi/lvhv.sqlite.pre-v2.bak",
+     "error": "buộc lỗi chuyển đổi (tùy chọn kiểm định)",
+     "from_version": 1,
+     "state": "read_only",
+     "to_version": 1
+    },
+    "bak_exists": true,
+    "bak_byte_identical": false,
+    "bak_rows_identical": true,
+    "photos_unchanged": true,
+    "files_after": [
+     "attachments/b5000000-0000-4000-8000-0000000000c1.bin",
+     "attachments/b5000000-0000-4000-8000-0000000000c2.bin",
+     "attachments/b5000000-0000-4000-8000-0000000000c3.bin",
+     "lvhv.sqlite",
+     "lvhv.sqlite.pre-v2.bak",
+     "photos/0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09.img",
+     "photos/b5000000-0000-4000-8000-0000000000c1.img",
+     "photos/b5000000-0000-4000-8000-0000000000c2.img",
+     "photos/b5000000-0000-4000-8000-0000000000c3.img"
+    ],
+    "user_version_after": 1,
+    "db_rows_unchanged": true,
+    "read_only_probe": {
+     "delete_person": {
+      "error": {
+       "debug": "ReadOnly",
+       "display": "Dữ liệu đang ở chế độ chỉ đọc vì nâng cấp chưa xong — dữ liệu cũ vẫn còn nguyên; hãy xuất sao lưu",
+       "import_message": "Sai mật khẩu hoặc tệp bị hỏng",
+       "kind": "ReadOnly"
+      },
+      "ok": false
+     },
+     "export_backup": {
+      "bytes": 44126,
+      "ok": true
+     },
+     "put_person": {
+      "error": {
+       "debug": "ReadOnly",
+       "display": "Dữ liệu đang ở chế độ chỉ đọc vì nâng cấp chưa xong — dữ liệu cũ vẫn còn nguyên; hãy xuất sao lưu",
+       "import_message": "Sai mật khẩu hoặc tệp bị hỏng",
+       "kind": "ReadOnly"
+      },
+      "ok": false
+     },
+     "put_settings": {
+      "error": {
+       "debug": "ReadOnly",
+       "display": "Dữ liệu đang ở chế độ chỉ đọc vì nâng cấp chưa xong — dữ liệu cũ vẫn còn nguyên; hãy xuất sao lưu",
+       "import_message": "Sai mật khẩu hoặc tệp bị hỏng",
+       "kind": "ReadOnly"
+      },
+      "ok": false
+     }
+    },
+    "orphan_attachment_files": [
+     "attachments/b5000000-0000-4000-8000-0000000000c1.bin",
+     "attachments/b5000000-0000-4000-8000-0000000000c2.bin",
+     "attachments/b5000000-0000-4000-8000-0000000000c3.bin"
+    ],
+    "verdict": "KHOP"
+   },
+   "ts-loi": {
+    "ok": true,
+    "migration_status": {
+     "error": "buộc lỗi chuyển đổi (tùy chọn kiểm định)",
+     "from_version": 1,
+     "state": "read_only",
+     "to_version": 1
+    },
+    "read_only_probe": {
+     "delete_person": {
+      "error": {
+       "code": "read_only",
+       "display": "Dữ liệu đang ở chế độ chỉ đọc vì nâng cấp chưa xong — dữ liệu cũ vẫn còn nguyên; hãy xuất sao lưu",
+       "kind": "StoreError"
+      },
+      "ok": false
+     },
+     "export_backup": {
+      "bytes": 44126,
+      "ok": true
+     },
+     "put_person": {
+      "error": {
+       "code": "read_only",
+       "display": "Dữ liệu đang ở chế độ chỉ đọc vì nâng cấp chưa xong — dữ liệu cũ vẫn còn nguyên; hãy xuất sao lưu",
+       "kind": "StoreError"
+      },
+      "ok": false
+     },
+     "put_settings": {
+      "error": {
+       "code": "read_only",
+       "display": "Dữ liệu đang ở chế độ chỉ đọc vì nâng cấp chưa xong — dữ liệu cũ vẫn còn nguyên; hãy xuất sao lưu",
+       "kind": "StoreError"
+      },
+      "ok": false
+     }
+    },
+    "doc_equals_old": true,
+    "verdict": "KHOP"
+   }
+  },
+  "M02-cu-4-anh": {
+   "rust-thuong": {
+    "ok": true,
+    "migration_status": {
+     "backup_exists": true,
+     "backup_path": "/tmp/claude-0/-home-claude/d8cfd5b0-b603-5248-8abb-496e9a334290/scratchpad/r3/inplace/M02-cu-4-anh-thuong/lvhv.sqlite.pre-v2.bak",
+     "error": null,
+     "from_version": 1,
+     "state": "migrated",
+     "to_version": 2
+    },
+    "bak_exists": true,
+    "bak_byte_identical": false,
+    "bak_rows_identical": true,
+    "photos_unchanged": true,
+    "files_after": [
+     "attachments/b5000000-0000-4000-8000-0000000000d1.bin",
+     "attachments/b5000000-0000-4000-8000-0000000000d2.bin",
+     "attachments/b5000000-0000-4000-8000-0000000000d3.bin",
+     "attachments/b5000000-0000-4000-8000-0000000000d4.bin",
+     "lvhv.sqlite",
+     "lvhv.sqlite.pre-v2.bak",
+     "photos/0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09.img",
+     "photos/b5000000-0000-4000-8000-0000000000d1.img",
+     "photos/b5000000-0000-4000-8000-0000000000d2.img",
+     "photos/b5000000-0000-4000-8000-0000000000d3.img",
+     "photos/b5000000-0000-4000-8000-0000000000d4.img"
+    ],
+    "lost": [],
+    "diffs": [],
+    "n_diffs": 0,
+    "legacy": [],
+    "bytes": [],
+    "user_version": 2,
+    "state_sha256": "3d6461070f61637868dca4175dd89ac5b5a3ac0da90c3dca9de694e24fbbd149",
+    "verdict": "KHOP"
+   },
+   "ts-thuong": {
+    "ok": true,
+    "migration_status": {
+     "error": null,
+     "from_version": 1,
+     "state": "migrated",
+     "to_version": 3
+    },
+    "lost": [],
+    "diffs": [],
+    "n_diffs": 0,
+    "legacy": [],
+    "bytes": [],
+    "state_sha256": "3d6461070f61637868dca4175dd89ac5b5a3ac0da90c3dca9de694e24fbbd149",
+    "verdict": "KHOP"
+   },
+   "rust-loi": {
+    "ok": true,
+    "migration_status": {
+     "backup_exists": true,
+     "backup_path": "/tmp/claude-0/-home-claude/d8cfd5b0-b603-5248-8abb-496e9a334290/scratchpad/r3/inplace/M02-cu-4-anh-loi/lvhv.sqlite.pre-v2.bak",
+     "error": "buộc lỗi chuyển đổi (tùy chọn kiểm định)",
+     "from_version": 1,
+     "state": "read_only",
+     "to_version": 1
+    },
+    "bak_exists": true,
+    "bak_byte_identical": false,
+    "bak_rows_identical": true,
+    "photos_unchanged": true,
+    "files_after": [
+     "attachments/b5000000-0000-4000-8000-0000000000d1.bin",
+     "attachments/b5000000-0000-4000-8000-0000000000d2.bin",
+     "attachments/b5000000-0000-4000-8000-0000000000d3.bin",
+     "attachments/b5000000-0000-4000-8000-0000000000d4.bin",
+     "lvhv.sqlite",
+     "lvhv.sqlite.pre-v2.bak",
+     "photos/0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09.img",
+     "photos/b5000000-0000-4000-8000-0000000000d1.img",
+     "photos/b5000000-0000-4000-8000-0000000000d2.img",
+     "photos/b5000000-0000-4000-8000-0000000000d3.img",
+     "photos/b5000000-0000-4000-8000-0000000000d4.img"
+    ],
+    "user_version_after": 1,
+    "db_rows_unchanged": true,
+    "read_only_probe": {
+     "delete_person": {
+      "error": {
+       "debug": "ReadOnly",
+       "display": "Dữ liệu đang ở chế độ chỉ đọc vì nâng cấp chưa xong — dữ liệu cũ vẫn còn nguyên; hãy xuất sao lưu",
+       "import_message": "Sai mật khẩu hoặc tệp bị hỏng",
+       "kind": "ReadOnly"
+      },
+      "ok": false
+     },
+     "export_backup": {
+      "bytes": 45550,
+      "ok": true
+     },
+     "put_person": {
+      "error": {
+       "debug": "ReadOnly",
+       "display": "Dữ liệu đang ở chế độ chỉ đọc vì nâng cấp chưa xong — dữ liệu cũ vẫn còn nguyên; hãy xuất sao lưu",
+       "import_message": "Sai mật khẩu hoặc tệp bị hỏng",
+       "kind": "ReadOnly"
+      },
+      "ok": false
+     },
+     "put_settings": {
+      "error": {
+       "debug": "ReadOnly",
+       "display": "Dữ liệu đang ở chế độ chỉ đọc vì nâng cấp chưa xong — dữ liệu cũ vẫn còn nguyên; hãy xuất sao lưu",
+       "import_message": "Sai mật khẩu hoặc tệp bị hỏng",
+       "kind": "ReadOnly"
+      },
+      "ok": false
+     }
+    },
+    "orphan_attachment_files": [
+     "attachments/b5000000-0000-4000-8000-0000000000d1.bin",
+     "attachments/b5000000-0000-4000-8000-0000000000d2.bin",
+     "attachments/b5000000-0000-4000-8000-0000000000d3.bin",
+     "attachments/b5000000-0000-4000-8000-0000000000d4.bin"
+    ],
+    "verdict": "KHOP"
+   },
+   "ts-loi": {
+    "ok": true,
+    "migration_status": {
+     "error": "buộc lỗi chuyển đổi (tùy chọn kiểm định)",
+     "from_version": 1,
+     "state": "read_only",
+     "to_version": 1
+    },
+    "read_only_probe": {
+     "delete_person": {
+      "error": {
+       "code": "read_only",
+       "display": "Dữ liệu đang ở chế độ chỉ đọc vì nâng cấp chưa xong — dữ liệu cũ vẫn còn nguyên; hãy xuất sao lưu",
+       "kind": "StoreError"
+      },
+      "ok": false
+     },
+     "export_backup": {
+      "bytes": 45550,
+      "ok": true
+     },
+     "put_person": {
+      "error": {
+       "code": "read_only",
+       "display": "Dữ liệu đang ở chế độ chỉ đọc vì nâng cấp chưa xong — dữ liệu cũ vẫn còn nguyên; hãy xuất sao lưu",
+       "kind": "StoreError"
+      },
+      "ok": false
+     },
+     "put_settings": {
+      "error": {
+       "code": "read_only",
+       "display": "Dữ liệu đang ở chế độ chỉ đọc vì nâng cấp chưa xong — dữ liệu cũ vẫn còn nguyên; hãy xuất sao lưu",
+       "kind": "StoreError"
+      },
+      "ok": false
+     }
+    },
+    "doc_equals_old": true,
+    "verdict": "KHOP"
+   }
+  },
+  "M03-cu-anh-chung": {
+   "rust-thuong": {
+    "ok": true,
+    "migration_status": {
+     "backup_exists": true,
+     "backup_path": "/tmp/claude-0/-home-claude/d8cfd5b0-b603-5248-8abb-496e9a334290/scratchpad/r3/inplace/M03-cu-anh-chung-thuong/lvhv.sqlite.pre-v2.bak",
+     "error": null,
+     "from_version": 1,
+     "state": "migrated",
+     "to_version": 2
+    },
+    "bak_exists": true,
+    "bak_byte_identical": false,
+    "bak_rows_identical": true,
+    "photos_unchanged": true,
+    "files_after": [
+     "attachments/0b8e4f52-3c1a-4d2e-9f60-e5d4c3b2a1f6.bin",
+     "lvhv.sqlite",
+     "lvhv.sqlite.pre-v2.bak",
+     "photos/0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09.img"
+    ],
+    "lost": [],
+    "diffs": [],
+    "n_diffs": 0,
+    "legacy": [],
+    "bytes": [],
+    "user_version": 2,
+    "state_sha256": "4e9f43fee2d413f39ee335738e9316a114d20932c89e2517cc1395cbfdebb155",
+    "verdict": "KHOP"
+   },
+   "ts-thuong": {
+    "ok": true,
+    "migration_status": {
+     "error": null,
+     "from_version": 1,
+     "state": "migrated",
+     "to_version": 3
+    },
+    "lost": [],
+    "diffs": [],
+    "n_diffs": 0,
+    "legacy": [],
+    "bytes": [],
+    "state_sha256": "4e9f43fee2d413f39ee335738e9316a114d20932c89e2517cc1395cbfdebb155",
+    "verdict": "KHOP"
+   },
+   "rust-loi": {
+    "ok": true,
+    "migration_status": {
+     "backup_exists": true,
+     "backup_path": "/tmp/claude-0/-home-claude/d8cfd5b0-b603-5248-8abb-496e9a334290/scratchpad/r3/inplace/M03-cu-anh-chung-loi/lvhv.sqlite.pre-v2.bak",
+     "error": "buộc lỗi chuyển đổi (tùy chọn kiểm định)",
+     "from_version": 1,
+     "state": "read_only",
+     "to_version": 1
+    },
+    "bak_exists": true,
+    "bak_byte_identical": false,
+    "bak_rows_identical": true,
+    "photos_unchanged": true,
+    "files_after": [
+     "attachments/0b8e4f52-3c1a-4d2e-9f60-e5d4c3b2a1f6.bin",
+     "lvhv.sqlite",
+     "lvhv.sqlite.pre-v2.bak",
+     "photos/0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09.img"
+    ],
+    "user_version_after": 1,
+    "db_rows_unchanged": true,
+    "read_only_probe": {
+     "delete_person": {
+      "error": {
+       "debug": "ReadOnly",
+       "display": "Dữ liệu đang ở chế độ chỉ đọc vì nâng cấp chưa xong — dữ liệu cũ vẫn còn nguyên; hãy xuất sao lưu",
+       "import_message": "Sai mật khẩu hoặc tệp bị hỏng",
+       "kind": "ReadOnly"
+      },
+      "ok": false
+     },
+     "export_backup": {
+      "bytes": 39238,
+      "ok": true
+     },
+     "put_person": {
+      "error": {
+       "debug": "ReadOnly",
+       "display": "Dữ liệu đang ở chế độ chỉ đọc vì nâng cấp chưa xong — dữ liệu cũ vẫn còn nguyên; hãy xuất sao lưu",
+       "import_message": "Sai mật khẩu hoặc tệp bị hỏng",
+       "kind": "ReadOnly"
+      },
+      "ok": false
+     },
+     "put_settings": {
+      "error": {
+       "debug": "ReadOnly",
+       "display": "Dữ liệu đang ở chế độ chỉ đọc vì nâng cấp chưa xong — dữ liệu cũ vẫn còn nguyên; hãy xuất sao lưu",
+       "import_message": "Sai mật khẩu hoặc tệp bị hỏng",
+       "kind": "ReadOnly"
+      },
+      "ok": false
+     }
+    },
+    "orphan_attachment_files": [
+     "attachments/0b8e4f52-3c1a-4d2e-9f60-e5d4c3b2a1f6.bin"
+    ],
+    "verdict": "KHOP"
+   },
+   "ts-loi": {
+    "ok": true,
+    "migration_status": {
+     "error": "buộc lỗi chuyển đổi (tùy chọn kiểm định)",
+     "from_version": 1,
+     "state": "read_only",
+     "to_version": 1
+    },
+    "read_only_probe": {
+     "delete_person": {
+      "error": {
+       "code": "read_only",
+       "display": "Dữ liệu đang ở chế độ chỉ đọc vì nâng cấp chưa xong — dữ liệu cũ vẫn còn nguyên; hãy xuất sao lưu",
+       "kind": "StoreError"
+      },
+      "ok": false
+     },
+     "export_backup": {
+      "bytes": 39238,
+      "ok": true
+     },
+     "put_person": {
+      "error": {
+       "code": "read_only",
+       "display": "Dữ liệu đang ở chế độ chỉ đọc vì nâng cấp chưa xong — dữ liệu cũ vẫn còn nguyên; hãy xuất sao lưu",
+       "kind": "StoreError"
+      },
+      "ok": false
+     },
+     "put_settings": {
+      "error": {
+       "code": "read_only",
+       "display": "Dữ liệu đang ở chế độ chỉ đọc vì nâng cấp chưa xong — dữ liệu cũ vẫn còn nguyên; hãy xuất sao lưu",
+       "kind": "StoreError"
+      },
+      "ok": false
+     }
+    },
+    "doc_equals_old": true,
+    "verdict": "KHOP"
+   }
+  },
+  "M04-cu-khong-bao-tu": {
+   "rust-thuong": {
+    "ok": true,
+    "migration_status": {
+     "backup_exists": true,
+     "backup_path": "/tmp/claude-0/-home-claude/d8cfd5b0-b603-5248-8abb-496e9a334290/scratchpad/r3/inplace/M04-cu-khong-bao-tu-thuong/lvhv.sqlite.pre-v2.bak",
+     "error": null,
+     "from_version": 1,
+     "state": "migrated",
+     "to_version": 2
+    },
+    "bak_exists": true,
+    "bak_byte_identical": false,
+    "bak_rows_identical": true,
+    "photos_unchanged": true,
+    "files_after": [
+     "lvhv.sqlite",
+     "lvhv.sqlite.pre-v2.bak",
+     "photos/0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09.img"
+    ],
+    "lost": [],
+    "diffs": [],
+    "n_diffs": 0,
+    "legacy": [],
+    "bytes": [],
+    "user_version": 2,
+    "state_sha256": "177b73e2af3dfacbff38794f92d626c596754e440c3767f17ddcf520f587426e",
+    "verdict": "KHOP"
+   },
+   "ts-thuong": {
+    "ok": true,
+    "migration_status": {
+     "error": null,
+     "from_version": 1,
+     "state": "migrated",
+     "to_version": 3
+    },
+    "lost": [],
+    "diffs": [],
+    "n_diffs": 0,
+    "legacy": [],
+    "bytes": [],
+    "state_sha256": "177b73e2af3dfacbff38794f92d626c596754e440c3767f17ddcf520f587426e",
+    "verdict": "KHOP"
+   },
+   "rust-loi": {
+    "ok": true,
+    "migration_status": {
+     "backup_exists": true,
+     "backup_path": "/tmp/claude-0/-home-claude/d8cfd5b0-b603-5248-8abb-496e9a334290/scratchpad/r3/inplace/M04-cu-khong-bao-tu-loi/lvhv.sqlite.pre-v2.bak",
+     "error": "buộc lỗi chuyển đổi (tùy chọn kiểm định)",
+     "from_version": 1,
+     "state": "read_only",
+     "to_version": 1
+    },
+    "bak_exists": true,
+    "bak_byte_identical": false,
+    "bak_rows_identical": true,
+    "photos_unchanged": true,
+    "files_after": [
+     "lvhv.sqlite",
+     "lvhv.sqlite.pre-v2.bak",
+     "photos/0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09.img"
+    ],
+    "user_version_after": 1,
+    "db_rows_unchanged": true,
+    "read_only_probe": {
+     "delete_person": {
+      "error": {
+       "debug": "ReadOnly",
+       "display": "Dữ liệu đang ở chế độ chỉ đọc vì nâng cấp chưa xong — dữ liệu cũ vẫn còn nguyên; hãy xuất sao lưu",
+       "import_message": "Sai mật khẩu hoặc tệp bị hỏng",
+       "kind": "ReadOnly"
+      },
+      "ok": false
+     },
+     "export_backup": {
+      "bytes": 38908,
+      "ok": true
+     },
+     "put_person": {
+      "error": {
+       "debug": "ReadOnly",
+       "display": "Dữ liệu đang ở chế độ chỉ đọc vì nâng cấp chưa xong — dữ liệu cũ vẫn còn nguyên; hãy xuất sao lưu",
+       "import_message": "Sai mật khẩu hoặc tệp bị hỏng",
+       "kind": "ReadOnly"
+      },
+      "ok": false
+     },
+     "put_settings": {
+      "error": {
+       "debug": "ReadOnly",
+       "display": "Dữ liệu đang ở chế độ chỉ đọc vì nâng cấp chưa xong — dữ liệu cũ vẫn còn nguyên; hãy xuất sao lưu",
+       "import_message": "Sai mật khẩu hoặc tệp bị hỏng",
+       "kind": "ReadOnly"
+      },
+      "ok": false
+     }
+    },
+    "orphan_attachment_files": [],
+    "verdict": "KHOP"
+   },
+   "ts-loi": {
+    "ok": true,
+    "migration_status": {
+     "error": "buộc lỗi chuyển đổi (tùy chọn kiểm định)",
+     "from_version": 1,
+     "state": "read_only",
+     "to_version": 1
+    },
+    "read_only_probe": {
+     "delete_person": {
+      "error": {
+       "code": "read_only",
+       "display": "Dữ liệu đang ở chế độ chỉ đọc vì nâng cấp chưa xong — dữ liệu cũ vẫn còn nguyên; hãy xuất sao lưu",
+       "kind": "StoreError"
+      },
+      "ok": false
+     },
+     "export_backup": {
+      "bytes": 38908,
+      "ok": true
+     },
+     "put_person": {
+      "error": {
+       "code": "read_only",
+       "display": "Dữ liệu đang ở chế độ chỉ đọc vì nâng cấp chưa xong — dữ liệu cũ vẫn còn nguyên; hãy xuất sao lưu",
+       "kind": "StoreError"
+      },
+      "ok": false
+     },
+     "put_settings": {
+      "error": {
+       "code": "read_only",
+       "display": "Dữ liệu đang ở chế độ chỉ đọc vì nâng cấp chưa xong — dữ liệu cũ vẫn còn nguyên; hãy xuất sao lưu",
+       "kind": "StoreError"
+      },
+      "ok": false
+     }
+    },
+    "doc_equals_old": true,
+    "verdict": "KHOP"
+   }
+  },
+  "M05-cu-bao-tu-rong": {
+   "rust-thuong": {
+    "ok": true,
+    "migration_status": {
+     "backup_exists": true,
+     "backup_path": "/tmp/claude-0/-home-claude/d8cfd5b0-b603-5248-8abb-496e9a334290/scratchpad/r3/inplace/M05-cu-bao-tu-rong-thuong/lvhv.sqlite.pre-v2.bak",
+     "error": null,
+     "from_version": 1,
+     "state": "migrated",
+     "to_version": 2
+    },
+    "bak_exists": true,
+    "bak_byte_identical": false,
+    "bak_rows_identical": true,
+    "photos_unchanged": true,
+    "files_after": [
+     "lvhv.sqlite",
+     "lvhv.sqlite.pre-v2.bak",
+     "photos/0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09.img"
+    ],
+    "lost": [],
+    "diffs": [],
+    "n_diffs": 0,
+    "legacy": [],
+    "bytes": [],
+    "user_version": 2,
+    "state_sha256": "741a829052d21f888f5421dbc6d6e5977460715d58a34e5201694ad688206c14",
+    "verdict": "KHOP"
+   },
+   "ts-thuong": {
+    "ok": true,
+    "migration_status": {
+     "error": null,
+     "from_version": 1,
+     "state": "migrated",
+     "to_version": 3
+    },
+    "lost": [],
+    "diffs": [],
+    "n_diffs": 0,
+    "legacy": [],
+    "bytes": [],
+    "state_sha256": "741a829052d21f888f5421dbc6d6e5977460715d58a34e5201694ad688206c14",
+    "verdict": "KHOP"
+   },
+   "rust-loi": {
+    "ok": true,
+    "migration_status": {
+     "backup_exists": true,
+     "backup_path": "/tmp/claude-0/-home-claude/d8cfd5b0-b603-5248-8abb-496e9a334290/scratchpad/r3/inplace/M05-cu-bao-tu-rong-loi/lvhv.sqlite.pre-v2.bak",
+     "error": "buộc lỗi chuyển đổi (tùy chọn kiểm định)",
+     "from_version": 1,
+     "state": "read_only",
+     "to_version": 1
+    },
+    "bak_exists": true,
+    "bak_byte_identical": false,
+    "bak_rows_identical": true,
+    "photos_unchanged": true,
+    "files_after": [
+     "lvhv.sqlite",
+     "lvhv.sqlite.pre-v2.bak",
+     "photos/0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09.img"
+    ],
+    "user_version_after": 1,
+    "db_rows_unchanged": true,
+    "read_only_probe": {
+     "delete_person": {
+      "error": {
+       "debug": "ReadOnly",
+       "display": "Dữ liệu đang ở chế độ chỉ đọc vì nâng cấp chưa xong — dữ liệu cũ vẫn còn nguyên; hãy xuất sao lưu",
+       "import_message": "Sai mật khẩu hoặc tệp bị hỏng",
+       "kind": "ReadOnly"
+      },
+      "ok": false
+     },
+     "export_backup": {
+      "bytes": 39023,
+      "ok": true
+     },
+     "put_person": {
+      "error": {
+       "debug": "ReadOnly",
+       "display": "Dữ liệu đang ở chế độ chỉ đọc vì nâng cấp chưa xong — dữ liệu cũ vẫn còn nguyên; hãy xuất sao lưu",
+       "import_message": "Sai mật khẩu hoặc tệp bị hỏng",
+       "kind": "ReadOnly"
+      },
+      "ok": false
+     },
+     "put_settings": {
+      "error": {
+       "debug": "ReadOnly",
+       "display": "Dữ liệu đang ở chế độ chỉ đọc vì nâng cấp chưa xong — dữ liệu cũ vẫn còn nguyên; hãy xuất sao lưu",
+       "import_message": "Sai mật khẩu hoặc tệp bị hỏng",
+       "kind": "ReadOnly"
+      },
+      "ok": false
+     }
+    },
+    "orphan_attachment_files": [],
+    "verdict": "KHOP"
+   },
+   "ts-loi": {
+    "ok": true,
+    "migration_status": {
+     "error": "buộc lỗi chuyển đổi (tùy chọn kiểm định)",
+     "from_version": 1,
+     "state": "read_only",
+     "to_version": 1
+    },
+    "read_only_probe": {
+     "delete_person": {
+      "error": {
+       "code": "read_only",
+       "display": "Dữ liệu đang ở chế độ chỉ đọc vì nâng cấp chưa xong — dữ liệu cũ vẫn còn nguyên; hãy xuất sao lưu",
+       "kind": "StoreError"
+      },
+      "ok": false
+     },
+     "export_backup": {
+      "bytes": 39023,
+      "ok": true
+     },
+     "put_person": {
+      "error": {
+       "code": "read_only",
+       "display": "Dữ liệu đang ở chế độ chỉ đọc vì nâng cấp chưa xong — dữ liệu cũ vẫn còn nguyên; hãy xuất sao lưu",
+       "kind": "StoreError"
+      },
+      "ok": false
+     },
+     "put_settings": {
+      "error": {
+       "code": "read_only",
+       "display": "Dữ liệu đang ở chế độ chỉ đọc vì nâng cấp chưa xong — dữ liệu cũ vẫn còn nguyên; hãy xuất sao lưu",
+       "kind": "StoreError"
+      },
+      "ok": false
+     }
+    },
+    "doc_equals_old": true,
+    "verdict": "KHOP"
+   }
+  },
+  "M06-cu-khoa-la-legacy": {
+   "rust-thuong": {
+    "ok": true,
+    "migration_status": {
+     "backup_exists": true,
+     "backup_path": "/tmp/claude-0/-home-claude/d8cfd5b0-b603-5248-8abb-496e9a334290/scratchpad/r3/inplace/M06-cu-khoa-la-legacy-thuong/lvhv.sqlite.pre-v2.bak",
+     "error": "dữ liệu không hợp lệ: V1 /person: trường lạ \"ten_goi_cu\"",
+     "from_version": 1,
+     "state": "read_only",
+     "to_version": 1
+    },
+    "bak_exists": true,
+    "bak_byte_identical": false,
+    "bak_rows_identical": true,
+    "photos_unchanged": true,
+    "files_after": [
+     "attachments/b5000000-0000-4000-8000-0000000000c1.bin",
+     "attachments/b5000000-0000-4000-8000-0000000000c2.bin",
+     "attachments/b5000000-0000-4000-8000-0000000000c3.bin",
+     "lvhv.sqlite",
+     "lvhv.sqlite.pre-v2.bak",
+     "photos/0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09.img",
+     "photos/b5000000-0000-4000-8000-0000000000c1.img",
+     "photos/b5000000-0000-4000-8000-0000000000c2.img",
+     "photos/b5000000-0000-4000-8000-0000000000c3.img"
+    ],
+    "lost": [
+     "attachments sha256 3 -> 0"
+    ],
+    "diffs": [
+     [
+      "/attachments",
+      "[{'mime': 'image/jpeg', 'bytes': 1187, 'sha256': '231068c0b33ce6a99f46e938f11662f02312e01bea44b7627356e225270acb31', 'st",
+      "<vang>"
+     ],
+     [
+      "/persons/0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e01/death/notice/attachments",
+      "[{'kind': 'giay_chung_tu', 'file': {'mime': 'image/jpeg', 'bytes': 1187, 'sha256': '231068c0b33ce6a99f46e938f11662f02312",
+      "<vang>"
+     ],
+     [
+      "/persons/0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e01/death/notice/certificate_photo_ids",
+      "<vang>",
+      "['b5000000-0000-4000-8000-0000000000c1', 'b5000000-0000-4000-8000-0000000000c2']"
+     ],
+     [
+      "/persons/0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e01/death/notice/so_giay",
+      "<vang>",
+      "123/2025/TLKT"
+     ],
+     [
+      "/persons/0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e01/ten_goi_cu",
+      "<vang>",
+      "Cố Nguyễn"
+     ],
+     [
+      "/persons/0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e02/death/notice/attachments",
+      "[{'kind': 'giay_chung_tu', 'file': {'mime': 'image/jpeg', 'bytes': 1350, 'sha256': '751ab1aa33e3b02b16154169ebad6ae19243",
+      "<vang>"
+     ],
+     [
+      "/persons/0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e02/death/notice/certificate_photo_ids",
+      "<vang>",
+      "['b5000000-0000-4000-8000-0000000000c3']"
+     ],
+     [
+      "/photos",
+      "len=1",
+      "len=4"
+     ]
+    ],
+    "n_diffs": 8,
+    "legacy": [
+     "thieu legacy ghi_chu_ban_cu",
+     "thieu legacy so_giay",
+     "thieu legacy ten_goi_cu"
+    ],
+    "bytes": [
+     "byte tep dinh kem khac: 3 vs 0"
+    ],
+    "user_version": 1,
+    "state_sha256": "9240f3c330780fb3090e9d6f7e137a3f6cc3b24b797808d56efbb40aad1a3931",
+    "verdict": "SAI_LECH_TRUONG"
+   },
+   "ts-thuong": {
+    "ok": true,
+    "migration_status": {
+     "error": "V1 /person: trường lạ \"ten_goi_cu\"",
+     "from_version": 1,
+     "state": "read_only",
+     "to_version": 1
+    },
+    "lost": [
+     "attachments sha256 3 -> 0"
+    ],
+    "diffs": [
+     [
+      "/attachments",
+      "[{'mime': 'image/jpeg', 'bytes': 1187, 'sha256': '231068c0b33ce6a99f46e938f11662f02312e01bea44b7627356e225270acb31', 'st",
+      "<vang>"
+     ],
+     [
+      "/persons/0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e01/death/notice/attachments",
+      "[{'kind': 'giay_chung_tu', 'file': {'mime': 'image/jpeg', 'bytes': 1187, 'sha256': '231068c0b33ce6a99f46e938f11662f02312",
+      "<vang>"
+     ],
+     [
+      "/persons/0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e01/death/notice/certificate_photo_ids",
+      "<vang>",
+      "['b5000000-0000-4000-8000-0000000000c1', 'b5000000-0000-4000-8000-0000000000c2']"
+     ],
+     [
+      "/persons/0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e01/death/notice/so_giay",
+      "<vang>",
+      "123/2025/TLKT"
+     ],
+     [
+      "/persons/0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e01/ten_goi_cu",
+      "<vang>",
+      "Cố Nguyễn"
+     ],
+     [
+      "/persons/0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e02/death/notice/attachments",
+      "[{'kind': 'giay_chung_tu', 'file': {'mime': 'image/jpeg', 'bytes': 1350, 'sha256': '751ab1aa33e3b02b16154169ebad6ae19243",
+      "<vang>"
+     ],
+     [
+      "/persons/0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e02/death/notice/certificate_photo_ids",
+      "<vang>",
+      "['b5000000-0000-4000-8000-0000000000c3']"
+     ],
+     [
+      "/photos",
+      "len=1",
+      "len=4"
+     ]
+    ],
+    "n_diffs": 8,
+    "legacy": [
+     "thieu legacy ghi_chu_ban_cu",
+     "thieu legacy so_giay",
+     "thieu legacy ten_goi_cu"
+    ],
+    "bytes": [
+     "byte tep dinh kem khac: 3 vs 0"
+    ],
+    "state_sha256": "9240f3c330780fb3090e9d6f7e137a3f6cc3b24b797808d56efbb40aad1a3931",
+    "verdict": "SAI_LECH_TRUONG"
+   },
+   "rust-loi": {
+    "ok": true,
+    "migration_status": {
+     "backup_exists": true,
+     "backup_path": "/tmp/claude-0/-home-claude/d8cfd5b0-b603-5248-8abb-496e9a334290/scratchpad/r3/inplace/M06-cu-khoa-la-legacy-loi/lvhv.sqlite.pre-v2.bak",
+     "error": "buộc lỗi chuyển đổi (tùy chọn kiểm định)",
+     "from_version": 1,
+     "state": "read_only",
+     "to_version": 1
+    },
+    "bak_exists": true,
+    "bak_byte_identical": false,
+    "bak_rows_identical": true,
+    "photos_unchanged": true,
+    "files_after": [
+     "attachments/b5000000-0000-4000-8000-0000000000c1.bin",
+     "attachments/b5000000-0000-4000-8000-0000000000c2.bin",
+     "attachments/b5000000-0000-4000-8000-0000000000c3.bin",
+     "lvhv.sqlite",
+     "lvhv.sqlite.pre-v2.bak",
+     "photos/0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09.img",
+     "photos/b5000000-0000-4000-8000-0000000000c1.img",
+     "photos/b5000000-0000-4000-8000-0000000000c2.img",
+     "photos/b5000000-0000-4000-8000-0000000000c3.img"
+    ],
+    "user_version_after": 1,
+    "db_rows_unchanged": true,
+    "read_only_probe": {
+     "delete_person": {
+      "error": {
+       "debug": "ReadOnly",
+       "display": "Dữ liệu đang ở chế độ chỉ đọc vì nâng cấp chưa xong — dữ liệu cũ vẫn còn nguyên; hãy xuất sao lưu",
+       "import_message": "Sai mật khẩu hoặc tệp bị hỏng",
+       "kind": "ReadOnly"
+      },
+      "ok": false
+     },
+     "export_backup": {
+      "bytes": 44202,
+      "ok": true
+     },
+     "put_person": {
+      "error": {
+       "debug": "ReadOnly",
+       "display": "Dữ liệu đang ở chế độ chỉ đọc vì nâng cấp chưa xong — dữ liệu cũ vẫn còn nguyên; hãy xuất sao lưu",
+       "import_message": "Sai mật khẩu hoặc tệp bị hỏng",
+       "kind": "ReadOnly"
+      },
+      "ok": false
+     },
+     "put_settings": {
+      "error": {
+       "debug": "ReadOnly",
+       "display": "Dữ liệu đang ở chế độ chỉ đọc vì nâng cấp chưa xong — dữ liệu cũ vẫn còn nguyên; hãy xuất sao lưu",
+       "import_message": "Sai mật khẩu hoặc tệp bị hỏng",
+       "kind": "ReadOnly"
+      },
+      "ok": false
+     }
+    },
+    "orphan_attachment_files": [
+     "attachments/b5000000-0000-4000-8000-0000000000c1.bin",
+     "attachments/b5000000-0000-4000-8000-0000000000c2.bin",
+     "attachments/b5000000-0000-4000-8000-0000000000c3.bin"
+    ],
+    "verdict": "KHOP"
+   },
+   "ts-loi": {
+    "ok": true,
+    "migration_status": {
+     "error": "buộc lỗi chuyển đổi (tùy chọn kiểm định)",
+     "from_version": 1,
+     "state": "read_only",
+     "to_version": 1
+    },
+    "read_only_probe": {
+     "delete_person": {
+      "error": {
+       "code": "read_only",
+       "display": "Dữ liệu đang ở chế độ chỉ đọc vì nâng cấp chưa xong — dữ liệu cũ vẫn còn nguyên; hãy xuất sao lưu",
+       "kind": "StoreError"
+      },
+      "ok": false
+     },
+     "export_backup": {
+      "bytes": 44202,
+      "ok": true
+     },
+     "put_person": {
+      "error": {
+       "code": "read_only",
+       "display": "Dữ liệu đang ở chế độ chỉ đọc vì nâng cấp chưa xong — dữ liệu cũ vẫn còn nguyên; hãy xuất sao lưu",
+       "kind": "StoreError"
+      },
+      "ok": false
+     },
+     "put_settings": {
+      "error": {
+       "code": "read_only",
+       "display": "Dữ liệu đang ở chế độ chỉ đọc vì nâng cấp chưa xong — dữ liệu cũ vẫn còn nguyên; hãy xuất sao lưu",
+       "kind": "StoreError"
+      },
+      "ok": false
+     }
+    },
+    "doc_equals_old": false,
+    "verdict": "KHOP"
+   }
+  },
+  "M07-cu-chu-thuong-nfc": {
+   "rust-thuong": {
+    "ok": true,
+    "migration_status": {
+     "backup_exists": true,
+     "backup_path": "/tmp/claude-0/-home-claude/d8cfd5b0-b603-5248-8abb-496e9a334290/scratchpad/r3/inplace/M07-cu-chu-thuong-nfc-thuong/lvhv.sqlite.pre-v2.bak",
+     "error": null,
+     "from_version": 1,
+     "state": "migrated",
+     "to_version": 2
+    },
+    "bak_exists": true,
+    "bak_byte_identical": false,
+    "bak_rows_identical": true,
+    "photos_unchanged": true,
+    "files_after": [
+     "lvhv.sqlite",
+     "lvhv.sqlite.pre-v2.bak",
+     "photos/0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09.img"
+    ],
+    "lost": [],
+    "diffs": [],
+    "n_diffs": 0,
+    "legacy": [],
+    "bytes": [],
+    "user_version": 2,
+    "state_sha256": "50e6eb4fb6ec64556259791423b817955d42a036f77fdca606c0bb8c7c61e32b",
+    "verdict": "KHOP"
+   },
+   "ts-thuong": {
+    "ok": true,
+    "migration_status": {
+     "error": null,
+     "from_version": 1,
+     "state": "migrated",
+     "to_version": 3
+    },
+    "lost": [],
+    "diffs": [],
+    "n_diffs": 0,
+    "legacy": [],
+    "bytes": [],
+    "state_sha256": "50e6eb4fb6ec64556259791423b817955d42a036f77fdca606c0bb8c7c61e32b",
+    "verdict": "KHOP"
+   },
+   "rust-loi": {
+    "ok": true,
+    "migration_status": {
+     "backup_exists": true,
+     "backup_path": "/tmp/claude-0/-home-claude/d8cfd5b0-b603-5248-8abb-496e9a334290/scratchpad/r3/inplace/M07-cu-chu-thuong-nfc-loi/lvhv.sqlite.pre-v2.bak",
+     "error": "buộc lỗi chuyển đổi (tùy chọn kiểm định)",
+     "from_version": 1,
+     "state": "read_only",
+     "to_version": 1
+    },
+    "bak_exists": true,
+    "bak_byte_identical": false,
+    "bak_rows_identical": true,
+    "photos_unchanged": true,
+    "files_after": [
+     "lvhv.sqlite",
+     "lvhv.sqlite.pre-v2.bak",
+     "photos/0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09.img"
+    ],
+    "user_version_after": 1,
+    "db_rows_unchanged": true,
+    "read_only_probe": {
+     "delete_person": {
+      "error": {
+       "debug": "ReadOnly",
+       "display": "Dữ liệu đang ở chế độ chỉ đọc vì nâng cấp chưa xong — dữ liệu cũ vẫn còn nguyên; hãy xuất sao lưu",
+       "import_message": "Sai mật khẩu hoặc tệp bị hỏng",
+       "kind": "ReadOnly"
+      },
+      "ok": false
+     },
+     "export_backup": {
+      "bytes": 38925,
+      "ok": true
+     },
+     "put_person": {
+      "error": {
+       "debug": "ReadOnly",
+       "display": "Dữ liệu đang ở chế độ chỉ đọc vì nâng cấp chưa xong — dữ liệu cũ vẫn còn nguyên; hãy xuất sao lưu",
+       "import_message": "Sai mật khẩu hoặc tệp bị hỏng",
+       "kind": "ReadOnly"
+      },
+      "ok": false
+     },
+     "put_settings": {
+      "error": {
+       "debug": "ReadOnly",
+       "display": "Dữ liệu đang ở chế độ chỉ đọc vì nâng cấp chưa xong — dữ liệu cũ vẫn còn nguyên; hãy xuất sao lưu",
+       "import_message": "Sai mật khẩu hoặc tệp bị hỏng",
+       "kind": "ReadOnly"
+      },
+      "ok": false
+     }
+    },
+    "orphan_attachment_files": [],
+    "verdict": "KHOP"
+   },
+   "ts-loi": {
+    "ok": true,
+    "migration_status": {
+     "error": "buộc lỗi chuyển đổi (tùy chọn kiểm định)",
+     "from_version": 1,
+     "state": "read_only",
+     "to_version": 1
+    },
+    "read_only_probe": {
+     "delete_person": {
+      "error": {
+       "code": "read_only",
+       "display": "Dữ liệu đang ở chế độ chỉ đọc vì nâng cấp chưa xong — dữ liệu cũ vẫn còn nguyên; hãy xuất sao lưu",
+       "kind": "StoreError"
+      },
+      "ok": false
+     },
+     "export_backup": {
+      "bytes": 38925,
+      "ok": true
+     },
+     "put_person": {
+      "error": {
+       "code": "read_only",
+       "display": "Dữ liệu đang ở chế độ chỉ đọc vì nâng cấp chưa xong — dữ liệu cũ vẫn còn nguyên; hãy xuất sao lưu",
+       "kind": "StoreError"
+      },
+      "ok": false
+     },
+     "put_settings": {
+      "error": {
+       "code": "read_only",
+       "display": "Dữ liệu đang ở chế độ chỉ đọc vì nâng cấp chưa xong — dữ liệu cũ vẫn còn nguyên; hãy xuất sao lưu",
+       "kind": "StoreError"
+      },
+      "ok": false
+     }
+    },
+    "doc_equals_old": true,
+    "verdict": "KHOP"
+   }
+  },
+  "M08-cu-nfd": {
+   "rust-thuong": {
+    "ok": true,
+    "migration_status": {
+     "backup_exists": true,
+     "backup_path": "/tmp/claude-0/-home-claude/d8cfd5b0-b603-5248-8abb-496e9a334290/scratchpad/r3/inplace/M08-cu-nfd-thuong/lvhv.sqlite.pre-v2.bak",
+     "error": null,
+     "from_version": 1,
+     "state": "migrated",
+     "to_version": 2
+    },
+    "bak_exists": true,
+    "bak_byte_identical": false,
+    "bak_rows_identical": true,
+    "photos_unchanged": true,
+    "files_after": [
+     "lvhv.sqlite",
+     "lvhv.sqlite.pre-v2.bak",
+     "photos/0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09.img"
+    ],
+    "lost": [],
+    "diffs": [],
+    "n_diffs": 0,
+    "legacy": [],
+    "bytes": [],
+    "user_version": 2,
+    "state_sha256": "e0f265d3139cb99c6b8ee9813a0bcee2200583719f506fdb06f7dfdcfd91d817",
+    "verdict": "KHOP"
+   },
+   "ts-thuong": {
+    "ok": true,
+    "migration_status": {
+     "error": null,
+     "from_version": 1,
+     "state": "migrated",
+     "to_version": 3
+    },
+    "lost": [],
+    "diffs": [],
+    "n_diffs": 0,
+    "legacy": [],
+    "bytes": [],
+    "state_sha256": "e0f265d3139cb99c6b8ee9813a0bcee2200583719f506fdb06f7dfdcfd91d817",
+    "verdict": "KHOP"
+   },
+   "rust-loi": {
+    "ok": true,
+    "migration_status": {
+     "backup_exists": true,
+     "backup_path": "/tmp/claude-0/-home-claude/d8cfd5b0-b603-5248-8abb-496e9a334290/scratchpad/r3/inplace/M08-cu-nfd-loi/lvhv.sqlite.pre-v2.bak",
+     "error": "buộc lỗi chuyển đổi (tùy chọn kiểm định)",
+     "from_version": 1,
+     "state": "read_only",
+     "to_version": 1
+    },
+    "bak_exists": true,
+    "bak_byte_identical": false,
+    "bak_rows_identical": true,
+    "photos_unchanged": true,
+    "files_after": [
+     "lvhv.sqlite",
+     "lvhv.sqlite.pre-v2.bak",
+     "photos/0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09.img"
+    ],
+    "user_version_after": 1,
+    "db_rows_unchanged": true,
+    "read_only_probe": {
+     "delete_person": {
+      "error": {
+       "debug": "ReadOnly",
+       "display": "Dữ liệu đang ở chế độ chỉ đọc vì nâng cấp chưa xong — dữ liệu cũ vẫn còn nguyên; hãy xuất sao lưu",
+       "import_message": "Sai mật khẩu hoặc tệp bị hỏng",
+       "kind": "ReadOnly"
+      },
+      "ok": false
+     },
+     "export_backup": {
+      "bytes": 38919,
+      "ok": true
+     },
+     "put_person": {
+      "error": {
+       "debug": "ReadOnly",
+       "display": "Dữ liệu đang ở chế độ chỉ đọc vì nâng cấp chưa xong — dữ liệu cũ vẫn còn nguyên; hãy xuất sao lưu",
+       "import_message": "Sai mật khẩu hoặc tệp bị hỏng",
+       "kind": "ReadOnly"
+      },
+      "ok": false
+     },
+     "put_settings": {
+      "error": {
+       "debug": "ReadOnly",
+       "display": "Dữ liệu đang ở chế độ chỉ đọc vì nâng cấp chưa xong — dữ liệu cũ vẫn còn nguyên; hãy xuất sao lưu",
+       "import_message": "Sai mật khẩu hoặc tệp bị hỏng",
+       "kind": "ReadOnly"
+      },
+      "ok": false
+     }
+    },
+    "orphan_attachment_files": [],
+    "verdict": "KHOP"
+   },
+   "ts-loi": {
+    "ok": true,
+    "migration_status": {
+     "error": "buộc lỗi chuyển đổi (tùy chọn kiểm định)",
+     "from_version": 1,
+     "state": "read_only",
+     "to_version": 1
+    },
+    "read_only_probe": {
+     "delete_person": {
+      "error": {
+       "code": "read_only",
+       "display": "Dữ liệu đang ở chế độ chỉ đọc vì nâng cấp chưa xong — dữ liệu cũ vẫn còn nguyên; hãy xuất sao lưu",
+       "kind": "StoreError"
+      },
+      "ok": false
+     },
+     "export_backup": {
+      "bytes": 38919,
+      "ok": true
+     },
+     "put_person": {
+      "error": {
+       "code": "read_only",
+       "display": "Dữ liệu đang ở chế độ chỉ đọc vì nâng cấp chưa xong — dữ liệu cũ vẫn còn nguyên; hãy xuất sao lưu",
+       "kind": "StoreError"
+      },
+      "ok": false
+     },
+     "put_settings": {
+      "error": {
+       "code": "read_only",
+       "display": "Dữ liệu đang ở chế độ chỉ đọc vì nâng cấp chưa xong — dữ liệu cũ vẫn còn nguyên; hãy xuất sao lưu",
+       "kind": "StoreError"
+      },
+      "ok": false
+     }
+    },
+    "doc_equals_old": true,
+    "verdict": "KHOP"
+   }
+  },
+  "M09-cu-anh-chung-tu-thieu": {
+   "rust-thuong": {
+    "ok": true,
+    "migration_status": {
+     "backup_exists": true,
+     "backup_path": "/tmp/claude-0/-home-claude/d8cfd5b0-b603-5248-8abb-496e9a334290/scratchpad/r3/inplace/M09-cu-anh-chung-tu-thieu-thuong/lvhv.sqlite.pre-v2.bak",
+     "error": "dữ liệu không hợp lệ: V3 /persons/0/death/notice/certificate_photo_ids/0: ảnh không tồn tại",
+     "from_version": 1,
+     "state": "read_only",
+     "to_version": 1
+    },
+    "bak_exists": true,
+    "bak_byte_identical": false,
+    "bak_rows_identical": true,
+    "photos_unchanged": true,
+    "files_after": [
+     "lvhv.sqlite",
+     "lvhv.sqlite.pre-v2.bak",
+     "photos/0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09.img"
+    ],
+    "lost": [
+     "tham-chieu-loi 'b5000000-0000-4000-8000-0000000000ee'"
+    ],
+    "diffs": [],
+    "n_diffs": 0,
+    "legacy": [],
+    "bytes": [],
+    "user_version": 1,
+    "state_sha256": "500c0fd1cae0454ed23db2ec5e00fc8e282340ad3d867064c84aace8522c4cbd",
+    "verdict": "SAI_LECH_TRUONG"
+   },
+   "ts-thuong": {
+    "ok": true,
+    "migration_status": {
+     "error": "V3 /persons/0/death/notice/certificate_photo_ids/0: ảnh không tồn tại",
+     "from_version": 1,
+     "state": "read_only",
+     "to_version": 1
+    },
+    "lost": [
+     "tham-chieu-loi 'b5000000-0000-4000-8000-0000000000ee'"
+    ],
+    "diffs": [],
+    "n_diffs": 0,
+    "legacy": [],
+    "bytes": [],
+    "state_sha256": "500c0fd1cae0454ed23db2ec5e00fc8e282340ad3d867064c84aace8522c4cbd",
+    "verdict": "SAI_LECH_TRUONG"
+   },
+   "rust-loi": {
+    "ok": true,
+    "migration_status": {
+     "backup_exists": true,
+     "backup_path": "/tmp/claude-0/-home-claude/d8cfd5b0-b603-5248-8abb-496e9a334290/scratchpad/r3/inplace/M09-cu-anh-chung-tu-thieu-loi/lvhv.sqlite.pre-v2.bak",
+     "error": "dữ liệu không hợp lệ: V3 /persons/0/death/notice/certificate_photo_ids/0: ảnh không tồn tại",
+     "from_version": 1,
+     "state": "read_only",
+     "to_version": 1
+    },
+    "bak_exists": true,
+    "bak_byte_identical": false,
+    "bak_rows_identical": true,
+    "photos_unchanged": true,
+    "files_after": [
+     "lvhv.sqlite",
+     "lvhv.sqlite.pre-v2.bak",
+     "photos/0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09.img"
+    ],
+    "user_version_after": 1,
+    "db_rows_unchanged": true,
+    "read_only_probe": {
+     "delete_person": {
+      "error": {
+       "debug": "ReadOnly",
+       "display": "Dữ liệu đang ở chế độ chỉ đọc vì nâng cấp chưa xong — dữ liệu cũ vẫn còn nguyên; hãy xuất sao lưu",
+       "import_message": "Sai mật khẩu hoặc tệp bị hỏng",
+       "kind": "ReadOnly"
+      },
+      "ok": false
+     },
+     "export_backup": {
+      "bytes": 39238,
+      "ok": true
+     },
+     "put_person": {
+      "error": {
+       "debug": "ReadOnly",
+       "display": "Dữ liệu đang ở chế độ chỉ đọc vì nâng cấp chưa xong — dữ liệu cũ vẫn còn nguyên; hãy xuất sao lưu",
+       "import_message": "Sai mật khẩu hoặc tệp bị hỏng",
+       "kind": "ReadOnly"
+      },
+      "ok": false
+     },
+     "put_settings": {
+      "error": {
+       "debug": "ReadOnly",
+       "display": "Dữ liệu đang ở chế độ chỉ đọc vì nâng cấp chưa xong — dữ liệu cũ vẫn còn nguyên; hãy xuất sao lưu",
+       "import_message": "Sai mật khẩu hoặc tệp bị hỏng",
+       "kind": "ReadOnly"
+      },
+      "ok": false
+     }
+    },
+    "orphan_attachment_files": [],
+    "verdict": "KHOP"
+   },
+   "ts-loi": {
+    "ok": true,
+    "migration_status": {
+     "error": "V3 /persons/0/death/notice/certificate_photo_ids/0: ảnh không tồn tại",
+     "from_version": 1,
+     "state": "read_only",
+     "to_version": 1
+    },
+    "read_only_probe": {
+     "delete_person": {
+      "error": {
+       "code": "read_only",
+       "display": "Dữ liệu đang ở chế độ chỉ đọc vì nâng cấp chưa xong — dữ liệu cũ vẫn còn nguyên; hãy xuất sao lưu",
+       "kind": "StoreError"
+      },
+      "ok": false
+     },
+     "export_backup": {
+      "bytes": 39238,
+      "ok": true
+     },
+     "put_person": {
+      "error": {
+       "code": "read_only",
+       "display": "Dữ liệu đang ở chế độ chỉ đọc vì nâng cấp chưa xong — dữ liệu cũ vẫn còn nguyên; hãy xuất sao lưu",
+       "kind": "StoreError"
+      },
+      "ok": false
+     },
+     "put_settings": {
+      "error": {
+       "code": "read_only",
+       "display": "Dữ liệu đang ở chế độ chỉ đọc vì nâng cấp chưa xong — dữ liệu cũ vẫn còn nguyên; hãy xuất sao lưu",
+       "kind": "StoreError"
+      },
+      "ok": false
+     }
+    },
+    "doc_equals_old": true,
+    "verdict": "KHOP"
+   }
+  },
+  "M10-cu-anh-dung-chung": {
+   "rust-thuong": {
+    "ok": true,
+    "migration_status": {
+     "backup_exists": true,
+     "backup_path": "/tmp/claude-0/-home-claude/d8cfd5b0-b603-5248-8abb-496e9a334290/scratchpad/r3/inplace/M10-cu-anh-dung-chung-thuong/lvhv.sqlite.pre-v2.bak",
+     "error": null,
+     "from_version": 1,
+     "state": "migrated",
+     "to_version": 2
+    },
+    "bak_exists": true,
+    "bak_byte_identical": false,
+    "bak_rows_identical": true,
+    "photos_unchanged": true,
+    "files_after": [
+     "attachments/b5000000-0000-4000-8000-0000000000c5.bin",
+     "attachments/b5000000-0000-4000-8000-0000000000c6.bin",
+     "lvhv.sqlite",
+     "lvhv.sqlite.pre-v2.bak",
+     "photos/0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09.img",
+     "photos/b5000000-0000-4000-8000-0000000000c5.img",
+     "photos/b5000000-0000-4000-8000-0000000000c6.img"
+    ],
+    "lost": [],
+    "diffs": [],
+    "n_diffs": 0,
+    "legacy": [],
+    "bytes": [],
+    "user_version": 2,
+    "state_sha256": "21fcc72834bec4cfcd2df3f46b45a9cdea98419ce2c2785a1b3ef537e97d0914",
+    "verdict": "KHOP"
+   },
+   "ts-thuong": {
+    "ok": true,
+    "migration_status": {
+     "error": null,
+     "from_version": 1,
+     "state": "migrated",
+     "to_version": 3
+    },
+    "lost": [],
+    "diffs": [],
+    "n_diffs": 0,
+    "legacy": [],
+    "bytes": [],
+    "state_sha256": "21fcc72834bec4cfcd2df3f46b45a9cdea98419ce2c2785a1b3ef537e97d0914",
+    "verdict": "KHOP"
+   },
+   "rust-loi": {
+    "ok": true,
+    "migration_status": {
+     "backup_exists": true,
+     "backup_path": "/tmp/claude-0/-home-claude/d8cfd5b0-b603-5248-8abb-496e9a334290/scratchpad/r3/inplace/M10-cu-anh-dung-chung-loi/lvhv.sqlite.pre-v2.bak",
+     "error": "buộc lỗi chuyển đổi (tùy chọn kiểm định)",
+     "from_version": 1,
+     "state": "read_only",
+     "to_version": 1
+    },
+    "bak_exists": true,
+    "bak_byte_identical": false,
+    "bak_rows_identical": true,
+    "photos_unchanged": true,
+    "files_after": [
+     "attachments/b5000000-0000-4000-8000-0000000000c5.bin",
+     "attachments/b5000000-0000-4000-8000-0000000000c6.bin",
+     "lvhv.sqlite",
+     "lvhv.sqlite.pre-v2.bak",
+     "photos/0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09.img",
+     "photos/b5000000-0000-4000-8000-0000000000c5.img",
+     "photos/b5000000-0000-4000-8000-0000000000c6.img"
+    ],
+    "user_version_after": 1,
+    "db_rows_unchanged": true,
+    "read_only_probe": {
+     "delete_person": {
+      "error": {
+       "debug": "ReadOnly",
+       "display": "Dữ liệu đang ở chế độ chỉ đọc vì nâng cấp chưa xong — dữ liệu cũ vẫn còn nguyên; hãy xuất sao lưu",
+       "import_message": "Sai mật khẩu hoặc tệp bị hỏng",
+       "kind": "ReadOnly"
+      },
+      "ok": false
+     },
+     "export_backup": {
+      "bytes": 42767,
+      "ok": true
+     },
+     "put_person": {
+      "error": {
+       "debug": "ReadOnly",
+       "display": "Dữ liệu đang ở chế độ chỉ đọc vì nâng cấp chưa xong — dữ liệu cũ vẫn còn nguyên; hãy xuất sao lưu",
+       "import_message": "Sai mật khẩu hoặc tệp bị hỏng",
+       "kind": "ReadOnly"
+      },
+      "ok": false
+     },
+     "put_settings": {
+      "error": {
+       "debug": "ReadOnly",
+       "display": "Dữ liệu đang ở chế độ chỉ đọc vì nâng cấp chưa xong — dữ liệu cũ vẫn còn nguyên; hãy xuất sao lưu",
+       "import_message": "Sai mật khẩu hoặc tệp bị hỏng",
+       "kind": "ReadOnly"
+      },
+      "ok": false
+     }
+    },
+    "orphan_attachment_files": [
+     "attachments/b5000000-0000-4000-8000-0000000000c5.bin",
+     "attachments/b5000000-0000-4000-8000-0000000000c6.bin"
+    ],
+    "verdict": "KHOP"
+   },
+   "ts-loi": {
+    "ok": true,
+    "migration_status": {
+     "error": "buộc lỗi chuyển đổi (tùy chọn kiểm định)",
+     "from_version": 1,
+     "state": "read_only",
+     "to_version": 1
+    },
+    "read_only_probe": {
+     "delete_person": {
+      "error": {
+       "code": "read_only",
+       "display": "Dữ liệu đang ở chế độ chỉ đọc vì nâng cấp chưa xong — dữ liệu cũ vẫn còn nguyên; hãy xuất sao lưu",
+       "kind": "StoreError"
+      },
+      "ok": false
+     },
+     "export_backup": {
+      "bytes": 42767,
+      "ok": true
+     },
+     "put_person": {
+      "error": {
+       "code": "read_only",
+       "display": "Dữ liệu đang ở chế độ chỉ đọc vì nâng cấp chưa xong — dữ liệu cũ vẫn còn nguyên; hãy xuất sao lưu",
+       "kind": "StoreError"
+      },
+      "ok": false
+     },
+     "put_settings": {
+      "error": {
+       "code": "read_only",
+       "display": "Dữ liệu đang ở chế độ chỉ đọc vì nâng cấp chưa xong — dữ liệu cũ vẫn còn nguyên; hãy xuất sao lưu",
+       "kind": "StoreError"
+      },
+      "ok": false
+     }
+    },
+    "doc_equals_old": true,
+    "verdict": "KHOP"
+   }
+  }
+ },
+ "names": {
+  "'ông'": {
+   "rust": {
+    "ok": true,
+    "danh_xung": "Ông",
+    "quan_he": "Ông",
+    "ho_ten_unchanged": true,
+    "expected": "Ông",
+    "alt": "Ông",
+    "ambiguous": null,
+    "save_match": true,
+    "display": "Ông",
+    "display_raw": {
+     "command": "display-capitalize",
+     "input": "ông",
+     "ok": true,
+     "output": "Ông"
+    },
+    "display_match": true,
+    "error": null
+   },
+   "ts": {
+    "ok": true,
+    "danh_xung": "Ông",
+    "quan_he": "Ông",
+    "ho_ten_unchanged": true,
+    "expected": "Ông",
+    "alt": "Ông",
+    "ambiguous": null,
+    "save_match": true,
+    "display": "Ông",
+    "display_raw": {
+     "command": "display-capitalize",
+     "input": "ông",
+     "ok": true,
+     "output": "Ông"
+    },
+    "display_match": true,
+    "error": null
+   }
+  },
+  "'bà'": {
+   "rust": {
+    "ok": true,
+    "danh_xung": "Bà",
+    "quan_he": "Bà",
+    "ho_ten_unchanged": true,
+    "expected": "Bà",
+    "alt": "Bà",
+    "ambiguous": null,
+    "save_match": true,
+    "display": "Bà",
+    "display_raw": {
+     "command": "display-capitalize",
+     "input": "bà",
+     "ok": true,
+     "output": "Bà"
+    },
+    "display_match": true,
+    "error": null
+   },
+   "ts": {
+    "ok": true,
+    "danh_xung": "Bà",
+    "quan_he": "Bà",
+    "ho_ten_unchanged": true,
+    "expected": "Bà",
+    "alt": "Bà",
+    "ambiguous": null,
+    "save_match": true,
+    "display": "Bà",
+    "display_raw": {
+     "command": "display-capitalize",
+     "input": "bà",
+     "ok": true,
+     "output": "Bà"
+    },
+    "display_match": true,
+    "error": null
+   }
+  },
+  "'cụ'": {
+   "rust": {
+    "ok": true,
+    "danh_xung": "Cụ",
+    "quan_he": "Cụ",
+    "ho_ten_unchanged": true,
+    "expected": "Cụ",
+    "alt": "Cụ",
+    "ambiguous": null,
+    "save_match": true,
+    "display": "Cụ",
+    "display_raw": {
+     "command": "display-capitalize",
+     "input": "cụ",
+     "ok": true,
+     "output": "Cụ"
+    },
+    "display_match": true,
+    "error": null
+   },
+   "ts": {
+    "ok": true,
+    "danh_xung": "Cụ",
+    "quan_he": "Cụ",
+    "ho_ten_unchanged": true,
+    "expected": "Cụ",
+    "alt": "Cụ",
+    "ambiguous": null,
+    "save_match": true,
+    "display": "Cụ",
+    "display_raw": {
+     "command": "display-capitalize",
+     "input": "cụ",
+     "ok": true,
+     "output": "Cụ"
+    },
+    "display_match": true,
+    "error": null
+   }
+  },
+  "'kỵ'": {
+   "rust": {
+    "ok": true,
+    "danh_xung": "Kỵ",
+    "quan_he": "Kỵ",
+    "ho_ten_unchanged": true,
+    "expected": "Kỵ",
+    "alt": "Kỵ",
+    "ambiguous": null,
+    "save_match": true,
+    "display": "Kỵ",
+    "display_raw": {
+     "command": "display-capitalize",
+     "input": "kỵ",
+     "ok": true,
+     "output": "Kỵ"
+    },
+    "display_match": true,
+    "error": null
+   },
+   "ts": {
+    "ok": true,
+    "danh_xung": "Kỵ",
+    "quan_he": "Kỵ",
+    "ho_ten_unchanged": true,
+    "expected": "Kỵ",
+    "alt": "Kỵ",
+    "ambiguous": null,
+    "save_match": true,
+    "display": "Kỵ",
+    "display_raw": {
+     "command": "display-capitalize",
+     "input": "kỵ",
+     "ok": true,
+     "output": "Kỵ"
+    },
+    "display_match": true,
+    "error": null
+   }
+  },
+  "'ông tổ họ'": {
+   "rust": {
+    "ok": true,
+    "danh_xung": "Ông tổ họ",
+    "quan_he": "Ông tổ họ",
+    "ho_ten_unchanged": true,
+    "expected": "Ông tổ họ",
+    "alt": "Ông tổ họ",
+    "ambiguous": null,
+    "save_match": true,
+    "display": "Ông tổ họ",
+    "display_raw": {
+     "command": "display-capitalize",
+     "input": "ông tổ họ",
+     "ok": true,
+     "output": "Ông tổ họ"
+    },
+    "display_match": true,
+    "error": null
+   },
+   "ts": {
+    "ok": true,
+    "danh_xung": "Ông tổ họ",
+    "quan_he": "Ông tổ họ",
+    "ho_ten_unchanged": true,
+    "expected": "Ông tổ họ",
+    "alt": "Ông tổ họ",
+    "ambiguous": null,
+    "save_match": true,
+    "display": "Ông tổ họ",
+    "display_raw": {
+     "command": "display-capitalize",
+     "input": "ông tổ họ",
+     "ok": true,
+     "output": "Ông tổ họ"
+    },
+    "display_match": true,
+    "error": null
+   }
+  },
+  "'bà cô tổ họ'": {
+   "rust": {
+    "ok": true,
+    "danh_xung": "Bà cô tổ họ",
+    "quan_he": "Bà cô tổ họ",
+    "ho_ten_unchanged": true,
+    "expected": "Bà cô tổ họ",
+    "alt": "Bà cô tổ họ",
+    "ambiguous": null,
+    "save_match": true,
+    "display": "Bà cô tổ họ",
+    "display_raw": {
+     "command": "display-capitalize",
+     "input": "bà cô tổ họ",
+     "ok": true,
+     "output": "Bà cô tổ họ"
+    },
+    "display_match": true,
+    "error": null
+   },
+   "ts": {
+    "ok": true,
+    "danh_xung": "Bà cô tổ họ",
+    "quan_he": "Bà cô tổ họ",
+    "ho_ten_unchanged": true,
+    "expected": "Bà cô tổ họ",
+    "alt": "Bà cô tổ họ",
+    "ambiguous": null,
+    "save_match": true,
+    "display": "Bà cô tổ họ",
+    "display_raw": {
+     "command": "display-capitalize",
+     "input": "bà cô tổ họ",
+     "ok": true,
+     "output": "Bà cô tổ họ"
+    },
+    "display_match": true,
+    "error": null
+   }
+  },
+  "'bé đỏ'": {
+   "rust": {
+    "ok": true,
+    "danh_xung": "Bé đỏ",
+    "quan_he": "Bé đỏ",
+    "ho_ten_unchanged": true,
+    "expected": "Bé đỏ",
+    "alt": "Bé đỏ",
+    "ambiguous": null,
+    "save_match": true,
+    "display": "Bé đỏ",
+    "display_raw": {
+     "command": "display-capitalize",
+     "input": "bé đỏ",
+     "ok": true,
+     "output": "Bé đỏ"
+    },
+    "display_match": true,
+    "error": null
+   },
+   "ts": {
+    "ok": true,
+    "danh_xung": "Bé đỏ",
+    "quan_he": "Bé đỏ",
+    "ho_ten_unchanged": true,
+    "expected": "Bé đỏ",
+    "alt": "Bé đỏ",
+    "ambiguous": null,
+    "save_match": true,
+    "display": "Bé đỏ",
+    "display_raw": {
+     "command": "display-capitalize",
+     "input": "bé đỏ",
+     "ok": true,
+     "output": "Bé đỏ"
+    },
+    "display_match": true,
+    "error": null
+   }
+  },
+  "'đứa em'": {
+   "rust": {
+    "ok": true,
+    "danh_xung": "Đứa em",
+    "quan_he": "Đứa em",
+    "ho_ten_unchanged": true,
+    "expected": "Đứa em",
+    "alt": "Đứa em",
+    "ambiguous": null,
+    "save_match": true,
+    "display": "Đứa em",
+    "display_raw": {
+     "command": "display-capitalize",
+     "input": "đứa em",
+     "ok": true,
+     "output": "Đứa em"
+    },
+    "display_match": true,
+    "error": null
+   },
+   "ts": {
+    "ok": true,
+    "danh_xung": "Đứa em",
+    "quan_he": "Đứa em",
+    "ho_ten_unchanged": true,
+    "expected": "Đứa em",
+    "alt": "Đứa em",
+    "ambiguous": null,
+    "save_match": true,
+    "display": "Đứa em",
+    "display_raw": {
+     "command": "display-capitalize",
+     "input": "đứa em",
+     "ok": true,
+     "output": "Đứa em"
+    },
+    "display_match": true,
+    "error": null
+   }
+  },
+  "'ừ'": {
+   "rust": {
+    "ok": true,
+    "danh_xung": "Ừ",
+    "quan_he": "Ừ",
+    "ho_ten_unchanged": true,
+    "expected": "Ừ",
+    "alt": "Ừ",
+    "ambiguous": null,
+    "save_match": true,
+    "display": "Ừ",
+    "display_raw": {
+     "command": "display-capitalize",
+     "input": "ừ",
+     "ok": true,
+     "output": "Ừ"
+    },
+    "display_match": true,
+    "error": null
+   },
+   "ts": {
+    "ok": true,
+    "danh_xung": "Ừ",
+    "quan_he": "Ừ",
+    "ho_ten_unchanged": true,
+    "expected": "Ừ",
+    "alt": "Ừ",
+    "ambiguous": null,
+    "save_match": true,
+    "display": "Ừ",
+    "display_raw": {
+     "command": "display-capitalize",
+     "input": "ừ",
+     "ok": true,
+     "output": "Ừ"
+    },
+    "display_match": true,
+    "error": null
+   }
+  },
+  "'ỵ'": {
+   "rust": {
+    "ok": true,
+    "danh_xung": "Ỵ",
+    "quan_he": "Ỵ",
+    "ho_ten_unchanged": true,
+    "expected": "Ỵ",
+    "alt": "Ỵ",
+    "ambiguous": null,
+    "save_match": true,
+    "display": "Ỵ",
+    "display_raw": {
+     "command": "display-capitalize",
+     "input": "ỵ",
+     "ok": true,
+     "output": "Ỵ"
+    },
+    "display_match": true,
+    "error": null
+   },
+   "ts": {
+    "ok": true,
+    "danh_xung": "Ỵ",
+    "quan_he": "Ỵ",
+    "ho_ten_unchanged": true,
+    "expected": "Ỵ",
+    "alt": "Ỵ",
+    "ambiguous": null,
+    "save_match": true,
+    "display": "Ỵ",
+    "display_raw": {
+     "command": "display-capitalize",
+     "input": "ỵ",
+     "ok": true,
+     "output": "Ỵ"
+    },
+    "display_match": true,
+    "error": null
+   }
+  },
+  "'ơ kìa'": {
+   "rust": {
+    "ok": true,
+    "danh_xung": "Ơ kìa",
+    "quan_he": "Ơ kìa",
+    "ho_ten_unchanged": true,
+    "expected": "Ơ kìa",
+    "alt": "Ơ kìa",
+    "ambiguous": null,
+    "save_match": true,
+    "display": "Ơ kìa",
+    "display_raw": {
+     "command": "display-capitalize",
+     "input": "ơ kìa",
+     "ok": true,
+     "output": "Ơ kìa"
+    },
+    "display_match": true,
+    "error": null
+   },
+   "ts": {
+    "ok": true,
+    "danh_xung": "Ơ kìa",
+    "quan_he": "Ơ kìa",
+    "ho_ten_unchanged": true,
+    "expected": "Ơ kìa",
+    "alt": "Ơ kìa",
+    "ambiguous": null,
+    "save_match": true,
+    "display": "Ơ kìa",
+    "display_raw": {
+     "command": "display-capitalize",
+     "input": "ơ kìa",
+     "ok": true,
+     "output": "Ơ kìa"
+    },
+    "display_match": true,
+    "error": null
+   }
+  },
+  "'Ông'": {
+   "rust": {
+    "ok": true,
+    "danh_xung": "Ông",
+    "quan_he": "Ông",
+    "ho_ten_unchanged": true,
+    "expected": "Ông",
+    "alt": "Ông",
+    "ambiguous": null,
+    "save_match": true,
+    "display": "Ông",
+    "display_raw": {
+     "command": "display-capitalize",
+     "input": "Ông",
+     "ok": true,
+     "output": "Ông"
+    },
+    "display_match": true,
+    "error": null
+   },
+   "ts": {
+    "ok": true,
+    "danh_xung": "Ông",
+    "quan_he": "Ông",
+    "ho_ten_unchanged": true,
+    "expected": "Ông",
+    "alt": "Ông",
+    "ambiguous": null,
+    "save_match": true,
+    "display": "Ông",
+    "display_raw": {
+     "command": "display-capitalize",
+     "input": "Ông",
+     "ok": true,
+     "output": "Ông"
+    },
+    "display_match": true,
+    "error": null
+   }
+  },
+  "'ÔNG'": {
+   "rust": {
+    "ok": true,
+    "danh_xung": "ÔNG",
+    "quan_he": "ÔNG",
+    "ho_ten_unchanged": true,
+    "expected": "ÔNG",
+    "alt": "ÔNG",
+    "ambiguous": null,
+    "save_match": true,
+    "display": "ÔNG",
+    "display_raw": {
+     "command": "display-capitalize",
+     "input": "ÔNG",
+     "ok": true,
+     "output": "ÔNG"
+    },
+    "display_match": true,
+    "error": null
+   },
+   "ts": {
+    "ok": true,
+    "danh_xung": "ÔNG",
+    "quan_he": "ÔNG",
+    "ho_ten_unchanged": true,
+    "expected": "ÔNG",
+    "alt": "ÔNG",
+    "ambiguous": null,
+    "save_match": true,
+    "display": "ÔNG",
+    "display_raw": {
+     "command": "display-capitalize",
+     "input": "ÔNG",
+     "ok": true,
+     "output": "ÔNG"
+    },
+    "display_match": true,
+    "error": null
+   }
+  },
+  "'bÀ'": {
+   "rust": {
+    "ok": true,
+    "danh_xung": "BÀ",
+    "quan_he": "BÀ",
+    "ho_ten_unchanged": true,
+    "expected": "BÀ",
+    "alt": "BÀ",
+    "ambiguous": null,
+    "save_match": true,
+    "display": "BÀ",
+    "display_raw": {
+     "command": "display-capitalize",
+     "input": "bÀ",
+     "ok": true,
+     "output": "BÀ"
+    },
+    "display_match": true,
+    "error": null
+   },
+   "ts": {
+    "ok": true,
+    "danh_xung": "BÀ",
+    "quan_he": "BÀ",
+    "ho_ten_unchanged": true,
+    "expected": "BÀ",
+    "alt": "BÀ",
+    "ambiguous": null,
+    "save_match": true,
+    "display": "BÀ",
+    "display_raw": {
+     "command": "display-capitalize",
+     "input": "bÀ",
+     "ok": true,
+     "output": "BÀ"
+    },
+    "display_match": true,
+    "error": null
+   }
+  },
+  "'  chú  '": {
+   "rust": {
+    "ok": true,
+    "danh_xung": "  chú  ",
+    "quan_he": "  chú  ",
+    "ho_ten_unchanged": true,
+    "expected": "Chú",
+    "alt": "Chú",
+    "ambiguous": null,
+    "save_match": false,
+    "display": "  chú  ",
+    "display_raw": {
+     "command": "display-capitalize",
+     "input": "  chú  ",
+     "ok": true,
+     "output": "  chú  "
+    },
+    "display_match": false,
+    "error": null
+   },
+   "ts": {
+    "ok": true,
+    "danh_xung": "  chú  ",
+    "quan_he": "  chú  ",
+    "ho_ten_unchanged": true,
+    "expected": "Chú",
+    "alt": "Chú",
+    "ambiguous": null,
+    "save_match": false,
+    "display": "  chú  ",
+    "display_raw": {
+     "command": "display-capitalize",
+     "input": "  chú  ",
+     "ok": true,
+     "output": "  chú  "
+    },
+    "display_match": false,
+    "error": null
+   }
+  },
+  "''": {
+   "rust": {
+    "ok": true,
+    "danh_xung": "",
+    "quan_he": "",
+    "ho_ten_unchanged": true,
+    "expected": "",
+    "alt": "",
+    "ambiguous": null,
+    "save_match": true,
+    "display": "",
+    "display_raw": {
+     "command": "display-capitalize",
+     "input": "",
+     "ok": true,
+     "output": ""
+    },
+    "display_match": true,
+    "error": null
+   },
+   "ts": {
+    "ok": true,
+    "danh_xung": "",
+    "quan_he": "",
+    "ho_ten_unchanged": true,
+    "expected": "",
+    "alt": "",
+    "ambiguous": null,
+    "save_match": true,
+    "display": "",
+    "display_raw": {
+     "command": "display-capitalize",
+     "input": "",
+     "ok": true,
+     "output": ""
+    },
+    "display_match": true,
+    "error": null
+   }
+  },
+  "'   '": {
+   "rust": {
+    "ok": true,
+    "danh_xung": "   ",
+    "quan_he": "   ",
+    "ho_ten_unchanged": true,
+    "expected": "",
+    "alt": "",
+    "ambiguous": null,
+    "save_match": false,
+    "display": "   ",
+    "display_raw": {
+     "command": "display-capitalize",
+     "input": "   ",
+     "ok": true,
+     "output": "   "
+    },
+    "display_match": false,
+    "error": null
+   },
+   "ts": {
+    "ok": true,
+    "danh_xung": "   ",
+    "quan_he": "   ",
+    "ho_ten_unchanged": true,
+    "expected": "",
+    "alt": "",
+    "ambiguous": null,
+    "save_match": false,
+    "display": "   ",
+    "display_raw": {
+     "command": "display-capitalize",
+     "input": "   ",
+     "ok": true,
+     "output": "   "
+    },
+    "display_match": false,
+    "error": null
+   }
+  },
+  "'2 bà'": {
+   "rust": {
+    "ok": true,
+    "danh_xung": "2 bà",
+    "quan_he": "2 bà",
+    "ho_ten_unchanged": true,
+    "expected": "2 bà",
+    "alt": "2 Bà",
+    "ambiguous": "A-N1",
+    "save_match": true,
+    "display": "2 bà",
+    "display_raw": {
+     "command": "display-capitalize",
+     "input": "2 bà",
+     "ok": true,
+     "output": "2 bà"
+    },
+    "display_match": true,
+    "error": null
+   },
+   "ts": {
+    "ok": true,
+    "danh_xung": "2 bà",
+    "quan_he": "2 bà",
+    "ho_ten_unchanged": true,
+    "expected": "2 bà",
+    "alt": "2 Bà",
+    "ambiguous": "A-N1",
+    "save_match": true,
+    "display": "2 bà",
+    "display_raw": {
+     "command": "display-capitalize",
+     "input": "2 bà",
+     "ok": true,
+     "output": "2 bà"
+    },
+    "display_match": true,
+    "error": null
+   }
+  },
+  "'ông nội (bên nội)'": {
+   "rust": {
+    "ok": true,
+    "danh_xung": "Ông nội (bên nội)",
+    "quan_he": "Ông nội (bên nội)",
+    "ho_ten_unchanged": true,
+    "expected": "Ông nội (bên nội)",
+    "alt": "Ông nội (bên nội)",
+    "ambiguous": null,
+    "save_match": true,
+    "display": "Ông nội (bên nội)",
+    "display_raw": {
+     "command": "display-capitalize",
+     "input": "ông nội (bên nội)",
+     "ok": true,
+     "output": "Ông nội (bên nội)"
+    },
+    "display_match": true,
+    "error": null
+   },
+   "ts": {
+    "ok": true,
+    "danh_xung": "Ông nội (bên nội)",
+    "quan_he": "Ông nội (bên nội)",
+    "ho_ten_unchanged": true,
+    "expected": "Ông nội (bên nội)",
+    "alt": "Ông nội (bên nội)",
+    "ambiguous": null,
+    "save_match": true,
+    "display": "Ông nội (bên nội)",
+    "display_raw": {
+     "command": "display-capitalize",
+     "input": "ông nội (bên nội)",
+     "ok": true,
+     "output": "Ông nội (bên nội)"
+    },
+    "display_match": true,
+    "error": null
+   }
+  },
+  "'(bên nội) ông'": {
+   "rust": {
+    "ok": true,
+    "danh_xung": "(bên nội) ông",
+    "quan_he": "(bên nội) ông",
+    "ho_ten_unchanged": true,
+    "expected": "(bên nội) ông",
+    "alt": "(Bên nội) ông",
+    "ambiguous": "A-N1",
+    "save_match": true,
+    "display": "(bên nội) ông",
+    "display_raw": {
+     "command": "display-capitalize",
+     "input": "(bên nội) ông",
+     "ok": true,
+     "output": "(bên nội) ông"
+    },
+    "display_match": true,
+    "error": null
+   },
+   "ts": {
+    "ok": true,
+    "danh_xung": "(bên nội) ông",
+    "quan_he": "(bên nội) ông",
+    "ho_ten_unchanged": true,
+    "expected": "(bên nội) ông",
+    "alt": "(Bên nội) ông",
+    "ambiguous": "A-N1",
+    "save_match": true,
+    "display": "(bên nội) ông",
+    "display_raw": {
+     "command": "display-capitalize",
+     "input": "(bên nội) ông",
+     "ok": true,
+     "output": "(bên nội) ông"
+    },
+    "display_match": true,
+    "error": null
+   }
+  },
+  "'́a'": {
+   "rust": {
+    "ok": true,
+    "danh_xung": "́a",
+    "quan_he": "́a",
+    "ho_ten_unchanged": true,
+    "expected": "́a",
+    "alt": "́A",
+    "ambiguous": "A-N1",
+    "save_match": true,
+    "display": "́a",
+    "display_raw": {
+     "command": "display-capitalize",
+     "input": "́a",
+     "ok": true,
+     "output": "́a"
+    },
+    "display_match": true,
+    "error": null
+   },
+   "ts": {
+    "ok": true,
+    "danh_xung": "́a",
+    "quan_he": "́a",
+    "ho_ten_unchanged": true,
+    "expected": "́a",
+    "alt": "́A",
+    "ambiguous": "A-N1",
+    "save_match": true,
+    "display": "́a",
+    "display_raw": {
+     "command": "display-capitalize",
+     "input": "́a",
+     "ok": true,
+     "output": "́a"
+    },
+    "display_match": true,
+    "error": null
+   }
+  },
+  "'«bà»'": {
+   "rust": {
+    "ok": true,
+    "danh_xung": "«bà»",
+    "quan_he": "«bà»",
+    "ho_ten_unchanged": true,
+    "expected": "«bà»",
+    "alt": "«Bà»",
+    "ambiguous": "A-N1",
+    "save_match": true,
+    "display": "«bà»",
+    "display_raw": {
+     "command": "display-capitalize",
+     "input": "«bà»",
+     "ok": true,
+     "output": "«bà»"
+    },
+    "display_match": true,
+    "error": null
+   },
+   "ts": {
+    "ok": true,
+    "danh_xung": "«bà»",
+    "quan_he": "«bà»",
+    "ho_ten_unchanged": true,
+    "expected": "«bà»",
+    "alt": "«Bà»",
+    "ambiguous": "A-N1",
+    "save_match": true,
+    "display": "«bà»",
+    "display_raw": {
+     "command": "display-capitalize",
+     "input": "«bà»",
+     "ok": true,
+     "output": "«bà»"
+    },
+    "display_match": true,
+    "error": null
+   }
+  },
+  "'ông'": {
+   "rust": {
+    "ok": true,
+    "danh_xung": "Ông",
+    "quan_he": "Ông",
+    "ho_ten_unchanged": true,
+    "expected": "Ông",
+    "alt": "Ông",
+    "ambiguous": null,
+    "save_match": true,
+    "display": "Ông",
+    "display_raw": {
+     "command": "display-capitalize",
+     "input": "ông",
+     "ok": true,
+     "output": "Ông"
+    },
+    "display_match": true,
+    "error": null
+   },
+   "ts": {
+    "ok": true,
+    "danh_xung": "Ông",
+    "quan_he": "Ông",
+    "ho_ten_unchanged": true,
+    "expected": "Ông",
+    "alt": "Ông",
+    "ambiguous": null,
+    "save_match": true,
+    "display": "Ông",
+    "display_raw": {
+     "command": "display-capitalize",
+     "input": "ông",
+     "ok": true,
+     "output": "Ông"
+    },
+    "display_match": true,
+    "error": null
+   }
+  },
+  "'ừ'": {
+   "rust": {
+    "ok": true,
+    "danh_xung": "Ừ",
+    "quan_he": "Ừ",
+    "ho_ten_unchanged": true,
+    "expected": "Ừ",
+    "alt": "Ừ",
+    "ambiguous": null,
+    "save_match": true,
+    "display": "Ừ",
+    "display_raw": {
+     "command": "display-capitalize",
+     "input": "ừ",
+     "ok": true,
+     "output": "Ừ"
+    },
+    "display_match": true,
+    "error": null
+   },
+   "ts": {
+    "ok": true,
+    "danh_xung": "Ừ",
+    "quan_he": "Ừ",
+    "ho_ten_unchanged": true,
+    "expected": "Ừ",
+    "alt": "Ừ",
+    "ambiguous": null,
+    "save_match": true,
+    "display": "Ừ",
+    "display_raw": {
+     "command": "display-capitalize",
+     "input": "ừ",
+     "ok": true,
+     "output": "Ừ"
+    },
+    "display_match": true,
+    "error": null
+   }
+  },
+  "'ấu'": {
+   "rust": {
+    "ok": true,
+    "danh_xung": "Ấu",
+    "quan_he": "Ấu",
+    "ho_ten_unchanged": true,
+    "expected": "Ấu",
+    "alt": "Ấu",
+    "ambiguous": null,
+    "save_match": true,
+    "display": "Ấu",
+    "display_raw": {
+     "command": "display-capitalize",
+     "input": "ấu",
+     "ok": true,
+     "output": "Ấu"
+    },
+    "display_match": true,
+    "error": null
+   },
+   "ts": {
+    "ok": true,
+    "danh_xung": "Ấu",
+    "quan_he": "Ấu",
+    "ho_ten_unchanged": true,
+    "expected": "Ấu",
+    "alt": "Ấu",
+    "ambiguous": null,
+    "save_match": true,
+    "display": "Ấu",
+    "display_raw": {
+     "command": "display-capitalize",
+     "input": "ấu",
+     "ok": true,
+     "output": "Ấu"
+    },
+    "display_match": true,
+    "error": null
+   }
+  },
+  "'ống'": {
+   "rust": {
+    "ok": true,
+    "danh_xung": "Ống",
+    "quan_he": "Ống",
+    "ho_ten_unchanged": true,
+    "expected": "Ống",
+    "alt": "Ống",
+    "ambiguous": null,
+    "save_match": true,
+    "display": "Ống",
+    "display_raw": {
+     "command": "display-capitalize",
+     "input": "ống",
+     "ok": true,
+     "output": "Ống"
+    },
+    "display_match": true,
+    "error": null
+   },
+   "ts": {
+    "ok": true,
+    "danh_xung": "Ống",
+    "quan_he": "Ống",
+    "ho_ten_unchanged": true,
+    "expected": "Ống",
+    "alt": "Ống",
+    "ambiguous": null,
+    "save_match": true,
+    "display": "Ống",
+    "display_raw": {
+     "command": "display-capitalize",
+     "input": "ống",
+     "ok": true,
+     "output": "Ống"
+    },
+    "display_match": true,
+    "error": null
+   }
+  },
+  "'đ'": {
+   "rust": {
+    "ok": true,
+    "danh_xung": "Đ",
+    "quan_he": "Đ",
+    "ho_ten_unchanged": true,
+    "expected": "Đ",
+    "alt": "Đ",
+    "ambiguous": null,
+    "save_match": true,
+    "display": "Đ",
+    "display_raw": {
+     "command": "display-capitalize",
+     "input": "đ",
+     "ok": true,
+     "output": "Đ"
+    },
+    "display_match": true,
+    "error": null
+   },
+   "ts": {
+    "ok": true,
+    "danh_xung": "Đ",
+    "quan_he": "Đ",
+    "ho_ten_unchanged": true,
+    "expected": "Đ",
+    "alt": "Đ",
+    "ambiguous": null,
+    "save_match": true,
+    "display": "Đ",
+    "display_raw": {
+     "command": "display-capitalize",
+     "input": "đ",
+     "ok": true,
+     "output": "Đ"
+    },
+    "display_match": true,
+    "error": null
+   }
+  },
+  "'ừ'": {
+   "rust": {
+    "ok": true,
+    "danh_xung": "Ừ",
+    "quan_he": "Ừ",
+    "ho_ten_unchanged": true,
+    "expected": "Ừ",
+    "alt": "Ừ",
+    "ambiguous": null,
+    "save_match": true,
+    "display": "Ừ",
+    "display_raw": {
+     "command": "display-capitalize",
+     "input": "ừ",
+     "ok": true,
+     "output": "Ừ"
+    },
+    "display_match": true,
+    "error": null
+   },
+   "ts": {
+    "ok": true,
+    "danh_xung": "Ừ",
+    "quan_he": "Ừ",
+    "ho_ten_unchanged": true,
+    "expected": "Ừ",
+    "alt": "Ừ",
+    "ambiguous": null,
+    "save_match": true,
+    "display": "Ừ",
+    "display_raw": {
+     "command": "display-capitalize",
+     "input": "ừ",
+     "ok": true,
+     "output": "Ừ"
+    },
+    "display_match": true,
+    "error": null
+   }
+  }
+ },
+ "suggestions": {
+  "rust/deceased/None": {
+   "same_set": true,
+   "same_order": true,
+   "n": 22,
+   "missing": [],
+   "extra": [],
+   "got": [
+    "Ông",
+    "Bà",
+    "Cụ",
+    "Kỵ",
+    "Bác",
+    "Cô",
+    "Chú",
+    "Dì",
+    "Cậu",
+    "Mợ",
+    "Thím",
+    "Anh",
+    "Chị",
+    "Em",
+    "Cháu",
+    "Con",
+    "Bạn",
+    "Bố",
+    "Mẹ",
+    "Ông Tổ họ",
+    "Bà Cô Tổ họ",
+    "Bé đỏ"
+   ]
+  },
+  "rust/deceased/nam": {
+   "same_set": true,
+   "same_order": false,
+   "n": 22,
+   "missing": [],
+   "extra": [],
+   "got": [
+    "Ông",
+    "Chú",
+    "Cậu",
+    "Anh",
+    "Bố",
+    "Ông Tổ họ",
+    "Cụ",
+    "Kỵ",
+    "Bác",
+    "Em",
+    "Cháu",
+    "Con",
+    "Bạn",
+    "Bé đỏ",
+    "Bà",
+    "Cô",
+    "Dì",
+    "Mợ",
+    "Thím",
+    "Chị",
+    "Mẹ",
+    "Bà Cô Tổ họ"
+   ]
+  },
+  "rust/deceased/nu": {
+   "same_set": true,
+   "same_order": false,
+   "n": 22,
+   "missing": [],
+   "extra": [],
+   "got": [
+    "Bà",
+    "Cô",
+    "Dì",
+    "Mợ",
+    "Thím",
+    "Chị",
+    "Mẹ",
+    "Bà Cô Tổ họ",
+    "Cụ",
+    "Kỵ",
+    "Bác",
+    "Em",
+    "Cháu",
+    "Con",
+    "Bạn",
+    "Bé đỏ",
+    "Ông",
+    "Chú",
+    "Cậu",
+    "Anh",
+    "Bố",
+    "Ông Tổ họ"
+   ]
+  },
+  "rust/living/None": {
+   "same_set": true,
+   "same_order": true,
+   "n": 17,
+   "missing": [],
+   "extra": [],
+   "got": [
+    "Ông",
+    "Bà",
+    "Bác",
+    "Cô",
+    "Chú",
+    "Dì",
+    "Cậu",
+    "Mợ",
+    "Thím",
+    "Anh",
+    "Chị",
+    "Em",
+    "Cháu",
+    "Con",
+    "Bạn",
+    "Bố",
+    "Mẹ"
+   ]
+  },
+  "rust/living/nam": {
+   "same_set": true,
+   "same_order": false,
+   "n": 17,
+   "missing": [],
+   "extra": [],
+   "got": [
+    "Ông",
+    "Chú",
+    "Cậu",
+    "Anh",
+    "Bố",
+    "Bác",
+    "Em",
+    "Cháu",
+    "Con",
+    "Bạn",
+    "Bà",
+    "Cô",
+    "Dì",
+    "Mợ",
+    "Thím",
+    "Chị",
+    "Mẹ"
+   ]
+  },
+  "rust/living/nu": {
+   "same_set": true,
+   "same_order": false,
+   "n": 17,
+   "missing": [],
+   "extra": [],
+   "got": [
+    "Bà",
+    "Cô",
+    "Dì",
+    "Mợ",
+    "Thím",
+    "Chị",
+    "Mẹ",
+    "Bác",
+    "Em",
+    "Cháu",
+    "Con",
+    "Bạn",
+    "Ông",
+    "Chú",
+    "Cậu",
+    "Anh",
+    "Bố"
+   ]
+  },
+  "ts/deceased/None": {
+   "same_set": true,
+   "same_order": true,
+   "n": 22,
+   "missing": [],
+   "extra": [],
+   "got": [
+    "Ông",
+    "Bà",
+    "Cụ",
+    "Kỵ",
+    "Bác",
+    "Cô",
+    "Chú",
+    "Dì",
+    "Cậu",
+    "Mợ",
+    "Thím",
+    "Anh",
+    "Chị",
+    "Em",
+    "Cháu",
+    "Con",
+    "Bạn",
+    "Bố",
+    "Mẹ",
+    "Ông Tổ họ",
+    "Bà Cô Tổ họ",
+    "Bé đỏ"
+   ]
+  },
+  "ts/deceased/nam": {
+   "same_set": true,
+   "same_order": false,
+   "n": 22,
+   "missing": [],
+   "extra": [],
+   "got": [
+    "Ông",
+    "Chú",
+    "Cậu",
+    "Anh",
+    "Bố",
+    "Ông Tổ họ",
+    "Cụ",
+    "Kỵ",
+    "Bác",
+    "Em",
+    "Cháu",
+    "Con",
+    "Bạn",
+    "Bé đỏ",
+    "Bà",
+    "Cô",
+    "Dì",
+    "Mợ",
+    "Thím",
+    "Chị",
+    "Mẹ",
+    "Bà Cô Tổ họ"
+   ]
+  },
+  "ts/deceased/nu": {
+   "same_set": true,
+   "same_order": false,
+   "n": 22,
+   "missing": [],
+   "extra": [],
+   "got": [
+    "Bà",
+    "Cô",
+    "Dì",
+    "Mợ",
+    "Thím",
+    "Chị",
+    "Mẹ",
+    "Bà Cô Tổ họ",
+    "Cụ",
+    "Kỵ",
+    "Bác",
+    "Em",
+    "Cháu",
+    "Con",
+    "Bạn",
+    "Bé đỏ",
+    "Ông",
+    "Chú",
+    "Cậu",
+    "Anh",
+    "Bố",
+    "Ông Tổ họ"
+   ]
+  },
+  "ts/living/None": {
+   "same_set": true,
+   "same_order": true,
+   "n": 17,
+   "missing": [],
+   "extra": [],
+   "got": [
+    "Ông",
+    "Bà",
+    "Bác",
+    "Cô",
+    "Chú",
+    "Dì",
+    "Cậu",
+    "Mợ",
+    "Thím",
+    "Anh",
+    "Chị",
+    "Em",
+    "Cháu",
+    "Con",
+    "Bạn",
+    "Bố",
+    "Mẹ"
+   ]
+  },
+  "ts/living/nam": {
+   "same_set": true,
+   "same_order": false,
+   "n": 17,
+   "missing": [],
+   "extra": [],
+   "got": [
+    "Ông",
+    "Chú",
+    "Cậu",
+    "Anh",
+    "Bố",
+    "Bác",
+    "Em",
+    "Cháu",
+    "Con",
+    "Bạn",
+    "Bà",
+    "Cô",
+    "Dì",
+    "Mợ",
+    "Thím",
+    "Chị",
+    "Mẹ"
+   ]
+  },
+  "ts/living/nu": {
+   "same_set": true,
+   "same_order": false,
+   "n": 17,
+   "missing": [],
+   "extra": [],
+   "got": [
+    "Bà",
+    "Cô",
+    "Dì",
+    "Mợ",
+    "Thím",
+    "Chị",
+    "Mẹ",
+    "Bác",
+    "Em",
+    "Cháu",
+    "Con",
+    "Bạn",
+    "Ông",
+    "Chú",
+    "Cậu",
+    "Anh",
+    "Bố"
+   ]
+  }
+ },
+ "display": {},
+ "media": {
+  "rust": {
+   "X21 attachment image/jpeg <- PDF": "mime_mismatch",
+   "PDF attachment application/pdf": "ok"
+  },
+  "ts": {
+   "X21 attachment image/jpeg <- PDF": "mime_mismatch",
+   "PDF attachment application/pdf": "ok"
+  }
+ },
+ "frozen": {}
+}
