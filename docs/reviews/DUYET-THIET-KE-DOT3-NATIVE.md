@@ -1,4 +1,4 @@
-# Duyệt thiết kế — mô-đun "Người thân" trên ứng dụng cài đặt (Android, Windows; Apple chưa duyệt) — v0.2 đợt 3
+# Duyệt thiết kế — mô-đun "Người thân" trên ứng dụng cài đặt (Android, Windows, Apple) — v0.2 đợt 3
 
 Vai: **bên duyệt thiết kế** (T5 mở rộng cho T6–T8 trong `docs/v0.2/07-PHAN-TICH-YEU-CAU-DOT-3.md` §7). Bên duyệt thiết
 kế không viết đặc tả giao diện và không viết mã của các PR này. Ngày duyệt: 2026-11-07.
@@ -7,10 +7,10 @@ kế không viết đặc tả giao diện và không viết mã của các PR n
 |---|---|---|---|
 | Android | #24 | `v0.2-w3-android` @ `34c9777` | 72 ảnh `apps/android/screenshots/and-NN-*-{light,dark,large}.png` (360 × 800 dp) |
 | Windows | #25 | `v0.2-w3-windows` @ `5670e8a` | 46 ảnh `nt-*-{sang,toi}-1x.png`, một phần ảnh `-2x`, ảnh v0.1 `08-chu-lon-*`; thêm bản dựng trên Linux (Skia phần mềm) `winv02-*.png` để đối chiếu |
-| Apple | #23 | `v0.2-w3-apple` @ `df4faa2` | **Không duyệt ở vòng này** — xem §5 |
+| Apple | #23 | `v0.2-w3-apple` @ `89dedb3` (ảnh CI lần 121, `2d30829`) | 102 ảnh `apps/apple/screenshots/`: 81 ảnh iPhone `ios-*-{light,dark,large}` (large = Accessibility L), 1 ảnh luồng `ios-flow-added-light`, 20 ảnh iPad `ipad-*-light` — xem §5 |
 
 Căn cứ: đặc tả `docs/v0.2/08-DAC-TA-GIAO-DIEN-NGUOI-THAN.md` (bản trên `main`, `c4d3128`; với Android thêm §13 trên nhánh
-PR), `docs/v0.2/07` (US-M/US-S/US-C, R-UX-1, R-UX-2, R-CUL-2, R-PRIV-2), `docs/v0.2/04` Bổ sung B4, `docs/v0.2/01` §3.2a,
+PR; với Apple thêm §12-Apple trên nhánh PR), `docs/v0.2/07` (US-M/US-S/US-C, R-UX-1, R-UX-2, R-CUL-2, R-PRIV-2), `docs/v0.2/04` Bổ sung B4, `docs/v0.2/01` §3.2a,
 `docs/08-QUY-TRINH-MO-RONG-TINH-NANG.md` §5–6, và phiếu duyệt PWA `docs/reviews/DUYET-THIET-KE-DOT3-PWA.md` (cách làm, ngưỡng).
 Ảnh PWA đối chiếu: bộ `v02-*.png` do kiểm thử khói PWA sinh ra.
 
@@ -287,35 +287,173 @@ tóm tắt lỗi không liệt kê (TKN-W-05); vùng bấm 32 px (TKN-W-16); tha
 
 | ID | Điều thấy | Đề xuất (ghi vào 08 cho mọi nền tảng) |
 |---|---|---|
-| TKN-X-01 | Hồ sơ người đang sống: Android "Cập nhật: đã mất" trước "Sửa" (`and-09`), Windows "Sửa" trước (`nt-10`). 08 §12g: nút phụ "cạnh Sửa" | "Sửa" trước, "Cập nhật: đã mất" sau, ở mọi nền tảng |
-| TKN-X-02 | Năm trên bia: Android và PWA "Canh Thìn 1940 — Ất Tỵ 2025"; Windows "Canh Thìn (1940) — Ất Tỵ (2025)"; 08 §3.9 ghi dạng có ngoặc | Chọn một dạng, sửa 08 và hai bản còn lại |
-| TKN-X-03 | Bàn thờ: nến đỏ (Android, PWA) / nến trắng (Windows); khung ảnh bầu dục / viên thuốc (TKN-W-17) | Thống nhất theo PWA và ghi chi tiết bàn thờ vào `content/memorial/PHONG-TUC.md` |
-| TKN-X-04 | Hộp .ics: Android thêm "Không gồm thông tin báo tử", Windows không | Đưa câu này vào 08 §3.8 A cho mọi nền tảng (R-PRIV-2 nói rõ cho người dùng) |
-| TKN-X-05 | Nút chọn lịch ở biểu mẫu sự kiện: Windows "Dương lịch / Âm lịch" (`nt-16`), biểu mẫu người và Android "Nhập theo dương lịch / Nhập theo âm lịch" | Dùng một cặp chữ trong toàn mô-đun |
-| TKN-X-06 | 08 §3.9 vẫn ghi "Ngày giỗ năm nay: …" cho mọi trường hợp không phải hôm nay | Sửa 08: "năm nay" chỉ khi lần giỗ kế tiếp trong năm dương hiện tại, khác "Ngày giỗ sắp tới: …" |
+| TKN-X-01 | Hồ sơ người đang sống: Android "Cập nhật: đã mất" trước "Sửa" (`and-09`), Windows và Apple "Sửa" trước (`nt-10`, `ios-person-living`). 08 §12g: nút phụ "cạnh Sửa" | "Sửa" trước, "Cập nhật: đã mất" sau, ở mọi nền tảng |
+| TKN-X-02 | Năm trên bia: Android, Apple và PWA "Canh Thìn 1940 — Ất Tỵ 2025"; Windows "Canh Thìn (1940) — Ất Tỵ (2025)"; 08 §3.9 ghi dạng có ngoặc | Chọn một dạng, sửa 08 và hai bản còn lại |
+| TKN-X-03 | Bàn thờ: nến đỏ (Android, Apple, PWA) / nến trắng (Windows); khung ảnh bầu dục (Android, Apple, PWA) / viên thuốc (TKN-W-17) | Thống nhất theo PWA và ghi chi tiết bàn thờ vào `content/memorial/PHONG-TUC.md` |
+| TKN-X-04 | Hộp .ics: Android thêm "Không gồm thông tin báo tử", Windows và Apple (`ios-ics-confirm`) không | Đưa câu này vào 08 §3.8 A cho mọi nền tảng (R-PRIV-2 nói rõ cho người dùng) |
+| TKN-X-05 | Nút chọn lịch ở biểu mẫu sự kiện: Windows và Apple "Dương lịch / Âm lịch" (`nt-16`, `ios-event`), biểu mẫu người và Android "Nhập theo dương lịch / Nhập theo âm lịch" | Dùng một cặp chữ trong toàn mô-đun |
+| TKN-X-06 | 08 §3.9 vẫn ghi "Ngày giỗ năm nay: …" cho mọi trường hợp không phải hôm nay. Ba bản cài ghi ba cách: Windows "Ngày giỗ năm nay" (sai năm, TKN-W-04), Android "Ngày giỗ sắp tới", Apple "Ngày giỗ tới" (A-4) | Sửa 08: "năm nay" chỉ khi lần giỗ kế tiếp trong năm dương hiện tại, khác "Ngày giỗ sắp tới: …"; Apple đổi "tới" → "sắp tới" |
+| TKN-X-07 | Biểu tượng loại: PWA, Android, Windows dùng ba nén hương / bánh có nến / ngôi sao; Apple dùng ngọn lửa (giỗ), hộp quà (sinh nhật), dao nĩa (tiên thường) (A-5) | Đợt sau vẽ biểu tượng riêng (nén hương, bánh) cho Apple như các nền tảng khác |
 
-## 5. Apple (PR #23) — chưa duyệt
+## 5. Apple (PR #23)
 
-Lúc kết thúc duyệt Android và Windows (2026-11-07), PR #23 vẫn mở nhưng **chưa sẵn sàng để duyệt thiết kế**: mô tả PR chỉ có
-"Đang làm — mô tả đầy đủ sẽ cập nhật khi CI xanh", nhánh vẫn đang nhận sửa giao diện theo ảnh chụp (`f25ec2d` "sửa theo ảnh
-chụp — thanh tiêu đề tưởng niệm, khói mờ, bát hương, bia vòm…", ảnh CI lần 114 `df4faa2`), và chưa có mục sai khác so với 08
-(nhánh không sửa 08). Bên duyệt **không** chấm Apple ở phiếu này. Khi PR có mô tả đầy đủ và mục sai khác, bên duyệt sẽ xem bộ ảnh
-`apps/apple/screenshots/` (iPhone sáng/tối/chữ lớn, iPad) theo cùng cách, cộng các mục nhất quán ở §4.
+Duyệt bản `89dedb3` (CI xanh, ảnh CI lần 121). Đã xem cả 102 ảnh: iPhone ghép sáng | tối | Accessibility L của cùng màn hình (27 bộ),
+ảnh luồng `ios-flow-added-light`, và 20 ảnh iPad (ghép ba ảnh một). Đối chiếu mã ở `apps/apple/Shared/Theme.swift`,
+`RootView.swift`, `People/MemorialView.swift`; tương phản tính từ mã màu và đo điểm ảnh trên ảnh tối.
+
+Nhận xét chung: bản Apple **gần PWA nhất** về nội dung và câu chữ, và là bản **xử lý chữ lớn tốt nhất** trong ba bản cài: ở
+Accessibility L mọi tiêu đề, nút viên thuốc, bộ lọc ("Người đang sống" xuống hàng riêng, không bị cắt — `ios-period-large`), dòng
+mục, hộp xác nhận (`ios-delete-confirm-large`, `ios-mark-confirm-large`) đều to lên và xuống dòng đúng; thanh thẻ đáy giữ đủ 5 nhãn.
+Theo HIG hợp lý: thanh thẻ đáy, `NavigationStack` với nút quay lại ghi tên trang trước, `alert` cho xác nhận (nút an toàn in đậm),
+tấm `sheet` cho .ics và sao lưu, `Toggle`, `Picker` phân đoạn, gợi ý cách gọi/quan hệ là hàng nút cuộn ngang dưới ô (danh sách đúng từ
+thường ngày: Cụ, Kỵ, Ông, Bà… / Bố, Mẹ, Ông nội…). Quyết định của chủ dự án được giữ: bia "Ông nội / Nguyễn Văn A", "Bà ngoại /
+Trần Thị B" (bỏ ngoặc "(bên nội)", không lặp cách gọi, không chữ Hán-Việt cổ); B4 (`ipad-event-deceased-light`: khối "Nhắc" thay
+bằng câu giải thích; hồ sơ người đã mất có câu "Không nhắc sinh nhật và sự kiện…"; hộp "Cập nhật: đã mất" ghi "Sẽ không còn nhắc
+sinh nhật…"); thông tin báo tử chỉ ở khối thu gọn trên trang hồ sơ (`ios-person-notice-*`), không có trên bia, tấm .ics, Sắp tới;
+"Hiện tên người trên màn hình khóa" mặc định tắt, có câu giải thích (`ios-settings-*`). Tưởng niệm trang nghiêm: nền gỗ tối, ảnh
+bầu dục viền vàng đồng, bia vòm chữ serif vàng, khói mờ, bàn thờ nến đỏ – bát hương ba nén – mâm quả (`ipad-memorial*`), có
+"Dừng khói" ngay dưới dòng ngày (TK-25).
+
+Điểm yếu chính: **giao diện tối dùng màu nhấn đỏ sẫm cho chữ** nên nút quay lại, Hủy/Lưu, nút trong hộp xác nhận gần như không đọc
+được; và bộ ảnh, như Android, **không chụp ô ngày khi đang nhập**.
+
+### 5.1 Mức chặn
+
+#### TKN-I-01 — Giao diện tối: chữ màu nhấn (quay lại, Hủy/Lưu, nút hộp xác nhận, ô chọn) chỉ 1,3–1,7:1 — **chặn**
+
+- Ảnh: mọi ảnh `-dark` có thanh điều hướng — `ios-person-*-dark` ("‹ Người thân"), `ios-form-*-dark` và `ios-event*-dark` ("Hủy",
+  "Lưu"), `ios-event-dark` (ô "Loại": "Tốt nghiệp ◇"), `ios-ics-confirm-dark` ("Hủy", "Lưu / chia sẻ tệp .ics"),
+  `ios-backup-export-dark` ("Tạo và lưu tệp"), `ios-mark-confirm-dark` ("Quay lại", "Lưu thay đổi"), `ios-delete-confirm-dark`
+  ("Giữ lại"), `ios-person-notice-dark` (mũi tên thu gọn).
+- Sai ở đâu (mã + tính + đo): `RootView.swift` đặt `.tint(C.redDeep)` cho cả ứng dụng; `redDeep` ở tối là `#7A1214` — màu dành cho
+  **nền** nút đặc (chữ trắng trên nó 10,9:1). Dùng làm màu **chữ**: trên nền `#141011` **1,73:1** (đo điểm ảnh nút quay lại: `#7E1214`
+  trên `#141011`), trên nền hộp `alert` tối ≈ **1,3:1**. Cần ≥ 4,5:1. Hậu quả với người 35–70 tuổi bật giao diện tối: không thấy nút
+  **Lưu** của biểu mẫu, không đọc được nút "Lưu thay đổi"/"Quay lại" của hộp "Cập nhật: đã mất" và nút "Giữ lại" của hộp xóa — đúng
+  những chỗ cần đọc kỹ trước khi bấm.
+- Sửa: màu nhấn chung = `C.redInk` (sáng `#B3151B` 5,4:1 trên `wall`; tối `#FF8A83` 8,3:1), hoặc một màu nhấn riêng có biến thể tối
+  sáng hơn; giữ `redDeep` chỉ cho nền nút đặc. Kiểm lại cả `Picker`, `Toggle`, `alert`, `sheet` toolbar. Chụp lại toàn bộ ảnh `-dark`.
+
+#### TKN-I-02 — Bộ ảnh không có ô ngày khi đang nhập, trạng thái lỗi, khôi phục — **chặn** (chưa đủ bằng chứng)
+
+- Ảnh có: mọi ô Ngày/Tháng/Năm đều **trống** (`ios-form-deceased-2`, `ios-form-living-2`, `ios-event`, `ios-mark`, iPad cùng tên).
+  Không ảnh nào có: chế độ "Nhập theo âm lịch" với hộp "Tháng nhuận (năm 2025 nhuận tháng 6)" / câu "Năm 2026 không có tháng nhuận" /
+  "Không rõ năm mất"; **dòng kết quả đổi lịch**; lỗi dưới ô và khung "Còn n chỗ cần sửa" (A-3 đổi cách hiện lỗi nhưng không có ảnh);
+  tấm khôi phục (Gộp / Thay toàn bộ) và hộp xác nhận thứ hai; trạng thái lỗi kho; Sắp tới khi quyền thông báo bị từ chối; nội dung
+  thông báo trên màn hình khóa; bàn thờ trên iPhone (ảnh tưởng niệm iPhone dừng ở khói, chỉ iPad thấy bàn thờ).
+- Vì sao chặn: như TKN-A-02 — R-UX-1 (rủi ro "Cao" của 07) và US-M-01/02 không duyệt được trên iPhone. Đây là thiếu bằng chứng,
+  không phải đã thấy lỗi.
+- Sửa: dùng tham số `-lvhvScreen` (A-11) chụp thêm, ở sáng/tối/Accessibility L: `form-deceased-am-nhuan` (15/6/2025, nhuận, kết quả
+  "Dương lịch: Thứ Sáu, 08/08/2025"), `form-deceased-duong-ket-qua`, `form-deceased-loi` (lưu khi trống), `form-living-sinh-nhat-am`,
+  `upcoming-thong-bao-tat`, `store-error`, `backup-nag`, `restore-preview`, `restore-replace-confirm`, `memorial-ban-tho` (cuộn xuống),
+  và một ảnh thông báo mặc định không tên.
+
+### 5.2 Mức nên sửa
+
+#### TKN-I-03 — Tưởng niệm: tiêu đề thanh điều hướng không thấy ở giao diện sáng; nút "‹ Hồ sơ" 1,9:1 — nên sửa
+
+- Ảnh: `ios-memorial-light`, `ios-memorial-a-light`, `ios-memorial-large`, `ios-memorial-a-large`, `ipad-memorial-light`,
+  `ipad-memorial-a-light` — chữ "Tưởng niệm" màu tối trên thanh nền gỗ tối, gần như vô hình (ở ảnh `-dark` thì đọc được). Mã:
+  `MemorialView.swift` có `.toolbarColorScheme(.dark, for: .navigationBar)` nhưng ảnh cho thấy không có tác dụng khi máy ở sáng.
+  "‹ Hồ sơ" màu `redDeep` sáng `#8F1416` trên nền `#1E1714`: 1,92:1.
+- Sửa: đặt màu chữ tiêu đề và nút quay lại của màn hình này tường minh (vàng đồng `#E8C67A`, ≈ 9:1), hoặc bỏ tiêu đề (trang đã có
+  dòng ngày giỗ). Chụp lại ở sáng.
+
+#### TKN-I-04 — Danh sách Hồ sơ ghi "Giỗ 15/6 nhuận âm lịch" — nên sửa
+
+- Ảnh: `ios-profiles-*`, `ipad-profiles-light` ("Ông Nguyễn Văn A … Giỗ 15/6 nhuận âm lịch · lần tới 18/07/2027"). Như TKN-W-03: giỗ
+  hằng năm vào tháng **thường** (O-4); chữ "nhuận" có thể làm gia đình cúng sai tháng. Sửa: bỏ "nhuận" khỏi dòng giỗ; giữ ở dòng
+  "Âm lịch" của bảng thông tin.
+
+#### TKN-I-05 — Accessibility L: điều khiển phân đoạn hệ thống không to theo — nên sửa
+
+- Ảnh: `ios-*-large` — thanh trang con "Sắp tới / Theo kỳ / Hồ sơ / Sao lưu", "Nhập theo dương lịch / Nhập theo âm lịch",
+  "Dương lịch / Âm lịch", "Biết đủ ngày / Chỉ biết năm" và nhóm "A / A+ / A++" giữ cỡ ~13 pt trong khi mọi chữ khác đã gấp đôi
+  (`ios-form-deceased-large-2`, `ios-period-large`). `Picker(.segmented)` của UIKit không theo Dynamic Type; người dùng chữ lớn vẫn
+  phải đọc chữ nhỏ đúng ở chỗ chọn dương/âm (R-UX-1).
+- Sửa: thay bằng nhóm nút viên thuốc như "Tuần/Tháng/Quý/Năm" (đã có `isSelected`, đã to theo chữ) khi `dynamicTypeSize ≥ .xLarge`,
+  hoặc dùng cho mọi cỡ để thống nhất.
+
+#### TKN-I-06 — Ô nhập gần như không có viền ở giao diện sáng — nên sửa
+
+- Ảnh: `ios-form-*-light`, `ios-mark-*-light`, `ios-backup-export-light`, iPad: ô nhập trắng `#FFFFFF` trên thẻ `#FDFCFA`, viền mảnh
+  `rule` (1,33:1). Ô trống khó nhận ra là chỗ gõ được. (Ở tối, ô đen tuyền trên thẻ `#211A1B` thấy rõ.) Như TKN-A-04/TKN-W-07.
+- Sửa: viền ô ≥ 3:1 với nền thẻ (ví dụ `#8F807D`), hoặc nền ô `paper2` + viền.
+
+#### TKN-I-07 — Sai khác A-10: Hủy ở hộp "Lưu" vẫn tính là đã sao lưu — nên sửa (trước phát hành)
+
+- Hậu quả cho người dùng: bấm "Tạo và lưu tệp" rồi Hủy ở hộp chọn nơi lưu → trang Sao lưu ghi "Lần sao lưu gần nhất: hôm nay" và tắt
+  nhắc sao lưu, trong khi **không có tệp nào**. Người dùng tin dữ liệu đã an toàn. Đây là thông tin sai về an toàn dữ liệu (cùng loại
+  với TK-16).
+- Sửa: chờ `mark_backup_saved` của lõi như A-10 ghi; cho tới lúc đó, nếu được, giữ trạng thái "đã sao lưu" ở giao diện chỉ khi
+  `fileExporter` báo thành công. Không phát hành v0.2 khi A-10 còn mở.
+
+#### TKN-I-08 — Sai khác A-6/A-7: ảnh giấy báo tử đã "Bỏ" vẫn còn trên máy — nên sửa (trước phát hành)
+
+- Giao diện cho người dùng bấm "Bỏ ảnh" ảnh giấy báo tử (R-PRIV-2: thông tin nhạy cảm) nhưng ảnh vẫn nằm trong kho cho tới khi xóa
+  hồ sơ, và còn đi vào tệp sao lưu (cần xác nhận với vai lõi). Người dùng nghĩ đã xóa giấy tờ. A-6 (lưu hỏng để lại ảnh mồ côi) cùng
+  gốc.
+- Sửa: vai lõi thêm dọn ảnh không còn ai dùng khi `save_person_json` (hoặc FFI xóa ảnh); cho tới đó, giao diện ghi rõ "Ảnh sẽ được xóa
+  khỏi máy khi xóa hồ sơ" thay vì để người dùng hiểu là đã xóa. Không phát hành v0.2 khi A-7 còn mở.
+
+#### TKN-I-09 — "Cập nhật: đã mất" còn nút quay lại hệ thống, không có Hủy/Lưu trên thanh — nên sửa (sai khác chưa ghi)
+
+- Ảnh: `ios-mark-*`, `ipad-mark-light*` — thanh điều hướng có "‹ Hồ sơ" (vuốt/bấm là rời trang, mất dữ liệu đang nhập, kể cả ảnh giấy
+  báo tử đã chọn), trong khi §12-Apple ghi "nút quay lại của hệ thống ẩn ở biểu mẫu để không mất dữ liệu đang nhập" và các biểu mẫu
+  khác (`ios-form-*`, `ios-event*`) có Hủy / Lưu.
+- Sửa: dùng cùng thanh Hủy / Lưu và hộp "Bỏ các thay đổi chưa lưu?" như biểu mẫu khác; chặn vuốt quay lại khi đã sửa
+  (`interactiveDismissDisabled` / ẩn nút quay lại).
+
+### 5.3 Góp ý
+
+| ID | Màn hình / ảnh | Điều thấy | Đề xuất |
+|---|---|---|---|
+| TKN-I-10 | Tấm .ics (`ios-ics-confirm-large`) | Ở chữ lớn tiêu đề tấm bị rút "Xuất tệp…" vì nút phải "Lưu / chia sẻ tệp .ics" quá dài; thiếu câu "Không gồm thông tin báo tử" (TKN-X-04) | Nút phải "Lưu tệp…" hoặc đưa nút chính xuống cuối tấm (nút lớn rộng hết khung); thêm câu báo tử |
+| TKN-I-11 | iPad (`ipad-*`) | Bố cục điện thoại kéo rộng: trang hồ sơ, Theo kỳ, Sắp tới một cột rộng ~800 pt, chữ ~13 pt so với khoảng trống lớn; 08 §7 ghi hai cột ở khổ rộng (ví dụ Sắp tới: danh sách + cột phải; hồ sơ: Lần tới + Thông tin trái, sự kiện + nhắc phải) | Đợt sau dùng `NavigationSplitView` hoặc lưới hai cột khi `horizontalSizeClass == .regular`; giới hạn bề rộng nội dung ~700 pt |
+| TKN-I-12 | Mục sự kiện (`ios-upcoming`, `ios-period*`) | Biểu tượng SF Symbols (A-5): ngọn lửa cho giỗ, hộp quà cho sinh nhật — khác ba nền tảng kia (TKN-X-07). Dòng 1 "Giỗ Bà Trần Thị B" không có "·" như 08 §2 ("Giỗ · Bà Trần Thị B") | Vẽ biểu tượng riêng (nén hương, bánh); thống nhất dấu "·" |
+| TKN-I-13 | Tưởng niệm (`ios-memorial-a-*`) | Dòng ngày ghi "Ngày giỗ tới: …" (A-4) — đúng ý nhưng là cách viết thứ ba (TKN-X-06) | "Ngày giỗ sắp tới: …" như Android |
+
+### 5.4 Các sai khác ghi ở 08 §12-Apple
+
+| Mã / chỗ | Sai khác | Đánh giá |
+|---|---|---|
+| HIG §1.1, §1.2 | Thanh thẻ đáy 5 ô; `NavigationStack`, đường đi chỉ có id; nút quay lại ghi tên trang trước | **Chấp nhận** — đúng HIG, giữ S4'. Màu nút quay lại: TKN-I-01 |
+| HIG §2 hộp xác nhận | `alert` (nút an toàn là nút hủy) cho xóa, bỏ thay đổi, "Cập nhật: đã mất", "Thay toàn bộ"; `sheet` cho .ics, sao lưu, khôi phục | **Chấp nhận.** Ảnh xác nhận "Giữ lại"/"Quay lại" in đậm là nút mặc định — đúng TK-08 tinh thần tiêu điểm an toàn. Màu ở tối: TKN-I-01 |
+| HIG §2 ô nhập, `datalist` | Nhãn phía trên ô; gợi ý là hàng nút cuộn ngang | **Chấp nhận** — tốt cho người lớn tuổi (như Android). Ở chữ lớn chỉ thấy 4–5 nút đầu, không có dấu hiệu cuộn được — nên thêm mờ dần ở mép phải |
+| HIG §2 nhóm nút | Nút viên thuốc `isSelected`; `Picker` phân đoạn; `Toggle` | **Chấp nhận có điều kiện** — `Picker` phân đoạn không to theo chữ (TKN-I-05) |
+| HIG §3.4–§3.7 | Hủy / Lưu trên thanh + hai nút cuối biểu mẫu; ẩn nút quay lại | **Chấp nhận** — trừ biểu mẫu "Cập nhật: đã mất" chưa làm (TKN-I-09) |
+| HIG §3.8 | `ShareLink` "Lưu / chia sẻ tệp .ics", tệp tạm bị xóa; `fileExporter`/`fileImporter` | **Chấp nhận** (TKN-I-10 về nhãn) |
+| HIG §5.2 | Thẻ thông báo ngắn tự ẩn 6 giây, có nút đóng | **Chấp nhận** — chưa có ảnh (TKN-I-02) |
+| HIG §5.4 | Không áp dụng; trang Sao lưu nói .ics là tùy chọn | **Chấp nhận** — câu "Ứng dụng đã tự nhắc bằng thông báo trên máy này…" rõ ràng (`ios-backup-*`) |
+| HIG §6 cỡ chữ | A/A+/A++ cộng Dynamic Type | **Chấp nhận** — làm tốt (trừ TKN-I-05) |
+| HIG §6 giảm chuyển động | Khói tĩnh, không nút | **Chấp nhận** |
+| A-1 | Không thẻ nhắc trên Tờ lịch | **Chấp nhận** — như Android |
+| A-2 | Trang Cài đặt nhắc (nút chuông) | **Chấp nhận** — câu chữ rõ; "Hiện tên người trên màn hình khóa" mặc định tắt (`ios-settings-*`). Nút chuông chỉ là biểu tượng: cần `accessibilityLabel` "Cài đặt nhắc"; cân nhắc ghi chữ như Android ("Cài đặt nhắc") vì người lớn tuổi khó đoán biểu tượng |
+| A-3 | Lỗi hiện khi trường đã sửa và khi Lưu; "Hãy nhập đủ…" chỉ khi Lưu | **Chấp nhận** (tránh báo lỗi khi đang gõ dở) — chưa có ảnh (TKN-I-02) |
+| A-4 | "Ngày giỗ tới: …" | **Chấp nhận về ý** (đúng hơn "năm nay"); đổi chữ thành "Ngày giỗ sắp tới" để thống nhất (TKN-I-13, TKN-X-06) |
+| A-5 | SF Symbols: ngọn lửa, dao nĩa, hộp quà, ngôi sao, luôn kèm chữ | **Chấp nhận tạm** cho đợt này (luôn có chữ loại kèm theo); đợt sau vẽ biểu tượng riêng (TKN-X-07) |
+| A-6, A-7 | Ảnh lưu hai giao dịch; ảnh đã bỏ chưa bị xóa khỏi máy | **Chấp nhận tạm có điều kiện** — phải xong trước phát hành; với ảnh giấy báo tử là vấn đề riêng tư người dùng thấy được (TKN-I-08) |
+| A-8 | Không `BGAppRefreshTask` | **Chấp nhận** — không ảnh hưởng giao diện; thông báo nhắc mở ứng dụng có câu giải thích ở Cài đặt nhắc (`ipad-settings-light`) |
+| A-9 | TK-16 chưa làm | **Chấp nhận tạm** — cần làm trước phát hành để thống nhất với PWA, Android, Windows |
+| A-10 | Hủy ở hộp Lưu vẫn tính là đã sao lưu | **Không chấp nhận cho phát hành** — chấp nhận để gộp nếu có việc có hạn trước v0.2 (TKN-I-07) |
+| A-11 | Tham số khởi chạy chỉ ở bản Debug | **Chấp nhận** — dùng nó để chụp thêm ảnh (TKN-I-02) |
+
+Sai khác **chưa** ghi ở §12-Apple mà bên duyệt thấy: biểu mẫu "Cập nhật: đã mất" còn nút quay lại (TKN-I-09); màu nhấn ở tối
+(TKN-I-01, là lỗi); bố cục iPad một cột (TKN-I-11); dòng 1 mục thiếu "·" (TKN-I-12).
 
 ## 6. Chấm theo docs/08 §5 (trên ảnh của từng nền tảng)
 
-| Mục §5 | Android | Windows |
-|---|---|---|
-| Kiến trúc thông tin, điều hướng | Đạt (chưa thấy thanh đáy — TKN-A-02) | Đạt; **tràn ở A++** (TKN-W-01) |
-| Từng màn hình: mục đích, lối vào | Đạt | Đạt |
-| Trường, kiểm tra, lời báo lỗi | **Chưa đủ bằng chứng** (TKN-A-02) | Gần đạt (TKN-W-05) |
-| Trạng thái trống / tải / lỗi / xác nhận | Đạt (trống, lỗi kho, hộp xóa, .ics, sao lưu); thiếu ảnh khôi phục | Đạt; thiếu ảnh khôi phục |
-| Câu chữ | Gần đạt (TKN-A-08) | Gần đạt (TKN-W-03, TKN-W-04) |
-| Trợ năng: tương phản | Chưa đạt (TKN-A-04…07) | Chưa đạt (TKN-W-07, TKN-W-08) |
-| Trợ năng: cỡ chữ | **Chưa đạt** (TKN-A-01, TKN-A-03, TKN-A-09) | **Chưa đủ bằng chứng / chưa đạt** (TKN-W-01, TKN-W-02, TKN-W-06) |
-| Sáng / tối | Đạt (trừ TKN-A-06) | Đạt (góp ý TKN-W-14) |
-| Quyết định của chủ dự án (từ ngữ, B4, báo tử, tên màn hình khóa) | Đạt | Đạt |
-| Tưởng niệm trang nghiêm | Đạt | Đạt (TKN-W-04 về câu ngày) |
+| Mục §5 | Android | Windows | Apple |
+|---|---|---|---|
+| Kiến trúc thông tin, điều hướng | Đạt (chưa thấy thanh đáy — TKN-A-02) | Đạt; **tràn ở A++** (TKN-W-01) | Đạt (thanh thẻ đáy, NavigationStack); TKN-I-09 |
+| Từng màn hình: mục đích, lối vào | Đạt | Đạt | Đạt |
+| Trường, kiểm tra, lời báo lỗi | **Chưa đủ bằng chứng** (TKN-A-02) | Gần đạt (TKN-W-05) | **Chưa đủ bằng chứng** (TKN-I-02) |
+| Trạng thái trống / tải / lỗi / xác nhận | Đạt (trống, lỗi kho, hộp xóa, .ics, sao lưu); thiếu ảnh khôi phục | Đạt; thiếu ảnh khôi phục | Đạt (trống, mọi hộp xác nhận); thiếu ảnh lỗi kho, khôi phục |
+| Câu chữ | Gần đạt (TKN-A-08) | Gần đạt (TKN-W-03, TKN-W-04) | Gần đạt (TKN-I-04, TKN-X-06) |
+| Trợ năng: tương phản | Chưa đạt (TKN-A-04…07) | Chưa đạt (TKN-W-07, TKN-W-08) | **Chưa đạt ở tối** (TKN-I-01, TKN-I-03, TKN-I-06) |
+| Trợ năng: cỡ chữ | **Chưa đạt** (TKN-A-01, TKN-A-03, TKN-A-09) | **Chưa đủ bằng chứng / chưa đạt** (TKN-W-01, TKN-W-02, TKN-W-06) | Gần đạt — chữ lớn tốt nhất trong ba bản, trừ điều khiển phân đoạn (TKN-I-05) |
+| Sáng / tối | Đạt (trừ TKN-A-06) | Đạt (góp ý TKN-W-14) | **Chưa đạt** ở tối (TKN-I-01) |
+| Quyết định của chủ dự án (từ ngữ, B4, báo tử, tên màn hình khóa) | Đạt | Đạt | Đạt (TKN-I-08 về ảnh giấy báo tử đã bỏ) |
+| Tưởng niệm trang nghiêm | Đạt | Đạt (TKN-W-04 về câu ngày) | Đạt (TKN-I-03 về thanh tiêu đề) |
 
 ## 7. Kết luận
 
@@ -323,10 +461,10 @@ chụp — thanh tiêu đề tưởng niệm, khói mờ, bát hương, bia vòm
 |---|---|---|---|---|
 | Android (#24) | 2 | 7 | 5 | **DUYỆT CÓ ĐIỀU KIỆN** |
 | Windows (#25) | 2 | 7 | 8 | **DUYỆT CÓ ĐIỀU KIỆN** |
-| Chung (§4) | 0 | 0 | 6 | — |
-| Apple (#23) | — | — | — | **Chưa duyệt** (PR chưa sẵn sàng, §5) |
+| Apple (#23) | 2 | 7 | 4 | **DUYỆT CÓ ĐIỀU KIỆN** |
+| Chung (§4) | 0 | 0 | 7 | — |
 
-Tổng: **4 chặn, 14 nên sửa, 19 góp ý.**
+Tổng: **6 chặn, 21 nên sửa, 24 góp ý.**
 
 Điều kiện để gộp:
 
@@ -342,6 +480,13 @@ Tổng: **4 chặn, 14 nên sửa, 19 góp ý.**
    bề rộng cửa sổ ở scale 1,0 / 1,16 / 1,32; chụp lại `08-chu-lon`.
 2. **TKN-W-02** — Chụp các màn hình Người thân chính ở A++ (scale 1,32); bên duyệt xem lại.
 
+**Apple**
+1. **TKN-I-01** — Đổi màu nhấn chung `.tint(C.redDeep)` (`RootView.swift`) thành `C.redInk` (tối `#FF8A83`, 8,3:1); giữ `redDeep` chỉ làm
+   nền nút đặc. Chụp lại mọi ảnh `-dark` (biểu mẫu, hộp xác nhận, tấm .ics/sao lưu, hồ sơ) và ảnh tưởng niệm.
+2. **TKN-I-02** — Bổ sung ảnh (sáng, tối, Accessibility L): ô ngày âm + "Tháng nhuận (năm 2025 nhuận tháng 6)" + kết quả, ô ngày dương +
+   kết quả, biểu mẫu có lỗi (A-3), Sắp tới khi quyền thông báo bị từ chối, lỗi kho, nhắc sao lưu, tấm khôi phục và hộp "Thay toàn bộ",
+   tưởng niệm cuộn tới bàn thờ, nội dung thông báo màn hình khóa. Bên duyệt xem lại trước khi gộp.
+
 Các mục nên sửa: sửa trong đợt này hoặc mở việc có hạn trước phát hành v0.2; ưu tiên TKN-W-03 (chữ "nhuận" có thể làm cúng sai
-tháng), TKN-W-04, TKN-A-08, TKN-A-04/TKN-W-07 (viền điều khiển), TKN-A-06. Thử trên máy thật (T11) nên kiểm thêm: chữ lớn 2,0 trên
-điện thoại Android thật; Windows ở 125 %/150 % và A++ trên màn hình 1366 × 768.
+tháng; cùng lỗi ở Apple TKN-I-04), TKN-W-04, TKN-A-08, TKN-I-07 và TKN-I-08 (sai khác A-10, A-7: không phát hành khi còn mở), TKN-A-04/TKN-W-07 (viền điều khiển), TKN-A-06. Thử trên máy thật (T11) nên kiểm thêm: chữ lớn 2,0 trên
+điện thoại Android thật; Windows ở 125 %/150 % và A++ trên màn hình 1366 × 768; iPhone thật ở giao diện tối và cỡ chữ AX3–AX5.
