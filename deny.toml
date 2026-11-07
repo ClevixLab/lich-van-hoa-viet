@@ -1,14 +1,27 @@
 # cargo-deny — chạy trên CI (job "deps", cần mạng tới cơ sở dữ liệu RustSec). Tiêu chí S11 (docs/v0.2/04):
 # phụ thuộc mật mã ghim chính xác, 0 cảnh báo bảo mật chưa xử lý.
 [graph]
-all-features = false
+# Quét với MỌI tính năng: các phụ thuộc chỉ đến qua tính năng không mặc định (lvhv-ffi/bindgen-cli → uniffi_bindgen →
+# askama → basic-toml) vẫn nằm trong Cargo.lock và được dựng trên CI/máy phát triển, nên phải được xét. Với
+# `all-features = false`, cargo-deny tỉa chúng khỏi đồ thị và RUSTSEC-2026-0374 đã không bị báo (BM2-09).
+# Job "deps" kiểm thêm: scripts/check-lock-coverage.py (cấu hình này + mọi gói của Cargo.lock nằm trong đồ thị) và
+# `cargo audit` trên toàn Cargo.lock (.cargo/audit.toml, cùng ngoại lệ).
+all-features = true
 
 [advisories]
 # Mọi lỗ hổng (vulnerability) là lỗi; crate không còn bảo trì / bị rút (yanked) cũng là lỗi.
 yanked = "deny"
 unmaintained = "all"
 # Ngoại lệ phải ghi lý do và ngày, ví dụ: { id = "RUSTSEC-YYYY-NNNN", reason = "…, xem lại 2026-12" }
-ignore = []
+ignore = [
+  # basic-toml 0.1.10 không còn bảo trì (kho lưu trữ đã đóng 2025-03). Chỉ đến qua uniffi_bindgen 0.29.4 → askama
+  # 0.13.1 → askama_derive (proc-macro, đọc tệp cấu hình mẫu lúc biên dịch), chỉ khi bật tính năng `bindgen-cli` để
+  # dựng công cụ `uniffi-bindgen` sinh mã Kotlin/Swift. Là phụ thuộc lúc dựng: không có trong liblvhv_ffi
+  # (.so/.a/.dll), không có trong ứng dụng, không đọc dữ liệu người dùng (chỉ đọc tệp mẫu của chính askama). Cảnh báo
+  # thuộc loại "unmaintained", không phải lỗ hổng. Gỡ khi nâng uniffi lên bản dùng askama không cần basic-toml.
+  # Ghi nhận 2026-11-07, xem lại 2027-02.
+  { id = "RUSTSEC-2026-0374", reason = "build-time only: uniffi_bindgen (feature bindgen-cli) → askama_derive; not linked into the app; unmaintained, no vulnerability; review 2027-02" },
+]
 
 [bans]
 multiple-versions = "allow"

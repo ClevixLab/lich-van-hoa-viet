@@ -128,10 +128,16 @@ pub fn quan_he_suggestions(deceased: bool) -> Vec<&'static str> {
     }
 }
 
-/// Viết hoa chữ cái đầu (YC-2026-07): chuẩn hóa NFC, chữ đầu tiên của chuỗi thành chữ hoa, phần còn lại giữ
-/// nguyên như người dùng gõ. "ông nội" → "Ông nội"; "bà Cô Tổ họ" → "Bà Cô Tổ họ"; "" → "".
-pub fn capitalize_first(s: &str) -> String {
+/// Chuẩn hóa chuỗi khi lưu (01 §1): NFC rồi cắt khoảng trắng hai đầu (tập của JavaScript `trim`).
+pub fn clean_text(s: &str) -> String {
     let n: String = s.nfc().collect();
+    n.trim_matches(crate::validate::js_space).to_owned()
+}
+
+/// Viết hoa chữ cái đầu (YC-2026-07): NFC, cắt khoảng trắng hai đầu, chữ đầu tiên thành chữ hoa, phần còn lại giữ
+/// nguyên như người dùng gõ. "ông nội" → "Ông nội"; "  chú  " → "Chú"; "   " → ""; "" → "".
+pub fn capitalize_first(s: &str) -> String {
+    let n = clean_text(s);
     let mut it = n.chars();
     match it.next() {
         None => String::new(),
@@ -149,10 +155,38 @@ pub fn display_capitalize(s: &str) -> String {
     capitalize_first(s)
 }
 
-/// Chuẩn hóa một `Person` (JSON) **khi lưu từ giao diện** (01 §3.1): viết hoa chữ đầu `danh_xung` và `quan_he`;
-/// `gioi_tinh: null` → bỏ khóa (thiếu ≡ `null`, tài liệu không có giới tính giữ nguyên từng byte). Không áp cho
-/// tệp sao lưu khi nhập (giữ nguyên dữ liệu người dùng).
+/// Các trường chữ tự do của `Person` được chuẩn hóa khi lưu (01 §1): đường dẫn (khóa, khóa con).
+const PERSON_TEXT: [(&str, Option<&str>); 9] = [
+    ("danh_xung", None),
+    ("ho_ten", None),
+    ("ten_hieu", None),
+    ("quan_he", None),
+    ("noi_an_tang", None),
+    ("ghi_chu", None),
+    ("birth", Some("noi_sinh")),
+    ("memorial", Some("bia_tieu_de")),
+    ("memorial", Some("loi_tuong_niem")),
+];
+
+/// Chuẩn hóa một `Person` (JSON) **khi lưu từ giao diện / API** (01 §1, §3.1): mọi trường chữ tự do được NFC và cắt
+/// khoảng trắng hai đầu (chỉ còn khoảng trắng → chuỗi rỗng `""`: các trường này là chuỗi 0–N trong lược đồ đóng,
+/// không nhận `null`); rồi viết hoa chữ đầu `danh_xung` và `quan_he`; `gioi_tinh: null` → bỏ khóa. Không áp cho
+/// tệp sao lưu khi nhập (giữ nguyên byte).
 pub fn normalize_person_names(p: &mut Value) {
+    for (k, sub) in PERSON_TEXT {
+        let slot = match sub {
+            None => p.get_mut(k),
+            Some(s) => p
+                .get_mut(k)
+                .filter(|v| v.is_object())
+                .and_then(|v| v.get_mut(s)),
+        };
+        if let Some(v) = slot {
+            if let Some(t) = v.as_str() {
+                *v = Value::String(clean_text(t));
+            }
+        }
+    }
     for k in ["danh_xung", "quan_he"] {
         if let Some(s) = p[k].as_str() {
             p[k] = Value::String(capitalize_first(s));
@@ -178,6 +212,18 @@ mod tests {
         assert_eq!(capitalize_first("bé đỏ"), "Bé đỏ");
         assert_eq!(capitalize_first(""), "");
         assert_eq!(capitalize_first("1 ông"), "1 ông");
+        // Báo cáo kiểm định vòng 3: cắt khoảng trắng rồi mới viết hoa.
+        assert_eq!(capitalize_first("  chú  "), "Chú");
+        assert_eq!(capitalize_first("   "), "");
+        assert_eq!(display_capitalize("\u{3000}bà\u{feff}"), "Bà");
+        let mut p = serde_json::json!({"danh_xung": "  chú  ", "quan_he": "   ", "ho_ten": " Lê Văn C ", "ten_hieu": "\t",
+            "birth": {"noi_sinh": " Hà Nội "}, "memorial": null, "gioi_tinh": null});
+        normalize_person_names(&mut p);
+        assert_eq!(
+            p,
+            serde_json::json!({"danh_xung": "Chú", "quan_he": "", "ho_ten": "Lê Văn C", "ten_hieu": "",
+            "birth": {"noi_sinh": "Hà Nội"}, "memorial": null})
+        );
     }
 
     #[test]
