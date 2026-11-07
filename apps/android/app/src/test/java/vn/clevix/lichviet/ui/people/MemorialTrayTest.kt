@@ -174,6 +174,7 @@ class MemorialTrayTest {
         show(ids.a)
         assertEquals(1, trayNodes("Ảnh mâm lễ của gia đình").size)
         assertTrue("có ảnh gia đình → không có nút thêm", rule.onAllNodes(androidx.compose.ui.test.hasText("Thêm ảnh mâm lễ của gia đình")).fetchSemanticsNodes().isEmpty())
+        rule.onNode(hasTestTag("tray-photo"), useUnmergedTree = true).performScrollTo() // ảnh nằm dưới bàn thờ
         shoot("2-anh-gia-dinh", width)
     }
 
