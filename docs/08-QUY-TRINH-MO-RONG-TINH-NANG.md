@@ -100,3 +100,10 @@ nhánh riêng; thêm kiểm thử tái hiện lỗi **trước** khi sửa; ản
 CI xanh trên cả bốn nền tảng; cổng tương ứng đã ký; **R14 nâng cấp tại chỗ ĐẠT trên mọi nền tảng phát hành (không mất dữ liệu của khách hàng)**; lưu bộ dữ liệu mẫu đóng băng của bản này vào `test-vectors/released/`; ảnh chụp đã xem; số phiên bản và nhật ký thay đổi; dữ liệu cũ và
 tệp sao lưu cũ vẫn mở được; dung lượng tải và bộ nhớ trong ngưỡng; ghi chú phát hành bằng lời thường; đường lùi (bản
 trước vẫn tải được).
+
+Bản web (từ 0.2.0, `docs/reports/PHAT-HANH-PWA-0.2.0.md`):
+- R14 nâng cấp tại chỗ là `pwa/test/upgrade.mjs` ca (a). Kiểm thử phải đi **từ bản web đang phát hành lên đúng số phiên
+  bản mới**: khẳng định chân trang cũ → mới và thanh "Đã có phiên bản mới X.Y.Z". Cùng một số phiên bản thì không tính.
+- Bộ mẫu đóng băng: `cd pwa && npm run build && node test/tools/freeze-pwa-release.mjs` trên commit phát hành, tạo
+  `released/<bản>/pwa/`. Ca (d) của `upgrade.mjs` tự dùng mọi bộ mẫu đó cho các bản sau.
+- Đường lùi: chạy `pwa-pages` (workflow_dispatch) trên thẻ của bản trước.
