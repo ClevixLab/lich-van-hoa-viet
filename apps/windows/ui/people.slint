@@ -464,7 +464,7 @@ component RemBlock inherits VerticalLayout {
         }
         HorizontalLayout {
             spacing: 12px; alignment: start;
-            NumBox { label: "Tự đặt (1–60 ngày)"; text <=> root.custom; w: 110px; edited => { root.changed(); } }
+            NumBox { label: "Tự đặt (1–60 ngày)"; text <=> root.custom; w: 140px; edited => { root.changed(); } }
             NumBox { label: "Giờ"; text <=> root.hh; w: 64px; edited => { root.changed(); } }
             VerticalLayout { alignment: end; padding-bottom: 8px; T { text: ":"; size: 18; font-weight: 700; } }
             NumBox { label: "Phút"; text <=> root.mm; w: 64px; edited => { root.changed(); } }
@@ -597,6 +597,8 @@ component PPage inherits ScrollView {
     in property <length> maxw: 760px;
     property <float> sf: People.scroll-frac;
     changed sf => { self.viewport-y = min(0px, -(self.viewport-height - self.visible-height) * sf); }
+    // Trang vừa tạo: áp vị trí cuộn khi nội dung đã dàn xong (chế độ chụp màn hình).
+    changed viewport-height => { if (sf > 0) { self.viewport-y = min(0px, -(self.viewport-height - self.visible-height) * sf); } }
     VerticalLayout {
         alignment: start;
         padding: 16px; padding-top: 8px; padding-bottom: 28px;
@@ -983,7 +985,7 @@ component NoticeBlock inherits Group {
         Field { label: "Mất tại"; text <=> People.n-place; edited => { People.form-changed(); } }
         HorizontalLayout {
             spacing: 10px; alignment: start;
-            NumBox { label: "Ngày nhận tin"; text <=> People.n-d; edited => { People.form-changed(); } }
+            NumBox { label: "Ngày nhận tin"; w: 110px; text <=> People.n-d; edited => { People.form-changed(); } }
             NumBox { label: "Tháng"; text <=> People.n-m; edited => { People.form-changed(); } }
             NumBox { label: "Năm (dương lịch)"; text <=> People.n-y; w: 120px; edited => { People.form-changed(); } }
         }
@@ -1209,6 +1211,8 @@ component MemorialPage inherits Rectangle {
     ScrollView {
         property <float> sf: People.scroll-frac;
         changed sf => { self.viewport-y = min(0px, -(self.viewport-height - self.visible-height) * sf); }
+        // Trang vừa tạo: áp vị trí cuộn khi nội dung đã dàn xong (chế độ chụp màn hình).
+        changed viewport-height => { if (sf > 0) { self.viewport-y = min(0px, -(self.viewport-height - self.visible-height) * sf); } }
         VerticalLayout {
             alignment: start;
             padding: 16px; padding-top: 8px; padding-bottom: 28px;

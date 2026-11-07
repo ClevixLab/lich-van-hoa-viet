@@ -186,7 +186,7 @@ fn people_flows() {
     p.set_bd_m("1".into());
     p.set_bd_y("1990".into());
     p.invoke_form_changed();
-    assert_eq!(p.get_bd_result(), "Âm lịch: 24/12 âm lịch năm Kỷ Tỵ (1989) · Hôm nay 36 tuổi (tuổi âm 38)");
+    assert_eq!(p.get_bd_result(), "Âm lịch: 24/12 năm Kỷ Tỵ (1989) · Hôm nay 36 tuổi (tuổi âm 38)");
     press(&ui, "Nhắc cả sinh nhật âm lịch hằng năm");
     assert!(p.get_f_am());
     press(&ui, "Lưu");

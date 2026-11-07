@@ -728,8 +728,9 @@ pub fn reschedule(ui: Option<&AppWindow>, ps: &mut PState) {
     };
     let state = platform::toast_state();
     let enabled = jv(&store.settings_json().unwrap_or_default())["reminders_enabled"] != false;
+    ps.scheduled = None;
     let text = match &state {
-        ToastState::Ready => {
+        ToastState::Ready | ToastState::Unknown(_) => {
             let pending = platform::pending_toasts().unwrap_or_default();
             let pj: Vec<Value> = pending
                 .iter()
@@ -766,7 +767,7 @@ pub fn reschedule(ui: Option<&AppWindow>, ps: &mut PState) {
                                 format!("Thông báo của Windows đang bật. Đã đặt {n} lời nhắc sắp tới; Windows tự hiện đúng giờ, kể cả khi ứng dụng đã đóng. Mỗi lần mở ứng dụng, lời nhắc được đặt lại (tối đa 64).")
                             }
                         }
-                        Err(e) => format!("Chưa đặt được lời nhắc: {e}"),
+                        Err(e) => format!("Chưa đặt được thông báo của Windows ({e}). Thông báo cần bản cài đặt (.msi), vì bộ cài tạo lối tắt Start Menu mang định danh của ứng dụng. Lời nhắc vẫn hiện trong mục Sắp tới khi bạn mở ứng dụng; có thể xuất tệp lịch (.ics) để lịch của máy nhắc."),
                     }
                 }
                 Err(e) => format!("Chưa tính được lời nhắc: {e}"),
@@ -777,7 +778,7 @@ pub fn reschedule(ui: Option<&AppWindow>, ps: &mut PState) {
     };
     if let Some(ui) = ui {
         let p = People::get(ui);
-        p.set_notif_ok(state == ToastState::Ready && enabled);
+        p.set_notif_ok(ps.scheduled.is_some() && enabled);
         p.set_notif_status(ss(text));
     }
 }
@@ -1414,7 +1415,7 @@ fn date_view(f: &DateFields, kind: &str, today: D, living: bool, show_err: bool)
                         },
                         ("birth", Some("solar"), _) => {
                             let base = if o["lunar"].is_object() {
-                                format!("Âm lịch: {}", lunar_text(&o["lunar"], true))
+                                format!("Âm lịch: {}", lunar_text(&o["lunar"], true).replace(" âm lịch năm", " năm"))
                             } else {
                                 format!(
                                     "Năm âm {} — {}",

@@ -147,6 +147,46 @@ WebView2 runtime, khởi động nhanh, đọc màn hình (UI Automation) qua Ac
 có GPU thật thường thấp hơn). Một vỏ WebView2 (wry/Tauri) thường tốn 80–150 MB vì có thêm tiến trình
 Edge. Chưa đo trên Windows thật: `windows.yml` in số đo Working Set vào `mem.txt`.
 
+#### 3.4a Mô-đun "Người thân" trên Windows (v0.2 đợt 3, T8)
+
+Đặc tả chung: `docs/v0.2/08-DAC-TA-GIAO-DIEN-NGUOI-THAN.md`. Mã: `apps/windows/ui/people.slint` (giao diện),
+`src/people.rs` (nối giao diện với lõi), `src/platform.rs` (thư mục dữ liệu, múi giờ, hộp chọn tệp, thông báo),
+`src/photo.rs` (ảnh). Ứng dụng gọi thẳng hàm Rust của `lvhv-ffi` (phần `v02.rs`, cũng là lớp mà Android/Apple dùng
+qua UniFFI) — mọi tính toán (ngày giỗ, nhắc, xoay vòng 64, danh sách theo kỳ, .ics, sao lưu, kiểm dữ liệu) nằm
+trong `lvhv-memorial`, `lvhv-store`, `lvhv-backup`. Giao diện chỉ hiển thị và kiểm độ dài/ô trống.
+
+- **Dữ liệu:** `%LOCALAPPDATA%\ClevixLab\LichVanHoaViet\` (`lvhv.sqlite`, `photos\`). Không tài khoản, không mạng.
+  Kho chỉ được tạo khi người dùng mở mục Người thân lần đầu; khi đã có kho, ứng dụng mở kho lúc khởi động để đặt
+  lại thông báo. Tệp nhỏ `ui-restored-from.txt` ghi ngày của bản sao lưu vừa "Thay toàn bộ" (TK-16, §12h).
+- **Ảnh (S9):** ảnh chân dung và ảnh giấy báo tử được giải mã, xoay theo EXIF, thu cạnh dài ≤ 1024 px rồi **mã hóa
+  lại JPEG** (`image` 0.24.9, đã có trong cây phụ thuộc của Slint) — byte lưu không còn APP1/APP13 (kiểm thử
+  `photo::tests`, `ui_tests_people`).
+- **Thông báo đặt lịch (02 §7.5, R-WIN-1):** `ScheduledToastNotification` (WinRT) với AppUserModelID
+  `ClevixLab.LichVanHoaViet`. Bộ cài `.msi` tạo lối tắt Start Menu mang thuộc tính `System.AppUserModel.ID`
+  (`wix/main.wxs`); ứng dụng gọi `SetCurrentProcessExplicitAppUserModelID` lúc mở. Mỗi lần mở ứng dụng, lưu dữ
+  liệu, đổi cài đặt hay khôi phục, ứng dụng đọc danh sách chờ của Windows, gọi `LvhvStore::reschedule_json` của lõi
+  (giới hạn 64, thông báo nhắc mở ứng dụng) rồi gỡ/thêm/thay đúng theo kế hoạch. Thông báo đã đặt do Windows giữ và
+  hiện kể cả khi ứng dụng đã đóng; **không** có tiến trình nền. Mặc định thông báo không ghi tên (O-9); tùy chọn
+  "Hiện tên người trong thông báo" lưu theo máy (`lock_screen_names`), không vào sao lưu.
+- **Giới hạn đã biết:**
+  - bản `.zip` chạy không cài không có lối tắt mang AUMID → Windows có thể từ chối thông báo; giao diện ghi rõ và
+    lời nhắc vẫn có trong "Sắp tới" + tệp .ics;
+  - chỉ dùng độ lệch giờ hiện tại của máy (`GetTimeZoneInformation`), không truyền các lần chuyển giờ mùa hè cho lõi
+    — với múi giờ có giờ mùa hè, lời nhắc nằm sau lần đổi giờ có thể lệch 1 giờ tới khi ứng dụng được mở lại
+    (Việt Nam không có giờ mùa hè);
+  - bấm vào thông báo chưa mở đúng hồ sơ (cần bộ kích hoạt COM; để đợt sau);
+  - mã hóa sao lưu (Argon2id 64 MiB) chạy trên luồng giao diện, cửa sổ đứng 1–2 giây;
+  - R5 Windows (máy thật, khởi động lại) **chưa thử** — cần chủ dự án thử trên Windows 11 (04 R5).
+- **Kiểm thử:** `src/ui_tests_people.rs` bấm qua mọi luồng: L2 (ngày âm, tháng nhuận, các lỗi), nhắc (mốc, giờ 24
+  giờ, tiên thường), ảnh, L11 tưởng niệm (dừng/thắp lại khói), L12 sửa (`rev`), L3 người đang sống + sinh nhật âm
+  (TK-29), L4 sự kiện, US-M-07 đang sống → đã mất với thông tin báo tử (cùng `id`, B4), B4 biểu mẫu sự kiện, L5
+  bốn loại kỳ × ba bộ lọc so với `events_in_period` của lõi, ‹ › Hôm nay, cài đặt O-9, L8 .ics (không chứa thông
+  tin báo tử), L9/L10 sao lưu → xóa → khôi phục "Thay toàn bộ" giống hệt, sai mật khẩu, L7 thẻ nhắc hôm nay.
+- **Ảnh chụp:** `LichViet.exe --chup-man-hinh <thư mục>` dùng kho tạm với dữ liệu mẫu; tên tệp
+  `<màn hình>-<sang|toi>-<1x|2x>.png`. CI chụp ở 1× và 2× rồi commit vào `apps/windows/screenshots/` của nhánh PR
+  (kèm `bo-nho.txt`, `thong-bao.txt`). `--do-bo-nho` mở Người thân + tưởng niệm với dữ liệu mẫu để đo Working Set;
+  `--kiem-thong-bao` tự kiểm đặt/đọc/gỡ một thông báo thử (CI chạy sau khi cài `.msi`).
+
 **Giấy phép Slint:** Slint phát hành theo GPL-3.0 **hoặc** "Slint Royalty-free License 2.0" **hoặc**
 giấy phép thương mại. Bản Royalty-free miễn phí cho ứng dụng desktop, với điều kiện hiển thị ghi công
 "Made with Slint" (màn hình Giới thiệu đã có). Chủ dự án nên đọc

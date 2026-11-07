@@ -305,13 +305,15 @@ fn steps(ui: &AppWindow, st: Rc<RefCell<State>>) -> Vec<Step> {
         p.set_dd_leap(true);
         p.invoke_form_changed();
     })));
+    screens.push(("nt-11b-them-da-mat-ket-qua", Rc::new(|ui: &AppWindow| People::get(ui).set_scroll_frac(0.3))));
     screens.push(("nt-12-them-da-mat-loi", Rc::new(|ui: &AppWindow| {
         let p = People::get(ui);
+        p.set_scroll_frac(0.0);
         p.set_f_ho_ten("".into());
         p.set_dd_m("5".into());
         p.invoke_save_form();
     })));
-    screens.push(("nt-13-them-dang-song", Rc::new(|ui: &AppWindow| {
+    screens.push(("_nt-13-chuan-bi", Rc::new(|ui: &AppWindow| {
         let p = People::get(ui);
         p.set_dlg("".into());
         p.invoke_go("ho-so".into());
@@ -323,8 +325,8 @@ fn steps(ui: &AppWindow, st: Rc<RefCell<State>>) -> Vec<Step> {
         p.set_bd_y("1990".into());
         p.set_f_am(true);
         p.invoke_form_changed();
-        p.set_scroll_frac(0.6);
     })));
+    screens.push(("nt-13b-them-dang-song-nhac", Rc::new(|ui: &AppWindow| People::get(ui).set_scroll_frac(0.75))));
     {
         let ids = ids.clone();
         screens.push(("nt-14-cap-nhat-da-mat", Rc::new(move |ui: &AppWindow| {
@@ -399,6 +401,11 @@ fn steps(ui: &AppWindow, st: Rc<RefCell<State>>) -> Vec<Step> {
         })));
     }
     for (name, act) in screens {
+        // Bước có tên bắt đầu bằng "_": chỉ chuẩn bị, không chụp (để trang kịp dàn trước khi cuộn).
+        if name.starts_with('_') {
+            v.push((name.to_string(), Box::new(move |ui: &AppWindow| act(ui))));
+            continue;
+        }
         let a1 = act.clone();
         v.push((format!("{name}-sang"), Box::new(move |ui: &AppWindow| {
             theme(ui, false);
@@ -433,7 +440,19 @@ pub fn start(ui: &AppWindow, st: Rc<RefCell<State>>, dir: PathBuf) {
         }
         let (name, apply) = &steps[i];
         let snap = *phase.borrow();
+        if snap && name.starts_with('_') {
+            *phase.borrow_mut() = false;
+            *idx.borrow_mut() = i + 1;
+            return;
+        }
         if !snap {
+            // Kích thước cố định 1180 × 860 điểm logic ở mọi tỉ lệ: đặt lại theo điểm ảnh vật lý mỗi bước (lúc mở,
+            // tỉ lệ 2× có thể chưa áp nên kích thước logic đặt sớm bị co về kích thước tối thiểu).
+            let sf = ui.window().scale_factor();
+            let want = slint::PhysicalSize::new((1180. * sf).round() as u32, (860. * sf).round() as u32);
+            if ui.window().size() != want {
+                ui.window().set_size(want);
+            }
             apply(&ui);
             ui.window().request_redraw();
             *phase.borrow_mut() = true;

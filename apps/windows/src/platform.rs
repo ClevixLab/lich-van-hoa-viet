@@ -210,14 +210,16 @@ pub struct PendingToast {
     pub content: String,
 }
 
-/// Mã ngắn (16 chữ hex, FNV-1a 64 bit) của id lõi — `Tag`/`Id` của thông báo Windows có giới hạn độ dài.
+/// Mã ngắn (12 chữ hex, 48 bit đầu của FNV-1a 64 bit) của id lõi. `Id`/`Tag` của thông báo đặt lịch có giới hạn
+/// độ dài: CI Windows báo 0x803E0120 "The size of the developer id for scheduled notification is too large" với
+/// 16 ký tự, nên dùng 12. Xung đột không đáng kể với ≤ 64 thông báo chờ.
 pub fn short_id(id: &str) -> String {
     let mut h: u64 = 0xcbf29ce484222325;
     for b in id.bytes() {
         h ^= b as u64;
         h = h.wrapping_mul(0x100000001b3);
     }
-    format!("{h:016x}")
+    format!("{:012x}", h >> 16)
 }
 
 fn xml_escape(s: &str) -> String {
@@ -273,7 +275,9 @@ pub enum ToastState {
     Ready,
     /// Windows có thông báo nhưng người dùng/chính sách đang tắt cho ứng dụng này.
     Disabled(String),
-    /// Không dùng được (không phải Windows, hoặc chưa có định danh ứng dụng — bản chạy không cài).
+    /// Không đọc được cài đặt thông báo (Windows trả lỗi), nhưng vẫn thử đặt lịch được.
+    Unknown(String),
+    /// Không dùng được (không phải Windows, hoặc không tạo được bộ gửi thông báo).
     Unavailable(String),
 }
 
@@ -301,7 +305,16 @@ mod toast_os {
     }
 
     pub fn state() -> ToastState {
-        match notifier().and_then(|n| n.Setting()) {
+        let n = match notifier() {
+            Ok(n) => n,
+            Err(e) => {
+                return ToastState::Unavailable(format!(
+                    "Windows chưa cho ứng dụng gửi thông báo ({}).",
+                    e.code()
+                ))
+            }
+        };
+        match n.Setting() {
             Ok(NotificationSetting::Enabled) => ToastState::Ready,
             Ok(NotificationSetting::DisabledForApplication) => {
                 ToastState::Disabled("Thông báo của ứng dụng đang tắt trong Cài đặt Windows (Hệ thống › Thông báo).".into())
@@ -313,10 +326,8 @@ mod toast_os {
                 ToastState::Disabled("Thông báo bị tắt bởi chính sách của máy.".into())
             }
             Ok(_) => ToastState::Disabled("Windows đang tắt thông báo trên máy này.".into()),
-            Err(e) => ToastState::Unavailable(format!(
-                "Windows chưa nhận ra ứng dụng để gửi thông báo ({}). Thông báo cần bản cài đặt (.msi), vì bộ cài tạo lối tắt Start Menu mang định danh của ứng dụng.",
-                e.code()
-            )),
+            // 0x80070490 (không tìm thấy) gặp trên máy CI ngay sau khi cài; vẫn thử đặt lịch.
+            Err(e) => ToastState::Unknown(format!("{}", e.code())),
         }
     }
 
@@ -473,7 +484,7 @@ mod tests {
         let (id, c) = parse_toast_xml(&x).unwrap();
         assert_eq!(id, "lvhv:abc:2026-07-28:k=3");
         assert_eq!(c, "Còn 3 ngày: <Giỗ> & \"x\"\nThứ Ba, 28/07/2026");
-        assert_eq!(short_id("lvhv:sentinel").len(), 16);
+        assert_eq!(short_id("lvhv:sentinel").len(), 12);
         assert_ne!(short_id("a"), short_id("b"));
         // Lối tắt Start Menu của bộ cài mang đúng AUMID này (R-WIN-1).
         assert!(include_str!("../wix/main.wxs")
