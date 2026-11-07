@@ -91,7 +91,7 @@ struct MemorialView: View {
                 altar
                 let loi = p["memorial"]["loi_tuong_niem"].string
                 if !loi.isEmpty {
-                    Text("“\(loi)”").serif(18).italic().foregroundStyle(MC.ink).multilineTextAlignment(.center)
+                    Text("“\(loi)”").serif(18).foregroundStyle(MC.ink).multilineTextAlignment(.center)
                         .fixedSize(horizontal: false, vertical: true)
                         .padding(.horizontal, 12)
                 }

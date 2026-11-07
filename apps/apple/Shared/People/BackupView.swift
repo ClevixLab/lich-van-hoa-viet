@@ -87,7 +87,7 @@ struct BackupSection: View {
                     SecureField("", text: $importPassword)
                         .textFieldStyle(.roundedBorder)
                         .ps(17)
-                        .textContentType(.password)
+                        .passwordContent()
                         .accessibilityLabel("Mật khẩu của tệp")
                 }
                 Button(opening ? "Đang mở tệp…" : "Mở tệp") { openFile() }
@@ -246,7 +246,7 @@ struct IcsConfirmSheet: View {
                 try? FileManager.default.removeItem(at: dir)
                 try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
                 let u = dir.appendingPathComponent(x.fileName)
-                try Data(x.content.utf8).write(to: u, options: [.atomic, .completeFileProtection])
+                try Data(x.content.utf8).write(to: u, options: [.atomic])
                 fileURL = u
             } catch {
                 self.error = Core.message(error)
@@ -291,11 +291,11 @@ struct BackupExportSheet: View {
                         PBody("Tệp gồm cả thông tin báo tử (người báo tin, nơi mất, lý do, ảnh giấy báo tử) — chỉ ai biết mật khẩu mới đọc được.")
                     }
                     LabeledField(label: "Mật khẩu (ít nhất 8 ký tự)", error: submitted ? pwError : nil) {
-                        SecureField("", text: $pw).textFieldStyle(.roundedBorder).ps(17).textContentType(.newPassword)
+                        SecureField("", text: $pw).textFieldStyle(.roundedBorder).ps(17).passwordContent()
                             .accessibilityLabel("Mật khẩu").accessibilityIdentifier("backup.pw")
                     }
                     LabeledField(label: "Nhập lại mật khẩu", error: submitted ? pw2Error : nil) {
-                        SecureField("", text: $pw2).textFieldStyle(.roundedBorder).ps(17).textContentType(.newPassword)
+                        SecureField("", text: $pw2).textFieldStyle(.roundedBorder).ps(17).passwordContent()
                             .accessibilityLabel("Nhập lại mật khẩu").accessibilityIdentifier("backup.pw2")
                     }
                     Text("Lưu ý: quên mật khẩu là mất dữ liệu trong tệp — không ai lấy lại được, kể cả Clevix Lab.")
@@ -490,5 +490,17 @@ struct PeopleSettingsView: View {
         s["default_time_local"] = .s(defaults.hhmm ?? "07:00")
         try? m.putSettings(s)
         savedDefaults = true
+    }
+}
+
+extension View {
+    /// Ô mật khẩu: không tự sửa chữ, không viết hoa; gợi ý mật khẩu của hệ thống chỉ trên iOS.
+    @ViewBuilder
+    func passwordContent() -> some View {
+        #if os(iOS)
+        self.textContentType(.password).textInputAutocapitalization(.never).autocorrectionDisabled(true)
+        #else
+        self.autocorrectionDisabled(true)
+        #endif
     }
 }
