@@ -504,6 +504,49 @@ let r6File;
   const m2 = S.mergeDocs(loc2, inc);
   ok(m1.photos.some((x) => x.id === T1) && m1.persons[1].memorial.tray_photo_id === T1 && !m2.photos.some((x) => x.id === T1),
     "Gộp giữ ảnh mâm lễ của bản nhập khi hồ sơ nhập thắng; bỏ khi hồ sơ trên máy thắng (như Rust merge_docs)");
+  // Duyệt mã MA10-02..06, báo cáo kiểm định R15 F2 — như Rust store/tests/tray.rs.
+  {
+    const st = await exStore();
+    const big = new Uint8Array(readFileSync(join(TV, "tray-photo", "tray-1601x1200.jpg")));
+    await st.addPhoto({ id: T1, mime: "image/jpeg", width: 1601, height: 1200, bytes: big });
+    const e1601 = await (async () => { try { await withTray(st, D2, T1); return null; } catch (e) { return e.message; } })();
+    const l3 = structuredClone(await st.person(L3)); l3.photo_id = T1; bump(l3);
+    const portraitOk = await code(() => st.putPerson(l3));
+    const doc2 = structuredClone(ex);
+    doc2.photos.push({ id: T2, mime: "image/jpeg", width: 1200, height: 1601, bytes: 10, sha256: "a".repeat(64), stripped: true, created_at: "2026-11-07T00:00:00Z" });
+    doc2.persons[1].memorial.tray_photo_id = T2;
+    let dErr = null; try { S.validate.document(doc2); } catch (e) { dErr = `${e.code} ${e.path}`; }
+    doc2.photos[1].height = 1600;
+    const d1600 = await code(async () => S.validate.document(doc2));
+    ok(e1601 === "V1 /person/memorial/tray_photo_id: ảnh mâm lễ có cạnh dài quá 1600 px" && portraitOk === "OK" && dErr === "V1 /persons/1/memorial/tray_photo_id" && d1600 === "OK",
+      `MA10-02: ảnh mâm lễ > 1600 px → V1 khi lưu và khi nhập; ảnh chân dung 1601 px vẫn được (${[e1601, portraitOk, dErr, d1600].join(" | ")})`);
+    // MA10-04, MA10-05.
+    const dd = structuredClone(await st.person(D2)); dd.photo_id = "0b8e4f52-3c1a-4d2e-9f60-0000000000ee"; dd.memorial.tray_photo_id = dd.photo_id; bump(dd);
+    const eDouble = await (async () => { try { await st.putPerson(dd); return null; } catch (e) { return e.message; } })();
+    const portrait = (await st.person(D1)).photo_id;
+    const eOwn = await (async () => { try { await withTray(st, D1, portrait); return null; } catch (e) { return e.message; } })();
+    ok(eDouble === "V3 /person/photo_id: ảnh không tồn tại" && eOwn === "V3 /person/memorial/tray_photo_id: ảnh mâm lễ không được trùng ảnh chân dung",
+      `MA10-04/05: lỗi kép báo ảnh chân dung treo trước (như Rust); trùng ảnh chân dung của chính mình có câu riêng (${eDouble} | ${eOwn})`);
+    // MA10-06, F2: null ghi thẳng / null trong tệp nhập → không ghi khóa.
+    const pn = structuredClone(await st.person(D2)); pn.memorial.tray_photo_id = null; bump(pn);
+    await st.putPerson(pn);
+    const direct = !("tray_photo_id" in (await st.person(D2)).memorial);
+    const nd = structuredClone(ex); nd.persons[1].memorial.tray_photo_id = null; nd.persons[1].rev = 60;
+    const vb = await S.verifyContents(S.canonicalJson(nd), [{ id: ex.photos[0].id, bytes: new Uint8Array(readFileSync(join(TV, ex.photos[0].id.replace(/^/, "photo-") + ".jpg"))) }]);
+    let viaImport = true;
+    for (const mode of ["replace", "merge"]) {
+      await st.applyImport(vb, mode);
+      viaImport &&= !S.canonicalJson(await st.snapshot({ version: "0.2.0", platform: "pwa" }, "x")).includes("tray_photo_id");
+    }
+    ok(direct && viaImport, `MA10-06 / F2: tray_photo_id null (putPerson trực tiếp, tệp nhập Thay toàn bộ và Gộp) → không ghi khóa (${direct},${viaImport})`);
+    st.close();
+    // MA10-03: Gộp bỏ ảnh trên máy không còn hồ sơ nào dùng.
+    const l2 = structuredClone(ex);
+    l2.photos.push({ id: T2, mime: "image/jpeg", width: 300, height: 400, bytes: 10, sha256: "b".repeat(64), stripped: true, created_at: "2026-11-07T00:00:00Z" });
+    l2.persons[1].memorial.tray_photo_id = T2;
+    const inc2 = structuredClone(ex); inc2.persons[1].rev = 9;
+    ok(!S.mergeDocs(l2, inc2).photos.some((x) => x.id === T2), "MA10-03: Gộp — ảnh mâm lễ trên máy mà hồ sơ thắng (bản nhập) không dùng bị bỏ (như Rust merge_docs)");
+  }
   results.tray_photo = "ok";
 }
 

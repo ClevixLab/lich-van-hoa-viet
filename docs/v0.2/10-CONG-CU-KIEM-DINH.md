@@ -154,6 +154,9 @@ in **bản đã lưu** (`saved`) đọc lại từ kho. `-` thay cho tên tệp:
 - TS làm như `src/people/forms.ts`: `buildPerson(normalizePersonNames(…))`, rồi `validate.person`, rồi `putPerson`.
   Ở TS, `<thư-mục>` là thư mục bộ mẫu, hoặc `-` cho kho trống; thêm `--state` để lưu nhiều lần trên cùng kho
   (`rev` tăng 1 → 2, `created_at` giữ nguyên).
+- Bị từ chối: `ok: false` và `stage` là một trong `read_file`, `open`, `save_person` — **cùng tên ở hai bản** (báo cáo
+  kiểm định R15 F3; trước đây bản Rust ghi `save_person_json`). `error` mô tả lỗi theo từng bản.
+- `memorial.tray_photo_id: null` (hoặc ghi rõ `null` trong tệp nhập) không được ghi vào kho: khóa bị bỏ (01 §3.7).
 
 ```
 target/debug/lvhv-store-tool save-person /tmp/kho-moi nguoi.json
@@ -217,10 +220,17 @@ xóa trong cùng giao dịch nếu không hồ sơ nào khác dùng (R15 (f)). K
 
 ### 3.11 `scenario tray_photo <thư-mục-làm-việc>`
 
-Kịch bản cố định của R15 (04 Bổ sung B8), chạy trên kho mới (Rust: trong `<thư-mục-làm-việc>`, xóa khi xong; TS: kho
-trong tiến trình, đối số này bỏ qua). Mọi thao tác đi qua đúng đường của ứng dụng (Rust: `LvhvStore` của FFI; TS: `Store`
+Kịch bản cố định của R15 (04 Bổ sung B8), chạy trên kho mới. TS: kho trong tiến trình, đối số này bỏ qua (không đụng
+tới đĩa). Rust (duyệt mã MA10-01): công cụ **không bao giờ xóa** `<thư-mục-làm-việc>` hay thứ có sẵn trong đó. Nó tạo
+`<thư-mục-làm-việc>` nếu chưa có, tạo bên trong một thư mục con mới tên ngẫu nhiên `lvhv-tray-<16 hex>` (tạo bằng
+`create_dir`, nên không bao giờ trùng thứ có sẵn), làm mọi việc trong thư mục con đó và chỉ xóa thư mục con đó khi
+xong; nếu chính công cụ đã tạo `<thư-mục-làm-việc>` thì xóa nó khi nó rỗng. CI kiểm: chạy trên thư mục có sẵn
+`keep/file.txt` → tệp còn nguyên, không để lại gì khác. (`import` không có `--into` cũng dùng thư mục tạm riêng như vậy.)
+Bản Rust đọc vector từ cây mã đã dựng nó (`CARGO_MANIFEST_DIR`): chạy tệp nhị phân trên đúng bản sao kho mã đó. Mọi thao tác đi qua đúng đường của ứng dụng (Rust: `LvhvStore` của FFI; TS: `Store`
 + `buildPerson(normalizePersonNames(…))` như màn hình hồ sơ). In `result` đã chuẩn hóa: không có thời điểm hay byte
-ngẫu nhiên, nên hai bản phải in **cùng một JSON** (R15 (g)); tệp kỳ vọng
+ngẫu nhiên, nên hai bản phải in **cùng một JSON** (R15 (g)). Lỗi của `apply_import` (nhập) được ghi là `backup` ở cả hai
+bản, vì người dùng chỉ thấy thông báo chung (Rust FFI `LvhvDataError::Backup`; PWA "Chưa khôi phục được — dữ liệu trên máy
+giữ nguyên."); tệp kỳ vọng
 `docs/v0.2/schema/test-vectors/tray-photo/expected-scenario.json`. Mỗi thao tác cho một `outcome`: `ok`,
 `invalid <mã> <đường dẫn>` (ví dụ `invalid V3 /person/memorial/tray_photo_id`), `input` (lỗi đầu vào không có mã V, ví dụ
 ảnh còn EXIF), `not_found`, `backup` (thông báo chung khi nhập tệp: "Sai mật khẩu hoặc tệp bị hỏng"), `storage`.
@@ -229,9 +239,10 @@ ngẫu nhiên, nên hai bản phải in **cùng một JSON** (R15 (g)); tệp k�
 |---|---|---|
 | `e_old_backup` | (e) | Nhập `example-v1.lvhv` (bản trước, không có trường): `unchanged` = kho giống tệp; `has_tray_key = false`; `tray_d1 = "absent"` |
 | `c_add_photo` | (c) phía lõi | Ảnh còn EXIF → `input`; ảnh > 1 MiB → `invalid V1 /photo/bytes`; ảnh sạch → `ok` |
+| `g_rules` | (c) cỡ ảnh; thứ tự lỗi | `tray_1601`: ảnh 1601 × 1200 (`tray-photo/tray-1601x1200.jpg`, `Photo` hợp lệ) thêm được, gắn làm ảnh mâm lễ → `invalid V1 /person/memorial/tray_photo_id` (01 Bổ sung 01-YC10-a, MA10-02), rồi `delete_photo` → `ok`. `double_dangling`: `photo_id` = `tray_photo_id` = ảnh không có → `invalid V3 /person/photo_id` ở cả hai bản (MA10-04: thứ tự kiểm ảnh treo → cỡ ảnh mâm lễ → dùng chung → tệp đính kèm treo) |
 | `set` | V3 | Gắn ảnh mâm lễ cho người đã mất 5e01. `v3`: ảnh không tồn tại; ảnh mâm lễ của người khác; ảnh chân dung của người khác; ảnh chân dung của chính mình; ảnh chân dung trỏ ảnh mâm lễ của người khác → mọi ca `invalid V3 …` |
-| `d_round_trip` | (d) | Xuất rồi nhập (Thay toàn bộ; Gộp vào kho trống; Gộp vào kho có bản cũ): `tray_d1` giữ, `sha_equal = true`, 0 ảnh mồ côi. `crafted`: tệp sửa tay có ảnh mâm lễ không tồn tại, ảnh mâm lễ còn EXIF, ảnh mâm lễ dùng chung → `open_backup = "backup"` (thông báo chung) và `verify` cho lý do (`invalid V3 …`, `invalid PHOTO /photos`); `control` (tệp đúng) → `ok` |
-| `f_cleanup` | (f) | Đổi ảnh, bỏ ảnh (`null` → khóa bị bỏ), đổi về đang sống, xóa hồ sơ → ảnh cũ không còn trong `photos.ids`; `orphan_records = 0` (bản ghi ảnh không hồ sơ nào dùng); `orphan_files = 0` (Rust: tệp `photos/*.img` không có bản ghi và ngược lại; TS: bản ghi không đọc được byte) |
+| `d_round_trip` | (d) | Xuất rồi nhập (Thay toàn bộ; Gộp vào kho trống; Gộp vào kho có bản cũ): `tray_d1` giữ, `sha_equal = true`, 0 ảnh mồ côi. `crafted`: tệp sửa tay có ảnh mâm lễ không tồn tại, ảnh mâm lễ còn EXIF, ảnh mâm lễ dùng chung → `open_backup = "backup"` (thông báo chung) và `verify` cho lý do (`invalid V3 …`, `invalid PHOTO /photos`); `control` (tệp đúng) → `ok`; `tray_too_large` (ảnh mâm lễ 1601 px, byte và bản ghi khớp) → `verify = invalid V1 /persons/0/memorial/tray_photo_id`. `explicit_null` (báo cáo kiểm định R15 F2): tệp ghi rõ `"tray_photo_id": null` → nhập được, `tray_d2 = "absent"`, `store_has_null = false`, `reexport_has_null = false`. `merge_replaces_local_tray` (MA10-03): máy có ảnh mâm lễ T0 cho 5e01, gộp tệp mà 5e01 (rev lớn hơn) dùng T1 → `tray_d1` = T1, T0 không còn trong kho (`old_tray_in_store = false`), 0 mồ côi. `merge_shared_tray`: gộp làm hai hồ sơ cùng trỏ một ảnh mâm lễ → `import = "backup"` (V3, thông báo chung), kho không đổi |
+| `f_cleanup` | (f) | `webp`: ảnh mâm lễ WebP (`r6v2/photo-01.webp`) gắn được. Đổi ảnh, bỏ ảnh (`null` → khóa bị bỏ), đổi về đang sống, xóa hồ sơ → ảnh cũ không còn trong `photos.ids`; `orphan_records = 0` (bản ghi ảnh không hồ sơ nào dùng); `orphan_files = 0` (Rust: tệp `photos/*.img` không có bản ghi và ngược lại; TS: bản ghi không đọc được byte) |
 
 Chạy cả hai bản và so:
 

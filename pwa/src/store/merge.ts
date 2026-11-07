@@ -40,18 +40,17 @@ export function mergeDocs(local: JsonObj, incoming: JsonObj): JsonObj {
     const n = remap.get(e.type_id as string);
     return n === undefined ? e : { ...e, type_id: n };
   });
+  // Ảnh (01 §6.3, Bổ sung 01-YC10-a / MA10-03) — như Rust merge_docs: bản trên máy thắng khi cùng id; thêm ảnh của bản
+  // nhập; chỉ giữ ảnh (chân dung, mâm lễ) mà hồ sơ sau gộp còn dùng — ảnh trên máy không còn ai dùng bị bỏ.
   const photos = byId(local.photos);
-  const localPhotoIds = new Set(photos.keys());
   for (const [id, x] of byId(incoming.photos)) if (!photos.has(id)) photos.set(id, x);
-  // Ảnh chân dung và ảnh mâm lễ (YC-2026-10) mà hồ sơ sau gộp còn dùng — như Rust merge_docs.
   const used = new Set(persons.flatMap((p) => personPhotoRefs(p)));
-  for (const id of [...photos.keys()]) if (!used.has(id) && !localPhotoIds.has(id)) photos.delete(id);
-  // Tệp đính kèm (YC-2026-07): như ảnh; khóa `attachments` chỉ có khi khác rỗng (như Rust merge_docs).
+  for (const id of [...photos.keys()]) if (!used.has(id)) photos.delete(id);
+  // Tệp đính kèm (YC-2026-07): cùng quy tắc; khóa `attachments` chỉ có khi khác rỗng (như Rust merge_docs).
   const atts = byId(local.attachments);
-  const localAttIds = new Set(atts.keys());
   for (const [id, x] of byId(incoming.attachments)) if (!atts.has(id)) atts.set(id, x);
   const usedAtt = new Set(persons.flatMap((p) => personAttachmentRefs(p)));
-  for (const id of [...atts.keys()]) if (!usedAtt.has(id) && !localAttIds.has(id)) atts.delete(id);
+  for (const id of [...atts.keys()]) if (!usedAtt.has(id)) atts.delete(id);
   const { attachments: _a, ...rest } = local;
   void _a;
   return { ...rest, ...(atts.size ? { attachments: sortedValues(atts) } : {}), event_types: sortedValues(types), events, persons, photos: sortedValues(photos) };

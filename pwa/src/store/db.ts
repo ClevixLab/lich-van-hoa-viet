@@ -33,6 +33,14 @@ type StoreName = (typeof STORES)[number];
  * giống Rust từng byte kể cả khi tài liệu nhập vào có ghi `null`.
  */
 export function normNotice(p: JsonObj): JsonObj {
+  // 01 §3.7 (MA10-06, báo cáo kiểm định R15 F2): `memorial.tray_photo_id: null` không bao giờ được ghi — kể cả khi tệp
+  // nhập ghi rõ null (như Rust upsert_person). Hàm này là chỗ ghi hồ sơ chung của lưu, nhập và chuyển đổi.
+  const pm = p.memorial;
+  if (pm && typeof pm === "object" && !Array.isArray(pm) && Object.prototype.hasOwnProperty.call(pm, "tray_photo_id") && (pm as JsonObj).tray_photo_id === null) {
+    const { tray_photo_id: _t, ...m } = pm as JsonObj;
+    void _t;
+    p = { ...p, memorial: m };
+  }
   const d = p.death as JsonObj | null;
   if (!d || typeof d !== "object" || !Object.prototype.hasOwnProperty.call(d, "notice") || d.notice !== null) return p;
   const { notice: _n, ...rest } = d;
@@ -417,6 +425,7 @@ export class Store {
    */
   async putPerson(p: JsonObj, newPhoto?: NewPhoto | NewPhoto[], newAttachments: NewAttachment[] = []): Promise<void> {
     this.writable();
+    // 01 §3.7 (MA10-06): `memorial.tray_photo_id: null` không được ghi — `normNotice` bỏ khóa ở mọi đường ghi.
     try { V.person(p, "/person"); } catch (e) { throw vErr(e); }
     // `newAttachments`: tệp đính kèm báo tử mới (01 §3.8a) — ghi cùng giao dịch với hồ sơ.
     const attRecs: { id: string; meta: JsonObj; blob: Blob }[] = [];
@@ -425,9 +434,23 @@ export class Store {
     for (const np of newPhoto === undefined ? [] : Array.isArray(newPhoto) ? newPhoto : [newPhoto]) recs.push(await photoRecord(np));
     const all = await this.persons();
     const first = all.length === 0;
-    // YC-2026-10: ảnh mâm lễ chỉ thuộc một người (như Rust check_refs_person).
+    // Tham chiếu — cùng thứ tự với Rust check_refs_person (MA10-04): ảnh treo (photo_id, rồi tray_photo_id) → cỡ ảnh mâm lễ
+    // (≤ 1600 px, MA10-02) → ảnh mâm lễ dùng chung → tệp đính kèm treo. (Kiểm lại trong giao dịch bên dưới.)
+    const photoMeta = new Map((await this.photos()).map((m) => [m.id as string, m] as const));
+    for (const r of recs) photoMeta.set(r.id, r.meta);
+    const trayRef = V.trayPhotoRef(p);
+    for (const pid of V.personPhotoRefs(p)) {
+      if (photoMeta.has(pid)) continue;
+      const isTray = pid === trayRef && p.photo_id !== pid;
+      throw new StoreError("invalid", isTray ? "V3 /person/memorial/tray_photo_id: ảnh mâm lễ không tồn tại" : "V3 /person/photo_id: ảnh không tồn tại");
+    }
+    if (trayRef !== null && V.trayTooLarge(photoMeta.get(trayRef)!)) throw new StoreError("invalid", `V1 /person/memorial/tray_photo_id: ${V.TRAY_TOO_LARGE}`);
     const shared = V.trayPhotoShared(p, all);
-    if (shared !== null) throw new StoreError("invalid", `V3 /person/${shared}: ảnh mâm lễ dùng chung với hồ sơ khác`);
+    if (shared !== null) throw new StoreError("invalid", `V3 /person/${shared[0]}: ${shared[1]}`);
+    const attIds = new Set([...(await this.attachments()).map((m) => m.id as string), ...attRecs.map((r) => r.id)]);
+    V.personAttachmentRefs(p).forEach((aid, j) => {
+      if (!attIds.has(aid)) throw new StoreError("invalid", `V3 /person/death/notice/attachments/${j}/file_id: tệp đính kèm không tồn tại`);
+    });
     // Ảnh bản cũ dùng mà bản mới bỏ, không hồ sơ nào khác dùng → xóa cùng giao dịch (như Rust put_person).
     const old = all.find((x) => x.id === p.id);
     const keep = new Set([...V.personPhotoRefs(p), ...all.filter((x) => x.id !== p.id).flatMap((x) => V.personPhotoRefs(x))]);

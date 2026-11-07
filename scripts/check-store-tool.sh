@@ -147,6 +147,12 @@ p["memorial"]["tray_photo_id"] = sys.argv[3]
 json.dump(p, open(sys.argv[2], "w", encoding="utf-8"), ensure_ascii=False)
 EOF
 run rs-tray 0 "$BIN" scenario tray_photo "$WORK/rs-tray-work"
+# MA10-01: thư mục làm việc có sẵn tệp của người dùng → công cụ chỉ làm trong thư mục con riêng; tệp có sẵn còn nguyên,
+# không để lại gì khác.
+mkdir -p "$WORK/user-dir/keep" && printf 'giữ nguyên\n' > "$WORK/user-dir/keep/file.txt"
+run rs-tray-userdir 0 "$BIN" scenario tray_photo "$WORK/user-dir"
+find "$WORK/user-dir" | sort > "$WORK/user-dir.list"
+sha256sum "$WORK/user-dir/keep/file.txt" | cut -d' ' -f1 > "$WORK/user-dir.sha"
 run ts-tray 0 "${TS[@]}" scenario tray_photo
 run rs-tp-import 0 "$BIN" import "$TV/example-v1.lvhv" "$PW" --replace --into "$WORK/rs-tp"
 run rs-tp-exif 1 "$BIN" add-photo "$WORK/rs-tp" image/jpeg "$TV/media/jpeg-exif-gps.jpg" 768 1024 --id "$TRAY"
@@ -300,6 +306,13 @@ for side in ("rs", "ts"):
     ok(TRAY not in a["photo_bytes"] and all(TRAY != (p.get("memorial") or {}).get("tray_photo_id") for p in a["document"]["persons"]),
        f"{side} delete-person → ảnh mâm lễ bị xóa")
 ok(J("rs-tp-inspect")["blobs"] == J("ts-tp-inspect")["blobs"], "Rust ≡ TS: khối của tệp xuất có ảnh mâm lễ")
+# MA10-01
+lst = open(f"{W}/user-dir.list", encoding="utf-8").read().split()
+ok(lst == [f"{W}/user-dir", f"{W}/user-dir/keep", f"{W}/user-dir/keep/file.txt"] and J("rs-tray-userdir") == tray_exp
+   and open(f"{W}/user-dir.sha").read().strip() == __import__("hashlib").sha256("giữ nguyên\n".encode()).hexdigest(),
+   "scenario tray_photo trên thư mục có sẵn tệp: tệp còn nguyên, không để lại gì (MA10-01)")
+# F3 (báo cáo kiểm định R15): cùng tên bước khi save-person bị từ chối.
+ok(J("rs-tp-dangling")["stage"] == J("ts-tp-dangling")["stage"] == "save_person", "Rust ≡ TS: save-person bị từ chối → stage = save_person")
 print("ĐẠT" if not fails else f"KHÔNG ĐẠT: {fails} lỗi")
 sys.exit(1 if fails else 0)
 EOF

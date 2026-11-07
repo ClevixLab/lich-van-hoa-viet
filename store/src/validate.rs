@@ -548,11 +548,12 @@ pub fn tray_photo_ref(p: &Value) -> Option<&str> {
 /// YC-2026-10 (01 "Ghi chú YC-2026-10"): ảnh mâm lễ chỉ thuộc **một** người — id của nó không được là `photo_id` hay
 /// `tray_photo_id` của hồ sơ khác, cũng không là `photo_id` của chính hồ sơ đó. `persons` là mọi hồ sơ (cả `p` nếu
 /// có, so theo `id`). Trả đường dẫn tương đối của trường vi phạm trong `p`.
-pub fn tray_photo_shared(p: &Value, persons: &[&Value]) -> Option<&'static str> {
+/// Trả (trường, câu lỗi) — câu riêng cho ca ảnh mâm lễ trùng ảnh chân dung của chính người đó (MA10-05).
+pub fn tray_photo_shared(p: &Value, persons: &[&Value]) -> Option<(&'static str, &'static str)> {
     let me = p["id"].as_str();
     let tray = tray_photo_ref(p);
     if tray.is_some() && tray == p["photo_id"].as_str() {
-        return Some("memorial/tray_photo_id");
+        return Some(("memorial/tray_photo_id", TRAY_IS_PORTRAIT));
     }
     for q in persons {
         if q["id"].as_str() == me {
@@ -560,16 +561,46 @@ pub fn tray_photo_shared(p: &Value, persons: &[&Value]) -> Option<&'static str> 
         }
         if let Some(t) = tray {
             if q["photo_id"].as_str() == Some(t) || tray_photo_ref(q) == Some(t) {
-                return Some("memorial/tray_photo_id");
+                return Some(("memorial/tray_photo_id", TRAY_SHARED));
             }
         }
         if let (Some(ph), Some(qt)) = (p["photo_id"].as_str(), tray_photo_ref(q)) {
             if ph == qt {
-                return Some("photo_id");
+                return Some(("photo_id", TRAY_SHARED));
             }
         }
     }
     None
+}
+
+/// Bản sao của `p` đã bỏ `memorial.tray_photo_id: null` (01 §3.7: không ghi khóa khi null), hoặc `None` nếu không có.
+pub fn without_null_tray(p: &Value) -> Option<Value> {
+    let has_null = p["memorial"]
+        .as_object()
+        .is_some_and(|m| m.get("tray_photo_id").is_some_and(Value::is_null));
+    if !has_null {
+        return None;
+    }
+    let mut q = p.clone();
+    if let Some(m) = q["memorial"].as_object_mut() {
+        m.remove("tray_photo_id");
+    }
+    Some(q)
+}
+
+/// Câu lỗi: ảnh mâm lễ dùng chung với hồ sơ khác.
+pub const TRAY_SHARED: &str = "ảnh mâm lễ dùng chung với hồ sơ khác";
+/// Câu lỗi: ảnh mâm lễ trùng ảnh chân dung của chính người đó.
+pub const TRAY_IS_PORTRAIT: &str = "ảnh mâm lễ không được trùng ảnh chân dung";
+/// Cạnh dài tối đa của ảnh mâm lễ (01 §3.7; Bổ sung 01-YC10-a, MA10-02) — lõi kiểm khi lưu và khi nhập.
+pub const TRAY_MAX_EDGE: u64 = 1600;
+/// Câu lỗi: ảnh mâm lễ quá 1600 px.
+pub const TRAY_TOO_LARGE: &str = "ảnh mâm lễ có cạnh dài quá 1600 px";
+
+/// Bản ghi `Photo` có cạnh dài > [`TRAY_MAX_EDGE`] không.
+pub fn tray_too_large(photo: &Value) -> bool {
+    let e = |k: &str| photo[k].as_u64().unwrap_or(0);
+    e("width").max(e("height")) > TRAY_MAX_EDGE
 }
 
 /// Mọi id tệp đính kèm (`Attachment`) mà một `Person` tham chiếu: `death.notice.attachments[].file_id`.
@@ -1078,8 +1109,13 @@ pub fn document(v: &Value) -> R {
             }
         }
     }
-    // V3
+    // V3 (thứ tự kiểm giống `check_refs_person` của kho và bản TS: ảnh treo → cỡ ảnh mâm lễ → dùng chung → tệp đính
+    // kèm treo).
     let all: Vec<&Value> = persons.iter().collect();
+    let photo_by_id: HashMap<&str, &Value> = photos
+        .iter()
+        .map(|x| (x["id"].as_str().unwrap_or_default(), x))
+        .collect();
     for (i, x) in persons.iter().enumerate() {
         if let Some(pid) = x["photo_id"].as_str() {
             if !photo_ids.contains(pid) {
@@ -1098,13 +1134,16 @@ pub fn document(v: &Value) -> R {
                     "ảnh mâm lễ không tồn tại",
                 ));
             }
+            // Bổ sung 01-YC10-a (MA10-02): lỗi lược đồ tại trường trỏ ảnh.
+            if photo_by_id.get(pid).is_some_and(|ph| tray_too_large(ph)) {
+                return Err(v1(
+                    &format!("/persons/{i}/memorial/tray_photo_id"),
+                    TRAY_TOO_LARGE,
+                ));
+            }
         }
-        if let Some(f) = tray_photo_shared(x, &all) {
-            return Err(err(
-                "V3",
-                &format!("/persons/{i}/{f}"),
-                "ảnh mâm lễ dùng chung với hồ sơ khác",
-            ));
+        if let Some((f, msg)) = tray_photo_shared(x, &all) {
+            return Err(err("V3", &format!("/persons/{i}/{f}"), msg));
         }
         for (j, c) in x["death"]["notice"]["attachments"]
             .as_array()

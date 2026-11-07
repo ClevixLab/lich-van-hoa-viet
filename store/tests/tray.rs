@@ -300,3 +300,176 @@ fn merge_keeps_incoming_tray_photo() {
         .iter()
         .any(|p| p["id"] == T1));
 }
+
+fn invalid(r: lvhv_store::Result<()>) -> (String, String, String) {
+    match r {
+        Err(StoreError::Invalid(v)) => (v.code.to_owned(), v.path, v.msg),
+        other => panic!("{other:?}"),
+    }
+}
+
+fn verified(doc: &Value) -> lvhv_store::VerifiedBackup {
+    let photo = std::fs::read(tv().join("photo-0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e09.jpg")).unwrap();
+    let blobs = doc["photos"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|x| lvhv_backup::PhotoBlob {
+            id: lvhv_backup::uuid_from_str(x["id"].as_str().unwrap()).unwrap(),
+            bytes: photo.clone(),
+        })
+        .collect();
+    lvhv_store::verify_contents(&lvhv_backup::Contents {
+        json: canonical_json(doc),
+        photos: blobs,
+    })
+    .unwrap()
+}
+
+/// Bổ sung 01-YC10-a (MA10-02): ảnh mâm lễ cạnh dài > 1600 px → lỗi lược đồ tại `tray_photo_id`, khi lưu và khi nhập.
+/// Ảnh chân dung 1601 px vẫn được (giới hạn chung của `Photo` là 2048).
+#[test]
+fn tray_over_1600_rejected_on_save_and_import() {
+    let dir = tmp("1601");
+    let mut s = example_store(&dir);
+    let big = std::fs::read(tv().join("tray-photo/tray-1601x1200.jpg")).unwrap();
+    s.add_photo(T1, "image/jpeg", 1601, 1200, &big).unwrap();
+    let (c, p, m) = invalid(with_tray(&mut s, D2, json!(T1)));
+    assert_eq!(
+        (c.as_str(), p.as_str(), m.as_str()),
+        (
+            "V1",
+            "/person/memorial/tray_photo_id",
+            validate::TRAY_TOO_LARGE
+        )
+    );
+    let mut l = s.person(L3).unwrap();
+    l["photo_id"] = json!(T1);
+    bump(&mut l);
+    s.put_person(&l).unwrap();
+    drop(s);
+    let _ = std::fs::remove_dir_all(dir);
+    let mut doc: Value =
+        serde_json::from_slice(&std::fs::read(tv().join("example-v1.json")).unwrap()).unwrap();
+    doc["photos"].as_array_mut().unwrap().push(json!({"id": T1, "mime": "image/jpeg", "width": 1200,
+        "height": 1601, "bytes": 10, "sha256": "a".repeat(64), "stripped": true, "created_at": "2026-11-07T00:00:00Z"}));
+    doc["persons"][1]["memorial"]["tray_photo_id"] = json!(T1);
+    let e = validate::document(&doc).unwrap_err();
+    assert_eq!(
+        (e.code, e.path.as_str()),
+        ("V1", "/persons/1/memorial/tray_photo_id")
+    );
+    doc["photos"][1]["height"] = json!(1600);
+    validate::document(&doc).unwrap();
+}
+
+/// MA10-03: sau Gộp, ảnh trên máy không còn hồ sơ nào trong kết quả gộp dùng bị xóa (bản ghi và tệp).
+#[test]
+fn merge_drops_local_photos_no_longer_used() {
+    let local: Value =
+        serde_json::from_slice(&std::fs::read(tv().join("example-v1.json")).unwrap()).unwrap();
+    let mut l2 = local.clone();
+    l2["photos"].as_array_mut().unwrap().push(json!({"id": T2, "mime": "image/jpeg", "width": 300,
+        "height": 400, "bytes": 10, "sha256": "b".repeat(64), "stripped": true, "created_at": "2026-11-07T00:00:00Z"}));
+    l2["persons"][1]["memorial"]["tray_photo_id"] = json!(T2);
+    let mut inc = local.clone();
+    inc["persons"][1]["rev"] = json!(9); // bản nhập thắng, không có ảnh mâm lễ
+    let m = merge_docs(&l2, &inc);
+    assert!(!m["photos"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|p| p["id"] == T2));
+    // Qua kho: tệp ảnh trên máy bị xóa sau giao dịch.
+    let dir = tmp("merge-drop");
+    let mut s = example_store(&dir);
+    add(&mut s, T2, 2);
+    with_tray(&mut s, D2, json!(T2)).unwrap();
+    let mut doc = s
+        .snapshot(
+            &AppInfo {
+                version: "0.2.0".into(),
+                platform: "android".into(),
+            },
+            "2026-11-07T00:00:00Z",
+        )
+        .unwrap();
+    let i = doc["persons"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .position(|x| x["id"] == D2)
+        .unwrap();
+    doc["persons"][i]["memorial"]
+        .as_object_mut()
+        .unwrap()
+        .remove("tray_photo_id");
+    doc["persons"][i]["rev"] = json!(50);
+    doc["photos"]
+        .as_array_mut()
+        .unwrap()
+        .retain(|x| x["id"] != T2);
+    s.apply_import(&verified(&doc), ImportMode::Merge).unwrap();
+    assert!(s.photo_bytes(T2).is_err() && !dir.join(format!("photos/{T2}.img")).exists());
+    assert_eq!(orphans(&s, &dir), 0);
+    drop(s);
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+/// Báo cáo kiểm định R15 F2, MA10-06: `"tray_photo_id": null` (tệp nhập ghi rõ, hay gọi thẳng `put_person`) không được
+/// ghi vào kho.
+#[test]
+fn explicit_null_never_stored() {
+    let dir = tmp("null");
+    let mut s = example_store(&dir);
+    let mut p = s.person(D2).unwrap();
+    p["memorial"]["tray_photo_id"] = Value::Null;
+    bump(&mut p);
+    s.put_person(&p).unwrap(); // không qua chuẩn hóa của FFI
+    assert!(s.person(D2).unwrap()["memorial"]
+        .get("tray_photo_id")
+        .is_none());
+    let mut doc: Value =
+        serde_json::from_slice(&std::fs::read(tv().join("example-v1.json")).unwrap()).unwrap();
+    doc["persons"][1]["memorial"]["tray_photo_id"] = Value::Null;
+    doc["persons"][1]["rev"] = json!(60);
+    let v = verified(&doc);
+    for mode in [ImportMode::Replace, ImportMode::Merge] {
+        s.apply_import(&v, mode).unwrap();
+        let snap = s
+            .snapshot(
+                &AppInfo {
+                    version: "0.2.0".into(),
+                    platform: "android".into(),
+                },
+                "x",
+            )
+            .unwrap();
+        assert!(!canonical_json(&snap).contains("tray_photo_id"));
+    }
+    drop(s);
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+/// MA10-04, MA10-05: lỗi kép báo ảnh chân dung treo trước (cùng thứ tự với bản TS); trùng ảnh chân dung của chính mình
+/// có câu riêng.
+#[test]
+fn error_order_and_messages() {
+    let dir = tmp("order");
+    let mut s = example_store(&dir);
+    let mut p = s.person(D2).unwrap();
+    p["photo_id"] = json!("0b8e4f52-3c1a-4d2e-9f60-0000000000ee");
+    p["memorial"]["tray_photo_id"] = json!("0b8e4f52-3c1a-4d2e-9f60-0000000000ee");
+    bump(&mut p);
+    assert_eq!(invalid(s.put_person(&p)).1, "/person/photo_id");
+    let portrait = s.person(D1).unwrap()["photo_id"].clone();
+    let (_, path, msg) = invalid(with_tray(&mut s, D1, portrait.clone()));
+    assert_eq!(
+        (path.as_str(), msg.as_str()),
+        ("/person/memorial/tray_photo_id", validate::TRAY_IS_PORTRAIT)
+    );
+    let (_, _, msg) = invalid(with_tray(&mut s, D2, portrait));
+    assert_eq!(msg, validate::TRAY_SHARED);
+    drop(s);
+    let _ = std::fs::remove_dir_all(dir);
+}

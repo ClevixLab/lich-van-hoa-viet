@@ -351,15 +351,10 @@ fn cmd_import(a: &[String]) -> Out {
     };
     let (dir, temp) = match into {
         Some(d) => (d, false),
-        None => {
-            let d = std::env::temp_dir().join(format!(
-                "lvhv-store-tool-{}-{}",
-                std::process::id(),
-                lvhv_store::now_rfc3339().replace(':', "")
-            ));
-            let _ = std::fs::remove_dir_all(&d);
-            (d, true)
-        }
+        None => match own_temp_dir(&std::env::temp_dir(), "lvhv-store-tool-") {
+            Ok(d) => (d, true),
+            Err(e) => return fail("import", "temp_dir", &StoreError::Io(e)),
+        },
     };
     let r = import_into(&bytes, password, mode, &dir);
     if temp {
@@ -463,7 +458,7 @@ fn cmd_save_person(a: &[String]) -> Out {
             ))
         }
         Err(e) => Ok((
-            json!({ "command": "save-person", "ok": false, "stage": "save_person_json",
+            json!({ "command": "save-person", "ok": false, "stage": "save_person",
                     "migration_status": ms, "error": ffi_err_json(&e) }),
             false,
         )),
@@ -820,6 +815,9 @@ const T2: &str = "0b8e4f52-3c1a-4d2e-9f60-0000000000a2";
 const T3: &str = "0b8e4f52-3c1a-4d2e-9f60-0000000000a3";
 const T4: &str = "0b8e4f52-3c1a-4d2e-9f60-0000000000a4";
 const TX: &str = "0b8e4f52-3c1a-4d2e-9f60-0000000000af";
+const T0: &str = "0b8e4f52-3c1a-4d2e-9f60-0000000000a0";
+const T5: &str = "0b8e4f52-3c1a-4d2e-9f60-0000000000a5";
+const T6: &str = "0b8e4f52-3c1a-4d2e-9f60-0000000000a6";
 const D1: &str = "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e01";
 const D2: &str = "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e02";
 const L3: &str = "0b8e4f52-3c1a-4d2e-9f60-1a2b3c4d5e03";
@@ -850,8 +848,11 @@ impl Tray {
         self.save(&p)
     }
     fn add(&self, id: &str, file: &str, w: u32, h: u32) -> String {
+        self.add_mime(id, "image/jpeg", file, w, h)
+    }
+    fn add_mime(&self, id: &str, mime: &str, file: &str, w: u32, h: u32) -> String {
         let b = std::fs::read(tv().join(file)).unwrap();
-        outcome(&self.st.add_photo(id.into(), "image/jpeg".into(), w, h, b))
+        outcome(&self.st.add_photo(id.into(), mime.into(), w, h, b))
     }
     /// Ảnh: bản ghi (id sắp), tệp `photos/*.img`, ảnh mồ côi (bản ghi không hồ sơ nào dùng; tệp không có bản ghi).
     fn photos(&self) -> Value {
@@ -902,8 +903,9 @@ impl Tray {
     }
 }
 
+/// Kho mới trong một thư mục con **chưa có** của thư mục riêng do công cụ tạo (MA10-01: không xóa gì trước khi mở).
 fn fresh(dir: &Path) -> Tray {
-    let _ = std::fs::remove_dir_all(dir);
+    assert!(!dir.exists(), "{} đã có", dir.display());
     Tray {
         st: lvhv_ffi::LvhvStore::open(dir.to_string_lossy().into_owned()).unwrap(),
         dir: dir.to_owned(),
@@ -933,6 +935,19 @@ fn contents_of(t: &Tray) -> (Value, Vec<(String, Vec<u8>)>) {
         })
         .collect();
     (d, blobs)
+}
+
+/// Tệp sao lưu (salt/nonce cố định) của một tài liệu sửa tay.
+fn fixed_file(doc: &Value, blobs: &[(String, Vec<u8>)]) -> Vec<u8> {
+    let photos: Vec<lvhv_backup::PhotoBlob> = blobs
+        .iter()
+        .map(|(id, b)| lvhv_backup::PhotoBlob {
+            id: lvhv_backup::uuid_from_str(id).unwrap(),
+            bytes: b.clone(),
+        })
+        .collect();
+    lvhv_backup::export_with_fixed_rng(TP, &canonical_json(doc), &photos, [0x11; 16], [0x22; 24])
+        .unwrap()
 }
 
 /// Kiểm tài liệu sửa tay như khi nhập: (kết quả mở tệp mã hóa — thông báo chung, kết quả kiểm chi tiết).
@@ -965,7 +980,18 @@ fn cmd_scenario(a: &[String]) -> Out {
     if name != "tray_photo" {
         return usage(&format!("kịch bản lạ: {name}"));
     }
-    let work = PathBuf::from(work);
+    // MA10-01: không bao giờ xóa thư mục người dùng đưa vào. Công cụ tạo một thư mục con mới, tên ngẫu nhiên (tạo bằng
+    // `create_dir`, nên không trùng thứ có sẵn), làm mọi việc trong đó và chỉ xóa thư mục con này; nếu chính công cụ tạo
+    // `<thư-mục-làm-việc>` thì xóa nó khi còn rỗng.
+    let user_dir = PathBuf::from(work);
+    let created = !user_dir.exists();
+    if let Err(e) = std::fs::create_dir_all(&user_dir) {
+        return fail("scenario", "work_dir", &StoreError::Io(e));
+    }
+    let work = match own_temp_dir(&user_dir, "lvhv-tray-") {
+        Ok(d) => d,
+        Err(e) => return fail("scenario", "work_dir", &StoreError::Io(e)),
+    };
     let mut out = Map::new();
     let example = std::fs::read(tv().join("example-v1.lvhv")).unwrap();
     let example_doc: Value =
@@ -1020,8 +1046,23 @@ fn cmd_scenario(a: &[String]) -> Out {
         "set".into(),
         json!({ "save": set, "tray_d1": t.tray_of(D1), "photos": t.photos(), "v3": v3 }),
     );
+    // Bổ sung 01-YC10-a (MA10-02): ảnh mâm lễ cạnh dài > 1600 px → từ chối khi lưu (ảnh vẫn là `Photo` hợp lệ ≤ 2048);
+    // MA10-04: lỗi kép (photo_id = tray_photo_id = ảnh không có) → cùng một lỗi ở hai bản.
+    let add5 = t.add(T5, "tray-photo/tray-1601x1200.jpg", 1601, 1200);
+    let save5 = t.with_tray(D2, json!(T5));
+    let del5 = outcome(&t.st.delete_photo(T5.into()));
+    let mut dd = t.person(D2);
+    dd["photo_id"] = json!("0b8e4f52-3c1a-4d2e-9f60-0000000000ee");
+    dd["memorial"]["tray_photo_id"] = json!("0b8e4f52-3c1a-4d2e-9f60-0000000000ee");
+    out.insert(
+        "g_rules".into(),
+        json!({ "tray_1601": { "add_photo": add5, "save": save5, "delete_photo": del5 },
+                "double_dangling": t.save(&dd), "photos": t.photos() }),
+    );
 
     // (d) xuất rồi nhập (Thay toàn bộ; Gộp vào kho trống; Gộp vào kho có bản cũ của hồ sơ): ảnh và liên kết giữ nguyên.
+    // Lưu lại 5e01 một lần (rev tăng) để bản này thắng khi gộp vào máy có bản cũ đã sửa (MA10-03).
+    let resave = t.with_tray(D1, json!(T1));
     let file =
         t.st.export_backup(TP.into(), "0.2.0".into(), "android".into())
             .unwrap();
@@ -1076,6 +1117,21 @@ fn cmd_scenario(a: &[String]) -> Out {
     let mut shared = doc.clone();
     let l = pos(&shared, L3);
     shared["persons"][l]["photo_id"] = json!(T1);
+    // MA10-02 khi nhập: ảnh mâm lễ 1601 px (byte và bản ghi khớp, qua B6) → lỗi lược đồ tại tray_photo_id.
+    let big_b = std::fs::read(tv().join("tray-photo/tray-1601x1200.jpg")).unwrap();
+    let mut big_doc = doc.clone();
+    for ph in big_doc["photos"].as_array_mut().unwrap() {
+        if ph["id"] == T1 {
+            ph["bytes"] = json!(big_b.len());
+            ph["sha256"] = json!(sha256_hex(&big_b));
+            ph["width"] = json!(1601);
+            ph["height"] = json!(1200);
+        }
+    }
+    let big_blobs: Vec<_> = blobs
+        .iter()
+        .map(|(i, b)| (i.clone(), if i == T1 { big_b.clone() } else { b.clone() }))
+        .collect();
     d.insert(
         "crafted".into(),
         json!({
@@ -1083,8 +1139,53 @@ fn cmd_scenario(a: &[String]) -> Out {
             "tray_with_exif": crafted(&exif_doc, &exif_blobs),
             "shared_tray": crafted(&shared, &blobs),
             "control": crafted(&doc, &blobs),
+            "tray_too_large": crafted(&big_doc, &big_blobs),
         }),
     );
+    // Báo cáo kiểm định R15 F2: tệp ghi rõ `"tray_photo_id": null` → nhập được, kho không giữ khóa, xuất lại không có.
+    let mut null_doc = doc.clone();
+    let i2 = pos(&null_doc, D2);
+    null_doc["persons"][i2]["memorial"]["tray_photo_id"] = Value::Null;
+    let null_file = fixed_file(&null_doc, &blobs);
+    let u = fresh(&work.join("d-null"));
+    let r = tray_import(&u, &null_file, lvhv_ffi::BackupImportMode::Replace);
+    let again =
+        u.st.export_backup(TP.into(), "0.2.0".into(), "android".into())
+            .unwrap();
+    let reexport_has_null = lvhv_backup::import(&again, TP)
+        .map(|c| c.json.contains("\"tray_photo_id\":null"))
+        .unwrap_or(true);
+    d.insert(
+        "explicit_null".into(),
+        json!({ "import": r, "tray_d2": u.tray_of(D2), "store_has_null": u.doc().to_string().contains("\"tray_photo_id\":null"),
+                "reexport_has_null": reexport_has_null }),
+    );
+    drop(u);
+    // MA10-03: gộp mà hồ sơ nhập thắng mang ảnh mâm lễ khác → ảnh mâm lễ cũ của máy bị xóa, không vào tệp xuất sau đó.
+    let u = fresh(&work.join("d-merge-local-tray"));
+    tray_import(&u, &example, lvhv_ffi::BackupImportMode::Replace);
+    let a0 = u.add(T0, "r6v2/photo-08.jpg", 308, 408);
+    let s0 = u.with_tray(D1, json!(T0));
+    let r = tray_import(&u, &file, lvhv_ffi::BackupImportMode::Merge);
+    let after = u.doc().to_string();
+    d.insert(
+        "merge_replaces_local_tray".into(),
+        json!({ "setup": [a0, s0, resave.clone()], "import": r, "tray_d1": u.tray_of(D1), "photos": u.photos(),
+                "old_tray_in_store": after.contains(T0) }),
+    );
+    drop(u);
+    // MA10-10: gộp làm hai hồ sơ cùng trỏ một ảnh mâm lễ → V3, từ chối, kho không đổi.
+    let u = fresh(&work.join("d-merge-shared"));
+    tray_import(&u, &example, lvhv_ffi::BackupImportMode::Replace);
+    let a1 = u.add(T1, "r6v2/photo-00.jpg", 300, 400);
+    let s1 = u.with_tray(D2, json!(T1));
+    let before = u.doc()["persons"].clone();
+    let r = tray_import(&u, &file, lvhv_ffi::BackupImportMode::Merge);
+    d.insert(
+        "merge_shared_tray".into(),
+        json!({ "setup": [a1, s1], "import": r, "unchanged": u.doc()["persons"] == before, "photos": u.photos() }),
+    );
+    drop(u);
     out.insert("d_round_trip".into(), Value::Object(d));
 
     // (f) đổi ảnh, bỏ ảnh, đổi về đang sống, xóa hồ sơ → ảnh cũ bị xóa (bản ghi và tệp); 0 ảnh mồ côi.
@@ -1110,6 +1211,13 @@ fn cmd_scenario(a: &[String]) -> Out {
         "to_living".into(),
         json!({ "set": s3, "save": t.save(&p), "tray_d1": t.tray_of(D1), "photos": t.photos() }),
     );
+    // MA10-10: ảnh mâm lễ WebP.
+    let a6 = t.add_mime(T6, "image/webp", "r6v2/photo-01.webp", 301, 401);
+    let s6 = t.with_tray(D2, json!(T6));
+    f.insert(
+        "webp".into(),
+        json!({ "add_photo": a6, "save": s6, "tray_d2": t.tray_of(D2), "photos": t.photos() }),
+    );
     t.add(T4, "r6v2/photo-06.jpg", 306, 406);
     let s4 = t.with_tray(D2, json!(T4));
     f.insert(
@@ -1117,9 +1225,30 @@ fn cmd_scenario(a: &[String]) -> Out {
         json!({ "set": s4, "delete": outcome(&t.st.delete_person(D2.into())), "photos": t.photos() }),
     );
     out.insert("f_cleanup".into(), Value::Object(f));
+    drop(t);
     let _ = std::fs::remove_dir_all(&work);
+    if created {
+        let _ = std::fs::remove_dir(&user_dir); // chỉ khi rỗng
+    }
     Ok((
         json!({ "command": "scenario", "scenario": "tray_photo", "ok": true, "result": Value::Object(out) }),
         true,
     ))
+}
+
+/// Tạo một thư mục con mới `<cha>/<tiền tố><ngẫu nhiên>` bằng `create_dir` (lỗi nếu đã có — không bao giờ dùng lại hay
+/// xóa thứ có sẵn). Chỉ thư mục này được công cụ xóa về sau (MA10-01).
+fn own_temp_dir(parent: &Path, prefix: &str) -> std::io::Result<PathBuf> {
+    for _ in 0..16 {
+        let mut b = [0u8; 8];
+        getrandom::fill(&mut b).map_err(|e| std::io::Error::other(e.to_string()))?;
+        let name: String = b.iter().map(|x| format!("{x:02x}")).collect();
+        let d = parent.join(format!("{prefix}{name}"));
+        match std::fs::create_dir(&d) {
+            Ok(()) => return Ok(d),
+            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(e) => return Err(e),
+        }
+    }
+    Err(std::io::Error::other("không tạo được thư mục tạm riêng"))
 }
