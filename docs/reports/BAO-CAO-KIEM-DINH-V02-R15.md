@@ -331,7 +331,7 @@ Cả hai bản cho cùng kết quả:
 
 ### 6.6 V2-5 — tên `stage` và thư mục làm việc (g)
 
-- Tên `stage`: mọi lần `save-person` bị từ chối (9 ca c4 và c5 của V2-0, 2 ca của V2-1) có `stage = save_person` ở cả
+- Tên `stage`: mọi lần `save-person` bị từ chối (7 ca c4 và 1 ca c5 của V2-0, 2 ca của V2-1) có `stage = save_person` ở cả
   hai bản.
 - Thư mục làm việc: Rust chạy `scenario tray_photo` trên một thư mục có sẵn `keep/file.txt`, mã thoát 0. Sau khi chạy,
   trong thư mục chỉ còn `keep/file.txt`, nội dung nguyên vẹn, không có gì khác bị để lại. F4 đã được sửa.
