@@ -555,7 +555,7 @@ fn render_list(ui: &AppWindow, ps: &PState) {
             id: ss(&id),
             initial: ss(initial),
             name: ss(name),
-            rel: ss(st(&v["quan_he"])),
+            rel: ss(upper_first(st(&v["quan_he"]).trim())),
             summary: ss(summary),
         };
         if v["kind"] == "deceased" {
@@ -569,8 +569,104 @@ fn render_list(ui: &AppWindow, ps: &PState) {
     p.set_living(vm(living));
 }
 
+/// Gợi ý cách gọi cho người đã mất (YC-2026-07, 01 §3.1), viết hoa chữ đầu. Lõi chưa đưa danh sách này qua FFI
+/// (PR #28 không có) — khi có sẽ lấy từ lõi.
+pub(crate) const DX_DEAD: [&str; 22] = [
+    "Ông", "Bà", "Cụ", "Kỵ", "Bác", "Cô", "Chú", "Dì", "Cậu", "Mợ", "Thím", "Anh", "Chị", "Em", "Cháu", "Con", "Bạn",
+    "Bố", "Mẹ", "Ông Tổ họ", "Bà Cô Tổ họ", "Bé đỏ",
+];
+/// Người đang sống: như trên nhưng không có năm cách gọi chỉ dành cho người đã mất.
+pub(crate) const DX_DEAD_ONLY: [&str; 5] = ["Cụ", "Kỵ", "Ông Tổ họ", "Bà Cô Tổ họ", "Bé đỏ"];
+
+pub(crate) fn dx_suggestions(dead: bool) -> Vec<&'static str> {
+    DX_DEAD.iter().copied().filter(|x| dead || !DX_DEAD_ONLY.contains(x)).collect()
+}
+
+/// Chia gợi ý thành hàng (Slint 1.8 không có bố cục tự xuống dòng): mỗi hàng tối đa `budget` ký tự (cộng 4 cho lề nút).
+fn chip_rows(items: &[&str], budget: usize) -> Vec<ChipRow> {
+    let mut rows: Vec<Vec<SharedString>> = vec![];
+    let mut used = usize::MAX;
+    for it in items {
+        let w = it.chars().count() + 4;
+        if used.saturating_add(w) > budget {
+            rows.push(vec![]);
+            used = 0;
+        }
+        used += w;
+        rows.last_mut().unwrap().push(ss(*it));
+    }
+    rows.into_iter().map(|r| ChipRow { items: vm(r) }).collect()
+}
+
+/// Viết hoa chữ cái đầu (NFC, bỏ khoảng trắng hai đầu), phần còn lại giữ như người dùng gõ (YC-2026-07, 01 §3.1).
+pub(crate) fn cap_first(s: &str) -> String {
+    use unicode_normalization::UnicodeNormalization;
+    let t: String = s.trim().nfc().collect();
+    upper_first(&t)
+}
+
+/// Lõi đã nhận trường `gioi_tinh` (YC-2026-07) chưa. Lược đồ của lõi đóng (trường lạ → lỗi), nên ô Giới tính chỉ hiện
+/// khi lõi kiểm hợp lệ một hồ sơ mẫu có trường này. Cùng cách của bản Android.
+pub(crate) fn gender_supported() -> bool {
+    static OK: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *OK.get_or_init(|| lvhv_ffi::derive_person_json(gender_probe(true).to_string()).is_ok())
+}
+
+pub(crate) fn gender_probe(with: bool) -> Value {
+    let mut v = json!({
+        "id": "00000000-0000-4000-8000-000000000001", "kind": "living", "danh_xung": "", "ho_ten": "Mẫu",
+        "ten_hieu": "", "quan_he": "", "birth": null, "death": null, "noi_an_tang": "", "photo_id": null,
+        "memorial": null, "reminders": {"gio": null, "sinh_nhat": null, "sinh_nhat_am": null},
+        "sinh_nhat_am": false, "feb29_rule": "feb28", "ghi_chu": ""
+    });
+    if with {
+        v["gioi_tinh"] = json!("nam");
+    }
+    v
+}
+
+#[cfg(test)]
+mod yc07_tests {
+    use super::*;
+
+    #[test]
+    fn cap_first_and_lists() {
+        assert_eq!(cap_first("  ông tổ họ "), "Ông tổ họ");
+        assert_eq!(cap_first("bé đỏ"), "Bé đỏ");
+        // Dạng tách dấu (NFD) → NFC rồi viết hoa.
+        assert_eq!(cap_first("e\u{0302}\u{0301}m"), "Ếm");
+        assert_eq!(cap_first("Bà Cô Tổ họ"), "Bà Cô Tổ họ");
+        assert_eq!(cap_first(""), "");
+        let live = dx_suggestions(false);
+        assert_eq!(live.len(), 17);
+        for w in DX_DEAD_ONLY {
+            assert!(!live.contains(&w));
+            assert!(dx_suggestions(true).contains(&w));
+        }
+        let rows = chip_rows(&dx_suggestions(true), 44);
+        let n: usize = rows.iter().map(|r| r.items.row_count()).sum();
+        assert_eq!(n, 22);
+        assert!(rows.len() >= 3);
+    }
+
+    #[test]
+    fn gender_probe_is_meaningful() {
+        // Hồ sơ mẫu không có giới tính phải hợp lệ, để lần dò có giới tính chỉ phụ thuộc vào trường mới.
+        assert!(lvhv_ffi::derive_person_json(gender_probe(false).to_string()).is_ok());
+    }
+}
+
+fn gender_text(v: &Value) -> &'static str {
+    match v["gioi_tinh"].as_str() {
+        Some("nam") => "Nam",
+        Some("nu") => "Nữ",
+        _ => "",
+    }
+}
+
 fn display_name(v: &Value) -> String {
-    let dx = v["danh_xung"].as_str().unwrap_or("");
+    let dx = upper_first(v["danh_xung"].as_str().unwrap_or("").trim());
+    let dx = dx.as_str();
     let ht = v["ho_ten"].as_str().unwrap_or("");
     if dx.is_empty() {
         ht.to_string()
@@ -942,7 +1038,7 @@ fn render_person(ui: &AppWindow, ps: &mut PState, id: &str) {
         .and_then(|w| w.chars().next())
         .map(String::from)
         .unwrap_or_default()));
-    p.set_v_rel(ss(st(&v["quan_he"])));
+    p.set_v_rel(ss(upper_first(st(&v["quan_he"]).trim())));
     let hieu = st(&v["ten_hieu"]);
     p.set_v_sub(ss(if hieu.is_empty() {
         String::new()
@@ -1008,6 +1104,7 @@ fn render_person(ui: &AppWindow, ps: &mut PState, id: &str) {
         }
         kv("Tuổi", st(&sum["tuoi_mat_text"]));
     }
+    kv("Giới tính", gender_text(&v).to_string());
     if b.is_object() {
         kv("Ngày sinh", date_value_text(&b["input"]));
         if b["input"]["calendar"] == "solar" && b["lunar"].is_object() {
@@ -1751,10 +1848,17 @@ fn open_person_form(ui: &AppWindow, ps: &mut PState, dead: bool, base: Option<Va
         (false, false) => "Thêm người đang sống",
     }));
     p.set_f_subtitle(ss(if edit { display_name(&b) } else { String::new() }));
-    p.set_f_danh_xung(ss(st(&b["danh_xung"])));
+    p.set_f_danh_xung(ss(upper_first(&st(&b["danh_xung"]))));
+    p.set_dx_rows(vm(chip_rows(&dx_suggestions(dead), 44)));
+    p.set_gender_ok(gender_supported());
+    p.set_f_gender(match b["gioi_tinh"].as_str() {
+        Some("nam") => 0,
+        Some("nu") => 1,
+        _ => 2,
+    });
     p.set_f_ho_ten(ss(st(&b["ho_ten"])));
     p.set_f_ten_hieu(ss(st(&b["ten_hieu"])));
-    p.set_f_quan_he(ss(st(&b["quan_he"])));
+    p.set_f_quan_he(ss(upper_first(&st(&b["quan_he"]))));
     p.set_f_ghi_chu(ss(st(&b["ghi_chu"])));
     let dd = fill_date(&b["death"]["input"]);
     p.set_dd_cal(dd.cal);
@@ -2074,10 +2178,22 @@ fn build_person_json(ui: &AppWindow, ps: &mut PState, show_err: bool) -> Result<
     let mut v = b.clone();
     let o = v.as_object_mut().ok_or(1usize)?;
     o.insert("kind".into(), json!(if dead { "deceased" } else { "living" }));
-    o.insert("danh_xung".into(), json!(p.get_f_danh_xung().trim()));
+    o.insert("danh_xung".into(), json!(cap_first(&p.get_f_danh_xung())));
     o.insert("ho_ten".into(), json!(p.get_f_ho_ten().trim()));
     o.insert("ten_hieu".into(), json!(p.get_f_ten_hieu().trim()));
-    o.insert("quan_he".into(), json!(p.get_f_quan_he().trim()));
+    o.insert("quan_he".into(), json!(cap_first(&p.get_f_quan_he())));
+    if gender_supported() {
+        o.insert(
+            "gioi_tinh".into(),
+            match p.get_f_gender() {
+                0 => json!("nam"),
+                1 => json!("nu"),
+                _ => Value::Null,
+            },
+        );
+    } else {
+        o.remove("gioi_tinh");
+    }
     o.insert("ghi_chu".into(), json!(p.get_f_ghi_chu().trim()));
     o.insert(
         "birth".into(),

@@ -110,7 +110,13 @@ fn nguoi_da_mat_tuong_niem_sua() {
     assert!(p.get_f_summary().starts_with("Còn "), "khung tóm tắt lỗi");
     assert_eq!(p.get_e_ho_ten(), "Họ tên không được để trống");
     assert_eq!(p.get_dd_error(), "Hãy nhập ngày mất");
-    p.set_f_danh_xung("Bà".into());
+    // YC-2026-07: gợi ý cách gọi cho người đã mất có Cụ, Kỵ, Ông Tổ họ, Bà Cô Tổ họ, Bé đỏ; bấm nút gợi ý điền ô.
+    for w in crate::people::DX_DEAD {
+        assert_eq!(count_label(&ui, &format!("Cách gọi: {w}")), 1, "gợi ý {w}");
+    }
+    press(&ui, "Cách gọi: Bà");
+    assert_eq!(p.get_f_danh_xung(), "Bà");
+    assert_eq!(p.get_gender_ok(), crate::people::gender_supported());
     p.set_f_ho_ten("Trần Thị Bình".into());
     p.set_f_quan_he("bà nội (bên nội)".into());
     p.invoke_form_changed();
@@ -156,6 +162,8 @@ fn nguoi_da_mat_tuong_niem_sua() {
     let bid = b["id"].as_str().unwrap().to_string();
     assert_eq!(b["death"]["lunar"], serde_json::json!({"year": 2025, "month": 6, "day": 15, "leap": true}));
     assert_eq!(b["death"]["lunar_source"], "entered");
+    assert_eq!(b["danh_xung"], "Bà");
+    assert_eq!(b["quan_he"], "Bà nội (bên nội)", "YC-2026-07: viết hoa chữ đầu khi lưu");
     assert_eq!(b["reminders"]["gio"]["offsets_days"], serde_json::json!([0, 3, 10]));
     assert_eq!(b["reminders"]["gio"]["time_local"], "18:05");
     assert_eq!(b["reminders"]["gio"]["tien_thuong"], true);
@@ -208,6 +216,12 @@ fn nguoi_dang_song_su_kien_bao_tu() {
     assert_eq!(page(&ui), "ho-so");
     press(&ui, "Thêm người đang sống");
     assert!(!p.get_f_dead());
+    // Người đang sống: không có năm cách gọi chỉ dành cho người đã mất (YC-2026-07).
+    for w in crate::people::DX_DEAD_ONLY {
+        assert_eq!(count_label(&ui, &format!("Cách gọi: {w}")), 0, "không gợi ý {w} cho người sống");
+    }
+    assert_eq!(count_label(&ui, "Cách gọi: Anh"), 1);
+    p.set_f_danh_xung("  anh".into());
     p.set_f_ho_ten("Lê Văn Cường".into());
     p.set_f_quan_he("con trai".into());
     p.set_bd_d("20".into());
@@ -222,6 +236,9 @@ fn nguoi_dang_song_su_kien_bao_tu() {
     let cid = p.get_v_id().to_string();
     let c = v(&store.person_json(cid.clone()).unwrap());
     assert_eq!(c["sinh_nhat_am"], true);
+    assert_eq!(c["danh_xung"], "Anh", "viết hoa chữ đầu, bỏ khoảng trắng");
+    assert_eq!(c["quan_he"], "Con trai");
+    assert_eq!(p.get_v_rel(), "Con trai");
     assert_eq!(c["reminders"]["sinh_nhat_am"]["offsets_days"], c["reminders"]["sinh_nhat"]["offsets_days"]);
     assert_ne!(c["reminders"]["sinh_nhat_am"]["id"], c["reminders"]["sinh_nhat"]["id"], "TK-29: id riêng");
 

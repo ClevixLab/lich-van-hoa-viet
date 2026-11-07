@@ -927,7 +927,7 @@ thêm lượt `a3-*` ở cỡ chữ A++).
 | # | Chỗ | Bản Windows | Lý do / đánh giá |
 |---|---|---|---|
 | 1 | §5.4 "Lời nhắc trên ứng dụng web" | Khung **"Lời nhắc trên Windows"**: trạng thái thật của thông báo (đặt được / Windows chưa xác nhận — bản .zip / tắt trong Cài đặt Windows / không đọc được danh sách chờ), "Bật lời nhắc", "Hiện tên người trong thông báo" (O-9, theo máy). Thêm khung **"Mặc định nhắc cho hồ sơ mới"** (thu gọn sẵn, TKN-W-13) | Có thông báo hệ thống thật (02 §7.5). Duyệt: chấp nhận |
-| 2 | §3.4 gợi ý `datalist` | Dòng chú thích dưới ô (từ thường ngày) | Slint 1.8 không có ô gợi ý. Duyệt: chấp nhận tạm; đợt sau làm nút chọn nhanh như Android |
+| 2 | §3.4 gợi ý `datalist` | **Cách gọi:** hàng nút gợi ý nhỏ bấm để điền (danh sách 01 §3.1 theo người đã mất / đang sống, YC-2026-07); vẫn gõ tự do được. **Quan hệ:** dòng chú thích dưới ô. Cả hai ô viết hoa chữ cái đầu khi lưu và khi hiển thị | Slint 1.8 không có ô gợi ý. Danh sách tạm đặt trong ứng dụng cho tới khi lõi đưa qua FFI |
 | 3 | TK-03 kiểm khi rời ô | Lỗi ngày hiện khi đã nhập đủ ba ô hoặc sau lần bấm Lưu đầu; sau đó kiểm theo từng lần gõ | Slint không có sự kiện rời ô tiện dùng. Duyệt: chấp nhận |
 | 4 | §2 khung tóm tắt lỗi | "Còn n chỗ cần sửa" + từng lỗi là một liên kết; bấm → cuộn tới nhóm có lỗi (vị trí gần đúng theo nhóm, Slint không có "cuộn tới phần tử"); ô có lỗi viền đỏ | TKN-W-05 |
 | 5 | §3.4 "Sửa tuổi"/"Tính lại" | Hộp "Tự nhập tuổi (khi gia đình ghi khác)" + ô số 1–150 | Cùng dữ liệu `tuoi.manual`. Duyệt: chấp nhận |
@@ -941,3 +941,5 @@ thêm lượt `a3-*` ở cỡ chữ A++).
 | 13 | Hộp kiểm | Ô vuông 22 px màu đỏ của ứng dụng (không dùng màu xanh của Fluent) | TKN-W-10 |
 | 14 | Biểu mẫu sự kiện | Hai nút chọn lịch dùng cùng chữ với biểu mẫu người: "Nhập theo dương lịch / Nhập theo âm lịch" | TKN-X-05 |
 | 15 | Việc nặng | Mã hóa / giải mã sao lưu (Argon2id), khôi phục, giải mã ảnh chạy ở luồng phụ; hộp giữ trạng thái "đang xử lý" | MA3N-25-06 |
+| 16 | Giới tính (YC-2026-07) | Ô chọn "Nam / Nữ / Không ghi" chỉ hiện khi lõi nhận trường `gioi_tinh` (ứng dụng dò bằng `derive_person_json` một hồ sơ mẫu, như bản Android); trang hồ sơ ghi "Giới tính" khi có | Lõi hiện tại chưa có trường này (lược đồ đóng) — **ô đang ẩn** |
+| 17 | Tệp đính kèm báo tử (YC-2026-07, 01 §3.8a) | **Chưa làm**: vẫn là "ảnh giấy báo tử" (tối đa 4, bỏ siêu dữ liệu) theo `certificate_photo_ids` | Cần lõi có `attachments` + kho `Attachment` (ảnh ≤ 2048 px/2 MB, PDF nguyên bản ≤ 10 MB) |

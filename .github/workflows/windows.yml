@@ -102,7 +102,7 @@ jobs:
           Add-Type -AssemblyName System.Drawing
           $shots = Get-ChildItem $out -Filter *.png -ErrorAction SilentlyContinue
           $shots | ForEach-Object { $i = [System.Drawing.Image]::FromFile($_.FullName); "{0}  {1}x{2}  {3:N0} byte" -f $_.Name, $i.Width, $i.Height, $_.Length; $i.Dispose() }
-          if ($shots.Count -lt 184) { Write-Host "::error::Chỉ có $($shots.Count)/184 ảnh"; exit 1 }
+          if ($shots.Count -lt 188) { Write-Host "::error::Chỉ có $($shots.Count)/188 ảnh"; exit 1 }
           $small = $shots | Where-Object { $_.Length -lt 20000 }
           if ($small) { Write-Host "::error::Ảnh quá nhỏ (có thể trống): $($small.Name -join ', ')"; exit 1 }
 

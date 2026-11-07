@@ -31,6 +31,7 @@ slint = { version = "=1.8.0", default-features = false, features = ["std", "comp
 png = "0.17.16"
 # Ảnh chân dung / giấy báo tử (01 §3.8, S9): giải mã rồi mã hóa lại JPEG để bỏ EXIF/GPS/XMP/IPTC. Cùng bản
 # 0.24.9 đã có trong cây phụ thuộc của Slint (không thêm thư viện mới).
+unicode-normalization = "=0.1.26"
 image = { version = "=0.24.9", default-features = false, features = ["jpeg", "png", "gif", "webp", "bmp"] }
 
 # Thông báo Windows đặt lịch trước (WinRT ToastNotificationManager), hộp chọn tệp (comdlg32), múi giờ, định danh

@@ -369,8 +369,11 @@ fn steps(ui: &AppWindow, st: Rc<RefCell<State>>) -> Vec<Step> {
         p.set_bd_m("1".into());
         p.set_bd_y("1990".into());
         p.set_f_am(true);
+        p.set_f_danh_xung("Cháu".into());
         p.invoke_form_changed();
     })));
+    // YC-2026-07: gợi ý cách gọi của người đang sống (không có Cụ, Kỵ, Ông Tổ họ, Bà Cô Tổ họ, Bé đỏ).
+    screens.push(("nt-13-them-dang-song-goi-y", Rc::new(|ui: &AppWindow| People::get(ui).set_scroll_frac(0.0))));
     screens.push(("nt-13b-them-dang-song-nhac", Rc::new(|ui: &AppWindow| People::get(ui).set_scroll_frac(0.75))));
     {
         let ids = ids.clone();

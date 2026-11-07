@@ -180,7 +180,9 @@ trong `lvhv-memorial`, `lvhv-store`, `lvhv-backup`. Giao diện chỉ hiển th�
     "Windows chưa xác nhận…" và khuyên cài `.msi`;
   - gỡ ứng dụng không xóa sổ Người thân (`%LOCALAPPDATA%\ClevixLab\LichVanHoaViet`) và không gỡ thông báo đang chờ — trang
     Giới thiệu ghi rõ cách xóa;
-  - R5 Windows (máy thật, khởi động lại) **chưa thử** — cần chủ dự án thử trên Windows 11 (04 R5).
+  - R5 Windows (máy thật, khởi động lại) **chưa thử** — cần chủ dự án thử trên Windows 11 (04 R5);
+  - YC-2026-07: cách gọi / quan hệ viết hoa chữ đầu và gợi ý cách gọi theo người sống/mất **đã có**; ô Giới tính chỉ hiện
+    khi lõi nhận `gioi_tinh` (hiện **chưa**); "Tệp đính kèm" (ảnh/PDF, 01 §3.8a) **chưa làm** — chờ lõi.
 - **Kiểm thử:** `src/ui_tests_people.rs` bấm qua mọi luồng: L2 (ngày âm, tháng nhuận, các lỗi), nhắc (mốc, giờ 24
   giờ, tiên thường), ảnh, L11 tưởng niệm (dừng/thắp lại khói), L12 sửa (`rev`), L3 người đang sống + sinh nhật âm
   (TK-29), L4 sự kiện, US-M-07 đang sống → đã mất với thông tin báo tử (cùng `id`, B4), B4 biểu mẫu sự kiện, L5

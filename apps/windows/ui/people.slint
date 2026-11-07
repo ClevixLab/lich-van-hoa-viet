@@ -14,6 +14,7 @@ export struct PItem {
 }
 export struct PRow { id: string, initial: string, name: string, rel: string, summary: string }
 export struct KV { k: string, v: string }
+export struct ChipRow { items: [string] }
 export struct EvRow { id: string, text: string }
 export struct RemCard { title: string, sub: string, pid: string, memorial: bool }
 export struct ErrItem { text: string, key: string }
@@ -101,6 +102,11 @@ export global People {
     in-out property <string> f-ten-hieu;
     in-out property <string> f-quan-he;
     in-out property <string> f-ghi-chu;
+    // YC-2026-07: giới tính (0 Nam, 1 Nữ, 2 Không ghi) — chỉ hiện khi lõi nhận trường `gioi_tinh`; gợi ý cách gọi theo
+    // người sống / đã mất, chia sẵn thành hàng.
+    in-out property <int> f-gender: 2;
+    in-out property <bool> gender-ok: false;
+    in-out property <[ChipRow]> dx-rows;
     in-out property <string> e-danh-xung;
     in-out property <string> e-ho-ten;
     in-out property <string> e-ten-hieu;
@@ -371,6 +377,25 @@ component NumBox inherits VerticalLayout {
 }
 
 // Nhóm nút chọn một (kiểu "đang chọn" duy nhất: nền đỏ đậm, chữ trắng).
+// Nút gợi ý nhỏ (cách gọi). Cao 34 px ở 1× (tăng theo cỡ chữ), viền `outline`; đang chọn → nền đỏ.
+component Chip inherits Rectangle {
+    in property <string> text;
+    in property <bool> active;
+    callback clicked;
+    height: max(34px, lbl.preferred-height + 12px);
+    width: lbl.preferred-width + 24px;
+    border-radius: 17px;
+    border-width: active ? 0px : 1px;
+    border-color: Theme.outline;
+    background: active ? Theme.red-deep : (ta.has-hover ? Theme.paper2 : Theme.paper);
+    accessible-role: button;
+    accessible-label: "Cách gọi: " + root.text;
+    accessible-checked: root.active;
+    accessible-action-default => { root.clicked(); }
+    lbl := T { text: root.text; size: 14; color: root.active ? #ffffff : Theme.ink; }
+    ta := TouchArea { clicked => { root.clicked(); } }
+}
+
 component Choice inherits HorizontalLayout {
     in property <[string]> items;
     in property <int> current;
@@ -1106,8 +1131,27 @@ component PersonFormPage inherits PPage {
     if People.f-summary != "": ErrorSummary { }
     Group {
         legend: People.f-dead ? "Người đã mất" : "Người đang sống";
-        Field { label: "Cách gọi (đứng trước tên)"; hint: "Ví dụ: cụ, kỵ, ông, bà, bác, chú, cô, dì, bố, mẹ…"; text <=> People.f-danh-xung; error: People.e-danh-xung; box-width: 240px; edited => { People.form-changed(); } }
+        Field { label: "Cách gọi (đứng trước tên)"; text <=> People.f-danh-xung; error: People.e-danh-xung; box-width: 240px; edited => { People.form-changed(); } }
+        VerticalLayout {
+            spacing: 6px;
+            T { text: "Gợi ý — bấm để chọn, hoặc tự gõ:"; size: 14; color: Theme.ink2; }
+            for row in People.dx-rows: HorizontalLayout {
+                spacing: 6px; alignment: start;
+                for it in row.items: Chip {
+                    text: it; active: People.f-danh-xung == it;
+                    clicked => { People.f-danh-xung = it; People.form-changed(); }
+                }
+            }
+        }
         Field { label: "Họ và tên *"; text <=> People.f-ho-ten; error: People.e-ho-ten; edited => { People.form-changed(); } }
+        if People.gender-ok: VerticalLayout {
+            spacing: 4px;
+            T { text: "Giới tính"; size: 15; font-weight: 600; color: Theme.ink2; }
+            Choice {
+                items: ["Nam", "Nữ", "Không ghi"]; group: "Giới tính"; current: People.f-gender;
+                picked(i) => { People.f-gender = i; People.form-changed(); }
+            }
+        }
         Field { label: "Tên hiệu / pháp danh"; text <=> People.f-ten-hieu; error: People.e-ten-hieu; edited => { People.form-changed(); } }
         Field {
             label: "Quan hệ với bạn";
