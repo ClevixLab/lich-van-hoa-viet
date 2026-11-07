@@ -112,7 +112,8 @@ fun MemorialScreen(x: PeopleCtx, id: String) {
             val dateLine = when {
                 gio == null -> null
                 gio.date == x.today -> "${occTitle(gio).substringBefore(" · ")} · hôm nay ${gio.lunar?.dm ?: ""} âm lịch"
-                else -> "Ngày giỗ năm nay: ${gio.lunar?.dm ?: ""} âm lịch, ${PFmt.dmy(gio.date)}"
+                gio.date.year == x.today.year -> "Ngày giỗ năm nay: ${gio.lunar?.dm ?: ""} âm lịch, ${PFmt.dmy(gio.date)}"
+                else -> "Ngày giỗ sắp tới: ${gio.lunar?.dm ?: ""} âm lịch, ${PFmt.dmy(gio.date)}"
             }
             dateLine?.let { Text(it, color = GOLD, style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center) }
 
@@ -130,7 +131,7 @@ fun MemorialScreen(x: PeopleCtx, id: String) {
                 ) { Text(if (lit) "Dừng khói" else "Thắp lại") }
             }
 
-            OvalPhoto(img, p.hoTen, 132, 168, frame = BRASS)
+            OvalPhoto(img, p.hoTen, 132, 168, frame = BRASS, fill = STONE, initialColor = GOLD_DIM)
             Stele(p.quanHe, p.hoTen, p.displayName, p.tenHieu, yearsLine(p), sum?.tuoiMatText)
             Altar(incense = incense, catholic = catholic, animate = lit && !x.reducedMotion)
 
@@ -233,14 +234,15 @@ private fun Altar(incense: Boolean, catholic: Boolean, animate: Boolean) {
         drawRect(Color(0xFF8A6838), Offset(cx - 44f, bowlTop - 4f), Size(88f, 8f))
         if (!incense) return@Canvas
         // Ba nén hương.
-        val stickTop = bowlTop - h * 0.42f
+        val stickTop = bowlTop - h * 0.34f
         val xs = listOf(cx - 16f, cx, cx + 16f)
         xs.forEachIndexed { i, sx ->
             val tilt = (i - 1) * 6f
             drawLine(Color(0xFFB5523B), Offset(sx, bowlTop), Offset(sx + tilt, stickTop + 10f), 4f, StrokeCap.Round)
             drawLine(Color(0xFF8B3A2A), Offset(sx, bowlTop), Offset(sx + tilt * 0.3f, bowlTop - 18f), 4f, StrokeCap.Round)
             drawCircle(Color(0xFFFF9A4D), 3.5f, Offset(sx + tilt, stickTop + 8f))
-            smoke(Offset(sx + tilt, stickTop + 4f), h * 0.36f, (phase + i * 0.33f) % 1f)
+            // Khói nằm trong vùng vẽ (không đè lên bia).
+            smoke(Offset(sx + tilt, stickTop + 4f), (stickTop - 4f).coerceAtLeast(10f), (phase + i * 0.33f) % 1f)
         }
     }
 }

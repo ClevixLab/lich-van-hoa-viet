@@ -249,7 +249,8 @@ private fun deceasedLine(p: Person, next: Occ?, today: LocalDate): String {
     val l = Lunar.of(p.death?.o("lunar"))
     val unknownYear = DateValue.of(p.death?.o("input"))?.precision == "month_day"
     val sb = StringBuilder()
-    if (l != null) sb.append("Giỗ ${l.dm} âm lịch")
+    // Giỗ hằng năm vào tháng thường kể cả khi mất vào tháng nhuận (O-4).
+    if (l != null) sb.append("Giỗ ${l.day}/${l.month} âm lịch")
     if (next != null) {
         val d = ChronoUnit.DAYS.between(today, next.date)
         sb.append(" · lần tới ${PFmt.dmy(next.date)} (").append(if (d == 0L) "hôm nay" else "còn $d ngày").append(")")

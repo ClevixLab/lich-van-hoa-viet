@@ -293,6 +293,11 @@ class PeopleScreensTest {
         rule.onNodeWithText("Ông nội").assertExists()
         rule.onNodeWithText("Nguyễn Văn A").assertExists()
         rule.onNodeWithText("Hưởng thọ", substring = true).assertExists()
+        // Chuyển sang bia khác: không giữ dữ liệu của trang trước.
+        go(PRoute.Memorial(ids.b))
+        rule.onNodeWithText("Bà nội").assertExists()
+        rule.onNodeWithText("Trần Thị B").assertExists()
+        assertTrue(rule.onAllNodesWithText("Nguyễn Văn A").fetchSemanticsNodes().isEmpty())
         go(PRoute.Memorial(ids.d))
         assertTrue(rule.onAllNodesWithText("Bạch Mai", substring = true).fetchSemanticsNodes().isEmpty())
         assertNotNull(repo.person(ids.d)!!.notice)

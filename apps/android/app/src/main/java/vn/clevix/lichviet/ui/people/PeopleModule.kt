@@ -135,7 +135,9 @@ fun PeopleModule(
                 reducedMotion = reducedMotion,
                 askNotify = askNotify,
             )
-            when (val r = nav.top) {
+            // Mỗi trang (theo vị trí trong ngăn xếp) có trạng thái riêng: chuyển hồ sơ A → B không giữ dữ liệu của A.
+            val r = nav.top
+            androidx.compose.runtime.key(nav.stack.size, r) { when (r) {
                 PRoute.Upcoming -> Page { Header(nav); UpcomingScreen(ctx) }
                 PRoute.Period -> Page { Header(nav); PeriodScreen(ctx) }
                 PRoute.Profiles -> Page { Header(nav); ProfilesScreen(ctx) }
@@ -147,7 +149,7 @@ fun PeopleModule(
                 is PRoute.EventEdit -> Page { EventForm(ctx, r.personId, r.eventId) }
                 is PRoute.MarkDeceased -> Page { MarkDeceasedForm(ctx, r.id) }
                 is PRoute.Memorial -> MemorialScreen(ctx, r.id)
-            }
+            } }
         }
         SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).padding(12.dp))
     }

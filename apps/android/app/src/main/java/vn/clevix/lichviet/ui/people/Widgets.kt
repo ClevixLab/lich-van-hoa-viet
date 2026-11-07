@@ -386,13 +386,16 @@ fun rememberPhoto(bytes: ByteArray?): ImageBitmap? = remember(bytes) {
 
 /** Ảnh trong khung bầu dục. */
 @Composable
-fun OvalPhoto(img: ImageBitmap?, name: String, w: Int = 120, h: Int = 150, frame: Color? = null) {
+fun OvalPhoto(
+    img: ImageBitmap?, name: String, w: Int = 120, h: Int = 150, frame: Color? = null,
+    fill: Color? = null, initialColor: Color? = null,
+) {
     val c = LocalLich.current
     val shape = androidx.compose.foundation.shape.GenericShape { size, _ ->
         addOval(androidx.compose.ui.geometry.Rect(0f, 0f, size.width, size.height))
     }
     Box(
-        Modifier.size(w.dp, h.dp).clip(shape).background(c.paper2)
+        Modifier.size(w.dp, h.dp).clip(shape).background(fill ?: c.paper2)
             .border(3.dp, frame ?: c.gold, shape),
         contentAlignment = Alignment.Center,
     ) {
@@ -400,7 +403,7 @@ fun OvalPhoto(img: ImageBitmap?, name: String, w: Int = 120, h: Int = 150, frame
             Image(img, contentDescription = "Ảnh chân dung", contentScale = ContentScale.Crop, modifier = Modifier.size(w.dp, h.dp))
         } else {
             val ch = name.trim().substringAfterLast(' ').firstOrNull()?.uppercase() ?: ""
-            Text(ch, style = MaterialTheme.typography.displayLarge, color = c.ink3)
+            Text(ch, style = MaterialTheme.typography.displayLarge, color = initialColor ?: c.ink3)
         }
     }
 }
