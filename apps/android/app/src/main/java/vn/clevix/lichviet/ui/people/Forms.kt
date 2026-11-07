@@ -169,7 +169,7 @@ fun ErrorSummary(errors: List<String>) {
 // -------------------------------------------------------------------------------------------------
 
 @Composable
-fun PersonForm(x: PeopleCtx, id: String?, deceasedNew: Boolean?) {
+fun PersonForm(x: PeopleCtx, id: String?, deceasedNew: Boolean?, focusTray: Boolean = false) {
     val existing: Person? = remember(id) { id?.let { x.repo.person(it) } }
     if (id != null && existing == null) {
         BackLink("Về danh sách hồ sơ") { x.nav.back() }
@@ -287,7 +287,7 @@ fun PersonForm(x: PeopleCtx, id: String?, deceasedNew: Boolean?) {
             RuleEditor(f.gio, "Nhắc ngày giỗ", showTienThuong = true, showErrors = showErrors)
         }
         PCard {
-            var open by remember { mutableStateOf(false) }
+            var open by remember { mutableStateOf(focusTray) }
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 H2("Tưởng niệm", Modifier.weight(1f))
                 LinkButton(if (open) "Thu gọn ▴" else "Mở ▾") { open = !open }
@@ -297,6 +297,7 @@ fun PersonForm(x: PeopleCtx, id: String?, deceasedNew: Boolean?) {
                 RadioRow("Năm thứ 2 sau năm mất", f.gioHet == 2, { f.gioHet = 2 })
                 RadioRow("Năm thứ 3 sau năm mất", f.gioHet == 3, { f.gioHet = 3 })
                 TextIn("Lời tưởng niệm", f.loi, { f.loi = it }, multiline = true, error = if (showErrors) lenErr(f.loi, 2000, "Lời tưởng niệm") else null)
+                TraySection(f, x.repo, focusTray)
                 TextIn(
                     "Mất trước tuổi này thì bia ghi “hưởng dương” (mất sớm) thay cho “hưởng thọ”", f.huongDuong,
                     { f.huongDuong = it.filter(Char::isDigit).take(3) }, number = true,
@@ -340,7 +341,7 @@ fun PersonForm(x: PeopleCtx, id: String?, deceasedNew: Boolean?) {
                     busy = false
                 }
             }
-        }, Modifier.weight(1f), enabled = !busy)
+        }, Modifier.weight(1f), enabled = !busy && !f.trayBusy)
     }
 
     if (confirmCancel) {
@@ -376,6 +377,11 @@ class PersonFormState(val existing: Person?, val deceased: Boolean, settings: JM
     var huongDuong by mutableStateOf((mem?.i("huong_duong_duoi") ?: 60).toString())
     var photo by mutableStateOf<EncodedImage?>(null)
     var photoRemoved by mutableStateOf(false)
+    /** Ảnh mâm lễ của gia đình (YC-2026-10, 08 §16.2): ảnh mới chọn (chưa ghi vào kho), bỏ ảnh, đang xử lý. */
+    var tray by mutableStateOf<EncodedImage?>(null)
+    var trayRemoved by mutableStateOf(false)
+    var trayBusy by mutableStateOf(false)
+    val trayStoredId: String? = existing?.memorial?.sn("tray_photo_id")
     val notice = NoticeState(existing?.notice)
     val gio = RuleState(existing?.reminders?.o("gio"), settings)
     val sn = RuleState(existing?.reminders?.o("sinh_nhat"), settings)
@@ -388,7 +394,7 @@ class PersonFormState(val existing: Person?, val deceased: Boolean, settings: JM
 
     private fun fingerprint(): String = listOf(
         danhXung, hoTen, tenHieu, quanHe, ghiChu, noiSinh, noiAnTang, death.d, death.m, death.y, death.lunar, death.leap,
-        birth.d, birth.m, birth.y, birth.lunar, manualAge, loi, huongDuong, gioHet, photo != null, photoRemoved,
+        birth.d, birth.m, birth.y, birth.lunar, manualAge, loi, huongDuong, gioHet, photo != null, photoRemoved, tray != null, trayRemoved,
         notice.reportedBy, notice.place, notice.reason, notice.note, notice.items.map { it.id + it.kind }, gioiTinh,
         gio.allOffsets(), gio.enabled, gio.timeText(), sn.allOffsets(), sn.enabled, sinhNhatAm,
     ).joinToString("|")
@@ -494,7 +500,7 @@ class PersonFormState(val existing: Person?, val deceased: Boolean, settings: JM
     fun anyReminderOn(): Boolean = if (deceased) gio.enabled && gio.allOffsets().isNotEmpty() else sn.enabled
 
     /** Dựng JSON `Person` (trường dẫn xuất để lõi tính). */
-    fun build(newNoticeIds: Map<String, String>, newPhotoId: String?, preview: Boolean = false): JMap {
+    fun build(newNoticeIds: Map<String, String>, newPhotoId: String?, preview: Boolean = false, newTrayId: String? = null): JMap {
         val m: JMap = raw?.copyJ() ?: linkedMapOf<String, Any?>()
         if (preview && m["id"] == null) m["id"] = previewId
         m["kind"] = if (deceased) "deceased" else "living"
@@ -531,6 +537,12 @@ class PersonFormState(val existing: Person?, val deceased: Boolean, settings: JM
             memo["loi_tuong_niem"] = loi
             memo["gio_het_nam"] = gioHet
             memo["huong_duong_duoi"] = huongDuong.toIntOrNull() ?: 60
+            // 01 §3.7: null → không ghi khóa. Đổi/bỏ ảnh có hiệu lực khi lưu; lõi xóa ảnh cũ trong cùng giao dịch.
+            when {
+                newTrayId != null -> memo["tray_photo_id"] = newTrayId
+                trayRemoved -> memo.remove("tray_photo_id")
+            }
+            if (memo["tray_photo_id"] == null) memo.remove("tray_photo_id")
             m["memorial"] = memo
             m["reminders"] = linkedMapOf<String, Any?>("gio" to gio.toMap(true), "sinh_nhat" to null, "sinh_nhat_am" to null)
             m["sinh_nhat_am"] = false
@@ -558,11 +570,14 @@ class PersonFormState(val existing: Person?, val deceased: Boolean, settings: JM
     fun save(repo: PeopleRepo): Person {
         val photoId = photo?.let { repo.addPhoto(it) }
         var att: Map<String, String> = emptyMap()
+        var trayId: String? = null
         try {
+            trayId = if (deceased) tray?.let { repo.addPhoto(it) } else null
             att = if (deceased) notice.storePending(repo) else emptyMap()
-            return repo.savePerson(build(att, photoId))
+            return repo.savePerson(build(att, photoId, newTrayId = trayId))
         } catch (e: Exception) {
             photoId?.let { repo.deletePhoto(it) }
+            trayId?.let { repo.deletePhoto(it) }
             att.values.forEach { repo.deleteAttachment(it) }
             throw e
         }

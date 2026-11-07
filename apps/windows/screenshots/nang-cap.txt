@@ -1,17 +1,17 @@
-R14 Windows — 2026-11-07 11:18 UTC+00:00, bản mới 0.1.4 (run 296)
+R14 Windows — 2026-11-07 12:19 UTC+00:00, bản mới 0.1.4 (run 322)
 msiexec /i cai-0.1.4 (LichViet-0.1.4-x64.msi): mã 0
 Sản phẩm 0.1.4: {19F9472B-F7FC-445C-90D7-507FFA71669E} 0.1.4
 Đã cài bản cũ: LichViet.exe 0.1.4
 Để sau (định dạng 0.1.4): 2026-12-07
   Đã tạo dữ liệu mẫu ở C:\Users\runneradmin\AppData\Local\ClevixLab\LichVanHoaViet: 5 hồ sơ, 1 sự kiện, 1 ảnh; Để sau = "2026-12-07"
 msiexec /i cai-moi (LichViet-0.1.4-x64.msi): mã 0
-Sản phẩm đã cài (cùng UpgradeCode): 1 ({A38726C9-0A0A-4B7A-BE13-A457BE6F2DD8} 0.1.4)
+Sản phẩm đã cài (cùng UpgradeCode): 1 ({07D45361-964B-4B60-A00E-C978E6ECBB84} 0.1.4)
 LichViet.exe đã cài là bản mới (0.1.4)
 R14 (a): mở LichViet.exe đã cài 12 giây (mở kho, chuyển đổi nếu cần, đặt lại thông báo) rồi đóng
   R14 Windows: ĐẠT. Lược đồ: 2 → 2; Dữ liệu giữ nguyên: 5 hồ sơ, 1 sự kiện, 4 loại sự kiện, 1 ảnh (SHA-256 khớp), cài đặt, hiện tên = true, Để sau = "2026-12-07"; Đặt lại thông báo: Scheduled { pending: 22, added: 0, removed: 0, confirmed: false }
 msiexec /x go (LichViet-0.1.4-x64.msi): mã 0
 Gỡ cài đặt: chương trình đã gỡ; thư mục dữ liệu còn nguyên (4 tệp, SHA-256 khớp); tệp Để sau còn nguyên
-R14 (a) Windows: ĐẠT (0.1.4 → 0.1.4 bản dựng 296; nâng cấp + gỡ cài đặt)
+R14 (a) Windows: ĐẠT (0.1.4 → 0.1.4 bản dựng 322; nâng cấp + gỡ cài đặt)
 
 R14 (c): chép kho của bộ mẫu 0.2-dev-before-attachments vào thư mục dữ liệu (3 tệp)
 msiexec /i cai-moi-c (LichViet-0.1.4-x64.msi): mã 0
