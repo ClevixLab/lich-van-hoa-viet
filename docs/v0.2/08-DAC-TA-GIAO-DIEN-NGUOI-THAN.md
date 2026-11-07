@@ -410,8 +410,8 @@ trên mục giỗ của hôm nay ở "Sắp tới".
 │        ╰────────────────────╯       │
 │   ~ ~ ~   (khói nhẹ)                │
 │    │ │ │   ba nén hương             │
-│   ╭─────╮       ╭───────────╮       │
-│   │bát  │       │ mâm quả   │       │   bàn thờ: bát hương + mâm ngũ quả + hai nến
+│      ╷     ╭─────╮     ╷            │
+│     nến    │bát  │    nến           │   bàn thờ: hai nến + bát hương (không mâm — §16)
 │ ══╧═════╧═══════╧═══════════╧══     │
 │                                     │
 │  "Lời tưởng niệm của gia đình…"     │
@@ -1073,3 +1073,51 @@ Mọi tính toán qua FFI của lõi (`ffi/src/v02.rs`, `LvhvStore`); giao diệ
 | Tệp đính kèm báo tử (YC-2026-07, RA-SOAT-BAO-MAT-V02 §5.3) | Trong khối "Thông tin báo tử": tối đa 6 tệp, chọn loại trước (Tin báo tử / Giấy chứng tử / Tệp khác — bộ tên chung đề xuất ở TKN3-X-01; tin báo tử có thể là ảnh hay PDF), "Thêm ảnh" (Photo Picker → giải mã, xoay, cạnh dài ≤ 2048 px, JPEG ≤ 2 MB, bỏ siêu dữ liệu) hoặc "Thêm tệp PDF" (bộ chọn tệp; kiểm ≤ 10 MB theo kích thước bộ chọn **trước khi** đọc, đọc tối đa 10 MB, kiểm `%PDF-` ở đầu và `%%EOF` trong 1 024 byte cuối như `media::check_attachment` của lõi (lõi kiểm lại khi lưu; MA3C-24-03); lưu nguyên bản, câu "Tệp PDF được lưu nguyên bản" hiện trước khi chọn). Tệp chỉ ghi vào kho khi bấm Lưu; lưu lỗi → xóa tệp/ảnh vừa ghi (`delete_attachment`, `delete_photo`). Trang hồ sơ: ảnh hiện trong trang (giải mã có giới hạn), PDF chỉ có nhãn + tên tệp gốc + "Mở bằng ứng dụng khác…" → hộp xác nhận → bản tạm `cache/att/TepDinhKem.pdf`, `ACTION_VIEW` với `FLAG_GRANT_READ_URI_PERMISSION` chỉ cho Intent đó; quay lại ứng dụng (và mỗi lần mở ứng dụng) → thu hồi quyền, xóa bản tạm. FileProvider không exported, chỉ `cache/ics/` và `cache/att/`. Không bao giờ vào thông báo, .ics, trang tưởng niệm |
 | CI (BM2-09, 18, 24) | Action ghim theo SHA; APK release không có `SelfCheckActivity`; thành phần exported chỉ có MainActivity (và `ProfileInstallReceiver` của androidx, chỉ nhận từ `android.permission.DUMP`); tệp khóa Gradle sinh từ đồ thị đã phân giải và quét bằng osv-scanner |
 | Cần máy thật | R5 (thông báo đúng giờ, sau khởi động lại), P8 (Argon2id trên điện thoại tầm trung), P9 (bộ nhớ, số lần đánh thức) — chưa đo |
+
+## 16. YC-2026-10 — ảnh mâm lễ (07/11/2026; 07 §10, ADR-V02-01; 04 R15)
+
+Áp dụng cho cả bốn nền tảng. Phần nào khác §3.4, §3.9 thì theo mục này.
+
+### 16.1 Màn hình tưởng niệm (§3.9)
+
+- Thứ tự chọn hình mâm: (1) ảnh mâm lễ của gia đình (`memorial.tray_photo_id`); (2) ảnh Clevix đã duyệt cùng
+  `tray_style` trong gói đi kèm ứng dụng; (3) **không có mâm**.
+- Không có mâm: hàng bàn thờ dưới bia chỉ có **nến · bát hương ba nén (có khói) · nến**. Bỏ hẳn hình mâm quả vẽ và lọ
+  hoa (`TRAY`, `VASE` ở PWA và hình tương ứng trên native). Công giáo: nến · hoa · nến, không hương (như cũ).
+- Có ảnh: ảnh nằm **dưới** hàng bàn thờ, rộng tối đa 480 px (360 px: toàn chiều rộng trừ lề 16 px), tỉ lệ gốc, cắt
+  vừa khung 4:3 ở giữa, bo góc 12 px, viền mảnh vàng đồng; nhãn trợ năng "Ảnh mâm lễ của gia đình" hoặc "Ảnh mâm lễ".
+  Ảnh Clevix có giấy phép cần ghi công thì có dòng nhỏ dưới ảnh: "Ảnh: <tác giả> · <giấy phép>".
+- Không có ảnh gia đình: dưới lời tưởng niệm có nút chữ nhỏ "Thêm ảnh mâm lễ của gia đình" → mở biểu mẫu sửa hồ sơ, cuộn
+  tới mục §16.2. Có ảnh gia đình → không có nút này.
+- Khói, nút "Dừng khói"/"Thắp lại", giảm chuyển động: như §3.9 (R8).
+
+### 16.2 Biểu mẫu người đã mất (§3.4) — mục "Ảnh mâm lễ ngày giỗ"
+
+Đặt ngay sau ô "Lời tưởng niệm".
+
+| Trạng thái | Hiển thị |
+|---|---|
+| Chưa có ảnh | Chữ: "Chưa có ảnh. Ngày giỗ chỉ hiện bát hương và nến." · nút "Chọn ảnh mâm lễ…" (điện thoại: hộp chọn của hệ thống có cả chụp ảnh và thư viện) |
+| Đang xử lý | "Đang xử lý ảnh…" (vô hiệu hóa nút Lưu tới khi xong) |
+| Có ảnh | Ảnh thu nhỏ 120 × 90 px · nút "Đổi ảnh" · nút "Bỏ ảnh" |
+| Lỗi | Như ảnh chân dung: "Không đọc được ảnh này. Hãy chọn một ảnh khác." / "Ảnh quá lớn (tối đa 25 MB)." |
+
+- Dòng gợi ý dưới mục: "Ảnh chỉ lưu trên máy này và trong tệp sao lưu mã hóa. Ứng dụng tự bỏ thông tin vị trí và máy
+  chụp trong ảnh."
+- Xử lý ảnh như ảnh chân dung (01 §3.8): giải mã, thu nhỏ cạnh dài ≤ 1600 px, mã hóa lại JPEG hoặc WebP ≤ 1 MB; không
+  phóng to. Ảnh đã thêm mà hủy biểu mẫu → xóa (`delete_photo`). Bỏ ảnh hay đổi ảnh có hiệu lực khi bấm "Lưu".
+- Hộp xác nhận đổi người đã mất thành đang sống: có ảnh mâm lễ thì thêm câu "Ảnh mâm lễ cũng sẽ bị xóa."
+- Trang hồ sơ một người (§3.6): dòng "Ảnh mâm lễ: Đã có" / "Ảnh mâm lễ: Chưa có".
+
+### 16.3 Gói ảnh Clevix
+
+`content/memorial/trays/manifest.json` (vai nội dung, T22). Mỗi nền tảng nhúng gói lúc dựng; chỉ mục đã duyệt, có tệp,
+đúng `sha256`. Gói hiện **rỗng**. Không tải gì qua mạng.
+
+### 16.4 Kiểm thử
+
+Mỗi nền tảng: (1) người đã mất không có ảnh, gói rỗng → không có phần tử mâm, có hai nến và bát hương; (2) thêm ảnh có
+EXIF → ảnh hiện dưới bàn thờ, ảnh lưu không còn EXIF; (3) bỏ ảnh → về (1), không còn tệp; (4) Công giáo → nến, hoa, không
+hương; (5) gói thử có một ảnh đã duyệt → ảnh Clevix hiện khi người đó chưa có ảnh gia đình, ảnh gia đình thắng khi có.
+Ảnh chụp: (1), (2), (4) ở 360 px và 1280 px, sáng và tối.
+
