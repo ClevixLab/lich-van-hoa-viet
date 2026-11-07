@@ -122,6 +122,8 @@ android {
         getByName("main") {
             jniLibs.srcDirs("rustJniLibs")
             java.srcDirs("build/generated/uniffi/kotlin")
+            // Gói ảnh mâm lễ Clevix đã duyệt (YC-2026-10, 08 §16.3) — do trayPack sinh lúc dựng.
+            assets.srcDirs("build/generated/trays/assets")
         }
     }
 
@@ -191,6 +193,38 @@ val checkRustArtifacts by tasks.registering {
         }
     }
 }
+// YC-2026-10 (08 §16.3, 04 R15 (b)): kiểm gói ảnh mâm lễ bằng scripts/check-tray-pack.py (mục chưa duyệt bị bỏ; mục đã
+// duyệt mà sai sha256, còn siêu dữ liệu, quá giới hạn → bản dựng THẤT BẠI), rồi chép đúng các ảnh đã duyệt vào assets
+// `trays/` cùng `trays/approved.json`. Gói rỗng → chỉ có approved.json rỗng; không có mâm nào được hiện.
+val trayPack by tasks.registering {
+    val repo = rootProject.projectDir.parentFile.parentFile
+    val manifest = File(repo, "content/memorial/trays/manifest.json")
+    val out = layout.buildDirectory.dir("generated/trays/assets/trays").get().asFile
+    inputs.dir(File(repo, "content/memorial/trays")).optional()
+    inputs.file(File(repo, "scripts/check-tray-pack.py")).optional()
+    outputs.dir(out)
+    doLast {
+        out.deleteRecursively()
+        out.mkdirs()
+        val approvedFile = File(out, "approved.json")
+        if (!manifest.exists()) {
+            approvedFile.writeText("{\"pack_version\": 1, \"approved\": []}\n")
+            return@doLast
+        }
+        val proc = ProcessBuilder("python3", File(repo, "scripts/check-tray-pack.py").path, "--manifest", manifest.path, "--out", approvedFile.path)
+            .redirectErrorStream(true).start()
+        val log = proc.inputStream.bufferedReader().readText()
+        if (proc.waitFor() != 0) throw GradleException("Gói ảnh mâm lễ không đạt (R15 (b)):\n$log")
+        @Suppress("UNCHECKED_CAST")
+        val doc = groovy.json.JsonSlurper().parse(approvedFile) as Map<String, Any?>
+        for (it in (doc["approved"] as List<Map<String, Any?>>)) {
+            val name = it["file"] as String
+            File(manifest.parentFile, name).copyTo(File(out, name), overwrite = true)
+        }
+    }
+}
+tasks.named("preBuild") { dependsOn(trayPack) }
+
 // -Plvhv.hostOnly=true (CI, job "ui"): chỉ có thư viện Rust bản máy tính cho kiểm thử JVM, không có .so Android.
 if (!project.hasProperty("lvhv.hostOnly")) {
     tasks.named("preBuild") { dependsOn(checkRustArtifacts) }

@@ -115,6 +115,7 @@ class MainActivity : ComponentActivity() {
         // BM2-16: tệp .ics tạm của lần chia sẻ trước (có tên, ngày giỗ) không nằm lại trong cache.
         cleanShareCache(ctx, 0L)
         AttachmentOpener.cleanup(ctx)
+        vn.clevix.lichviet.ui.people.TrayCapture.cleanup(ctx)
         setContent {
             var size by rememberSaveable { mutableIntStateOf(Prefs.size(ctx).coerceIn(1, 3)) }
             var theme by rememberSaveable { mutableStateOf(Prefs.theme(ctx)) }
