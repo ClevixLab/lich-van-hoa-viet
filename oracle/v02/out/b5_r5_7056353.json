@@ -1,0 +1,826 @@
+{
+ "tag": "7056353",
+ "T0": 1793000000,
+ "cases": {
+  "FROZEN": {
+   "rust": {
+    "T0": {
+     "ok": true,
+     "state": "migrated",
+     "persons_with_legacy": 2,
+     "bak": true,
+     "now_unix": 1793000000,
+     "source": null
+    },
+    "T0+1d": {
+     "ok": true,
+     "state": "ok",
+     "persons_with_legacy": 2,
+     "bak": true,
+     "now_unix": 1793086400,
+     "source": null
+    },
+    "export_T0+1d": {
+     "ok": true,
+     "error": null,
+     "indep_legacy_paths": [],
+     "indep_json_canonical": true,
+     "indep_blocks_ok": true,
+     "indep_doc_equals_store_minus_legacy": true,
+     "indep_diffs": [],
+     "settings_equal": true,
+     "inspect_rust_legacy_paths": [],
+     "inspect_rust_same_doc": true,
+     "import_rust_ok": true,
+     "import_rust_state_equals_indep": true,
+     "inspect_ts_legacy_paths": [],
+     "inspect_ts_same_doc": true,
+     "import_ts_ok": true,
+     "import_ts_state_equals_indep": true
+    },
+    "T0+7d-60s": {
+     "ok": true,
+     "state": "ok",
+     "persons_with_legacy": 2,
+     "bak": true,
+     "now_unix": 1793604740,
+     "source": null
+    },
+    "T0+7d+60s": {
+     "ok": true,
+     "state": "ok",
+     "persons_with_legacy": 0,
+     "bak": false,
+     "now_unix": 1793604860,
+     "source": null
+    },
+    "prune_only_legacy": true,
+    "T0+8d": {
+     "ok": true,
+     "state": "ok",
+     "persons_with_legacy": 0,
+     "bak": false,
+     "now_unix": 1793691200,
+     "source": null
+    },
+    "export_T0+8d": {
+     "ok": true,
+     "error": null,
+     "indep_legacy_paths": [],
+     "indep_json_canonical": true,
+     "indep_blocks_ok": true,
+     "indep_doc_equals_store_minus_legacy": true,
+     "indep_diffs": [],
+     "settings_equal": true,
+     "inspect_rust_legacy_paths": [],
+     "inspect_rust_same_doc": true,
+     "import_rust_ok": true,
+     "import_rust_state_equals_indep": true,
+     "inspect_ts_legacy_paths": [],
+     "inspect_ts_same_doc": true,
+     "import_ts_ok": true,
+     "import_ts_state_equals_indep": true
+    },
+    "verdict_prune": "KHOP",
+    "verdict_export_no_legacy": "KHOP"
+   },
+   "ts": {
+    "T0": {
+     "ok": true,
+     "state": "migrated",
+     "persons_with_legacy": 2,
+     "bak": null,
+     "now_unix": 1793000000,
+     "source": "fixture_v1"
+    },
+    "T0+1d": {
+     "ok": true,
+     "state": "ok",
+     "persons_with_legacy": 2,
+     "bak": null,
+     "now_unix": 1793086400,
+     "source": "state"
+    },
+    "export_T0+1d": {
+     "ok": true,
+     "error": null,
+     "indep_legacy_paths": [],
+     "indep_json_canonical": true,
+     "indep_blocks_ok": true,
+     "indep_doc_equals_store_minus_legacy": true,
+     "indep_diffs": [],
+     "settings_equal": true,
+     "inspect_rust_legacy_paths": [],
+     "inspect_rust_same_doc": true,
+     "import_rust_ok": true,
+     "import_rust_state_equals_indep": true,
+     "inspect_ts_legacy_paths": [],
+     "inspect_ts_same_doc": true,
+     "import_ts_ok": true,
+     "import_ts_state_equals_indep": true
+    },
+    "T0+7d-60s": {
+     "ok": true,
+     "state": "ok",
+     "persons_with_legacy": 2,
+     "bak": null,
+     "now_unix": 1793604740,
+     "source": "state"
+    },
+    "T0+7d+60s": {
+     "ok": true,
+     "state": "ok",
+     "persons_with_legacy": 0,
+     "bak": null,
+     "now_unix": 1793604860,
+     "source": "state"
+    },
+    "prune_only_legacy": true,
+    "T0+8d": {
+     "ok": true,
+     "state": "ok",
+     "persons_with_legacy": 0,
+     "bak": null,
+     "now_unix": 1793691200,
+     "source": "state"
+    },
+    "export_T0+8d": {
+     "ok": true,
+     "error": null,
+     "indep_legacy_paths": [],
+     "indep_json_canonical": true,
+     "indep_blocks_ok": true,
+     "indep_doc_equals_store_minus_legacy": true,
+     "indep_diffs": [],
+     "settings_equal": true,
+     "inspect_rust_legacy_paths": [],
+     "inspect_rust_same_doc": true,
+     "import_rust_ok": true,
+     "import_rust_state_equals_indep": true,
+     "inspect_ts_legacy_paths": [],
+     "inspect_ts_same_doc": true,
+     "import_ts_ok": true,
+     "import_ts_state_equals_indep": true
+    },
+    "verdict_prune": "KHOP",
+    "verdict_export_no_legacy": "KHOP"
+   }
+  },
+  "M01-cu-giay-chung-tu": {
+   "rust": {
+    "T0": {
+     "ok": true,
+     "state": "migrated",
+     "persons_with_legacy": 2,
+     "bak": true,
+     "now_unix": 1793000000,
+     "source": null
+    },
+    "T0+1d": {
+     "ok": true,
+     "state": "ok",
+     "persons_with_legacy": 2,
+     "bak": true,
+     "now_unix": 1793086400,
+     "source": null
+    },
+    "export_T0+1d": {
+     "ok": true,
+     "error": null,
+     "indep_legacy_paths": [],
+     "indep_json_canonical": true,
+     "indep_blocks_ok": true,
+     "indep_doc_equals_store_minus_legacy": true,
+     "indep_diffs": [],
+     "settings_equal": true,
+     "inspect_rust_legacy_paths": [],
+     "inspect_rust_same_doc": true,
+     "import_rust_ok": true,
+     "import_rust_state_equals_indep": true,
+     "inspect_ts_legacy_paths": [],
+     "inspect_ts_same_doc": true,
+     "import_ts_ok": true,
+     "import_ts_state_equals_indep": true
+    },
+    "T0+7d-60s": {
+     "ok": true,
+     "state": "ok",
+     "persons_with_legacy": 2,
+     "bak": true,
+     "now_unix": 1793604740,
+     "source": null
+    },
+    "T0+7d+60s": {
+     "ok": true,
+     "state": "ok",
+     "persons_with_legacy": 0,
+     "bak": false,
+     "now_unix": 1793604860,
+     "source": null
+    },
+    "prune_only_legacy": true,
+    "T0+8d": {
+     "ok": true,
+     "state": "ok",
+     "persons_with_legacy": 0,
+     "bak": false,
+     "now_unix": 1793691200,
+     "source": null
+    },
+    "export_T0+8d": {
+     "ok": true,
+     "error": null,
+     "indep_legacy_paths": [],
+     "indep_json_canonical": true,
+     "indep_blocks_ok": true,
+     "indep_doc_equals_store_minus_legacy": true,
+     "indep_diffs": [],
+     "settings_equal": true,
+     "inspect_rust_legacy_paths": [],
+     "inspect_rust_same_doc": true,
+     "import_rust_ok": true,
+     "import_rust_state_equals_indep": true,
+     "inspect_ts_legacy_paths": [],
+     "inspect_ts_same_doc": true,
+     "import_ts_ok": true,
+     "import_ts_state_equals_indep": true
+    },
+    "verdict_prune": "KHOP",
+    "verdict_export_no_legacy": "KHOP"
+   },
+   "ts": {
+    "T0": {
+     "ok": true,
+     "state": "migrated",
+     "persons_with_legacy": 2,
+     "bak": null,
+     "now_unix": 1793000000,
+     "source": "fixture_v1"
+    },
+    "T0+1d": {
+     "ok": true,
+     "state": "ok",
+     "persons_with_legacy": 2,
+     "bak": null,
+     "now_unix": 1793086400,
+     "source": "state"
+    },
+    "export_T0+1d": {
+     "ok": true,
+     "error": null,
+     "indep_legacy_paths": [],
+     "indep_json_canonical": true,
+     "indep_blocks_ok": true,
+     "indep_doc_equals_store_minus_legacy": true,
+     "indep_diffs": [],
+     "settings_equal": true,
+     "inspect_rust_legacy_paths": [],
+     "inspect_rust_same_doc": true,
+     "import_rust_ok": true,
+     "import_rust_state_equals_indep": true,
+     "inspect_ts_legacy_paths": [],
+     "inspect_ts_same_doc": true,
+     "import_ts_ok": true,
+     "import_ts_state_equals_indep": true
+    },
+    "T0+7d-60s": {
+     "ok": true,
+     "state": "ok",
+     "persons_with_legacy": 2,
+     "bak": null,
+     "now_unix": 1793604740,
+     "source": "state"
+    },
+    "T0+7d+60s": {
+     "ok": true,
+     "state": "ok",
+     "persons_with_legacy": 0,
+     "bak": null,
+     "now_unix": 1793604860,
+     "source": "state"
+    },
+    "prune_only_legacy": true,
+    "T0+8d": {
+     "ok": true,
+     "state": "ok",
+     "persons_with_legacy": 0,
+     "bak": null,
+     "now_unix": 1793691200,
+     "source": "state"
+    },
+    "export_T0+8d": {
+     "ok": true,
+     "error": null,
+     "indep_legacy_paths": [],
+     "indep_json_canonical": true,
+     "indep_blocks_ok": true,
+     "indep_doc_equals_store_minus_legacy": true,
+     "indep_diffs": [],
+     "settings_equal": true,
+     "inspect_rust_legacy_paths": [],
+     "inspect_rust_same_doc": true,
+     "import_rust_ok": true,
+     "import_rust_state_equals_indep": true,
+     "inspect_ts_legacy_paths": [],
+     "inspect_ts_same_doc": true,
+     "import_ts_ok": true,
+     "import_ts_state_equals_indep": true
+    },
+    "verdict_prune": "KHOP",
+    "verdict_export_no_legacy": "KHOP"
+   }
+  },
+  "M02-cu-4-anh": {
+   "rust": {
+    "T0": {
+     "ok": true,
+     "state": "migrated",
+     "persons_with_legacy": 1,
+     "bak": true,
+     "now_unix": 1793000000,
+     "source": null
+    },
+    "T0+1d": {
+     "ok": true,
+     "state": "ok",
+     "persons_with_legacy": 1,
+     "bak": true,
+     "now_unix": 1793086400,
+     "source": null
+    },
+    "export_T0+1d": {
+     "ok": true,
+     "error": null,
+     "indep_legacy_paths": [],
+     "indep_json_canonical": true,
+     "indep_blocks_ok": true,
+     "indep_doc_equals_store_minus_legacy": true,
+     "indep_diffs": [],
+     "settings_equal": true,
+     "inspect_rust_legacy_paths": [],
+     "inspect_rust_same_doc": true,
+     "import_rust_ok": true,
+     "import_rust_state_equals_indep": true,
+     "inspect_ts_legacy_paths": [],
+     "inspect_ts_same_doc": true,
+     "import_ts_ok": true,
+     "import_ts_state_equals_indep": true
+    },
+    "T0+7d-60s": {
+     "ok": true,
+     "state": "ok",
+     "persons_with_legacy": 1,
+     "bak": true,
+     "now_unix": 1793604740,
+     "source": null
+    },
+    "T0+7d+60s": {
+     "ok": true,
+     "state": "ok",
+     "persons_with_legacy": 0,
+     "bak": false,
+     "now_unix": 1793604860,
+     "source": null
+    },
+    "prune_only_legacy": true,
+    "T0+8d": {
+     "ok": true,
+     "state": "ok",
+     "persons_with_legacy": 0,
+     "bak": false,
+     "now_unix": 1793691200,
+     "source": null
+    },
+    "export_T0+8d": {
+     "ok": true,
+     "error": null,
+     "indep_legacy_paths": [],
+     "indep_json_canonical": true,
+     "indep_blocks_ok": true,
+     "indep_doc_equals_store_minus_legacy": true,
+     "indep_diffs": [],
+     "settings_equal": true,
+     "inspect_rust_legacy_paths": [],
+     "inspect_rust_same_doc": true,
+     "import_rust_ok": true,
+     "import_rust_state_equals_indep": true,
+     "inspect_ts_legacy_paths": [],
+     "inspect_ts_same_doc": true,
+     "import_ts_ok": true,
+     "import_ts_state_equals_indep": true
+    },
+    "verdict_prune": "KHOP",
+    "verdict_export_no_legacy": "KHOP"
+   },
+   "ts": {
+    "T0": {
+     "ok": true,
+     "state": "migrated",
+     "persons_with_legacy": 1,
+     "bak": null,
+     "now_unix": 1793000000,
+     "source": "fixture_v1"
+    },
+    "T0+1d": {
+     "ok": true,
+     "state": "ok",
+     "persons_with_legacy": 1,
+     "bak": null,
+     "now_unix": 1793086400,
+     "source": "state"
+    },
+    "export_T0+1d": {
+     "ok": true,
+     "error": null,
+     "indep_legacy_paths": [],
+     "indep_json_canonical": true,
+     "indep_blocks_ok": true,
+     "indep_doc_equals_store_minus_legacy": true,
+     "indep_diffs": [],
+     "settings_equal": true,
+     "inspect_rust_legacy_paths": [],
+     "inspect_rust_same_doc": true,
+     "import_rust_ok": true,
+     "import_rust_state_equals_indep": true,
+     "inspect_ts_legacy_paths": [],
+     "inspect_ts_same_doc": true,
+     "import_ts_ok": true,
+     "import_ts_state_equals_indep": true
+    },
+    "T0+7d-60s": {
+     "ok": true,
+     "state": "ok",
+     "persons_with_legacy": 1,
+     "bak": null,
+     "now_unix": 1793604740,
+     "source": "state"
+    },
+    "T0+7d+60s": {
+     "ok": true,
+     "state": "ok",
+     "persons_with_legacy": 0,
+     "bak": null,
+     "now_unix": 1793604860,
+     "source": "state"
+    },
+    "prune_only_legacy": true,
+    "T0+8d": {
+     "ok": true,
+     "state": "ok",
+     "persons_with_legacy": 0,
+     "bak": null,
+     "now_unix": 1793691200,
+     "source": "state"
+    },
+    "export_T0+8d": {
+     "ok": true,
+     "error": null,
+     "indep_legacy_paths": [],
+     "indep_json_canonical": true,
+     "indep_blocks_ok": true,
+     "indep_doc_equals_store_minus_legacy": true,
+     "indep_diffs": [],
+     "settings_equal": true,
+     "inspect_rust_legacy_paths": [],
+     "inspect_rust_same_doc": true,
+     "import_rust_ok": true,
+     "import_rust_state_equals_indep": true,
+     "inspect_ts_legacy_paths": [],
+     "inspect_ts_same_doc": true,
+     "import_ts_ok": true,
+     "import_ts_state_equals_indep": true
+    },
+    "verdict_prune": "KHOP",
+    "verdict_export_no_legacy": "KHOP"
+   }
+  },
+  "M03-cu-anh-chung": {
+   "rust": {
+    "T0": {
+     "ok": true,
+     "state": "migrated",
+     "persons_with_legacy": 1,
+     "bak": true,
+     "now_unix": 1793000000,
+     "source": null
+    },
+    "T0+1d": {
+     "ok": true,
+     "state": "ok",
+     "persons_with_legacy": 1,
+     "bak": true,
+     "now_unix": 1793086400,
+     "source": null
+    },
+    "export_T0+1d": {
+     "ok": true,
+     "error": null,
+     "indep_legacy_paths": [],
+     "indep_json_canonical": true,
+     "indep_blocks_ok": true,
+     "indep_doc_equals_store_minus_legacy": true,
+     "indep_diffs": [],
+     "settings_equal": true,
+     "inspect_rust_legacy_paths": [],
+     "inspect_rust_same_doc": true,
+     "import_rust_ok": true,
+     "import_rust_state_equals_indep": true,
+     "inspect_ts_legacy_paths": [],
+     "inspect_ts_same_doc": true,
+     "import_ts_ok": true,
+     "import_ts_state_equals_indep": true
+    },
+    "T0+7d-60s": {
+     "ok": true,
+     "state": "ok",
+     "persons_with_legacy": 1,
+     "bak": true,
+     "now_unix": 1793604740,
+     "source": null
+    },
+    "T0+7d+60s": {
+     "ok": true,
+     "state": "ok",
+     "persons_with_legacy": 0,
+     "bak": false,
+     "now_unix": 1793604860,
+     "source": null
+    },
+    "prune_only_legacy": true,
+    "T0+8d": {
+     "ok": true,
+     "state": "ok",
+     "persons_with_legacy": 0,
+     "bak": false,
+     "now_unix": 1793691200,
+     "source": null
+    },
+    "export_T0+8d": {
+     "ok": true,
+     "error": null,
+     "indep_legacy_paths": [],
+     "indep_json_canonical": true,
+     "indep_blocks_ok": true,
+     "indep_doc_equals_store_minus_legacy": true,
+     "indep_diffs": [],
+     "settings_equal": true,
+     "inspect_rust_legacy_paths": [],
+     "inspect_rust_same_doc": true,
+     "import_rust_ok": true,
+     "import_rust_state_equals_indep": true,
+     "inspect_ts_legacy_paths": [],
+     "inspect_ts_same_doc": true,
+     "import_ts_ok": true,
+     "import_ts_state_equals_indep": true
+    },
+    "verdict_prune": "KHOP",
+    "verdict_export_no_legacy": "KHOP"
+   },
+   "ts": {
+    "T0": {
+     "ok": true,
+     "state": "migrated",
+     "persons_with_legacy": 1,
+     "bak": null,
+     "now_unix": 1793000000,
+     "source": "fixture_v1"
+    },
+    "T0+1d": {
+     "ok": true,
+     "state": "ok",
+     "persons_with_legacy": 1,
+     "bak": null,
+     "now_unix": 1793086400,
+     "source": "state"
+    },
+    "export_T0+1d": {
+     "ok": true,
+     "error": null,
+     "indep_legacy_paths": [],
+     "indep_json_canonical": true,
+     "indep_blocks_ok": true,
+     "indep_doc_equals_store_minus_legacy": true,
+     "indep_diffs": [],
+     "settings_equal": true,
+     "inspect_rust_legacy_paths": [],
+     "inspect_rust_same_doc": true,
+     "import_rust_ok": true,
+     "import_rust_state_equals_indep": true,
+     "inspect_ts_legacy_paths": [],
+     "inspect_ts_same_doc": true,
+     "import_ts_ok": true,
+     "import_ts_state_equals_indep": true
+    },
+    "T0+7d-60s": {
+     "ok": true,
+     "state": "ok",
+     "persons_with_legacy": 1,
+     "bak": null,
+     "now_unix": 1793604740,
+     "source": "state"
+    },
+    "T0+7d+60s": {
+     "ok": true,
+     "state": "ok",
+     "persons_with_legacy": 0,
+     "bak": null,
+     "now_unix": 1793604860,
+     "source": "state"
+    },
+    "prune_only_legacy": true,
+    "T0+8d": {
+     "ok": true,
+     "state": "ok",
+     "persons_with_legacy": 0,
+     "bak": null,
+     "now_unix": 1793691200,
+     "source": "state"
+    },
+    "export_T0+8d": {
+     "ok": true,
+     "error": null,
+     "indep_legacy_paths": [],
+     "indep_json_canonical": true,
+     "indep_blocks_ok": true,
+     "indep_doc_equals_store_minus_legacy": true,
+     "indep_diffs": [],
+     "settings_equal": true,
+     "inspect_rust_legacy_paths": [],
+     "inspect_rust_same_doc": true,
+     "import_rust_ok": true,
+     "import_rust_state_equals_indep": true,
+     "inspect_ts_legacy_paths": [],
+     "inspect_ts_same_doc": true,
+     "import_ts_ok": true,
+     "import_ts_state_equals_indep": true
+    },
+    "verdict_prune": "KHOP",
+    "verdict_export_no_legacy": "KHOP"
+   }
+  },
+  "M10-cu-anh-dung-chung": {
+   "rust": {
+    "T0": {
+     "ok": true,
+     "state": "migrated",
+     "persons_with_legacy": 2,
+     "bak": true,
+     "now_unix": 1793000000,
+     "source": null
+    },
+    "T0+1d": {
+     "ok": true,
+     "state": "ok",
+     "persons_with_legacy": 2,
+     "bak": true,
+     "now_unix": 1793086400,
+     "source": null
+    },
+    "export_T0+1d": {
+     "ok": true,
+     "error": null,
+     "indep_legacy_paths": [],
+     "indep_json_canonical": true,
+     "indep_blocks_ok": true,
+     "indep_doc_equals_store_minus_legacy": true,
+     "indep_diffs": [],
+     "settings_equal": true,
+     "inspect_rust_legacy_paths": [],
+     "inspect_rust_same_doc": true,
+     "import_rust_ok": true,
+     "import_rust_state_equals_indep": true,
+     "inspect_ts_legacy_paths": [],
+     "inspect_ts_same_doc": true,
+     "import_ts_ok": true,
+     "import_ts_state_equals_indep": true
+    },
+    "T0+7d-60s": {
+     "ok": true,
+     "state": "ok",
+     "persons_with_legacy": 2,
+     "bak": true,
+     "now_unix": 1793604740,
+     "source": null
+    },
+    "T0+7d+60s": {
+     "ok": true,
+     "state": "ok",
+     "persons_with_legacy": 0,
+     "bak": false,
+     "now_unix": 1793604860,
+     "source": null
+    },
+    "prune_only_legacy": true,
+    "T0+8d": {
+     "ok": true,
+     "state": "ok",
+     "persons_with_legacy": 0,
+     "bak": false,
+     "now_unix": 1793691200,
+     "source": null
+    },
+    "export_T0+8d": {
+     "ok": true,
+     "error": null,
+     "indep_legacy_paths": [],
+     "indep_json_canonical": true,
+     "indep_blocks_ok": true,
+     "indep_doc_equals_store_minus_legacy": true,
+     "indep_diffs": [],
+     "settings_equal": true,
+     "inspect_rust_legacy_paths": [],
+     "inspect_rust_same_doc": true,
+     "import_rust_ok": true,
+     "import_rust_state_equals_indep": true,
+     "inspect_ts_legacy_paths": [],
+     "inspect_ts_same_doc": true,
+     "import_ts_ok": true,
+     "import_ts_state_equals_indep": true
+    },
+    "verdict_prune": "KHOP",
+    "verdict_export_no_legacy": "KHOP"
+   },
+   "ts": {
+    "T0": {
+     "ok": true,
+     "state": "migrated",
+     "persons_with_legacy": 2,
+     "bak": null,
+     "now_unix": 1793000000,
+     "source": "fixture_v1"
+    },
+    "T0+1d": {
+     "ok": true,
+     "state": "ok",
+     "persons_with_legacy": 2,
+     "bak": null,
+     "now_unix": 1793086400,
+     "source": "state"
+    },
+    "export_T0+1d": {
+     "ok": true,
+     "error": null,
+     "indep_legacy_paths": [],
+     "indep_json_canonical": true,
+     "indep_blocks_ok": true,
+     "indep_doc_equals_store_minus_legacy": true,
+     "indep_diffs": [],
+     "settings_equal": true,
+     "inspect_rust_legacy_paths": [],
+     "inspect_rust_same_doc": true,
+     "import_rust_ok": true,
+     "import_rust_state_equals_indep": true,
+     "inspect_ts_legacy_paths": [],
+     "inspect_ts_same_doc": true,
+     "import_ts_ok": true,
+     "import_ts_state_equals_indep": true
+    },
+    "T0+7d-60s": {
+     "ok": true,
+     "state": "ok",
+     "persons_with_legacy": 2,
+     "bak": null,
+     "now_unix": 1793604740,
+     "source": "state"
+    },
+    "T0+7d+60s": {
+     "ok": true,
+     "state": "ok",
+     "persons_with_legacy": 0,
+     "bak": null,
+     "now_unix": 1793604860,
+     "source": "state"
+    },
+    "prune_only_legacy": true,
+    "T0+8d": {
+     "ok": true,
+     "state": "ok",
+     "persons_with_legacy": 0,
+     "bak": null,
+     "now_unix": 1793691200,
+     "source": "state"
+    },
+    "export_T0+8d": {
+     "ok": true,
+     "error": null,
+     "indep_legacy_paths": [],
+     "indep_json_canonical": true,
+     "indep_blocks_ok": true,
+     "indep_doc_equals_store_minus_legacy": true,
+     "indep_diffs": [],
+     "settings_equal": true,
+     "inspect_rust_legacy_paths": [],
+     "inspect_rust_same_doc": true,
+     "import_rust_ok": true,
+     "import_rust_state_equals_indep": true,
+     "inspect_ts_legacy_paths": [],
+     "inspect_ts_same_doc": true,
+     "import_ts_ok": true,
+     "import_ts_state_equals_indep": true
+    },
+    "verdict_prune": "KHOP",
+    "verdict_export_no_legacy": "KHOP"
+   }
+  }
+ }
+}

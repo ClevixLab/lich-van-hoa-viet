@@ -174,7 +174,7 @@ function migrateData1to2(tx: IDBTransaction, ctx: UpgradeCtx): void {
         for (const a of metas.values()) V.attachment(a, "/attachment");
         tx.objectStore("meta").put(STORE_VERSION, "store_version");
       } catch (e) {
-        (tx as unknown as { __lvhvError?: string }).__lvhvError = (e as Error).message;
+        (tx as unknown as { lvhvMigrationError?: string }).lvhvMigrationError = (e as Error).message;
         tx.abort();
       }
     })));
@@ -226,7 +226,11 @@ function precheckBlobs(factory: IDBFactory): Promise<Map<string, string>> {
 }
 
 export interface OpenOptions {
-  /** Kiểm định (`store-tool --force-migration-failure`): làm bước chuyển đổi thất bại để quan sát quay lui + chỉ đọc. */
+  /**
+   * CHỈ ĐỂ KIỂM ĐỊNH — không dùng trong ứng dụng (như Rust `OpenOptions::force_migration_failure`): làm bước chuyển đổi
+   * thất bại để quan sát quay lui + chỉ đọc (`store-tool --force-migration-failure`, R14 ca lỗi). Giao diện chỉ truyền
+   * tùy chọn này ở bản dựng kiểm thử (`__LVHV_TEST_HOOKS__`, people/core.ts); bản phát hành luôn mở kho với `{}`.
+   */
   forceMigrationFailure?: boolean;
   /** Đồng hồ cho kiểm thử (RFC 3339 UTC): "bây giờ" khi mở kho — để kiểm việc dọn sau 7 ngày. */
   now?: string;
@@ -250,7 +254,7 @@ async function openStoreRaw(factory: IDBFactory, opts: OpenOptions, now: string)
     r.onsuccess = () => ok(new Store(r.result, { state: from > 0 && from < IDB_VERSION ? "migrated" : "ok", from_version: from, to_version: IDB_VERSION, error: null }));
     r.onerror = (ev) => {
       if (r.error?.name === "VersionError") { ko(new StoreError("newer_schema", "Dữ liệu được tạo bởi phiên bản mới hơn — hãy cập nhật ứng dụng")); return; }
-      const msg = (upgradeTx as unknown as { __lvhvError?: string } | null)?.__lvhvError;
+      const msg = (upgradeTx as unknown as { lvhvMigrationError?: string } | null)?.lvhvMigrationError;
       if (msg === undefined || from === 0) { ko(r.error); return; }
       ev.preventDefault?.();
       // Nâng cấp đã quay lui: mở kho cũ (không chỉ định phiên bản → không nâng cấp) ở chế độ chỉ đọc.
@@ -293,6 +297,19 @@ export class Store {
     tx.objectStore("meta").delete("migrated_at");
     tx.objectStore("meta").put(now, "legacy_pruned_at");
     await fin;
+  }
+
+  /**
+   * Cờ giao diện trong kho `meta` (MA3C-30-04: `ui_persist_notice_hidden_at`, `ui_restored_from`, …) — không phải dữ liệu
+   * người dùng, không vào stateHash. Ở chế độ chỉ đọc: bỏ qua lặng lẽ (kho cũ giữ nguyên đúng nghĩa đen).
+   * Trả `true` nếu đã ghi.
+   */
+  async putUiMeta(key: string, value: Json): Promise<boolean> {
+    if (this.status.state === "read_only") return false;
+    const tx = this.tx("meta", "readwrite");
+    tx.objectStore("meta").put(value, key);
+    await done(tx);
+    return true;
   }
 
   /** Chế độ chỉ đọc sau chuyển đổi lỗi: mọi thao tác ghi báo StoreError("read_only"). */
@@ -742,10 +759,6 @@ export async function requestPersistentStorage(store?: Store): Promise<boolean> 
     const sm = (globalThis.navigator as Navigator | undefined)?.storage;
     if (sm?.persist) granted = (await sm.persisted?.()) || (await sm.persist());
   } catch { granted = false; }
-  if (store) {
-    const tx = store.db.transaction("meta", "readwrite");
-    tx.objectStore("meta").put(granted, "persist");
-    await done(tx);
-  }
+  if (store) await store.putUiMeta("persist", granted); // MA3C-30-04: chế độ chỉ đọc → không ghi
   return granted;
 }

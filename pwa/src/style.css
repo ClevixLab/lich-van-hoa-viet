@@ -711,7 +711,7 @@ body[data-route="ngay"] .remind-host .remind { max-width: 520px; margin: 0 auto 
 .pd-title { font-family: var(--serif); font-size: 1.25rem; font-weight: 700; margin-bottom: .6rem; }
 .pd-body { display: grid; gap: .6rem; color: var(--ink); }
 .pd-body .field { display: grid; gap: .3rem; font-size: .9rem; font-weight: 600; color: var(--ink-2); }
-.pd-privacy { font-weight: 700; color: var(--red-ink); }
+.pd-privacy { color: var(--ink); } /* TKN3-P-03: thẻ lưu ý vàng (.notice.pd-note), không đỏ như lỗi */
 .pd-preview { font-size: .9rem; }
 .pd-acts { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: .5rem; margin-top: 1rem; }
 .dbtn { min-height: 46px; padding: 0 1.1rem; border-radius: 999px; border: 1.5px solid var(--rule); background: var(--paper); color: var(--ink); font-weight: 700; }
@@ -907,3 +907,27 @@ details[open] .sum-hint { display: none; }
 .notice-box[open] > summary::after { content: "▴"; }
 .cv-intro { margin: 0 0 1rem; }
 .cv-list { margin: 0; padding-left: 1.2rem; display: grid; gap: .4rem; }
+
+/* Tệp đính kèm trên trang hồ sơ (08 §12i) */
+.cert-item .att-name { margin: 0; font-weight: 600; }
+.cert-item .att-dl { justify-self: start; }
+.cert-pdf { display: grid; align-content: center; justify-items: center; gap: .3rem; padding: .5rem; text-align: center; overflow-wrap: anywhere; }
+.cert-pdf > span:first-child { font-weight: 700; letter-spacing: .08em; color: var(--red-ink); }
+
+/* TKN3-P-02: "Giới tính" — một hàng nút viên thuốc (cùng kiểu .pseg), vẫn là radio thật; không viền fieldset. */
+.gtseg { border: 0; padding: 0; margin: 0; min-width: 0; }
+.gtseg > legend { padding: 0; margin-bottom: .3rem; font-size: .9rem; font-weight: 600; color: var(--ink-2); }
+.gtopts { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 4px; background: var(--paper-2); padding: 4px; border-radius: 12px; }
+.gtopt { position: relative; display: grid; }
+.gtopts input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; margin: 0; cursor: pointer; z-index: 1; } /* radio thật phủ lên viên thuốc: bấm, chạm, phím mũi tên đều vào radio */
+.gtopts label { min-height: 46px; display: flex; align-items: center; justify-content: center; text-align: center; border-radius: 9px; padding: .2rem .3rem; font-weight: 600; font-size: .9rem; line-height: 1.2; color: var(--ink-2); cursor: pointer; }
+.gtopts input:checked + label { background: var(--red-deep); color: #fff; font-weight: 700; }
+.gtopts input:focus-visible + label { outline: 3px solid var(--focus); outline-offset: 2px; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .gtopts input:checked + label { background: var(--red-ink); color: #2a0d0c; }
+}
+:root[data-theme="dark"] .gtopts input:checked + label { background: var(--red-ink); color: #2a0d0c; }
+@media (max-width: 480px) {
+  :root[data-size="3"] .gtopts { grid-auto-flow: row; }
+}
+

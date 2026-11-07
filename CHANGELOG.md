@@ -15,6 +15,7 @@ và các dòng dưới đây được viết lại thành ghi chú cho người 
 - Dữ liệu chỉ lưu trên máy; sao lưu ra tệp có mật khẩu.
 - (Đợt 1, nội bộ) Lõi tính ngày giỗ, tuổi, lời nhắc và tệp .ics (`memorial/`, `tsport/src/memorial*.ts`), chưa có giao diện.
 - (Nội bộ, đợt 2) Kho dữ liệu SQLite và IndexedDB, tệp sao lưu mã hóa đọc được giữa ứng dụng web và bản cài trên máy.
+- Bấm "Để sau" ở thanh báo bản mới thì thanh không còn tự hiện lại sau vài giây.
 - (Nội bộ, đợt 3) Danh sách sự kiện theo tuần, tháng, quý, năm (lọc người đã mất / đang sống); lớp nối cho giao diện hồ sơ trên Android, iPhone, Mac và Windows.
 
 ## [0.1.4] — 2026-11-07
