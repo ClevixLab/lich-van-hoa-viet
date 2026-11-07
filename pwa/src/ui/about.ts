@@ -59,7 +59,7 @@ export function renderAbout(root: HTMLElement): void {
         h("p", { class: "by" },
           h("img", { src: "icons/clevix-logo-72.png", srcset: "icons/clevix-logo-72.png 1x, icons/clevix-logo-144.png 2x", alt: "Logo Clevix", width: "37", height: "24", class: "by-logo" }),
           "Clevix Lab"),
-        h("p", { class: "ver" }, `Phiên bản ${APP_VERSION} (thử nghiệm nội bộ)`))),
+        h("p", { class: "ver" }, `Phiên bản ${APP_VERSION}`))),
     versionPanel(),
     h("section", { class: "panel prose" },
       h("h2", null, "Về ứng dụng"),

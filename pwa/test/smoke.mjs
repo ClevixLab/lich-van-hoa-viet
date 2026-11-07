@@ -522,6 +522,9 @@ const DIST_B = join(TMP_B, "dist");
   await page.goto(BASE + "#/gioi-thieu");
   await page.waitForSelector("#check-update");
   const cur = await page.innerText(".cur-ver");
+  // Bản phát hành công khai (0.2.0): đầu trang Giới thiệu chỉ ghi số phiên bản, không còn "(thử nghiệm nội bộ)".
+  const verHead = (await page.innerText(".about-head .ver, header .ver, .ver").catch(() => "")).trim();
+  check(verHead === `Phiên bản ${VERSION_A}`, `Giới thiệu: đầu trang ghi đúng "Phiên bản ${VERSION_A}", không có "thử nghiệm nội bộ" ("${verHead}")`);
   check(cur.trim() === `Phiên bản đang dùng: ${VERSION_A}` && !cur.includes("bản dựng") && !cur.includes(vjA.build), `Giới thiệu chỉ hiện số phiên bản: "${cur}"`);
   check((await page.innerText("main")).includes("lịch thiên văn JPL DE441 của NASA JPL") && (await page.innerText("main")).includes("Morrison và Stephenson") && (await page.innerText("main")).includes("Sau năm 2077"), "Giới thiệu mô tả phương pháp JPL DE441, ΔT Morrison–Stephenson và ghi chú độ bất định");
   await page.click("#check-update");
