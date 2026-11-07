@@ -33,6 +33,8 @@ jobs:
         run: cargo fmt --all --check
       - name: clippy (-D warnings)
         run: cargo clippy --workspace --all-targets -- -D warnings
+      - name: clippy lvhv-store-tool với test-hooks (-D warnings)
+        run: cargo clippy --locked -p lvhv-ffi --features test-hooks --bin lvhv-store-tool -- -D warnings
       - name: test (core, ngochap, ffi, store, backup)
         run: cargo test --workspace --release
       - name: S1/S8 — lvhv-store, lvhv-backup cấm unsafe; phụ thuộc mật mã ghim chính xác
@@ -97,6 +99,11 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      # deny.toml [graph] all-features = true: xét cả phụ thuộc lúc dựng chỉ đến qua tính năng không mặc định
+      # (bindgen-cli, test-hooks). Mọi cảnh báo RustSec chưa có ngoại lệ ghi lý do trong deny.toml → job lỗi.
+      - name: S11 — đồ thị cargo-deny phủ mọi gói của Cargo.lock (workspace gốc)
+        run: python3 scripts/check-lock-coverage.py
       - uses: EmbarkStudios/cargo-deny-action@v2
         with:
           command: check advisories bans
@@ -129,6 +136,8 @@ jobs:
         run: npm ci
       - name: vector tất định + R6 phía PWA (gồm lật bit 65 536 biến thể) + kiểm chéo Rust ↔ PWA
         run: scripts/check-store.sh
+      - name: công cụ hộp đen lvhv-store-tool (Rust + TS) trên test-vectors (docs/v0.2/10)
+        run: scripts/check-store-tool.sh
       - uses: actions/upload-artifact@v4
         if: always()
         with:
